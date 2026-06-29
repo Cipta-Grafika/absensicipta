@@ -1,5 +1,5 @@
 <div class="p-6 lg:p-8">
-  <script src="{{ url('/assets/js/qrcode.min.js') }}"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <x-button class="mb-4 mr-2" href="{{ route('admin.barcodes.create') }}">
     Buat Barcode Baru
   </x-button>
@@ -64,7 +64,6 @@
 </div>
 
 @script
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script type="text/javascript">
     let barcodes = {{ $barcodes->map(fn($barcode) => $barcode->id) }};
     let barcodeValues = @json($barcodes->mapWithKeys(fn($b) => [$b->id => $b->value]));
