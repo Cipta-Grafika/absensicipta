@@ -6,6 +6,7 @@ use App\Livewire\Forms\UserForm;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Laravel\Jetstream\InteractsWithBanner;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -34,6 +35,7 @@ class EmployeeComponent extends Component
         $this->showDetail = true;
     }
 
+    #[On('show-creating')]
     public function showCreating()
     {
         $this->form->resetErrorBag();
