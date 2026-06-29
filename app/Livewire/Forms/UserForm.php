@@ -98,6 +98,10 @@ class UserForm extends Form
             $data['address'] = $data['address'] ?: '-';
         }
 
+        if (Auth::user()?->group === 'admin') {
+            $data['division_id'] = Auth::user()->division_id;
+        }
+
         /** @var User $user */
         $user = User::create([
             ...$data,
@@ -120,6 +124,10 @@ class UserForm extends Form
             $data['gender'] = $data['gender'] ?? 'male';
             $data['city'] = $data['city'] ?: '-';
             $data['address'] = $data['address'] ?: '-';
+        }
+
+        if (Auth::user()?->group === 'admin') {
+            $data['division_id'] = Auth::user()->division_id;
         }
 
         $this->user->update([
@@ -151,9 +159,21 @@ class UserForm extends Form
 
     private function isAllowed()
     {
-        if ($this->group === 'user') {
-            return Auth::user()?->isAdmin;
+        $authUser = Auth::user();
+        if (!$authUser) return false;
+
+        if ($authUser->isSuperadmin) return true;
+
+        if ($authUser->group === 'admin') {
+            if ($this->group === 'superadmin') return false; // Admin cannot touch superadmin
+
+            if ($this->user && $this->user->division_id !== $authUser->division_id) {
+                return false; // Cannot update user from another division
+            }
+
+            return true;
         }
-        return Auth::user()?->isSuperadmin || (Auth::user()?->isAdmin && Auth::user()?->id === $this->user?->id);
+
+        return false;
     }
 }

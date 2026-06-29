@@ -91,6 +91,7 @@ class EmployeeComponent extends Component
     public function render()
     {
         $users = User::where('group', 'user')
+            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
             ->when($this->search, function (Builder $q) {
                 return $q->where('name', 'like', '%' . $this->search . '%')
                     ->orWhere('nip', 'like', '%' . $this->search . '%')

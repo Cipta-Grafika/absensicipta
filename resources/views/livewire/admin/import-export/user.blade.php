@@ -18,12 +18,14 @@
               <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Admin') }}</span>
             </x-label>
           </div>
+          @if(Auth::user()->isSuperadmin)
           <div class="mt-4">
             <x-label for="superadmin" class="flex items-center">
               <x-checkbox value="superadmin" id="superadmin" wire:model.live="groups" />
               <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Super Admin') }}</span>
             </x-label>
           </div>
+          @endif
           @error('groups')
             <x-input-error for="groups" class="mt-4" message="{{ $message }}" />
           @enderror

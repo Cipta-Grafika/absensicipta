@@ -17,8 +17,15 @@ class UsersExport implements FromView
 
     public function view(): View
     {
+        $query = User::whereIn('group', $this->groups);
+        
+        if (auth()->user()->group === 'admin') {
+            $query->where('division_id', auth()->user()->division_id)
+                  ->where('group', '!=', 'superadmin');
+        }
+
         return view('admin.import-export.export-users', [
-            'users' => User::whereIn('group', $this->groups)->get(),
+            'users' => $query->get(),
         ]);
     }
 }

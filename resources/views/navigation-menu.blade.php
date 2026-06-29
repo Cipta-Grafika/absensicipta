@@ -16,9 +16,11 @@
             <x-nav-link href="{{ route('admin.dashboard') }}" :active="request()->routeIs('admin.dashboard')">
               {{ __('Dashboard') }}
             </x-nav-link>
-            <x-nav-link href="{{ route('admin.barcodes') }}" :active="request()->routeIs('admin.barcodes')">
-              {{ __('Barcode') }}
-            </x-nav-link>
+            @if (Auth::user()?->isSuperadmin)
+              <x-nav-link href="{{ route('admin.barcodes') }}" :active="request()->routeIs('admin.barcodes')">
+                {{ __('Barcode') }}
+              </x-nav-link>
+            @endif
             <x-nav-link class="hidden md:inline-flex" href="{{ route('admin.attendances') }}" :active="request()->routeIs('admin.attendances')">
               {{ __('Attendance') }}
             </x-nav-link>
@@ -37,19 +39,21 @@
                 <x-dropdown-link class="md:hidden" href="{{ route('admin.employees') }}" :active="request()->routeIs('admin.employees')">
                   {{ __('Employee') }}
                 </x-dropdown-link>
-                <x-dropdown-link href="{{ route('admin.masters.division') }}" :active="request()->routeIs('admin.masters.division')">
-                  {{ __('Division') }}
-                </x-dropdown-link>
-                <x-dropdown-link href="{{ route('admin.masters.job-title') }}" :active="request()->routeIs('admin.masters.job-title')">
-                  {{ __('Job Title') }}
-                </x-dropdown-link>
-                <x-dropdown-link href="{{ route('admin.masters.education') }}" :active="request()->routeIs('admin.masters.education')">
-                  {{ __('Education') }}
-                </x-dropdown-link>
-                <x-dropdown-link href="{{ route('admin.masters.shift') }}" :active="request()->routeIs('admin.masters.shift')">
-                  {{ __('Shift') }}
-                </x-dropdown-link>
-                <hr>
+                @if (Auth::user()?->isSuperadmin)
+                  <x-dropdown-link href="{{ route('admin.masters.division') }}" :active="request()->routeIs('admin.masters.division')">
+                    {{ __('Division') }}
+                  </x-dropdown-link>
+                  <x-dropdown-link href="{{ route('admin.masters.job-title') }}" :active="request()->routeIs('admin.masters.job-title')">
+                    {{ __('Job Title') }}
+                  </x-dropdown-link>
+                  <x-dropdown-link href="{{ route('admin.masters.education') }}" :active="request()->routeIs('admin.masters.education')">
+                    {{ __('Education') }}
+                  </x-dropdown-link>
+                  <x-dropdown-link href="{{ route('admin.masters.shift') }}" :active="request()->routeIs('admin.masters.shift')">
+                    {{ __('Shift') }}
+                  </x-dropdown-link>
+                  <hr>
+                @endif
                 <x-dropdown-link href="{{ route('admin.masters.admin') }}" :active="request()->routeIs('admin.masters.admin')">
                   {{ __('Admin') }}
                 </x-dropdown-link>
@@ -162,27 +166,31 @@
         <x-responsive-nav-link href="{{ route('admin.dashboard') }}" :active="request()->routeIs('admin.dashboard')">
           {{ __('Dashboard') }}
         </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('admin.barcodes') }}" :active="request()->routeIs('admin.barcodes')">
-          {{ __('Barcode') }}
-        </x-responsive-nav-link>
+        @if (Auth::user()?->isSuperadmin)
+          <x-responsive-nav-link href="{{ route('admin.barcodes') }}" :active="request()->routeIs('admin.barcodes')">
+            {{ __('Barcode') }}
+          </x-responsive-nav-link>
+        @endif
         <x-responsive-nav-link href="{{ route('admin.attendances') }}" :active="request()->routeIs('admin.attendances')">
           {{ __('Attendance') }}
         </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('admin.employees') }}" :active="request()->routeIs('admin.employees')">
           {{ __('Employee') }}
         </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('admin.masters.division') }}" :active="request()->routeIs('admin.masters.division')">
-          {{ __('Division') }}
-        </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('admin.masters.job-title') }}" :active="request()->routeIs('admin.masters.job-title')">
-          {{ __('Job Title') }}
-        </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('admin.masters.education') }}" :active="request()->routeIs('admin.masters.education')">
-          {{ __('Education') }}
-        </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('admin.masters.shift') }}" :active="request()->routeIs('admin.masters.shift')">
-          {{ __('Shift') }}
-        </x-responsive-nav-link>
+        @if (Auth::user()?->isSuperadmin)
+          <x-responsive-nav-link href="{{ route('admin.masters.division') }}" :active="request()->routeIs('admin.masters.division')">
+            {{ __('Division') }}
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('admin.masters.job-title') }}" :active="request()->routeIs('admin.masters.job-title')">
+            {{ __('Job Title') }}
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('admin.masters.education') }}" :active="request()->routeIs('admin.masters.education')">
+            {{ __('Education') }}
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('admin.masters.shift') }}" :active="request()->routeIs('admin.masters.shift')">
+            {{ __('Shift') }}
+          </x-responsive-nav-link>
+        @endif
         <x-responsive-nav-link href="{{ route('admin.masters.admin') }}" :active="request()->routeIs('admin.masters.admin')">
           {{ __('Admin Management') }}
         </x-responsive-nav-link>

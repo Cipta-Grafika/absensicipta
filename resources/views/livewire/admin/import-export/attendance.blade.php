@@ -17,6 +17,7 @@
             </div>
           </div>
           <div class="mb-4 grid grid-cols-3 gap-2 lg:gap-4">
+            @if(Auth::user()->isSuperadmin)
             <x-select id="division" name="division" class="w-full" wire:model.live="division">
               <option value="">{{ __('Select Division') }}</option>
               @foreach (App\Models\Division::all() as $division)
@@ -25,6 +26,7 @@
                 </option>
               @endforeach
             </x-select>
+            @endif
             <x-select id="jobTitle" name="job_title" class="w-full" wire:model.live="job_title">
               <option value="">{{ __('Select Job Title') }}</option>
               @foreach (App\Models\JobTitle::all() as $jobTitle)

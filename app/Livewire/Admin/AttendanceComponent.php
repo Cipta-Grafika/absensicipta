@@ -39,6 +39,90 @@ class AttendanceComponent extends Component
     public ?string $jobTitle = null;
     public ?string $search = null;
 
+    public bool $editingAttendance = false;
+    public array $formAttendance = [];
+
+    public function editAttendance($userId, $date)
+    {
+        if (!auth()->user()->isAdmin) {
+            return;
+        }
+
+        $user = User::findOrFail($userId);
+        
+        if (auth()->user()->group === 'admin' && $user->division_id !== auth()->user()->division_id) {
+            abort(403);
+        }
+
+        $attendance = Attendance::where('user_id', $userId)->whereDate('date', $date)->first();
+
+        $this->formAttendance = [
+            'user_id' => $userId,
+            'name' => $user->name,
+            'nip' => $user->nip,
+            'date' => $date,
+            'time_in' => $attendance ? ($attendance->time_in ? Carbon::parse($attendance->time_in)->format('H:i') : null) : null,
+            'time_out' => $attendance ? ($attendance->time_out ? Carbon::parse($attendance->time_out)->format('H:i') : null) : null,
+            'shift_id' => $attendance ? $attendance->shift_id : null,
+            'status' => $attendance ? $attendance->status : '-',
+            'note' => $attendance ? $attendance->note : null,
+        ];
+
+        $this->editingAttendance = true;
+    }
+
+    public function saveAttendance()
+    {
+        if (!auth()->user()->isAdmin) {
+            return;
+        }
+
+        $user = User::findOrFail($this->formAttendance['user_id']);
+        if (auth()->user()->group === 'admin' && $user->division_id !== auth()->user()->division_id) {
+            abort(403);
+        }
+
+        $this->validate([
+            'formAttendance.time_in' => 'nullable|date_format:H:i',
+            'formAttendance.time_out' => 'nullable|date_format:H:i',
+            'formAttendance.shift_id' => 'nullable|exists:shifts,id',
+            'formAttendance.status' => 'required|string',
+            'formAttendance.note' => 'nullable|string',
+        ]);
+
+        if ($this->formAttendance['status'] == '-') {
+            $attendance = Attendance::where('user_id', $this->formAttendance['user_id'])
+                ->whereDate('date', $this->formAttendance['date'])->first();
+            if ($attendance) {
+                $attendance->delete();
+            }
+        } else {
+            Attendance::updateOrCreate(
+                [
+                    'user_id' => $this->formAttendance['user_id'],
+                    'date' => $this->formAttendance['date'],
+                ],
+                [
+                    'time_in' => !empty($this->formAttendance['time_in']) ? $this->formAttendance['time_in'] : null,
+                    'time_out' => !empty($this->formAttendance['time_out']) ? $this->formAttendance['time_out'] : null,
+                    'shift_id' => !empty($this->formAttendance['shift_id']) ? $this->formAttendance['shift_id'] : null,
+                    'status' => $this->formAttendance['status'],
+                    'note' => !empty($this->formAttendance['note']) ? $this->formAttendance['note'] : null,
+                ]
+            );
+        }
+
+        $this->editingAttendance = false;
+        $this->banner('Absensi berhasil diperbarui!');
+        
+        $my = Carbon::parse($this->formAttendance['date']);
+        $weekFormat = $my->copy()->startOfWeek()->format('Y-\WW');
+        
+        Cache::forget("attendance-{$this->formAttendance['user_id']}-{$this->formAttendance['date']}");
+        Cache::forget("attendance-{$this->formAttendance['user_id']}-{$weekFormat}");
+        Cache::forget("attendance-{$this->formAttendance['user_id']}-{$my->month}-{$my->year}");
+    }
+
     public function mount()
     {
         $this->date = date('Y-m-d');
@@ -66,6 +150,17 @@ class AttendanceComponent extends Component
         }
     }
 
+    public function updated($property, $value)
+    {
+        if ($property === 'formAttendance.shift_id' && !empty($value)) {
+            $shift = \App\Models\Shift::find($value);
+            if ($shift) {
+                $this->formAttendance['time_in'] = $shift->start_time ? Carbon::parse($shift->start_time)->format('H:i') : null;
+                $this->formAttendance['time_out'] = $shift->end_time ? Carbon::parse($shift->end_time)->format('H:i') : null;
+            }
+        }
+    }
+
     public function render()
     {
         if ($this->date) {
@@ -80,6 +175,7 @@ class AttendanceComponent extends Component
             $dates = $start->range($end)->toArray();
         }
         $employees = User::where('group', 'user')
+            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
             ->when($this->search, function (Builder $q) {
                 return $q->where('name', 'like', '%' . $this->search . '%')
                     ->orWhere('nip', 'like', '%' . $this->search . '%');

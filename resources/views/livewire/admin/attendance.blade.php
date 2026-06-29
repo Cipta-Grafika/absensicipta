@@ -236,7 +236,14 @@
                         break;
                 }
               @endphp
-              @if (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
+              @if (Auth::user()->isSuperadmin)
+                <td
+                  class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
+                  <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
+                    {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                  </button>
+                </td>
+              @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
                 <td
                   class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                   <button class="w-full px-1 py-3" wire:click="show({{ $attendance['id'] }})"
@@ -307,4 +314,87 @@
 
   <x-attendance-detail-modal :current-attendance="$currentAttendance" />
   @stack('attendance-detail-scripts')
+
+  @if (Auth::user()->isSuperadmin)
+    <x-dialog-modal wire:model="editingAttendance">
+      <x-slot name="title">
+        {{ __('Manipulasi Absensi') }}
+      </x-slot>
+
+      <x-slot name="content">
+        <form id="attendanceForm" wire:submit.prevent="saveAttendance">
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full">
+              <x-label for="edit_date">{{ __('Date') }}</x-label>
+              <x-input id="edit_date" class="mt-1 block w-full bg-gray-100 dark:bg-gray-700" type="date" wire:model="formAttendance.date" readonly />
+            </div>
+            <div class="w-full">
+              <x-label for="edit_shift_id" value="{{ __('Shift') }}" />
+              <x-select id="edit_shift_id" class="mt-1 block w-full" wire:model.live="formAttendance.shift_id">
+                <option value="">{{ __('Select Shift') }}</option>
+                @foreach (App\Models\Shift::all() as $shift)
+                  <option value="{{ $shift->id }}">{{ $shift->name }}</option>
+                @endforeach
+              </x-select>
+              @error('formAttendance.shift_id')
+                <x-input-error for="formAttendance.shift_id" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+          </div>
+
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full">
+              <x-label for="edit_time_in">{{ __('Time In') }}</x-label>
+              <x-input id="edit_time_in" class="mt-1 block w-full" type="time" wire:model="formAttendance.time_in" />
+              @error('formAttendance.time_in')
+                <x-input-error for="formAttendance.time_in" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+            <div class="w-full">
+              <x-label for="edit_time_out">{{ __('Time Out') }}</x-label>
+              <x-input id="edit_time_out" class="mt-1 block w-full" type="time" wire:model="formAttendance.time_out" />
+              @error('formAttendance.time_out')
+                <x-input-error for="formAttendance.time_out" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+          </div>
+
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full">
+              <x-label for="edit_status" value="{{ __('Status') }}" />
+              <x-select id="edit_status" class="mt-1 block w-full" wire:model="formAttendance.status" required>
+                <option value="-">- (Kosong)</option>
+                <option value="present">{{ __('present') }}</option>
+                <option value="late">{{ __('late') }}</option>
+                <option value="excused">{{ __('excused') }}</option>
+                <option value="sick">{{ __('sick') }}</option>
+                <option value="absent">{{ __('absent') }}</option>
+              </x-select>
+              @error('formAttendance.status')
+                <x-input-error for="formAttendance.status" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <x-label for="edit_note">{{ __('Note') }}</x-label>
+            <x-input id="edit_note" class="mt-1 block w-full" type="text" wire:model="formAttendance.note" />
+            @error('formAttendance.note')
+              <x-input-error for="formAttendance.note" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+        </form>
+      </x-slot>
+
+      <x-slot name="footer">
+        <x-secondary-button wire:click="$toggle('editingAttendance')" wire:loading.attr="disabled">
+          {{ __('Cancel') }}
+        </x-secondary-button>
+
+        <x-button class="ml-2" type="submit" form="attendanceForm" wire:loading.attr="disabled">
+          {{ __('Confirm') }}
+        </x-button>
+      </x-slot>
+    </x-dialog-modal>
+  @endif
 </div>

@@ -1,8 +1,18 @@
 <x-app-layout>
   <x-slot name="header">
-    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Admin') }}
-    </h2>
+    <div class="relative flex items-center">
+      <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+        {{ __('Admin') }}
+      </h2>
+      <div class="absolute right-0 flex items-center gap-2">
+        @if (Auth::user()->isSuperadmin)
+          <x-button type="button" x-data @click.prevent="Livewire.dispatch('show-creating')" class="!py-1.5 !px-3">
+            <x-heroicon-o-plus class="mr-1.5 h-4 w-4" />
+            Tambah
+          </x-button>
+        @endif
+      </div>
+    </div>
   </x-slot>
 
   <div class="py-0 sm:py-12">
