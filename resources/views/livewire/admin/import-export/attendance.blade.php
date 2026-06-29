@@ -6,13 +6,15 @@
           Ekspor Data Absensi
         </h3>
         <form wire:submit.prevent="export">
-          <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-            <x-label for="year" value="Per Tahun"></x-label>
-            <x-input type="number" min="1970" max="2099" name="year" id="year" wire:model.live="year" />
-          </div>
-          <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-            <x-label for="month" value="Per Bulan"></x-label>
-            <x-input type="month" name="month" id="month" wire:model.live="month" />
+          <div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <x-label for="year" value="Per Tahun" class="mb-1"></x-label>
+              <x-input type="number" min="1970" max="2099" name="year" id="year" class="mt-1 block w-full" wire:model.live="year" />
+            </div>
+            <div>
+              <x-label for="month" value="Per Bulan" class="mb-1"></x-label>
+              <x-input type="month" name="month" id="month" class="mt-1 block w-full" wire:model.live="month" />
+            </div>
           </div>
           <div class="mb-4 grid grid-cols-3 gap-2 lg:gap-4">
             <x-select id="division" name="division" class="w-full" wire:model.live="division">

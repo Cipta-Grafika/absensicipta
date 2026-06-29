@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Jetstream\InteractsWithBanner;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -17,6 +18,18 @@ class AttendanceComponent extends Component
 {
     use AttendanceDetailTrait;
     use WithPagination, InteractsWithBanner;
+
+    #[On('print-report')]
+    public function printReport()
+    {
+        return redirect()->route('admin.attendances.report', [
+            'month' => $this->month,
+            'week' => $this->week,
+            'date' => $this->date,
+            'division' => $this->division,
+            'jobTitle' => $this->jobTitle,
+        ]);
+    }
 
     # filter
     public ?string $month = null;
