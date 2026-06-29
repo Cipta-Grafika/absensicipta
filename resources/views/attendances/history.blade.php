@@ -1,11 +1,17 @@
 <x-app-layout>
   <x-slot name="header">
-    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Attendance') }}
-    </h2>
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+        {{ __('Attendance') }}
+      </h2>
+      <x-secondary-button href="{{ route('home') }}">
+        <x-heroicon-o-chevron-left class="mr-2 h-5 w-5" />
+        Kembali
+      </x-secondary-button>
+    </div>
   </x-slot>
 
-  <div class="py-12">
+  <div class="py-0 sm:py-12">
     <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
       <div class="bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg">
         <div class="p-6 lg:p-8">

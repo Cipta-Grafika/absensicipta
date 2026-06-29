@@ -12,7 +12,7 @@
   </div>
   <h5 class="mt-3 text-sm dark:text-gray-200">Klik pada tanggal untuk melihat detail</h5>
   <div class="mt-4 flex w-full flex-col gap-3 lg:flex-row">
-    <div class="grid w-96 grid-cols-7 overflow-x-scroll dark:text-white lg:w-[36rem]">
+    <div class="grid w-full grid-cols-7 dark:text-white lg:w-[36rem]">
       @foreach (['M', 'S', 'S', 'R', 'K', 'J', 'S'] as $day)
         <div
           class="{{ $day === 'M' ? 'text-red-500' : '' }} {{ $day === 'J' ? 'text-green-600 dark:text-green-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center dark:border-gray-600">

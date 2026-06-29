@@ -14,30 +14,32 @@
             <x-label for="month" value="Per Bulan"></x-label>
             <x-input type="month" name="month" id="month" wire:model.live="month" />
           </div>
-          <x-select id="division" name="division" class="mb-4" wire:model.live="division">
-            <option value="">{{ __('Select Division') }}</option>
-            @foreach (App\Models\Division::all() as $division)
-              <option value="{{ $division->id }}">
-                {{ $division->name }}
-              </option>
-            @endforeach
-          </x-select>
-          <x-select id="jobTitle" name="job_title" class="mb-4" wire:model.live="job_title">
-            <option value="">{{ __('Select Job Title') }}</option>
-            @foreach (App\Models\JobTitle::all() as $jobTitle)
-              <option value="{{ $jobTitle->id }}">
-                {{ $jobTitle->name }}
-              </option>
-            @endforeach
-          </x-select>
-          <x-select id="education" name="education" class="mb-4" wire:model.live="education">
-            <option value="">{{ __('Select Education') }}</option>
-            @foreach (App\Models\Education::all() as $education)
-              <option value="{{ $education->id }}">
-                {{ $education->name }}
-              </option>
-            @endforeach
-          </x-select>
+          <div class="mb-4 grid grid-cols-3 gap-2 lg:gap-4">
+            <x-select id="division" name="division" class="w-full" wire:model.live="division">
+              <option value="">{{ __('Select Division') }}</option>
+              @foreach (App\Models\Division::all() as $division)
+                <option value="{{ $division->id }}">
+                  {{ $division->name }}
+                </option>
+              @endforeach
+            </x-select>
+            <x-select id="jobTitle" name="job_title" class="w-full" wire:model.live="job_title">
+              <option value="">{{ __('Select Job Title') }}</option>
+              @foreach (App\Models\JobTitle::all() as $jobTitle)
+                <option value="{{ $jobTitle->id }}">
+                  {{ $jobTitle->name }}
+                </option>
+              @endforeach
+            </x-select>
+            <x-select id="education" name="education" class="w-full" wire:model.live="education">
+              <option value="">{{ __('Select Education') }}</option>
+              @foreach (App\Models\Education::all() as $education)
+                <option value="{{ $education->id }}">
+                  {{ $education->name }}
+                </option>
+              @endforeach
+            </x-select>
+          </div>
           <div class="flex flex-col items-center justify-stretch gap-4">
             <x-secondary-button type="button" wire:click="preview" class="w-full justify-center">
               @if ($mode == 'export')
