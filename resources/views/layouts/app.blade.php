@@ -13,6 +13,11 @@
   <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
   <!-- Scripts -->
+  <script>
+    if (localStorage.getItem('isDark') === 'true' || (!('isDark' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
   @vite(['resources/css/app.css', 'resources/js/app.js'])
 
   <!-- Styles -->
@@ -29,7 +34,7 @@
 
     <!-- Page Heading -->
     @if (isset($header))
-      <header class="bg-white shadow dark:bg-gray-800">
+      <header class="bg-white shadow dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           {{ $header }}
         </div>

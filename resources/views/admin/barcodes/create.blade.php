@@ -10,7 +10,7 @@
     </h2>
   </x-slot>
 
-  <div class="py-12">
+  <div class="py-0 sm:py-12">
     <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
       <div class="overflow-hidden bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg">
         <div class="p-6 lg:p-8">
@@ -30,9 +30,6 @@
                 <x-label for="value">Value Barcode</x-label>
                 @livewire('admin.barcode-value-input-component')
               </div>
-            </div>
-
-            <div class="mt-4 flex gap-3">
               <div class="w-full">
                 <x-label for="radius">Radius Valid Absen</x-label>
                 <x-input name="radius" id="radius" class="mt-1 block w-full" type="number" :value="old('radius')"
@@ -40,8 +37,6 @@
                 @error('radius')
                   <x-input-error for="radius" class="mt-2" message="{{ $message }}" />
                 @enderror
-              </div>
-              <div class="w-full">
               </div>
             </div>
 

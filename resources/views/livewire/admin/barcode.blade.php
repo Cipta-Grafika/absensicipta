@@ -1,11 +1,5 @@
 <div class="p-6 lg:p-8">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <x-button class="mb-4 mr-2" href="{{ route('admin.barcodes.create') }}">
-    Buat Barcode Baru
-  </x-button>
-  <x-secondary-button class="mb-4">
-    <a href="{{ route('admin.barcodes.downloadall') }}">Download Semua</a>
-  </x-secondary-button>
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
     @foreach ($barcodes as $barcode)
       <div

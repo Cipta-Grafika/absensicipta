@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\MasterData;
 use App\Models\Education;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Jetstream\InteractsWithBanner;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class EducationComponent extends Component
@@ -22,6 +23,7 @@ class EducationComponent extends Component
         'name' => ['required', 'string', 'max:255', 'unique:educations'],
     ];
 
+    #[On('show-creating')]
     public function showCreating()
     {
         $this->resetErrorBag();
