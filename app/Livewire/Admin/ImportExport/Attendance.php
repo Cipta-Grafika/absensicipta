@@ -64,10 +64,11 @@ class Attendance extends Component
                     return $attendanceImport->model($row->toArray());
                 });
         } else if ($this->previewing && $this->mode == 'export') {
+            $divisionId = Auth::user()->group === 'admin' ? Auth::user()->division_id : $this->division;
             $attendances = AttendanceModel::filter(
                 month: $this->month,
                 year: $this->year,
-                division: $this->division,
+                division: $divisionId,
                 jobTitle: $this->job_title,
                 education: $this->education
             )->get();
@@ -103,7 +104,8 @@ class Attendance extends Component
             abort(403);
         }
 
-        $division = $this->division ? Division::find($this->division)?->name : null;
+        $divisionId = Auth::user()->group === 'admin' ? Auth::user()->division_id : $this->division;
+        $division = $divisionId ? Division::find($divisionId)?->name : null;
         $job_title = $this->job_title ? JobTitle::find($this->job_title)?->name : null;
         $education = $this->education ? Education::find($this->education)?->name : null;
 
@@ -112,7 +114,7 @@ class Attendance extends Component
         return Excel::download(new AttendancesExport(
             $this->month,
             $this->year,
-            $this->division,
+            $divisionId,
             $this->job_title,
             $this->education
         ), $filename);

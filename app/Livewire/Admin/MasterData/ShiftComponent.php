@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\MasterData;
 use App\Livewire\Forms\ShiftForm;
 use App\Models\Shift;
 use Laravel\Jetstream\InteractsWithBanner;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class ShiftComponent extends Component
@@ -18,6 +19,7 @@ class ShiftComponent extends Component
     public $confirmingDeletion = false;
     public $selectedId = null;
 
+    #[On('show-creating')]
     public function showCreating()
     {
         $this->form->resetErrorBag();

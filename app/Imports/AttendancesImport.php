@@ -30,6 +30,13 @@ class AttendancesImport implements ToModel, WithHeadingRow, WithValidation, Skip
         }
         $shift_id = Shift::where('name', $row['shift'])->first()?->id ?? $row['shift_id'];
 
+        if (auth()->user()->group === 'admin') {
+            $employee = \App\Models\User::find($row['user_id']);
+            if (!$employee || $employee->division_id !== auth()->user()->division_id) {
+                return null; // Skip if user is not in the admin's division
+            }
+        }
+
         $attendance = (new Attendance)->forceFill([
             'user_id' => $row['user_id'],
             'barcode_id' => $row['barcode_id'],

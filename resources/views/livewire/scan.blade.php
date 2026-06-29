@@ -85,7 +85,7 @@
       </h4>
       <div class="grid grid-cols-2 gap-3 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
         <div
-          class="{{ $attendance?->status == 'late' ? 'bg-red-200 dark:bg-red-900' : 'bg-blue-200 dark:bg-blue-900' }} flex items-center justify-between rounded-md px-4 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
+          class="{{ $attendance?->status == 'late' ? 'bg-orange-200 dark:bg-orange-900' : 'bg-green-200 dark:bg-green-900' }} flex items-center justify-between rounded-md px-4 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
           <div>
             <h4 class="text-lg font-semibold md:text-xl">Absen Masuk</h4>
             <div class="flex flex-col sm:flex-row">
@@ -117,7 +117,7 @@
           <x-heroicon-o-arrows-pointing-out class="h-5 w-5" />
         </div>
         <button
-          class="col-span-2 flex items-center justify-between rounded-md bg-purple-200 px-4 py-2 text-gray-800 dark:bg-purple-900 dark:text-white dark:shadow-gray-700 md:col-span-1 lg:col-span-2 xl:col-span-1"
+          class="col-span-2 flex items-center justify-between rounded-md bg-blue-200 px-4 py-2 text-gray-800 dark:bg-blue-900 dark:text-white dark:shadow-gray-700 md:col-span-1 lg:col-span-2 xl:col-span-1"
           {{ is_null($attendance?->lat_lng) ? 'disabled' : 'onclick=toggleMap()' }} id="toggleMap">
           <div>
             <h4 class="text-lg font-semibold md:text-xl">Koordinat Absen</h4>
@@ -141,14 +141,14 @@
       <div class="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3" wire:ignore>
         <a href="{{ route('apply-leave') }}">
           <div
-            class="flex flex-col-reverse items-center justify-center gap-2 rounded-md bg-amber-500 px-4 py-2 text-center font-medium text-white shadow-md shadow-gray-400 transition duration-100 hover:bg-amber-600 dark:shadow-gray-700 md:flex-row md:gap-3">
+            class="flex flex-col-reverse items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-4 py-2 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:flex-row md:gap-3">
             Ajukan Izin
             <x-heroicon-o-envelope-open class="h-6 w-6 text-white" />
           </div>
         </a>
         <a href="{{ route('attendance-history') }}">
           <div
-            class="flex flex-col-reverse items-center justify-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-center font-medium text-white shadow-md shadow-gray-400 hover:bg-blue-600 dark:shadow-gray-700 md:flex-row md:gap-3">
+            class="flex flex-col-reverse items-center justify-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-center font-medium text-white hover:bg-blue-600 md:flex-row md:gap-3">
             Riwayat Absen
             <x-heroicon-o-clock class="h-6 w-6 text-white" />
           </div>

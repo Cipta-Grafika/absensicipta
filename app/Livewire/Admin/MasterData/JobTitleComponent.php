@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\MasterData;
 use App\Models\JobTitle;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Jetstream\InteractsWithBanner;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class JobTitleComponent extends Component
@@ -22,6 +23,7 @@ class JobTitleComponent extends Component
         'name' => ['required', 'string', 'max:255', 'unique:job_titles'],
     ];
 
+    #[On('show-creating')]
     public function showCreating()
     {
         $this->resetErrorBag();

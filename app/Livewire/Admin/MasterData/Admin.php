@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\MasterData;
 use App\Livewire\Forms\UserForm;
 use App\Models\User;
 use Laravel\Jetstream\InteractsWithBanner;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -33,6 +34,7 @@ class Admin extends Component
         $this->showDetail = true;
     }
 
+    #[On('show-creating')]
     public function showCreating()
     {
         $this->form->resetErrorBag();
@@ -88,7 +90,10 @@ class Admin extends Component
 
     public function render()
     {
-        $users = User::where('group', '!=', 'user')->orderBy('group', 'desc')->paginate(20);
+        $users = User::where('group', '!=', 'user')
+            ->when(auth()->user()->group === 'admin', fn($q) => $q->where('division_id', auth()->user()->division_id))
+            ->orderBy('group', 'desc')
+            ->paginate(20);
         return view('livewire.admin.master-data.admin', ['users' => $users]);
     }
 }

@@ -48,9 +48,14 @@ class User extends Component
                     return $userImport->model($v->toArray());
                 });
         } else if ($this->previewing && $this->mode == 'export') {
-            $users = empty($this->groups) ?
-                new \Illuminate\Support\Collection :
-                UserModel::whereIn('group', $this->groups)->get();
+            $query = UserModel::whereIn('group', empty($this->groups) ? ['__none__'] : $this->groups);
+            
+            if (Auth::user()->group === 'admin') {
+                $query->where('division_id', Auth::user()->division_id)
+                      ->where('group', '!=', 'superadmin');
+            }
+            
+            $users = $query->get();
         } else {
             $this->previewing = false;
             $this->mode = null;

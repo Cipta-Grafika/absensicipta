@@ -8,6 +8,15 @@ class BarcodeValueInputComponent extends Component
 {
     public $value = null;
 
+    public function mount($value = null)
+    {
+        $this->value = $value;
+        
+        if (empty($this->value) && empty(old('value'))) {
+            $this->generate();
+        }
+    }
+
     public function rendering()
     {
         if (old('value')) {
