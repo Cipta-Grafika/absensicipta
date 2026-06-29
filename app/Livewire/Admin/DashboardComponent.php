@@ -15,10 +15,17 @@ class DashboardComponent extends Component
     public function render()
     {
         /** @var Collection<Attendance>  */
-        $attendances = Attendance::where('date', date('Y-m-d'))->get();
+        $attendances = Attendance::where('date', date('Y-m-d'))
+            ->whereHas('user', function ($q) {
+                if (auth()->user()->group === 'admin') {
+                    $q->where('division_id', auth()->user()->division_id);
+                }
+            })
+            ->get();
 
         /** @var Collection<User>  */
         $employees = User::where('group', 'user')
+            ->when(auth()->user()->group === 'admin', fn ($q) => $q->where('division_id', auth()->user()->division_id))
             ->paginate(20)
             ->through(function (User $user) use ($attendances) {
                 return $user->setAttribute(
@@ -29,7 +36,9 @@ class DashboardComponent extends Component
                 );
             });
 
-        $employeesCount = User::where('group', 'user')->count();
+        $employeesCount = User::where('group', 'user')
+            ->when(auth()->user()->group === 'admin', fn ($q) => $q->where('division_id', auth()->user()->division_id))
+            ->count();
         $presentCount = $attendances->where(fn ($attendance) => $attendance->status === 'present')->count();
         $lateCount = $attendances->where(fn ($attendance) => $attendance->status === 'late')->count();
         $excusedCount = $attendances->where(fn ($attendance) => $attendance->status === 'excused')->count();
