@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
+<nav x-data="{ open: false }" class="relative z-50 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
   <!-- Primary Navigation Menu -->
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
     <div class="flex h-16 justify-between">
@@ -156,7 +156,7 @@
   </div>
 
   <!-- Responsive Navigation Menu -->
-  <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden">
+  <div :class="{ 'block': open, 'hidden': !open }" class="absolute left-0 top-16 z-50 hidden w-full bg-white shadow-lg dark:bg-gray-800 sm:hidden">
     <div class="space-y-1 pb-3 pt-2">
       @if (Auth::user()->isAdmin)
         <x-responsive-nav-link href="{{ route('admin.dashboard') }}" :active="request()->routeIs('admin.dashboard')">
