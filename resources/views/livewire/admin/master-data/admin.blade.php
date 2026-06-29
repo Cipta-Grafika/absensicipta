@@ -1,14 +1,5 @@
 <div>
-  <div class="mb-4 flex-col items-center gap-5 sm:flex-row md:flex md:justify-between lg:mr-4">
-    <h3 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200 md:mb-0">
-      Data Admin
-    </h3>
-    @if (Auth::user()->isSuperadmin)
-      <x-button wire:click="showCreating">
-        <x-heroicon-o-plus class="mr-2 h-4 w-4" /> Tambah Admin
-      </x-button>
-    @endif
-  </div>
+
   <div class="overflow-x-scroll">
     <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
@@ -67,7 +58,7 @@
                 <x-button wire:click="edit('{{ $user->id }}')">
                   Edit
                 </x-button>
-                @if (Auth::user()->isSuperadmin && $user->isUser)
+                @if (Auth::user()->isSuperadmin && Auth::user()->id !== $user->id)
                   <x-danger-button wire:click="confirmDeletion('{{ $user->id }}', '{{ $user->name }}')">
                     Delete
                   </x-danger-button>
@@ -111,7 +102,7 @@
     <form wire:submit="create">
       <x-slot name="content">
         @if (Laravel\Jetstream\Jetstream::managesProfilePhotos())
-          <div x-data="{ photoName: null, photoPreview: null }" class="col-span-6 sm:col-span-4">
+          <div x-data="{ photoName: null, photoPreview: null }" class="flex flex-col items-center text-center">
             <!-- Profile Photo File Input -->
             <input type="file" id="photo" class="hidden" wire:model.live="form.photo" x-ref="photo"
               x-on:change="
@@ -136,35 +127,29 @@
               </span>
             </div>
 
-            <x-secondary-button class="me-2 mt-2" type="button" x-on:click.prevent="$refs.photo.click()">
-              {{ __('Select A New Photo') }}
-            </x-secondary-button>
-
-            @if ($form->user?->profile_photo_path)
-              <x-secondary-button type="button" class="mt-2" wire:click="deleteProfilePhoto">
-                {{ __('Remove Photo') }}
+            <div class="mt-2 flex space-x-2">
+              <x-secondary-button type="button" x-on:click.prevent="$refs.photo.click()">
+                {{ __('Select A New Photo') }}
               </x-secondary-button>
-            @endif
+
+              @if ($form->user?->profile_photo_path)
+                <x-secondary-button type="button" wire:click="deleteProfilePhoto">
+                  {{ __('Remove Photo') }}
+                </x-secondary-button>
+              @endif
+            </div>
 
             @error('form.photo')
               <x-input-error for="form.photo" message="{{ $message }}" class="mt-2" />
             @enderror
           </div>
         @endif
-        <div class="mt-4">
-          <x-label for="name">Nama Admin</x-label>
-          <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" />
-          @error('form.name')
-            <x-input-error for="form.name" class="mt-2" message="{{ $message }}" />
-          @enderror
-        </div>
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
-            <x-label for="email">{{ __('Email') }}</x-label>
-            <x-input id="email" class="mt-1 block w-full" type="email" wire:model="form.email"
-              placeholder="example@example.com" required />
-            @error('form.email')
-              <x-input-error for="form.email" class="mt-2" message="{{ $message }}" />
+            <x-label for="name">Nama Admin</x-label>
+            <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" />
+            @error('form.name')
+              <x-input-error for="form.name" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
           <div class="w-full">
@@ -178,15 +163,49 @@
         </div>
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
+            <x-label for="email">{{ __('Email') }}</x-label>
+            <x-input id="email" class="mt-1 block w-full" type="email" wire:model="form.email"
+              placeholder="example@example.com" required />
+            @error('form.email')
+              <x-input-error for="form.email" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full">
             <x-label for="password">{{ __('Password') }}</x-label>
-            <x-input id="password" class="mt-1 block w-full" type="password" wire:model="form.password"
-              placeholder="New Password" required />
-            <p class="text-sm dark:text-gray-400">Default password: <b>admin</b></p>
+            <div x-data="{ show: false }" class="relative mt-1">
+              <x-input id="password" class="block w-full pr-10" x-bind:type="show ? 'text' : 'password'" wire:model="form.password"
+                placeholder="New Password" required />
+              <button type="button" @click="show = !show" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                <x-heroicon-o-eye x-show="!show" class="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                <x-heroicon-o-eye-slash x-show="show" class="h-5 w-5 text-gray-400 hover:text-gray-600" style="display: none;" />
+              </button>
+            </div>
+            <p class="mt-1 text-sm dark:text-gray-400">Default password: <b>admin</b></p>
             @error('form.password')
               <x-input-error for="form.password" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
+        </div>
+        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
+            <x-label for="phone">{{ __('Phone') }}</x-label>
+            <x-input id="phone" class="mt-1 block w-full" type="number" wire:model="form.phone"
+              placeholder="+628123456789" />
+            @error('form.phone')
+              <x-input-error for="form.phone" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full">
+            <x-label for="city">{{ __('City') }}</x-label>
+            <x-input id="city" class="mt-1 block w-full" type="text" wire:model="form.city"
+              placeholder="Domisili" />
+            @error('form.city')
+              <x-input-error for="form.city" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+        </div>
+        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+          <div class="w-full sm:w-1/3">
             <x-label for="form.group" value="{{ __('Group') }}" />
             <x-select id="form.group" class="mt-1 block w-full" wire:model="form.group" required>
               @foreach ($groups as $group)
@@ -201,61 +220,41 @@
               <x-input-error for="form.group" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
-        </div>
-        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
-          <div class="w-full">
-            <x-label for="phone">{{ __('Phone') }}</x-label>
-            <x-input id="phone" class="mt-1 block w-full" type="number" wire:model="form.phone"
-              placeholder="+628123456789" />
-            @error('form.phone')
-              <x-input-error for="form.phone" class="mt-2" message="{{ $message }}" />
+          <div class="w-full sm:w-1/3">
+            <x-label for="form.division_id" value="{{ __('Division') }}" />
+            <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
+              <option value="">{{ __('Select Division') }}</option>
+              @foreach (App\Models\Division::all() as $division)
+                <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
+                  {{ $division->name }}
+                </option>
+              @endforeach
+            </x-select>
+            @error('form.division_id')
+              <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
-        </div>
-        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
-          <div class="w-full">
-            <x-label for="city">{{ __('City') }}</x-label>
-            <x-input id="city" class="mt-1 block w-full" type="text" wire:model="form.city"
-              placeholder="Domisili" />
-            @error('form.city')
-              <x-input-error for="form.city" class="mt-2" message="{{ $message }}" />
-            @enderror
-          </div>
-          <div class="w-full">
-            <x-label for="address">{{ __('Address') }}</x-label>
-            <x-input id="address" class="mt-1 block w-full" type="text" wire:model="form.address"
-              placeholder="Jl. Jend. Sudirman" />
-            @error('form.address')
-              <x-input-error for="form.address" class="mt-2" message="{{ $message }}" />
+          <div class="w-full sm:w-1/3">
+            <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
+            <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
+              <option value="">{{ __('Select Job Title') }}</option>
+              @foreach (App\Models\JobTitle::all() as $jobTitle)
+                <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
+                  {{ $jobTitle->name }}
+                </option>
+              @endforeach
+            </x-select>
+            @error('form.job_title_id')
+              <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
         </div>
         <div class="mt-4">
-          <x-label for="form.division_id" value="{{ __('Division') }}" />
-          <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
-            <option value="">{{ __('Select Division') }}</option>
-            @foreach (App\Models\Division::all() as $division)
-              <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
-                {{ $division->name }}
-              </option>
-            @endforeach
-          </x-select>
-          @error('form.division_id')
-            <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
-          @enderror
-        </div>
-        <div class="mt-4">
-          <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
-          <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
-            <option value="">{{ __('Select Job Title') }}</option>
-            @foreach (App\Models\JobTitle::all() as $jobTitle)
-              <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
-                {{ $jobTitle->name }}
-              </option>
-            @endforeach
-          </x-select>
-          @error('form.job_title_id')
-            <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
+          <x-label for="address">{{ __('Address') }}</x-label>
+          <x-input id="address" class="mt-1 block w-full" type="text" wire:model="form.address"
+            placeholder="Jl. Jend. Sudirman" />
+          @error('form.address')
+            <x-input-error for="form.address" class="mt-2" message="{{ $message }}" />
           @enderror
         </div>
       </x-slot>
@@ -280,7 +279,7 @@
     <form wire:submit.prevent="update" id="user-edit">
       <x-slot name="content">
         @if (Laravel\Jetstream\Jetstream::managesProfilePhotos())
-          <div x-data="{ photoName: null, photoPreview: null }" class="col-span-6 sm:col-span-4">
+          <div x-data="{ photoName: null, photoPreview: null }" class="flex flex-col items-center text-center">
             <!-- Profile Photo File Input -->
             <input type="file" id="photo" class="hidden" wire:model.live="form.photo" x-ref="photo"
               x-on:change="
@@ -297,7 +296,7 @@
             <!-- Current Profile Photo -->
             <div class="mt-2" x-show="! photoPreview">
               <img src="{{ $form->user?->profile_photo_url }}" alt="{{ $form->user?->name }}"
-                class="h-20 w-20 rounded-full object-cover">
+                class="h-20 w-20 rounded-full object-cover outline outline-gray-400">
             </div>
 
             <!-- New Profile Photo Preview -->
@@ -307,35 +306,29 @@
               </span>
             </div>
 
-            <x-secondary-button class="me-2 mt-2" type="button" x-on:click.prevent="$refs.photo.click()">
-              {{ __('Select A New Photo') }}
-            </x-secondary-button>
-
-            @if ($form->user?->profile_photo_path)
-              <x-secondary-button type="button" class="mt-2" wire:click="deleteProfilePhoto">
-                {{ __('Remove Photo') }}
+            <div class="mt-2 flex space-x-2">
+              <x-secondary-button type="button" x-on:click.prevent="$refs.photo.click()">
+                {{ __('Select A New Photo') }}
               </x-secondary-button>
-            @endif
+
+              @if ($form->user?->profile_photo_path)
+                <x-secondary-button type="button" wire:click="deleteProfilePhoto">
+                  {{ __('Remove Photo') }}
+                </x-secondary-button>
+              @endif
+            </div>
 
             @error('form.photo')
               <x-input-error for="form.photo" message="{{ $message }}" class="mt-2" />
             @enderror
           </div>
         @endif
-        <div class="mt-4">
-          <x-label for="name">Nama Admin</x-label>
-          <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" />
-          @error('form.name')
-            <x-input-error for="form.name" class="mt-2" message="{{ $message }}" />
-          @enderror
-        </div>
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
-            <x-label for="email">{{ __('Email') }}</x-label>
-            <x-input id="email" class="mt-1 block w-full" type="email" wire:model="form.email"
-              placeholder="example@example.com" required />
-            @error('form.email')
-              <x-input-error for="form.email" class="mt-2" message="{{ $message }}" />
+            <x-label for="name">Nama Admin</x-label>
+            <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" />
+            @error('form.name')
+              <x-input-error for="form.name" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
           <div class="w-full">
@@ -349,9 +342,23 @@
         </div>
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
+            <x-label for="email">{{ __('Email') }}</x-label>
+            <x-input id="email" class="mt-1 block w-full" type="email" wire:model="form.email"
+              placeholder="example@example.com" required />
+            @error('form.email')
+              <x-input-error for="form.email" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full">
             <x-label for="password">{{ __('Password') }}</x-label>
-            <x-input id="password" class="mt-1 block w-full" type="password" wire:model="form.password"
-              placeholder="New Password" />
+            <div x-data="{ show: false }" class="relative mt-1">
+              <x-input id="password" class="block w-full pr-10" x-bind:type="show ? 'text' : 'password'" wire:model="form.password"
+                placeholder="New Password" />
+              <button type="button" @click="show = !show" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                <x-heroicon-o-eye x-show="!show" class="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                <x-heroicon-o-eye-slash x-show="show" class="h-5 w-5 text-gray-400 hover:text-gray-600" style="display: none;" />
+              </button>
+            </div>
             @error('form.password')
               <x-input-error for="form.password" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -360,14 +367,12 @@
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
             <x-label for="phone">{{ __('Phone') }}</x-label>
-            <x-input id="phone" class="mt-1 block w-full" type="text" wire:model="form.phone"
+            <x-input id="phone" class="mt-1 block w-full" type="number" wire:model="form.phone"
               placeholder="+628123456789" />
             @error('form.phone')
               <x-input-error for="form.phone" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
-        </div>
-        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
             <x-label for="city">{{ __('City') }}</x-label>
             <x-input id="city" class="mt-1 block w-full" type="text" wire:model="form.city"
@@ -376,41 +381,58 @@
               <x-input-error for="form.city" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
-          <div class="w-full">
-            <x-label for="address">{{ __('Address') }}</x-label>
-            <x-input id="address" class="mt-1 block w-full" type="text" wire:model="form.address"
-              placeholder="Jl. Jend. Sudirman" />
-            @error('form.address')
-              <x-input-error for="form.address" class="mt-2" message="{{ $message }}" />
+        </div>
+        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+          <div class="w-full sm:w-1/3">
+            <x-label for="form.group" value="{{ __('Group') }}" />
+            <x-select id="form.group" class="mt-1 block w-full" wire:model="form.group" required>
+              @foreach ($groups as $group)
+                @if ($group != 'user')
+                  <option value="{{ $group }}" {{ $group == $form->group ? 'selected' : '' }}>
+                    {{ $group }}
+                  </option>
+                @endif
+              @endforeach
+            </x-select>
+            @error('form.group')
+              <x-input-error for="form.group" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full sm:w-1/3">
+            <x-label for="form.division_id" value="{{ __('Division') }}" />
+            <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
+              <option value="">{{ __('Select Division') }}</option>
+              @foreach (App\Models\Division::all() as $division)
+                <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
+                  {{ $division->name }}
+                </option>
+              @endforeach
+            </x-select>
+            @error('form.division_id')
+              <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full sm:w-1/3">
+            <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
+            <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
+              <option value="">{{ __('Select Job Title') }}</option>
+              @foreach (App\Models\JobTitle::all() as $jobTitle)
+                <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
+                  {{ $jobTitle->name }}
+                </option>
+              @endforeach
+            </x-select>
+            @error('form.job_title_id')
+              <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
         </div>
         <div class="mt-4">
-          <x-label for="form.division_id" value="{{ __('Division') }}" />
-          <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
-            <option value="">{{ __('Select Division') }}</option>
-            @foreach (App\Models\Division::all() as $division)
-              <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
-                {{ $division->name }}
-              </option>
-            @endforeach
-          </x-select>
-          @error('form.division_id')
-            <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
-          @enderror
-        </div>
-        <div class="mt-4">
-          <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
-          <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
-            <option value="">{{ __('Select Job Title') }}</option>
-            @foreach (App\Models\JobTitle::all() as $jobTitle)
-              <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
-                {{ $jobTitle->name }}
-              </option>
-            @endforeach
-          </x-select>
-          @error('form.job_title_id')
-            <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
+          <x-label for="address">{{ __('Address') }}</x-label>
+          <x-input id="address" class="mt-1 block w-full" type="text" wire:model="form.address"
+            placeholder="Jl. Jend. Sudirman" />
+          @error('form.address')
+            <x-input-error for="form.address" class="mt-2" message="{{ $message }}" />
           @enderror
         </div>
       </x-slot>

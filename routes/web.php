@@ -44,36 +44,41 @@ Route::middleware([
             return view('admin.dashboard');
         })->name('admin.dashboard');
 
-        // Barcode
-        Route::resource('/barcodes', BarcodeController::class)
-            ->only(['index', 'show', 'create', 'store', 'edit', 'update'])
-            ->names([
-                'index' => 'admin.barcodes',
-                'show' => 'admin.barcodes.show',
-                'create' => 'admin.barcodes.create',
-                'store' => 'admin.barcodes.store',
-                'edit' => 'admin.barcodes.edit',
-                'update' => 'admin.barcodes.update',
-            ]);
-        Route::get('/barcodes/download/all', [BarcodeController::class, 'downloadAll'])
-            ->name('admin.barcodes.downloadall');
-        Route::get('/barcodes/{id}/download', [BarcodeController::class, 'download'])
-            ->name('admin.barcodes.download');
+        // Superadmin ONLY routes (Global Master Data & Barcodes)
+        Route::middleware([App\Http\Middleware\SuperAdminMiddleware::class])->group(function () {
+            // Barcode
+            Route::resource('/barcodes', BarcodeController::class)
+                ->only(['index', 'show', 'create', 'store', 'edit', 'update'])
+                ->names([
+                    'index' => 'admin.barcodes',
+                    'show' => 'admin.barcodes.show',
+                    'create' => 'admin.barcodes.create',
+                    'store' => 'admin.barcodes.store',
+                    'edit' => 'admin.barcodes.edit',
+                    'update' => 'admin.barcodes.update',
+                ]);
+            Route::get('/barcodes/download/all', [BarcodeController::class, 'downloadAll'])
+                ->name('admin.barcodes.downloadall');
+            Route::get('/barcodes/{id}/download', [BarcodeController::class, 'download'])
+                ->name('admin.barcodes.download');
+
+            // Global Master Data
+            Route::get('/masterdata/division', [MasterDataController::class, 'division'])
+                ->name('admin.masters.division');
+            Route::get('/masterdata/job-title', [MasterDataController::class, 'jobTitle'])
+                ->name('admin.masters.job-title');
+            Route::get('/masterdata/education', [MasterDataController::class, 'education'])
+                ->name('admin.masters.education');
+            Route::get('/masterdata/shift', [MasterDataController::class, 'shift'])
+                ->name('admin.masters.shift');
+        });
 
         // User/Employee/Karyawan
         Route::resource('/employees', EmployeeController::class)
             ->only(['index'])
             ->names(['index' => 'admin.employees']);
 
-        // Master Data
-        Route::get('/masterdata/division', [MasterDataController::class, 'division'])
-            ->name('admin.masters.division');
-        Route::get('/masterdata/job-title', [MasterDataController::class, 'jobTitle'])
-            ->name('admin.masters.job-title');
-        Route::get('/masterdata/education', [MasterDataController::class, 'education'])
-            ->name('admin.masters.education');
-        Route::get('/masterdata/shift', [MasterDataController::class, 'shift'])
-            ->name('admin.masters.shift');
+        // Scoped Master Data (Allowed for Admin)
         Route::get('/masterdata/admin', [MasterDataController::class, 'admin'])
             ->name('admin.masters.admin');
 

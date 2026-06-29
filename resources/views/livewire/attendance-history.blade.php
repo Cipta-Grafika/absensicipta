@@ -3,16 +3,14 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   @endpushOnce
-  <h3 class="col-span-2 mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
-    Data Absensi
-  </h3>
+
   <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
     <x-label for="month_filter" value="Bulan"></x-label>
     <x-input type="month" name="month_filter" id="month_filter" wire:model.live="month" />
   </div>
   <h5 class="mt-3 text-sm dark:text-gray-200">Klik pada tanggal untuk melihat detail</h5>
   <div class="mt-4 flex w-full flex-col gap-3 lg:flex-row">
-    <div class="grid w-96 grid-cols-7 overflow-x-scroll dark:text-white lg:w-[36rem]">
+    <div class="grid w-full grid-cols-7 dark:text-white lg:w-[36rem]">
       @foreach (['M', 'S', 'S', 'R', 'K', 'J', 'S'] as $day)
         <div
           class="{{ $day === 'M' ? 'text-red-500' : '' }} {{ $day === 'J' ? 'text-green-600 dark:text-green-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center dark:border-gray-600">
@@ -50,7 +48,7 @@
               case 'late':
                   $shortStatus = 'T';
                   $bgColor =
-                      'bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 border border-amber-600';
+                      'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700 border border-orange-600';
                   $lateCount++;
                   break;
               case 'excused':
@@ -62,7 +60,7 @@
               case 'sick':
                   $shortStatus = 'S';
                   $bgColor =
-                      'bg-purple-200 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-700 border border-purple-600';
+                      'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-600';
                   $sickCount++;
                   break;
               case 'absent':
@@ -120,7 +118,7 @@
         </div>
       </div>
       <div
-        class="flex items-center justify-between rounded-md bg-purple-200 px-4 py-2 text-gray-800 dark:bg-purple-900 dark:text-white dark:shadow-gray-700">
+        class="flex items-center justify-between rounded-md bg-yellow-200 px-4 py-2 text-gray-800 dark:bg-yellow-900 dark:text-white dark:shadow-gray-700">
         <div>
           <h4 class="text-lg font-semibold md:text-xl">Sakit: {{ $sickCount }}</h4>
         </div>

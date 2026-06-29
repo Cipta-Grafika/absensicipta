@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\MasterData;
 use App\Models\Division;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Jetstream\InteractsWithBanner;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class DivisionComponent extends Component
@@ -22,6 +23,7 @@ class DivisionComponent extends Component
         'name' => ['required', 'string', 'max:255', 'unique:divisions'],
     ];
 
+    #[On('show-creating')]
     public function showCreating()
     {
         $this->reset();
