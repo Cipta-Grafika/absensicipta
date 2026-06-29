@@ -3,9 +3,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   @endpushOnce
-  <h3 class="col-span-2 mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
-    Data Absensi
-  </h3>
+
   <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
     <x-label for="month_filter" value="Bulan"></x-label>
     <x-input type="month" name="month_filter" id="month_filter" wire:model.live="month" />
