@@ -50,7 +50,7 @@
               case 'late':
                   $shortStatus = 'T';
                   $bgColor =
-                      'bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 border border-amber-600';
+                      'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700 border border-orange-600';
                   $lateCount++;
                   break;
               case 'excused':
@@ -62,7 +62,7 @@
               case 'sick':
                   $shortStatus = 'S';
                   $bgColor =
-                      'bg-purple-200 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-700 border border-purple-600';
+                      'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-600';
                   $sickCount++;
                   break;
               case 'absent':
@@ -120,7 +120,7 @@
         </div>
       </div>
       <div
-        class="flex items-center justify-between rounded-md bg-purple-200 px-4 py-2 text-gray-800 dark:bg-purple-900 dark:text-white dark:shadow-gray-700">
+        class="flex items-center justify-between rounded-md bg-yellow-200 px-4 py-2 text-gray-800 dark:bg-yellow-900 dark:text-white dark:shadow-gray-700">
         <div>
           <h4 class="text-lg font-semibold md:text-xl">Sakit: {{ $sickCount }}</h4>
         </div>

@@ -208,7 +208,7 @@
                     case 'late':
                         $shortStatus = 'T';
                         $bgColor =
-                            'bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 border border-amber-300 dark:border-amber-600';
+                            'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700 border border-orange-300 dark:border-orange-600';
                         $lateCount++;
                         break;
                     case 'excused':
@@ -220,7 +220,7 @@
                     case 'sick':
                         $shortStatus = 'S';
                         $bgColor =
-                            'hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600';
+                            'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-300 dark:border-yellow-600';
                         $sickCount++;
                         break;
                     case 'absent':

@@ -77,6 +77,12 @@
             <x-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
               {{ __('Home') }}
             </x-nav-link>
+            <x-nav-link href="{{ route('apply-leave') }}" :active="request()->routeIs('apply-leave')">
+              Ajukan Izin
+            </x-nav-link>
+            <x-nav-link href="{{ route('attendance-history') }}" :active="request()->routeIs('attendance-history')">
+              Riwayat Absen
+            </x-nav-link>
           @endif
         </div>
       </div>
@@ -203,6 +209,12 @@
       @else
         <x-responsive-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
           {{ __('Home') }}
+        </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('apply-leave') }}" :active="request()->routeIs('apply-leave')">
+          Ajukan Izin
+        </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('attendance-history') }}" :active="request()->routeIs('attendance-history')">
+          Riwayat Absen
         </x-responsive-nav-link>
       @endif
     </div>

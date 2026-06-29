@@ -85,7 +85,7 @@
       </h4>
       <div class="grid grid-cols-2 gap-3 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
         <div
-          class="{{ $attendance?->status == 'late' ? 'bg-red-200 dark:bg-red-900' : 'bg-blue-200 dark:bg-blue-900' }} flex items-center justify-between rounded-md px-4 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
+          class="{{ $attendance?->status == 'late' ? 'bg-orange-200 dark:bg-orange-900' : 'bg-green-200 dark:bg-green-900' }} flex items-center justify-between rounded-md px-4 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
           <div>
             <h4 class="text-lg font-semibold md:text-xl">Absen Masuk</h4>
             <div class="flex flex-col sm:flex-row">
@@ -117,7 +117,7 @@
           <x-heroicon-o-arrows-pointing-out class="h-5 w-5" />
         </div>
         <button
-          class="col-span-2 flex items-center justify-between rounded-md bg-purple-200 px-4 py-2 text-gray-800 dark:bg-purple-900 dark:text-white dark:shadow-gray-700 md:col-span-1 lg:col-span-2 xl:col-span-1"
+          class="col-span-2 flex items-center justify-between rounded-md bg-blue-200 px-4 py-2 text-gray-800 dark:bg-blue-900 dark:text-white dark:shadow-gray-700 md:col-span-1 lg:col-span-2 xl:col-span-1"
           {{ is_null($attendance?->lat_lng) ? 'disabled' : 'onclick=toggleMap()' }} id="toggleMap">
           <div>
             <h4 class="text-lg font-semibold md:text-xl">Koordinat Absen</h4>

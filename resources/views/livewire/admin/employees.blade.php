@@ -144,6 +144,11 @@
       </tbody>
     </table>
   </div>
+  @if ($users->isEmpty())
+    <div class="my-2 text-center text-sm font-medium text-gray-900 dark:text-gray-100">
+      Tidak ada data
+    </div>
+  @endif
   <div class="mt-3">
     {{ $users->links() }}
   </div>

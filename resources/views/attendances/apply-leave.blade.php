@@ -1,13 +1,15 @@
 <x-app-layout>
   <x-slot name="header">
-    <div class="flex items-center justify-between">
+    <div class="relative flex items-center">
       <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
         Pengajuan Izin Baru
       </h2>
-      <x-secondary-button href="{{ route('home') }}">
-        <x-heroicon-o-chevron-left class="mr-2 h-5 w-5" />
-        Kembali
-      </x-secondary-button>
+      <div class="absolute right-0 flex items-center gap-2">
+        <x-secondary-button href="{{ route('home') }}">
+          <x-heroicon-o-chevron-left class="mr-1.5 h-4 w-4" />
+          Kembali
+        </x-secondary-button>
+      </div>
     </div>
   </x-slot>
 
