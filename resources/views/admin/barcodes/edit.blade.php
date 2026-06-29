@@ -31,9 +31,6 @@
                 <x-label for="value">Value Barcode</x-label>
                 @livewire('admin.barcode-value-input-component', ['value' => $barcode->value])
               </div>
-            </div>
-
-            <div class="mt-4 flex gap-3">
               <div class="w-full">
                 <x-label for="radius">Radius Valid Absen</x-label>
                 <x-input name="radius" id="radius" class="mt-1 block w-full" type="number" :value="old('radius') ?? $barcode->radius"
@@ -41,8 +38,6 @@
                 @error('radius')
                   <x-input-error for="radius" class="mt-2" message="{{ $message }}" />
                 @enderror
-              </div>
-              <div class="w-full">
               </div>
             </div>
 
