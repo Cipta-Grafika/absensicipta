@@ -105,21 +105,21 @@
     <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+          <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
             {{ $showUserDetail ? __('Name') : __('Name') . '/' . __('Date') }}
           </th>
           @if ($showUserDetail)
-            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
               {{ __('NIP') }}
             </th>
-            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
               {{ __('Division') }}
             </th>
-            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
               {{ __('Job Title') }}
             </th>
             @if ($isPerDayFilter)
-              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+              <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
                 {{ __('Shift') }}
               </th>
             @endif
@@ -158,8 +158,10 @@
           @if (!$isPerDayFilter)
             @foreach (['H', 'T', 'I', 'S', 'A', 'W', 'C'] as $_st)
               <th scope="col"
-                class="text-nowrap border border-gray-300 px-1 py-3 text-center text-xs font-medium text-gray-500 dark:border-gray-600 dark:text-gray-300">
-                {{ $_st }}
+                class="w-12 min-w-[3rem] border border-gray-300 p-0 text-center text-xs font-medium text-gray-500 dark:border-gray-600 dark:text-gray-300">
+                <div class="flex h-12 w-12 items-center justify-center">
+                  {{ $_st }}
+                </div>
               </th>
             @endforeach
           @endif
@@ -168,7 +170,7 @@
       </thead>
       <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
         @php
-          $class = 'cursor-pointer px-4 py-3 text-sm font-medium text-gray-900 dark:text-white';
+          $class = 'cursor-pointer px-2 py-3 text-sm font-medium text-gray-900 dark:text-white';
         @endphp
         @foreach ($employees as $employee)
           @php
@@ -331,8 +333,10 @@
                   'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700' => $leaveCount
               ] as $bgClass => $statusCount)
                 <td
-                  class="{{ $bgClass }} cursor-pointer border border-gray-300 px-1 py-3 text-center text-sm font-medium text-gray-900 dark:border-gray-600 dark:text-white">
-                  {{ $statusCount }}
+                  class="{{ $bgClass }} cursor-pointer border border-gray-300 p-0 text-center text-sm font-medium text-gray-900 dark:border-gray-600 dark:text-white">
+                  <div class="flex h-12 w-12 items-center justify-center">
+                    {{ $statusCount }}
+                  </div>
                 </td>
               @endforeach
             @endif
