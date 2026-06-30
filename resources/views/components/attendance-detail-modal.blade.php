@@ -2,7 +2,7 @@
   <div class="px-6 py-4">
     @if ($currentAttendance)
       @php
-        $isExcused = $currentAttendance['status'] == 'excused' || $currentAttendance['status'] == 'sick';
+        $isExcused = in_array($currentAttendance['status'], ['excused', 'sick', 'wfh', 'leave']);
         $showMap = $currentAttendance['latitude'] && $currentAttendance['longitude'] && !$isExcused;
       @endphp
       <h3 class="mb-3 text-xl font-semibold dark:text-white">{{ $currentAttendance['name'] }}</h3>

@@ -39,11 +39,68 @@ class DashboardComponent extends Component
         $employeesCount = User::where('group', 'user')
             ->when(auth()->user()->group === 'admin', fn ($q) => $q->where('division_id', auth()->user()->division_id))
             ->count();
+            
         $presentCount = $attendances->where(fn ($attendance) => $attendance->status === 'present')->count();
         $lateCount = $attendances->where(fn ($attendance) => $attendance->status === 'late')->count();
         $excusedCount = $attendances->where(fn ($attendance) => $attendance->status === 'excused')->count();
         $sickCount = $attendances->where(fn ($attendance) => $attendance->status === 'sick')->count();
-        $absentCount = $employeesCount - ($presentCount + $lateCount + $excusedCount + $sickCount);
+        $wfhCount = $attendances->where(fn ($attendance) => $attendance->status === 'wfh')->count();
+        $leaveCount = $attendances->where(fn ($attendance) => $attendance->status === 'leave')->count();
+        $absentCount = $employeesCount - ($presentCount + $lateCount + $excusedCount + $sickCount + $wfhCount + $leaveCount);
+
+        // Fetch Monthly stats for comparison
+        $currentMonthAttendances = Attendance::whereMonth('date', date('m'))
+            ->whereYear('date', date('Y'))
+            ->whereHas('user', function ($q) {
+                if (auth()->user()->group === 'admin') {
+                    $q->where('division_id', auth()->user()->division_id);
+                }
+            })
+            ->get();
+
+        $lastMonthAttendances = Attendance::whereMonth('date', date('m', strtotime('first day of last month')))
+            ->whereYear('date', date('Y', strtotime('first day of last month')))
+            ->whereHas('user', function ($q) {
+                if (auth()->user()->group === 'admin') {
+                    $q->where('division_id', auth()->user()->division_id);
+                }
+            })
+            ->get();
+
+        $stats = [
+            'present' => [
+                'current' => $currentMonthAttendances->whereIn('status', ['present', 'late'])->count(),
+                'last' => $lastMonthAttendances->whereIn('status', ['present', 'late'])->count(),
+            ],
+            'excused' => [
+                'current' => $currentMonthAttendances->where('status', 'excused')->count(),
+                'last' => $lastMonthAttendances->where('status', 'excused')->count(),
+            ],
+            'sick' => [
+                'current' => $currentMonthAttendances->where('status', 'sick')->count(),
+                'last' => $lastMonthAttendances->where('status', 'sick')->count(),
+            ],
+            'wfh' => [
+                'current' => $currentMonthAttendances->where('status', 'wfh')->count(),
+                'last' => $lastMonthAttendances->where('status', 'wfh')->count(),
+            ],
+            'leave' => [
+                'current' => $currentMonthAttendances->where('status', 'leave')->count(),
+                'last' => $lastMonthAttendances->where('status', 'leave')->count(),
+            ],
+            'absent' => [
+                'current' => $currentMonthAttendances->where('status', 'absent')->count(),
+                'last' => $lastMonthAttendances->where('status', 'absent')->count(),
+            ],
+        ];
+
+        foreach ($stats as $key => $val) {
+            $diff = $val['current'] - $val['last'];
+            $stats[$key]['trend'] = $diff > 0 ? "+$diff" : (string)$diff;
+            $stats[$key]['is_up'] = $diff > 0;
+            $stats[$key]['is_same'] = $diff == 0;
+            $stats[$key]['is_down'] = $diff < 0;
+        }
 
         return view('livewire.admin.dashboard', [
             'employees' => $employees,
@@ -52,7 +109,10 @@ class DashboardComponent extends Component
             'lateCount' => $lateCount,
             'excusedCount' => $excusedCount,
             'sickCount' => $sickCount,
+            'wfhCount' => $wfhCount,
+            'leaveCount' => $leaveCount,
             'absentCount' => $absentCount,
+            'stats' => $stats,
         ]);
     }
 }

@@ -32,6 +32,12 @@
                     <option value="sick" {{ (old('status') ?? $attendance?->status) === 'sick' ? 'selected' : '' }}>
                       Sakit
                     </option>
+                    <option value="leave" {{ (old('status') ?? $attendance?->status) === 'leave' ? 'selected' : '' }}>
+                      Cuti
+                    </option>
+                    <option value="wfh" {{ (old('status') ?? $attendance?->status) === 'wfh' ? 'selected' : '' }}>
+                      WFH
+                    </option>
                   </x-select>
                   @error('status')
                     <x-input-error for="status" class="mt-2" message="{{ $message }}" />
