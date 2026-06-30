@@ -193,10 +193,10 @@
             @endphp
             @foreach ($dates as $date)
               @php
-                $isWeekend = $date->isWeekend();
+                $isSunday = $date->isSunday();
                 $attendance = $attendances->firstWhere(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
                 $status = ($attendance ?? [
-                    'status' => $isWeekend || !$date->isPast() ? '-' : 'absent',
+                    'status' => $isSunday || !$date->isPast() ? '-' : 'absent',
                 ])['status'];
                 switch ($status) {
                     case 'present':
