@@ -29,6 +29,8 @@
         $excusedCount = 0;
         $sickCount = 0;
         $absentCount = 0;
+        $wfhCount = 0;
+        $leaveCount = 0;
       @endphp
       @foreach ($dates as $date)
         @php
@@ -69,6 +71,18 @@
                       'bg-red-200 dark:bg-red-950 text-red-500 dark:text-red-200 border border-red-300 dark:border-red-700';
                   $absentCount++;
                   break;
+              case 'wfh':
+                  $shortStatus = 'W';
+                  $bgColor =
+                      'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700 border border-purple-300 dark:border-purple-600';
+                  $wfhCount++;
+                  break;
+              case 'leave':
+                  $shortStatus = 'C';
+                  $bgColor =
+                      'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
+                  $leaveCount++;
+                  break;
               default:
                   $shortStatus = '-';
                   $bgColor =
@@ -103,7 +117,7 @@
         @endforeach
       @endif
     </div>
-    <div class="grid h-fit w-full grid-cols-2 gap-3 md:grid-cols-4">
+    <div class="grid h-fit w-full grid-cols-2 gap-3 lg:grid-cols-3">
       <div
         class="flex items-center justify-between rounded-md bg-green-200 px-4 py-2 text-gray-800 dark:bg-green-900 dark:text-white dark:shadow-gray-700">
         <div>
@@ -127,6 +141,18 @@
         class="flex items-center justify-between rounded-md bg-red-200 px-4 py-2 text-gray-800 dark:bg-red-900 dark:text-white dark:shadow-gray-700">
         <div>
           <h4 class="text-lg font-semibold md:text-xl">Absen: {{ $absentCount }}</h4>
+        </div>
+      </div>
+      <div
+        class="flex items-center justify-between rounded-md bg-purple-200 px-4 py-2 text-gray-800 dark:bg-purple-900 dark:text-white dark:shadow-gray-700">
+        <div>
+          <h4 class="text-lg font-semibold md:text-xl">WFH: {{ $wfhCount }}</h4>
+        </div>
+      </div>
+      <div
+        class="flex items-center justify-between rounded-md bg-teal-200 px-4 py-2 text-gray-800 dark:bg-teal-900 dark:text-white dark:shadow-gray-700">
+        <div>
+          <h4 class="text-lg font-semibold md:text-xl">Cuti: {{ $leaveCount }}</h4>
         </div>
       </div>
     </div>

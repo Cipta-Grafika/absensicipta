@@ -44,7 +44,9 @@ class DashboardComponent extends Component
         $lateCount = $attendances->where(fn ($attendance) => $attendance->status === 'late')->count();
         $excusedCount = $attendances->where(fn ($attendance) => $attendance->status === 'excused')->count();
         $sickCount = $attendances->where(fn ($attendance) => $attendance->status === 'sick')->count();
-        $absentCount = $employeesCount - ($presentCount + $lateCount + $excusedCount + $sickCount);
+        $wfhCount = $attendances->where(fn ($attendance) => $attendance->status === 'wfh')->count();
+        $leaveCount = $attendances->where(fn ($attendance) => $attendance->status === 'leave')->count();
+        $absentCount = $employeesCount - ($presentCount + $lateCount + $excusedCount + $sickCount + $wfhCount + $leaveCount);
 
         // Fetch Monthly stats for comparison
         $currentMonthAttendances = Attendance::whereMonth('date', date('m'))
@@ -78,6 +80,14 @@ class DashboardComponent extends Component
                 'current' => $currentMonthAttendances->where('status', 'sick')->count(),
                 'last' => $lastMonthAttendances->where('status', 'sick')->count(),
             ],
+            'wfh' => [
+                'current' => $currentMonthAttendances->where('status', 'wfh')->count(),
+                'last' => $lastMonthAttendances->where('status', 'wfh')->count(),
+            ],
+            'leave' => [
+                'current' => $currentMonthAttendances->where('status', 'leave')->count(),
+                'last' => $lastMonthAttendances->where('status', 'leave')->count(),
+            ],
             'absent' => [
                 'current' => $currentMonthAttendances->where('status', 'absent')->count(),
                 'last' => $lastMonthAttendances->where('status', 'absent')->count(),
@@ -99,6 +109,8 @@ class DashboardComponent extends Component
             'lateCount' => $lateCount,
             'excusedCount' => $excusedCount,
             'sickCount' => $sickCount,
+            'wfhCount' => $wfhCount,
+            'leaveCount' => $leaveCount,
             'absentCount' => $absentCount,
             'stats' => $stats,
         ]);

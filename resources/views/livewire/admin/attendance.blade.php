@@ -141,7 +141,7 @@
             </th>
           @endif
           @if (!$isPerDayFilter)
-            @foreach (['H', 'T', 'I', 'S', 'A'] as $_st)
+            @foreach (['H', 'T', 'I', 'S', 'A', 'W', 'C'] as $_st)
               <th scope="col"
                 class="text-nowrap border border-gray-300 px-1 py-3 text-center text-xs font-medium text-gray-500 dark:border-gray-600 dark:text-gray-300">
                 {{ $_st }}
@@ -193,6 +193,8 @@
               $excusedCount = 0;
               $sickCount = 0;
               $absentCount = 0;
+              $wfhCount = 0;
+              $leaveCount = 0;
             @endphp
             @if (!$month)
               @foreach ($dates as $date)
@@ -232,6 +234,18 @@
                           $bgColor =
                               'bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 border border-red-300 dark:border-red-600';
                           $absentCount++;
+                          break;
+                      case 'wfh':
+                          $shortStatus = 'W';
+                          $bgColor =
+                              'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700 border border-purple-300 dark:border-purple-600';
+                          $wfhCount++;
+                          break;
+                      case 'leave':
+                          $shortStatus = 'C';
+                          $bgColor =
+                              'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
+                          $leaveCount++;
                           break;
                       default:
                           $shortStatus = '-';
@@ -274,6 +288,8 @@
                   elseif ($status === 'excused') $excusedCount++;
                   elseif ($status === 'sick') $sickCount++;
                   elseif ($status === 'absent') $absentCount++;
+                  elseif ($status === 'wfh') $wfhCount++;
+                  elseif ($status === 'leave') $leaveCount++;
                 }
               @endphp
             @endif
@@ -295,7 +311,9 @@
                   'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700' => $lateCount,
                   'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700' => $excusedCount,
                   'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700' => $sickCount,
-                  'bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700' => $absentCount
+                  'bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700' => $absentCount,
+                  'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700' => $wfhCount,
+                  'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700' => $leaveCount
               ] as $bgClass => $statusCount)
                 <td
                   class="{{ $bgClass }} cursor-pointer border border-gray-300 px-1 py-3 text-center text-sm font-medium text-gray-900 dark:border-gray-600 dark:text-white">
@@ -377,6 +395,8 @@
                 <option value="excused">{{ __('excused') }}</option>
                 <option value="sick">{{ __('sick') }}</option>
                 <option value="absent">{{ __('absent') }}</option>
+                <option value="wfh">{{ __('WFH') }}</option>
+                <option value="leave">{{ __('Cuti') }}</option>
               </x-select>
               @error('formAttendance.status')
                 <x-input-error for="formAttendance.status" class="mt-2" message="{{ $message }}" />
