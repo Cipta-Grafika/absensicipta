@@ -20,4 +20,6 @@ yarn-error.log
 /.idea
 /.vscode
 /.env
+/docs
+./docs
 
