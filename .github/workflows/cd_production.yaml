@@ -18,9 +18,15 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 22
           script: |
+            # Hentikan eksekusi script jika ada perintah yang error
+            set -e
+            
             # Pindah ke direktori proyek production di VPS
             echo "Memulai proses deployment ke server..."
             cd /var/www/absensicipta-prod
+            
+            # Perbaiki error Git "dubious ownership"
+            git config --global --add safe.directory /var/www/absensicipta-prod
             
             # 1. Tarik pembaruan kode terbaru dari branch master
             echo "Pulling latest code from master..."
@@ -48,16 +54,20 @@ jobs:
             php artisan view:cache
             
             # 5. Jalankan Migrasi Database
-            # Catatan: Kita menggunakan --no-interaction sesuai permintaan agar berjalan otomatis.
-            # (Jika APP_ENV di server adalah 'production', Laravel mungkin membatalkan proses jika
-            #  tidak ada flag --force. Jika itu terjadi, Anda harus menambahkan --force. Jangan khawatir,
-            #  flag --force di Laravel HANYA mengabaikan konfirmasi "Are you sure?", BUKAN menghapus data).
+            # PERHATIAN PENTING: Di environment production, Laravel WAJIB menggunakan flag --force.
+            # Flag --force di Laravel TIDAK menghapus atau me-reset database Anda!
+            # --force hanya berarti "Lewati pertanyaan konfirmasi 'Are you sure?'". 
+            # Tanpa --force, script ini akan dibatalkan otomatis oleh Laravel dan migrasi GAGAL dijalankan.
             echo "Running database migrations..."
-            php artisan migrate --no-interaction
+            php artisan migrate --force --no-interaction
             
             # 6. Restart Queue Worker dan Scheduler (via PM2)
             echo "Restarting background jobs..."
             pm2 restart ecosystem.config.cjs || true
+            
+            # 7. Clear PHP OPcache
+            echo "Reloading PHP-FPM to clear OPcache..."
+            sudo systemctl reload php8.2-fpm || sudo systemctl reload php8.3-fpm || true
             
             # 7. Atur kembali *permissions* (opsional, jika menggunakan user non-root)
             # sudo chown -R www-data:www-data /var/www/absensicipta-prod/storage

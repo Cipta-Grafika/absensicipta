@@ -1,16 +1,45 @@
 @php
   $date = Carbon\Carbon::now();
 @endphp
-<div>
+<div x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
   @pushOnce('styles')
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   @endpushOnce
-  <div class="flex flex-col justify-between sm:flex-row">
-    <h3 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      Absensi Hari Ini
+
+  <x-filter-sidebar maxWidth="sm">
+    <x-slot name="title">Absensi Filters</x-slot>
+    <x-slot name="actions">
+      <button type="button" wire:click="$set('month', ''); $set('week', ''); $set('date', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+      </button>
+    </x-slot>
+    
+    <x-slot name="content">
+      <div class="flex flex-col gap-6">
+        <div>
+          <x-label for="month_filter" value="Per Bulan" class="mb-1"></x-label>
+          <x-input type="month" name="month_filter" id="month_filter" class="w-full" wire:model.live="month" />
+        </div>
+        <div>
+          <x-label for="week_filter" value="Per Minggu" class="mb-1"></x-label>
+          <x-input type="week" name="week_filter" id="week_filter" class="w-full" wire:model.live="week" />
+        </div>
+        <div>
+          <x-label for="day_filter" value="Per Hari" class="mb-1"></x-label>
+          <x-input type="date" name="day_filter" id="day_filter" class="w-full" wire:model.live="date" />
+        </div>
+      </div>
+    </x-slot>
+  </x-filter-sidebar>
+
+  <div class="flex flex-col justify-between sm:flex-row items-center mb-4">
+    <h3 class="text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
+      Absensi {{ $titlePrefix }}
     </h3>
-    <h3 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
+    <h3 class="text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200 mt-4 sm:mt-0">
       Jumlah Karyawan: {{ $employeesCount }}
     </h3>
   </div>
