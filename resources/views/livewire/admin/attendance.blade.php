@@ -81,6 +81,21 @@
       </div>
     </x-slot>
   </x-filter-sidebar>
+
+  @if (isset($stats) && !empty($stats))
+    <div class="mb-4">
+      <x-admin.attendance-summary-cards
+        :stats="$stats"
+        :presentCount="$presentCount"
+        :wfhCount="$wfhCount"
+        :excusedCount="$excusedCount"
+        :sickCount="$sickCount"
+        :leaveCount="$leaveCount"
+        :absentCount="$absentCount"
+        :sparklines="$sparklines"
+      />
+    </div>
+  @endif
   @if (empty($dates))
     <div class="my-2 py-10 text-center text-sm font-medium text-gray-900 dark:text-gray-100">
       Tidak ada data (Silakan pilih filter tanggal)
