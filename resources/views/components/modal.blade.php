@@ -20,10 +20,17 @@
           document.body.classList.add('overflow-y-hidden');
       } else {
           setTimeout(() => {
-              if (document.querySelectorAll('.jetstream-modal:not([style*=\'display: none\'])').length === 0) {
+              let openModals = Array.from(document.querySelectorAll('.jetstream-modal')).some(el => {
+                  try {
+                      return Alpine.$data(el).show === true;
+                  } catch (e) {
+                      return false;
+                  }
+              });
+              if (!openModals) {
                   document.body.classList.remove('overflow-y-hidden');
               }
-          }, 100);
+          }, 50);
       }
   })">
   <div x-show="show" class="fixed inset-0 transform transition-all" x-on:click="show = false; {{ $onclose }}"
