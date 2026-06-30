@@ -148,11 +148,7 @@
               </th>
             @endforeach
           @endif
-          @if ($isPerDayFilter)
-            <th scope="col" class="relative">
-              <span class="sr-only">Actions</span>
-            </th>
-          @endif
+
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -308,25 +304,7 @@
               @endforeach
             @endif
 
-            {{-- Action --}}
-            @if ($isPerDayFilter)
-              @php
-                $attendance = $employee->attendances->isEmpty() ? null : $employee->attendances->first();
-              @endphp
-              <td
-                class="cursor-pointer text-center text-sm font-medium text-gray-900 group-hover:bg-gray-100 dark:text-white dark:group-hover:bg-gray-700">
-                <div class="flex items-center justify-center gap-3">
-                  @if ($attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
-                    <x-button type="button" wire:click="show({{ $attendance['id'] }})"
-                      onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
-                      {{ __('Detail') }}
-                    </x-button>
-                  @else
-                    -
-                  @endif
-                </div>
-              </td>
-            @endif
+
           </tr>
         @endforeach
       </tbody>

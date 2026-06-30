@@ -14,22 +14,137 @@
       Jumlah Karyawan: {{ $employeesCount }}
     </h3>
   </div>
-  <div class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-    <div class="rounded-md bg-green-200 px-8 py-4 text-gray-800 dark:bg-green-900 dark:text-white dark:shadow-gray-700">
-      <span class="text-2xl font-semibold md:text-3xl">Hadir: {{ $presentCount }}</span><br>
-      <span>Terlambat: {{ $lateCount }}</span>
+  <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Card Hadir -->
+    <div class="group relative overflow-hidden rounded-xl bg-green-200 p-5 text-gray-800 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:bg-green-900 dark:text-white dark:shadow-gray-700">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium opacity-80">Hadir Hari Ini</p>
+          <p class="mt-1 text-3xl font-bold">{{ $presentCount }}</p>
+        </div>
+        <div class="rounded-full bg-green-300 p-3 opacity-70 transition-transform duration-300 group-hover:scale-110 dark:bg-green-800">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center text-sm">
+        @if ($stats['present']['is_up'])
+          <span class="flex items-center font-semibold text-green-700 dark:text-green-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+            {{ $stats['present']['trend'] }}
+          </span>
+        @elseif ($stats['present']['is_down'])
+          <span class="flex items-center font-semibold text-red-600 dark:text-red-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"></path></svg>
+            {{ $stats['present']['trend'] }}
+          </span>
+        @else
+          <span class="flex items-center font-semibold text-gray-600 dark:text-gray-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"></path></svg>
+            0
+          </span>
+        @endif
+        <span class="ml-2 opacity-80">vs bln lalu</span>
+      </div>
+      <div class="mt-1 text-xs opacity-75">Trmsk telat: {{ $lateCount }}</div>
     </div>
-    <div class="rounded-md bg-blue-200 px-8 py-4 text-gray-800 dark:bg-blue-900 dark:text-white dark:shadow-gray-700">
-      <span class="text-2xl font-semibold md:text-3xl">Izin: {{ $excusedCount }}</span><br>
-      <span>Izin/Cuti</span>
+
+    <!-- Card Izin -->
+    <div class="group relative overflow-hidden rounded-xl bg-blue-200 p-5 text-gray-800 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:bg-blue-900 dark:text-white dark:shadow-gray-700">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium opacity-80">Izin Hari Ini</p>
+          <p class="mt-1 text-3xl font-bold">{{ $excusedCount }}</p>
+        </div>
+        <div class="rounded-full bg-blue-300 p-3 opacity-70 transition-transform duration-300 group-hover:scale-110 dark:bg-blue-800">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center text-sm">
+        @if ($stats['excused']['is_up'])
+          <span class="flex items-center font-semibold text-red-600 dark:text-red-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+            {{ $stats['excused']['trend'] }}
+          </span>
+        @elseif ($stats['excused']['is_down'])
+          <span class="flex items-center font-semibold text-green-700 dark:text-green-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"></path></svg>
+            {{ $stats['excused']['trend'] }}
+          </span>
+        @else
+          <span class="flex items-center font-semibold text-gray-600 dark:text-gray-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"></path></svg>
+            0
+          </span>
+        @endif
+        <span class="ml-2 opacity-80">vs bln lalu</span>
+      </div>
+      <div class="mt-1 text-xs opacity-75">Izin/Cuti</div>
     </div>
-    <div
-      class="rounded-md bg-yellow-200 px-8 py-4 text-gray-800 dark:bg-yellow-900 dark:text-white dark:shadow-gray-700">
-      <span class="text-2xl font-semibold md:text-3xl">Sakit: {{ $sickCount }}</span>
+
+    <!-- Card Sakit -->
+    <div class="group relative overflow-hidden rounded-xl bg-yellow-200 p-5 text-gray-800 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:bg-yellow-900 dark:text-white dark:shadow-gray-700">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium opacity-80">Sakit Hari Ini</p>
+          <p class="mt-1 text-3xl font-bold">{{ $sickCount }}</p>
+        </div>
+        <div class="rounded-full bg-yellow-300 p-3 opacity-70 transition-transform duration-300 group-hover:scale-110 dark:bg-yellow-800">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center text-sm">
+        @if ($stats['sick']['is_up'])
+          <span class="flex items-center font-semibold text-red-600 dark:text-red-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+            {{ $stats['sick']['trend'] }}
+          </span>
+        @elseif ($stats['sick']['is_down'])
+          <span class="flex items-center font-semibold text-green-700 dark:text-green-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"></path></svg>
+            {{ $stats['sick']['trend'] }}
+          </span>
+        @else
+          <span class="flex items-center font-semibold text-gray-600 dark:text-gray-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"></path></svg>
+            0
+          </span>
+        @endif
+        <span class="ml-2 opacity-80">vs bln lalu</span>
+      </div>
+      <div class="mt-1 text-xs opacity-75">Masa penyembuhan</div>
     </div>
-    <div class="rounded-md bg-red-200 px-8 py-4 text-gray-800 dark:bg-red-900 dark:text-white dark:shadow-gray-700">
-      <span class="text-2xl font-semibold md:text-3xl">Tidak Hadir: {{ $absentCount }}</span><br>
-      <span>Tidak/Belum Hadir</span>
+
+    <!-- Card Tidak Hadir -->
+    <div class="group relative overflow-hidden rounded-xl bg-red-200 p-5 text-gray-800 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:bg-red-900 dark:text-white dark:shadow-gray-700">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium opacity-80">Absen Hari Ini</p>
+          <p class="mt-1 text-3xl font-bold">{{ $absentCount }}</p>
+        </div>
+        <div class="rounded-full bg-red-300 p-3 opacity-70 transition-transform duration-300 group-hover:scale-110 dark:bg-red-800">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center text-sm">
+        @if ($stats['absent']['is_up'])
+          <span class="flex items-center font-semibold text-red-600 dark:text-red-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+            {{ $stats['absent']['trend'] }}
+          </span>
+        @elseif ($stats['absent']['is_down'])
+          <span class="flex items-center font-semibold text-green-700 dark:text-green-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"></path></svg>
+            {{ $stats['absent']['trend'] }}
+          </span>
+        @else
+          <span class="flex items-center font-semibold text-gray-600 dark:text-gray-300">
+            <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"></path></svg>
+            0
+          </span>
+        @endif
+        <span class="ml-2 opacity-80">vs bln lalu</span>
+      </div>
+      <div class="mt-1 text-xs opacity-75">Tidak/Belum Hadir</div>
     </div>
   </div>
 
