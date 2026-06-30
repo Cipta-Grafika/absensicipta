@@ -71,6 +71,11 @@ class AttendancesImport implements ToModel, WithHeadingRow, WithValidation, Skip
                 return 'sick';
             case 'tidak hadir':
                 return 'absent';
+            case 'wfh':
+                return 'wfh';
+            case 'cuti':
+            case 'leave':
+                return 'leave';
             default:
                 return null;
         }
