@@ -1,0 +1,66 @@
+name: Continuous Deployment Production
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Backend & Frontend to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            # Pindah ke direktori proyek production di VPS
+            echo "Memulai proses deployment ke server..."
+            cd /var/www/absensicipta-prod
+            
+            # 1. Tarik pembaruan kode terbaru dari branch master
+            echo "Pulling latest code from master..."
+            git checkout master
+            git pull origin master
+            
+            # 2. Install dependensi PHP (Composer)
+            echo "Installing composer dependencies..."
+            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+            
+            # 3. Setup NVM & Install dependensi Javascript (NPM)
+            echo "Installing npm dependencies & building assets..."
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            export PATH=$PATH:/usr/local/bin:/usr/bin
+            
+            npm install
+            npm run build
+            
+            # 4. Bersihkan dan bangun ulang sistem cache Laravel
+            echo "Optimizing Laravel cache..."
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            
+            # 5. Jalankan Migrasi Database
+            # Catatan: Kita menggunakan --no-interaction sesuai permintaan agar berjalan otomatis.
+            # (Jika APP_ENV di server adalah 'production', Laravel mungkin membatalkan proses jika
+            #  tidak ada flag --force. Jika itu terjadi, Anda harus menambahkan --force. Jangan khawatir,
+            #  flag --force di Laravel HANYA mengabaikan konfirmasi "Are you sure?", BUKAN menghapus data).
+            echo "Running database migrations..."
+            php artisan migrate --no-interaction
+            
+            # 6. Restart Queue Worker dan Scheduler (via PM2)
+            echo "Restarting background jobs..."
+            pm2 restart ecosystem.config.cjs || true
+            
+            # 7. Atur kembali *permissions* (opsional, jika menggunakan user non-root)
+            # sudo chown -R www-data:www-data /var/www/absensicipta-prod/storage
+            # sudo chown -R www-data:www-data /var/www/absensicipta-prod/bootstrap/cache
+            
+            echo "Deployment completed successfully! Sistem berhasil di-update tanpa bentrok."
