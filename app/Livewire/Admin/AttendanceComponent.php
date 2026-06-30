@@ -41,6 +41,16 @@ class AttendanceComponent extends Component
 
     public bool $editingAttendance = false;
     public array $formAttendance = [];
+    
+    public bool $viewingMonthlyDetail = false;
+    public ?string $monthlyDetailUserId = null;
+
+    public function showMonthlyDetail($userId)
+    {
+        \Illuminate\Support\Facades\Log::info("showMonthlyDetail triggered for user: " . $userId);
+        $this->monthlyDetailUserId = $userId;
+        $this->viewingMonthlyDetail = true;
+    }
 
     public function editAttendance($userId, $date)
     {
@@ -68,6 +78,7 @@ class AttendanceComponent extends Component
             'note' => $attendance ? $attendance->note : null,
         ];
 
+        $this->viewingMonthlyDetail = false;
         $this->editingAttendance = true;
     }
 
@@ -163,6 +174,7 @@ class AttendanceComponent extends Component
 
     public function render()
     {
+        $dates = [];
         if ($this->date) {
             $dates = [Carbon::parse($this->date)];
         } else if ($this->week) {
