@@ -18,9 +18,15 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 22
           script: |
+            # Hentikan eksekusi script jika ada perintah yang error
+            set -e
+            
             # Pindah ke direktori proyek production di VPS
             echo "Memulai proses deployment ke server..."
             cd /var/www/absensicipta-prod
+            
+            # Perbaiki error Git "dubious ownership"
+            git config --global --add safe.directory /var/www/absensicipta-prod
             
             # 1. Tarik pembaruan kode terbaru dari branch master
             echo "Pulling latest code from master..."
