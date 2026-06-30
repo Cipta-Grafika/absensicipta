@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Livewire\Traits\AttendanceDetailTrait;
+use App\Livewire\Traits\HasAttendanceSummary;
 use App\Models\Attendance;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +17,7 @@ use Livewire\WithPagination;
 
 class AttendanceComponent extends Component
 {
-    use AttendanceDetailTrait;
+    use AttendanceDetailTrait, HasAttendanceSummary;
     use WithPagination, InteractsWithBanner;
 
     #[On('print-report')]
@@ -279,6 +280,11 @@ class AttendanceComponent extends Component
                 $user->attendances = $attendances;
                 return $user;
             });
-        return view('livewire.admin.attendance', ['employees' => $employees, 'dates' => $dates]);
+        $summary = $this->getAttendanceSummary($this->date, $this->week, $this->month);
+
+        return view('livewire.admin.attendance', array_merge($summary, [
+            'employees' => $employees, 
+            'dates' => $dates
+        ]));
     }
 }
