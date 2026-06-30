@@ -1,7 +1,7 @@
 @php
   use Illuminate\Support\Carbon;
   $m = Carbon::parse($month);
-  $showUserDetail = !$month || $week || $date; // is week or day filter
+  $showUserDetail = true;
   $isPerDayFilter = isset($date);
 @endphp
 <div x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
@@ -81,7 +81,12 @@
       </div>
     </x-slot>
   </x-filter-sidebar>
-  <div class="overflow-x-scroll">
+  @if (empty($dates))
+    <div class="my-2 py-10 text-center text-sm font-medium text-gray-900 dark:text-gray-100">
+      Tidak ada data (Silakan pilih filter tanggal)
+    </div>
+  @else
+    <div class="overflow-x-scroll">
     <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
@@ -104,27 +109,29 @@
               </th>
             @endif
           @endif
-          @foreach ($dates as $date)
-            @php
-              if (!$isPerDayFilter && $date->isSunday()) {
-                  // Minggu merah
-                  $textClass = 'text-red-500 dark:text-red-300';
-              } elseif (!$isPerDayFilter && $date->isFriday()) {
-                  // Jumat hijau
-                  $textClass = 'text-green-500 dark:text-green-300';
-              } else {
-                  $textClass = 'text-gray-500 dark:text-gray-300';
-              }
-            @endphp
-            <th scope="col"
-              class="{{ $textClass }} text-nowrap border border-gray-300 px-1 py-3 text-center text-xs font-medium dark:border-gray-600">
-              @if ($isPerDayFilter)
-                Status
-              @else
-                {{ $date->format('d/m') }}
-              @endif
-            </th>
-          @endforeach
+          @if (!$month)
+            @foreach ($dates as $date)
+              @php
+                if (!$isPerDayFilter && $date->isSunday()) {
+                    // Minggu merah
+                    $textClass = 'text-red-500 dark:text-red-300';
+                } elseif (!$isPerDayFilter && $date->isFriday()) {
+                    // Jumat hijau
+                    $textClass = 'text-green-500 dark:text-green-300';
+                } else {
+                    $textClass = 'text-gray-500 dark:text-gray-300';
+                }
+              @endphp
+              <th scope="col"
+                class="{{ $textClass }} text-nowrap border border-gray-300 px-1 py-3 text-center text-xs font-medium dark:border-gray-600">
+                @if ($isPerDayFilter)
+                  Status
+                @else
+                  {{ $date->format('d/m') }}
+                @endif
+              </th>
+            @endforeach
+          @endif
           @if ($isPerDayFilter)
             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
               {{ __('Time In') }}
@@ -156,7 +163,7 @@
           @php
             $attendances = $employee->attendances;
           @endphp
-          <tr wire:key="{{ $employee->id }}" class="group">
+          <tr wire:key="employee-{{ $employee->id }}" class="group {{ $month ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750' : '' }}" @if($month) wire:click.prevent="showMonthlyDetail('{{ $employee->id }}')" @endif>
             {{-- Detail karyawan --}}
             <td class="{{ $class }} text-nowrap group-hover:bg-gray-100 dark:group-hover:bg-gray-700">
               {{ $employee->name }}
@@ -191,73 +198,89 @@
               $sickCount = 0;
               $absentCount = 0;
             @endphp
-            @foreach ($dates as $date)
+            @if (!$month)
+              @foreach ($dates as $date)
+                @php
+                  $isSunday = $date->isSunday();
+                  $attendance = $attendances->firstWhere(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
+                  $status = ($attendance ?? [
+                      'status' => $isSunday || !$date->isPast() ? '-' : 'absent',
+                  ])['status'];
+                  switch ($status) {
+                      case 'present':
+                          $shortStatus = 'H';
+                          $bgColor =
+                              'bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 border border-green-300 dark:border-green-600';
+                          $presentCount++;
+                          break;
+                      case 'late':
+                          $shortStatus = 'T';
+                          $bgColor =
+                              'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700 border border-orange-300 dark:border-orange-600';
+                          $lateCount++;
+                          break;
+                      case 'excused':
+                          $shortStatus = 'I';
+                          $bgColor =
+                              'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
+                          $excusedCount++;
+                          break;
+                      case 'sick':
+                          $shortStatus = 'S';
+                          $bgColor =
+                              'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-300 dark:border-yellow-600';
+                          $sickCount++;
+                          break;
+                      case 'absent':
+                          $shortStatus = 'A';
+                          $bgColor =
+                              'bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 border border-red-300 dark:border-red-600';
+                          $absentCount++;
+                          break;
+                      default:
+                          $shortStatus = '-';
+                          $bgColor =
+                              'hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600';
+                          break;
+                  }
+                @endphp
+                @if (Auth::user()->isSuperadmin)
+                  <td
+                    class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
+                    <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
+                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                    </button>
+                  </td>
+                @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
+                  <td
+                    class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
+                    <button class="w-full px-1 py-3" wire:click="show({{ $attendance['id'] }})"
+                      onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
+                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                    </button>
+                  </td>
+                @else
+                  <td
+                    class="{{ $bgColor }} text-nowrap cursor-pointer px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
+                    {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                  </td>
+                @endif
+              @endforeach
+            @else
               @php
-                $isSunday = $date->isSunday();
-                $attendance = $attendances->firstWhere(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
-                $status = ($attendance ?? [
-                    'status' => $isSunday || !$date->isPast() ? '-' : 'absent',
-                ])['status'];
-                switch ($status) {
-                    case 'present':
-                        $shortStatus = 'H';
-                        $bgColor =
-                            'bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 border border-green-300 dark:border-green-600';
-                        $presentCount++;
-                        break;
-                    case 'late':
-                        $shortStatus = 'T';
-                        $bgColor =
-                            'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700 border border-orange-300 dark:border-orange-600';
-                        $lateCount++;
-                        break;
-                    case 'excused':
-                        $shortStatus = 'I';
-                        $bgColor =
-                            'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
-                        $excusedCount++;
-                        break;
-                    case 'sick':
-                        $shortStatus = 'S';
-                        $bgColor =
-                            'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-300 dark:border-yellow-600';
-                        $sickCount++;
-                        break;
-                    case 'absent':
-                        $shortStatus = 'A';
-                        $bgColor =
-                            'bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 border border-red-300 dark:border-red-600';
-                        $absentCount++;
-                        break;
-                    default:
-                        $shortStatus = '-';
-                        $bgColor =
-                            'hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600';
-                        break;
+                // Just count for the month
+                foreach ($dates as $date) {
+                  $isSunday = $date->isSunday();
+                  $attendance = $attendances->firstWhere(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
+                  $status = ($attendance ?? ['status' => $isSunday || !$date->isPast() ? '-' : 'absent'])['status'];
+                  if ($status === 'present') $presentCount++;
+                  elseif ($status === 'late') $lateCount++;
+                  elseif ($status === 'excused') $excusedCount++;
+                  elseif ($status === 'sick') $sickCount++;
+                  elseif ($status === 'absent') $absentCount++;
                 }
               @endphp
-              @if (Auth::user()->isSuperadmin)
-                <td
-                  class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
-                  <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
-                    {{ $isPerDayFilter ? __($status) : $shortStatus }}
-                  </button>
-                </td>
-              @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
-                <td
-                  class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
-                  <button class="w-full px-1 py-3" wire:click="show({{ $attendance['id'] }})"
-                    onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
-                    {{ $isPerDayFilter ? __($status) : $shortStatus }}
-                  </button>
-                </td>
-              @else
-                <td
-                  class="{{ $bgColor }} text-nowrap cursor-pointer px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-                  {{ $isPerDayFilter ? __($status) : $shortStatus }}
-                </td>
-              @endif
-            @endforeach
+            @endif
 
             {{-- Waktu masuk/keluar --}}
             @if ($isPerDayFilter)
@@ -271,9 +294,15 @@
 
             {{-- Total --}}
             @if (!$isPerDayFilter)
-              @foreach ([$presentCount, $lateCount, $excusedCount, $sickCount, $absentCount] as $statusCount)
+              @foreach ([
+                  'bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700' => $presentCount,
+                  'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700' => $lateCount,
+                  'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700' => $excusedCount,
+                  'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700' => $sickCount,
+                  'bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700' => $absentCount
+              ] as $bgClass => $statusCount)
                 <td
-                  class="cursor-pointer border border-gray-300 px-1 py-3 text-center text-sm font-medium text-gray-900 group-hover:bg-gray-100 dark:border-gray-600 dark:text-white dark:group-hover:bg-gray-700">
+                  class="{{ $bgClass }} cursor-pointer border border-gray-300 px-1 py-3 text-center text-sm font-medium text-gray-900 dark:border-gray-600 dark:text-white">
                   {{ $statusCount }}
                 </td>
               @endforeach
@@ -308,9 +337,10 @@
       Tidak ada data
     </div>
   @endif
-  <div class="mt-3">
-    {{ $employees->links() }}
-  </div>
+    <div class="mt-3">
+      {{ $employees->links() }}
+    </div>
+  @endif
 
   <x-attendance-detail-modal :current-attendance="$currentAttendance" />
   @stack('attendance-detail-scripts')
@@ -397,4 +427,125 @@
       </x-slot>
     </x-dialog-modal>
   @endif
+  
+  <x-dialog-modal wire:model="viewingMonthlyDetail">
+    <x-slot name="title">
+      {{ __('Detail Absensi') }} {{ $month ? \Illuminate\Support\Carbon::parse($month)->translatedFormat('F Y') : __('Bulanan') }}
+    </x-slot>
+
+    <x-slot name="content">
+      @php
+        $detailUser = null;
+        $start = null;
+        $end = null;
+        if ($viewingMonthlyDetail && $monthlyDetailUserId && $month) {
+            // First check if user is in current paginator items to save queries
+            $detailUser = collect($employees->items())->firstWhere('id', '==', $monthlyDetailUserId);
+            
+            // If somehow not in current items, query from DB
+            if (!$detailUser) {
+                $detailUser = App\Models\User::with(['division', 'jobTitle', 'attendances' => function ($q) use ($month) {
+                    $s = Illuminate\Support\Carbon::parse($month)->startOfMonth();
+                    $e = Illuminate\Support\Carbon::parse($month)->endOfMonth();
+                    $q->whereBetween('date', [$s, $e]);
+                }])->find($monthlyDetailUserId);
+            }
+            
+            if ($detailUser) {
+                $start = Illuminate\Support\Carbon::parse($month)->startOfMonth();
+                $end = Illuminate\Support\Carbon::parse($month)->endOfMonth();
+            }
+        }
+      @endphp
+      
+      @if($detailUser && $start && $end)
+        <div class="mb-4">
+           <p class="font-bold dark:text-white">{{ $detailUser->name }} - {{ $detailUser->nip }}</p>
+
+        </div>
+        <h5 class="mb-3 text-sm dark:text-gray-200">Klik pada tanggal untuk manipulasi absen</h5>
+        <div class="grid w-full grid-cols-7 dark:text-white">
+          @foreach (['M', 'S', 'S', 'R', 'K', 'J', 'S'] as $day)
+            <div class="{{ $day === 'M' ? 'text-red-500' : '' }} {{ $day === 'J' ? 'text-green-600 dark:text-green-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center dark:border-gray-600">
+              {{ $day }}
+            </div>
+          @endforeach
+          
+          @if ($start->dayOfWeek !== 0)
+            @foreach (range(1, $start->dayOfWeek) as $i)
+              <div class="h-14 border border-gray-300 bg-gray-100 dark:border-gray-600 dark:bg-gray-700"></div>
+            @endforeach
+          @endif
+          
+          @foreach ($dates as $date)
+            @php
+              $isSunday = $date->isSunday();
+              $attendance = $detailUser->attendances->firstWhere('date', $date->format('Y-m-d'));
+              
+              // Handle array vs object depending on whether it was eager loaded via array or eloquent model
+              $status = '-';
+              if ($attendance) {
+                  $status = is_array($attendance) ? $attendance['status'] : $attendance->status;
+              } elseif ($isSunday || !$date->isPast()) {
+                  $status = '-';
+              } else {
+                  $status = 'absent';
+              }
+              
+              switch ($status) {
+                  case 'present':
+                      $shortStatus = 'H';
+                      $bgColor = 'bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 border border-green-600';
+                      break;
+                  case 'late':
+                      $shortStatus = 'T';
+                      $bgColor = 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700 border border-orange-600';
+                      break;
+                  case 'excused':
+                      $shortStatus = 'I';
+                      $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-600';
+                      break;
+                  case 'sick':
+                      $shortStatus = 'S';
+                      $bgColor = 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-600';
+                      break;
+                  case 'absent':
+                      $shortStatus = 'A';
+                      $bgColor = 'bg-red-200 dark:bg-red-950 text-red-500 dark:text-red-200 border border-red-300 dark:border-red-700';
+                      break;
+                  default:
+                      $shortStatus = '-';
+                      $bgColor = 'bg-slate-200 text-slate-600 dark:text-slate-200 dark:bg-slate-800 border border-gray-400 dark:border-gray-700';
+                      break;
+              }
+            @endphp
+            <button type="button" class="{{ $bgColor }} h-14 w-full py-1 text-center" 
+                    @if (Auth::user()->isSuperadmin) wire:click="editAttendance('{{ $detailUser->id }}', '{{ $date->format('Y-m-d') }}')" @endif>
+              <span class="{{ $date->isSunday() ? 'text-red-500' : '' }} {{ $date->isFriday() ? 'text-green-600 dark:text-green-500' : '' }}">
+                {{ $date->format('d') }}
+              </span>
+              <br>
+              {{ $shortStatus }}
+            </button>
+          @endforeach
+          
+          @if ($end->dayOfWeek !== 6)
+            @foreach (range(5, $end->dayOfWeek) as $i)
+              <div class="h-14 border border-gray-300 bg-gray-100 dark:border-gray-600 dark:bg-gray-700"></div>
+            @endforeach
+          @endif
+        </div>
+      @else
+        <div class="py-4 text-center text-gray-500 dark:text-gray-400">
+          Memuat data...
+        </div>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-secondary-button wire:click="$set('viewingMonthlyDetail', false)" wire:loading.attr="disabled">
+        {{ __('Tutup') }}
+      </x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
 </div>
