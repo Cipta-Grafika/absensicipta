@@ -27,19 +27,23 @@
 </head>
 
 <body class="font-sans antialiased">
-  <x-banner />
-
   <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-    @livewire('navigation-menu')
+    
+    <!-- Sticky Wrapper for Navbar and Header -->
+    <div class="z-40 w-full flex flex-col" style="position: sticky; top: 0;">
+      <x-banner />
+      
+      @livewire('navigation-menu')
 
-    <!-- Page Heading -->
-    @if (isset($header))
-      <header class="bg-white shadow dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          {{ $header }}
-        </div>
-      </header>
-    @endif
+      <!-- Page Heading -->
+      @if (isset($header))
+        <header class="bg-white shadow dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            {{ $header }}
+          </div>
+        </header>
+      @endif
+    </div>
 
     <!-- Page Content -->
     <main>
