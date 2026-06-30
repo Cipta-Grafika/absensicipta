@@ -20,6 +20,10 @@ class ScanComponent extends Component
     public ?array $currentLiveCoords = null;
     public string $successMsg = '';
     public bool $isAbsence = false;
+    public bool $showMotivationModal = false;
+    public string $motivationTitle = '';
+    public string $motivationMessage = '';
+    public string $motivationType = '';
 
     public function scan(string $barcode)
     {
@@ -51,12 +55,47 @@ class ScanComponent extends Component
         if (!$existingAttendance) {
             $attendance = $this->createAttendance($barcode);
             $this->successMsg = __('Attendance In Successful');
+
+            $shift = Shift::find($this->shift_id);
+            $shiftTime = Carbon::today()->setTimeFromTimeString($shift->start_time);
+            $now = Carbon::now();
+            $diffMinutes = $now->diffInMinutes($shiftTime, false);
+            
+            $userName = explode(' ', trim(Auth::user()->name))[0]; // Get first name
+            if ($diffMinutes > 60) {
+                $this->motivationType = 'early';
+                $this->motivationTitle = 'Luar Biasa!';
+                $this->motivationMessage = "Gokill {$userName}! Kamu awal banget.";
+            } elseif ($diffMinutes >= 30) {
+                $this->motivationType = 'early';
+                $this->motivationTitle = 'Hebat!';
+                $this->motivationMessage = "Hebat {$userName}! Datang lebih awal nih.";
+            } elseif ($diffMinutes >= 15) {
+                $this->motivationType = 'early';
+                $this->motivationTitle = 'Mantap!';
+                $this->motivationMessage = "Siip {$userName}! Pertahankan waktu kamu.";
+            } elseif ($diffMinutes >= 0) {
+                $this->motivationType = 'on-time';
+                $this->motivationTitle = 'Tepat Waktu!';
+                $this->motivationMessage = "Tepat waktu {$userName}! Semangat kerjanya.";
+            } else {
+                $this->motivationType = 'late';
+                $this->motivationTitle = 'Perhatian!';
+                $this->motivationMessage = "Yaah {$userName}! Kamu telat nih!";
+            }
+            $this->showMotivationModal = true;
         } else {
             $attendance = $existingAttendance;
             $attendance->update([
                 'time_out' => date('H:i:s'),
             ]);
             $this->successMsg = __('Attendance Out Successful');
+
+            $userName = explode(' ', trim(Auth::user()->name))[0];
+            $this->motivationType = 'out';
+            $this->motivationTitle = 'Terima Kasih!';
+            $this->motivationMessage = "Terima kasih atas kerja kerasmu hari ini, {$userName}! Selamat beristirahat.";
+            $this->showMotivationModal = true;
         }
 
         if ($attendance) {
@@ -64,6 +103,11 @@ class ScanComponent extends Component
             Attendance::clearUserAttendanceCache(Auth::user(), Carbon::parse($attendance->date));
             return true;
         }
+    }
+
+    public function closeMotivationModal()
+    {
+        $this->showMotivationModal = false;
     }
 
     public function calculateDistance(LatLong $a, LatLong $b)

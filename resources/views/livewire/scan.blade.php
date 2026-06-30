@@ -7,6 +7,7 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   @endpushOnce
   @pushOnce('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
@@ -154,8 +155,58 @@
           </div>
         </a>
       </div>
+      </div>
     </div>
   </div>
+
+  <!-- Motivational Modal -->
+  <x-dialog-modal wire:model.live="showMotivationModal" maxWidth="sm">
+    <x-slot name="title">
+      <div class="hidden" x-data="{ type: @entangle('motivationType'), open: @entangle('showMotivationModal') }" x-effect="if(open && type !== 'late') { confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#fbbf24', '#f87171', '#60a5fa', '#34d399', '#c084fc'] }); }"></div>
+    </x-slot>
+    <x-slot name="content">
+      <div class="flex flex-col items-center justify-center pt-6 pb-2 px-2 text-center">
+        @if ($motivationType === 'early')
+          <div class="relative w-32 h-32 mb-6 animate-bounce">
+            <!-- Ribbon / Medal Icon -->
+            <svg class="w-full h-full drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25 90L35 60L15 45L40 45L50 20L60 45L85 45L65 60L75 90L50 75L25 90Z" fill="#FBBF24"/>
+              <circle cx="50" cy="45" r="20" fill="#FDE68A"/>
+              <path d="M50 35L53.5 41.5L60.5 42L55 47L56.5 54L50 50.5L43.5 54L45 47L39.5 42L46.5 41.5L50 35Z" fill="#F59E0B"/>
+              <path d="M30 65L30 100L50 85L50 65Z" fill="#9333EA" opacity="0.8"/>
+              <path d="M70 65L70 100L50 85L50 65Z" fill="#A855F7" opacity="0.8"/>
+            </svg>
+          </div>
+        @elseif ($motivationType === 'on-time')
+          <div class="relative w-32 h-32 mb-6 animate-pulse">
+            <!-- On Time Check Icon -->
+            <svg class="w-full h-full text-green-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2ZM12 20C7.6 20 4 16.4 4 12C4 7.6 7.6 4 12 4C16.4 4 20 7.6 20 12C20 16.4 16.4 20 12 20ZM16.2 14.8L13 11V6H11.5V11.5L15.2 15.8L16.2 14.8Z"/></svg>
+          </div>
+        @elseif ($motivationType === 'late')
+          <div class="relative w-32 h-32 mb-6 animate-bounce">
+            <!-- Warning / Late Icon -->
+            <svg class="w-full h-full text-red-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M1 21H23L12 2L1 21ZM13 18H11V16H13V18ZM13 14H11V10H13V14Z"/></svg>
+          </div>
+        @else
+          <div class="relative w-32 h-32 mb-6 animate-pulse">
+            <!-- Heart / Check-out Icon -->
+            <svg class="w-full h-full text-blue-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z"/></svg>
+          </div>
+        @endif
+        
+        <h2 class="text-3xl font-extrabold text-gray-900 dark:text-gray-100 mb-3">{{ $motivationTitle }}</h2>
+        <p class="text-lg text-gray-600 dark:text-gray-400 mb-2">{{ $motivationMessage }}</p>
+      </div>
+    </x-slot>
+    <x-slot name="footer">
+      <div class="flex w-full justify-center pb-4 pt-2">
+        <button wire:click="closeMotivationModal" class="px-10 py-3 bg-red-400 hover:bg-red-500 text-white font-bold text-lg rounded-full transition shadow-lg transform hover:scale-105 focus:outline-none">
+          Okay
+        </button>
+      </div>
+    </x-slot>
+  </x-dialog-modal>
+
 </div>
 
 @script
