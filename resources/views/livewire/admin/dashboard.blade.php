@@ -184,8 +184,9 @@
       </tbody>
     </table>
   </div>
-  {{ $employees->links() }}
-
+  <div class="mt-3">
+    {{ $employees->links() }}
+  </div>
   <x-attendance-detail-modal :current-attendance="$currentAttendance" />
   @stack('attendance-detail-scripts')
 </div>

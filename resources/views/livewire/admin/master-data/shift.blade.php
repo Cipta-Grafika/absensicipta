@@ -1,46 +1,48 @@
 <div>
 
-  <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
-    <thead class="bg-gray-50 dark:bg-gray-900">
-      <tr>
-        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
-          Shift
-        </th>
-        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
-          {{ __('Time Start') }}
-        </th>
-        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
-          {{ __('Time End') }}
-        </th>
-        <th scope="col" class="relative px-6 py-3">
-          <span class="sr-only">Actions</span>
-        </th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-      @foreach ($shifts as $shift)
+  <div class="overflow-x-auto">
+    <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
-          <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-            {{ $shift->name }}
-          </td>
-          <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-            {{ $shift->start_time }}
-          </td>
-          <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-            {{ $shift->end_time ?? '-' }}
-          </td>
-          <td class="relative flex justify-end gap-2 px-6 py-4">
-            <x-button wire:click="edit({{ $shift->id }})">
-              Edit
-            </x-button>
-            <x-danger-button wire:click="confirmDeletion({{ $shift->id }}, '{{ $shift->name }}')">
-              Delete
-            </x-danger-button>
-          </td>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 whitespace-nowrap">
+            Shift
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 whitespace-nowrap">
+            {{ __('Time Start') }}
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 whitespace-nowrap">
+            {{ __('Time End') }}
+          </th>
+          <th scope="col" class="relative px-6 py-3">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
-      @endforeach
-    </tbody>
-  </table>
+      </thead>
+      <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+        @foreach ($shifts as $shift)
+          <tr>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+              {{ $shift->name }}
+            </td>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+              {{ $shift->start_time }}
+            </td>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+              {{ $shift->end_time ?? '-' }}
+            </td>
+            <td class="relative flex justify-end gap-2 px-6 py-4 whitespace-nowrap">
+              <x-button wire:click="edit({{ $shift->id }})">
+                Edit
+              </x-button>
+              <x-danger-button wire:click="confirmDeletion({{ $shift->id }}, '{{ $shift->name }}')">
+                Delete
+              </x-danger-button>
+            </td>
+          </tr>
+        @endforeach
+      </tbody>
+    </table>
+  </div>
 
   <x-confirmation-modal wire:model="confirmingDeletion">
     <x-slot name="title">

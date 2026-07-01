@@ -125,6 +125,10 @@ class AttendanceComponent extends Component
         }
 
         $this->editingAttendance = false;
+        if ($this->month) {
+            $this->viewingMonthlyDetail = true;
+        }
+
         $this->banner('Absensi berhasil diperbarui!');
         
         $my = Carbon::parse($this->formAttendance['date']);
@@ -133,6 +137,14 @@ class AttendanceComponent extends Component
         Cache::forget("attendance-{$this->formAttendance['user_id']}-{$this->formAttendance['date']}");
         Cache::forget("attendance-{$this->formAttendance['user_id']}-{$weekFormat}");
         Cache::forget("attendance-{$this->formAttendance['user_id']}-{$my->month}-{$my->year}");
+    }
+
+    public function cancelEditAttendance()
+    {
+        $this->editingAttendance = false;
+        if ($this->month) {
+            $this->viewingMonthlyDetail = true;
+        }
     }
 
     public function mount()
