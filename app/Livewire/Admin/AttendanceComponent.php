@@ -202,10 +202,17 @@ class AttendanceComponent extends Component
         $employees = User::where('group', 'user')
             ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
             ->when($this->search, function (Builder $q) {
-                return $q->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('nip', 'like', '%' . $this->search . '%');
+                return $q->where(function (Builder $query) {
+                    $query->where('name', 'like', '%' . $this->search . '%')
+                        ->orWhere('nip', 'like', '%' . $this->search . '%');
+                });
             })
-            ->when($this->division, fn (Builder $q) => $q->where('division_id', $this->division))
+            ->when($this->division, function (Builder $q) {
+                if (auth()->user()->group === 'admin' && $this->division != auth()->user()->division_id) {
+                    return $q->whereRaw('1 = 0');
+                }
+                return $q->where('division_id', $this->division);
+            })
             ->when($this->jobTitle, fn (Builder $q) => $q->where('job_title_id', $this->jobTitle))
             ->paginate(20)->through(function (User $user) {
                 if ($this->date) {

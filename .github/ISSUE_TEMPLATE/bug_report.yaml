@@ -1,0 +1,169 @@
+name: Bug Report
+description: Laporkan bug/issue agar bisa ditriage dan diperbaiki dengan cepat.
+title: "[BUG] "
+labels: ["bug"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Laporan Bug (Absensi Project)
+        Isi form ini selengkap mungkin agar tim bisa langsung melakukan *reproduce*, menganalisis, dan memperbaiki *error* yang terjadi.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Ringkasan Bug
+      description: Jelaskan bug secara singkat dan jelas.
+      placeholder: "Contoh: Saat filter bulan Juni 2026 pada riwayat absensi, muncul error 500."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_route_group
+    attributes:
+      label: Modul / Area Terdampak
+      description: Pilih area modul absensi yang mengalami kendala.
+      options:
+        - Auth & Session (/login, /logout)
+        - Dashboard Admin (/admin/dashboard)
+        - Dashboard Karyawan (/dashboard)
+        - Master Data - Karyawan (/admin/employees)
+        - Master Data - Shift (/admin/masterdata/shift)
+        - Master Data - Jabatan (/admin/masterdata/job-title)
+        - Master Data - Divisi (/admin/masterdata/division)
+        - Master Data - Kantor (/admin/masterdata/office)
+        - Absensi & Laporan Admin (/admin/attendances)
+        - Riwayat Absensi Karyawan (/attendance-history)
+        - Lainnya / Komponen Global
+    validations:
+      required: true
+
+  - type: input
+    id: affected_route_exact
+    attributes:
+      label: URL / Path Spesifik
+      description: Path spesifik tempat error terjadi.
+      placeholder: "Contoh: /admin/attendances atau /attendance-history"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: affected_layers
+    attributes:
+      label: Layer Terdampak (Opsional)
+      description: Centang jika Anda mengetahui bagian teknis mana yang bermasalah.
+      options:
+        - label: Blade Views (UI/Tampilan)
+        - label: Livewire Components (Logic interaktif frontend)
+        - label: Controllers / Routes / Middleware
+        - label: Database / Eloquent Models / Cache
+        - label: Styling (Tailwind CSS)
+        - label: Integrasi Map/GPS (Leaflet)
+
+  - type: dropdown
+    id: scenario
+    attributes:
+      label: Skenario Kejadian
+      description: Pilih aksi apa yang sedang dilakukan saat bug muncul.
+      options:
+        - Memuat halaman pertama kali (Initial Load)
+        - Submit form (Create/Update)
+        - Filter / Search / Pagination
+        - Membuka Modal UI / Pop-up
+        - Menekan tombol aksi (Delete/Edit/Approve)
+        - Autentikasi / Sesi habis
+        - Deteksi Lokasi / GPS
+        - Export / Cetak Laporan
+        - Lainnya
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce_steps
+    attributes:
+      label: Langkah Reproduksi (Steps to Reproduce)
+      description: Berikan langkah urut agar bug bisa dipicu ulang oleh developer.
+      placeholder: |
+        1. Login sebagai Admin
+        2. Buka menu Absensi (/admin/attendances)
+        3. Klik filter bulan menjadi "Juni 2026"
+        4. Klik pada tombol panah / pagination
+        5. Perhatikan halaman nge-freeze
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Hasil yang Diharapkan (Expected Behavior)
+      placeholder: "Halaman memuat data absensi bulan tersebut dan pagination berfungsi normal tanpa freeze."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Hasil Aktual (Actual Behavior)
+      placeholder: "Halaman langsung freeze dan fungsi scroll tidak bisa digunakan."
+    validations:
+      required: true
+
+  - type: textarea
+    id: application_logs
+    attributes:
+      label: Log Error (Opsional)
+      description: Cantumkan cuplikan `laravel.log` atau console browser jika ada.
+      placeholder: "TypeError: Illegal offset type in..."
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: user_role
+    attributes:
+      label: Role User
+      description: Role user yang digunakan saat error terjadi.
+      placeholder: "Contoh: Superadmin / Admin / Karyawan"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment (Browser/OS)
+      description: Informasi perangkat dan browser yang digunakan.
+      placeholder: "Contoh: Chrome Desktop macOS / Safari iOS Mobile"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Dampak Bisnis / Urgensi
+      options:
+        - Blocker (Fitur utama mati total / Error 500)
+        - High (Fungsi terganggu parah, misal page freeze)
+        - Medium (Ada fitur gagal tapi masih ada jalan pintas)
+        - Low (Hanya isu tampilan/kosmetik)
+    validations:
+      required: true
+
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshot / Video
+      description: Tarik dan lepas (Drag & Drop) gambar atau paste link bukti visual di sini.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist Reporter
+      options:
+        - label: Saya sudah menuliskan langkah reproduksi yang jelas.
+          required: true
+        - label: Saya menggunakan issue ini murni untuk melaporkan Bug, bukan Feature Request.
+          required: true

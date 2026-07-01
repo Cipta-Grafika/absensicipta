@@ -32,6 +32,7 @@
     
     <x-slot name="content">
       <div class="flex flex-col gap-6">
+        @if (Auth::user()->isSuperadmin)
         <div>
           <x-label for="division_filter" value="Pilih Divisi" class="mb-1"></x-label>
           <x-select id="division_filter" class="w-full" wire:model.live="division">
@@ -43,6 +44,7 @@
             @endforeach
           </x-select>
         </div>
+        @endif
         <div>
           <x-label for="jobTitle_filter" value="Pilih Jabatan" class="mb-1"></x-label>
           <x-select id="jobTitle_filter" class="w-full" wire:model.live="jobTitle">
