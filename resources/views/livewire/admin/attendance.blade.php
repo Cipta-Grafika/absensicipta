@@ -56,6 +56,7 @@
           <x-input type="date" name="day_filter" id="day_filter" class="w-full" wire:model.live="date" />
         </div>
         <hr class="dark:border-gray-700">
+        @if (Auth::user()->isSuperadmin)
         <div>
           <x-label for="division" value="Pilih Divisi" class="mb-1"></x-label>
           <x-select id="division" class="w-full" wire:model.live="division">
@@ -67,6 +68,7 @@
             @endforeach
           </x-select>
         </div>
+        @endif
         <div>
           <x-label for="jobTitle" value="Pilih Jabatan" class="mb-1"></x-label>
           <x-select id="jobTitle" class="w-full" wire:model.live="jobTitle">
