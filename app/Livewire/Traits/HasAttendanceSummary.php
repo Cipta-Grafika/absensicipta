@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 trait HasAttendanceSummary
 {
-    public function getAttendanceSummary($date, $week, $month)
+    public function getAttendanceSummary($date, $week, $month, $search = null, $division = null, $jobTitle = null)
     {
         $queryDateStart = now()->startOfDay();
         $queryDateEnd = now()->endOfDay();
@@ -50,26 +50,36 @@ trait HasAttendanceSummary
 
         $user = auth()->user();
 
+        $userFilter = function (Builder $q) use ($user, $search, $division, $jobTitle) {
+            if ($user->group === 'admin') {
+                $q->where('division_id', $user->division_id);
+            }
+            if ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('nip', 'like', '%' . $search . '%');
+                });
+            }
+            if ($division) {
+                $q->where('division_id', $division);
+            }
+            if ($jobTitle) {
+                $q->where('job_title_id', $jobTitle);
+            }
+        };
+
         // Fetch current period attendances
         $currentAttendances = Attendance::whereBetween('date', [$queryDateStart->format('Y-m-d'), $queryDateEnd->format('Y-m-d')])
-            ->whereHas('user', function (Builder $q) use ($user) {
-                if ($user->group === 'admin') {
-                    $q->where('division_id', $user->division_id);
-                }
-            })
+            ->whereHas('user', $userFilter)
             ->get();
 
         // Fetch last period attendances
         $lastAttendances = Attendance::whereBetween('date', [$prevDateStart->format('Y-m-d'), $prevDateEnd->format('Y-m-d')])
-            ->whereHas('user', function (Builder $q) use ($user) {
-                if ($user->group === 'admin') {
-                    $q->where('division_id', $user->division_id);
-                }
-            })
+            ->whereHas('user', $userFilter)
             ->get();
 
         $employeesCount = User::where('group', 'user')
-            ->when($user->group === 'admin', fn (Builder $q) => $q->where('division_id', $user->division_id))
+            ->where($userFilter)
             ->count();
 
         $presentCount = $currentAttendances->whereIn('status', ['present', 'late'])->count();
@@ -116,7 +126,7 @@ trait HasAttendanceSummary
             $stats[$key]['is_down'] = $diff < 0;
         }
 
-        $sparklines = $this->generateDynamicSparklines($date, $week, $month, $user);
+        $sparklines = $this->generateDynamicSparklines($date, $week, $month, $user, $userFilter);
 
         return [
             'employeesCount' => $employeesCount,
@@ -135,7 +145,7 @@ trait HasAttendanceSummary
         ];
     }
 
-    private function generateDynamicSparklines($date, $week, $month, $user)
+    private function generateDynamicSparklines($date, $week, $month, $user, $userFilter = null)
     {
         $points = 10; // Number of points to show in sparkline
         
@@ -158,8 +168,8 @@ trait HasAttendanceSummary
 
         $query = Attendance::whereBetween('date', [$start->format('Y-m-d'), $end->format('Y-m-d')]);
         
-        if ($user->group === 'admin') {
-            $query->whereHas('user', fn($q) => $q->where('division_id', $user->division_id));
+        if ($userFilter) {
+            $query->whereHas('user', $userFilter);
         }
 
         $records = $query->selectRaw('date, status, count(*) as count')

@@ -35,7 +35,7 @@
       @foreach ($dates as $date)
         @php
           $isSunday = $date->isSunday();
-          $attendance = $attendances->firstWhere(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
+          $attendance = $attendances->first(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
           $status = ($attendance ?? [
               'status' => $isSunday || !$date->isPast() ? '-' : 'absent',
           ])['status'];

@@ -292,7 +292,7 @@ class AttendanceComponent extends Component
                 $user->attendances = $attendances;
                 return $user;
             });
-        $summary = $this->getAttendanceSummary($this->date, $this->week, $this->month);
+        $summary = $this->getAttendanceSummary($this->date, $this->week, $this->month, $this->search, $this->division, $this->jobTitle);
 
         return view('livewire.admin.attendance', array_merge($summary, [
             'employees' => $employees, 
