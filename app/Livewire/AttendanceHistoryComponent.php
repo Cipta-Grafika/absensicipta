@@ -52,7 +52,7 @@ class AttendanceHistoryComponent extends Component
                 )->toArray();
             }
         ) ?? []);
-        $attendanceToday = $attendances->firstWhere(fn ($v, $_) => $v['date'] === Carbon::now()->format('Y-m-d'));
+        $attendanceToday = $attendances->first(fn ($v, $_) => $v['date'] === Carbon::now()->format('Y-m-d'));
         return view('livewire.attendance-history', [
             'attendances' => $attendances,
             'attendanceToday' => $attendanceToday,
