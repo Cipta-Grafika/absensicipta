@@ -18,7 +18,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        <x-input type="text" class="block w-full pl-10 pr-10" name="search" id="search" autocomplete="off" wire:model.live.debounce.300ms="search"
+        <x-input type="search" class="block w-full pl-10 pr-10" name="attendance_search" id="attendance_search" autocomplete="off" wire:model.live.debounce.300ms="search"
           placeholder="{{ __('Search') }}" />
         @if ($search)
           <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
