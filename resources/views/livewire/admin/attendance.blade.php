@@ -18,7 +18,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        <x-input type="text" class="block w-full pl-10 pr-10" name="search" id="seacrh" wire:model.live.debounce.300ms="search"
+        <x-input type="text" class="block w-full pl-10 pr-10" name="search" id="search" autocomplete="off" wire:model.live.debounce.300ms="search"
           placeholder="{{ __('Search') }}" />
         @if ($search)
           <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
@@ -105,21 +105,21 @@
     <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+          <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
             {{ $showUserDetail ? __('Name') : __('Name') . '/' . __('Date') }}
           </th>
           @if ($showUserDetail)
-            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
               {{ __('NIP') }}
             </th>
-            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
               {{ __('Division') }}
             </th>
-            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
               {{ __('Job Title') }}
             </th>
             @if ($isPerDayFilter)
-              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+              <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
                 {{ __('Shift') }}
               </th>
             @endif
@@ -158,8 +158,10 @@
           @if (!$isPerDayFilter)
             @foreach (['H', 'T', 'I', 'S', 'A', 'W', 'C'] as $_st)
               <th scope="col"
-                class="text-nowrap border border-gray-300 px-1 py-3 text-center text-xs font-medium text-gray-500 dark:border-gray-600 dark:text-gray-300">
-                {{ $_st }}
+                class="w-12 min-w-[3rem] border border-gray-300 p-0 text-center text-xs font-medium text-gray-500 dark:border-gray-600 dark:text-gray-300">
+                <div class="flex h-12 w-12 items-center justify-center">
+                  {{ $_st }}
+                </div>
               </th>
             @endforeach
           @endif
@@ -168,7 +170,7 @@
       </thead>
       <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
         @php
-          $class = 'cursor-pointer px-4 py-3 text-sm font-medium text-gray-900 dark:text-white';
+          $class = 'cursor-pointer px-2 py-3 text-sm font-medium text-gray-900 dark:text-white';
         @endphp
         @foreach ($employees as $employee)
           @php
@@ -331,8 +333,10 @@
                   'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700' => $leaveCount
               ] as $bgClass => $statusCount)
                 <td
-                  class="{{ $bgClass }} cursor-pointer border border-gray-300 px-1 py-3 text-center text-sm font-medium text-gray-900 dark:border-gray-600 dark:text-white">
-                  {{ $statusCount }}
+                  class="{{ $bgClass }} cursor-pointer border border-gray-300 p-0 text-center text-sm font-medium text-gray-900 dark:border-gray-600 dark:text-white">
+                  <div class="flex h-12 w-12 items-center justify-center">
+                    {{ $statusCount }}
+                  </div>
                 </td>
               @endforeach
             @endif
@@ -430,7 +434,7 @@
       </x-slot>
 
       <x-slot name="footer">
-        <x-secondary-button wire:click="$toggle('editingAttendance')" wire:loading.attr="disabled">
+        <x-secondary-button wire:click="cancelEditAttendance" wire:loading.attr="disabled">
           {{ __('Cancel') }}
         </x-secondary-button>
 
