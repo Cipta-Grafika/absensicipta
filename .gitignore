@@ -20,4 +20,11 @@ yarn-error.log
 /.idea
 /.vscode
 /.env
+/docs
+./docs
+.DS_Store
+/.DS_Store
+./.DS_Store
+
+
 

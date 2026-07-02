@@ -7,7 +7,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        <x-input type="text" class="block w-full pl-10 pr-10" name="search" id="seacrh" wire:model.live.debounce.300ms="search"
+        <!-- Dummy inputs to trap browser aggressive credential autofill -->
+        <div class="absolute h-0 w-0 overflow-hidden opacity-0 pointer-events-none -z-50">
+          <input type="text" name="dummy_username" autocomplete="username">
+          <input type="password" name="dummy_password" autocomplete="current-password">
+        </div>
+        <x-input type="text" class="block w-full pl-10 pr-10" name="employee_search" id="employee_search" autocomplete="off" wire:model.live.debounce.300ms="search"
           placeholder="{{ __('Search') }}" />
         @if ($search)
           <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
@@ -32,6 +37,7 @@
     
     <x-slot name="content">
       <div class="flex flex-col gap-6">
+        @if (Auth::user()->isSuperadmin)
         <div>
           <x-label for="division_filter" value="Pilih Divisi" class="mb-1"></x-label>
           <x-select id="division_filter" class="w-full" wire:model.live="division">
@@ -43,6 +49,7 @@
             @endforeach
           </x-select>
         </div>
+        @endif
         <div>
           <x-label for="jobTitle_filter" value="Pilih Jabatan" class="mb-1"></x-label>
           <x-select id="jobTitle_filter" class="w-full" wire:model.live="jobTitle">
@@ -178,7 +185,7 @@
       Karyawan Baru
     </x-slot>
 
-    <form wire:submit="create">
+    <form wire:submit="create" autocomplete="off">
       <x-slot name="content">
         @if (Laravel\Jetstream\Jetstream::managesProfilePhotos())
           <div x-data="{ photoName: null, photoPreview: null }" class="flex flex-col items-center">
@@ -392,7 +399,7 @@
       Edit Karyawan
     </x-slot>
 
-    <form wire:submit.prevent="update" id="user-edit">
+    <form wire:submit.prevent="update" id="user-edit" autocomplete="off">
       <x-slot name="content">
         @if (Laravel\Jetstream\Jetstream::managesProfilePhotos())
           <div x-data="{ photoName: null, photoPreview: null }" class="flex flex-col items-center">

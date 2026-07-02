@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Livewire\Traits\AttendanceDetailTrait;
+use App\Livewire\Traits\HasAttendanceSummary;
 use App\Models\Attendance;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +17,7 @@ use Livewire\WithPagination;
 
 class AttendanceComponent extends Component
 {
-    use AttendanceDetailTrait;
+    use AttendanceDetailTrait, HasAttendanceSummary;
     use WithPagination, InteractsWithBanner;
 
     #[On('print-report')]
@@ -41,6 +42,16 @@ class AttendanceComponent extends Component
 
     public bool $editingAttendance = false;
     public array $formAttendance = [];
+    
+    public bool $viewingMonthlyDetail = false;
+    public ?string $monthlyDetailUserId = null;
+
+    public function showMonthlyDetail($userId)
+    {
+        \Illuminate\Support\Facades\Log::info("showMonthlyDetail triggered for user: " . $userId);
+        $this->monthlyDetailUserId = $userId;
+        $this->viewingMonthlyDetail = true;
+    }
 
     public function editAttendance($userId, $date)
     {
@@ -68,6 +79,7 @@ class AttendanceComponent extends Component
             'note' => $attendance ? $attendance->note : null,
         ];
 
+        $this->viewingMonthlyDetail = false;
         $this->editingAttendance = true;
     }
 
@@ -75,6 +87,10 @@ class AttendanceComponent extends Component
     {
         if (!auth()->user()->isAdmin) {
             return;
+        }
+
+        if (!auth()->user()->isSuperadmin) {
+            abort(403, 'Forbidden. Only Superadmin can modify attendance.');
         }
 
         $user = User::findOrFail($this->formAttendance['user_id']);
@@ -113,6 +129,10 @@ class AttendanceComponent extends Component
         }
 
         $this->editingAttendance = false;
+        if ($this->month) {
+            $this->viewingMonthlyDetail = true;
+        }
+
         $this->banner('Absensi berhasil diperbarui!');
         
         $my = Carbon::parse($this->formAttendance['date']);
@@ -121,6 +141,14 @@ class AttendanceComponent extends Component
         Cache::forget("attendance-{$this->formAttendance['user_id']}-{$this->formAttendance['date']}");
         Cache::forget("attendance-{$this->formAttendance['user_id']}-{$weekFormat}");
         Cache::forget("attendance-{$this->formAttendance['user_id']}-{$my->month}-{$my->year}");
+    }
+
+    public function cancelEditAttendance()
+    {
+        $this->editingAttendance = false;
+        if ($this->month) {
+            $this->viewingMonthlyDetail = true;
+        }
     }
 
     public function mount()
@@ -163,6 +191,7 @@ class AttendanceComponent extends Component
 
     public function render()
     {
+        $dates = [];
         if ($this->date) {
             $dates = [Carbon::parse($this->date)];
         } else if ($this->week) {
@@ -177,10 +206,17 @@ class AttendanceComponent extends Component
         $employees = User::where('group', 'user')
             ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
             ->when($this->search, function (Builder $q) {
-                return $q->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('nip', 'like', '%' . $this->search . '%');
+                return $q->where(function (Builder $query) {
+                    $query->where('name', 'like', '%' . $this->search . '%')
+                        ->orWhere('nip', 'like', '%' . $this->search . '%');
+                });
             })
-            ->when($this->division, fn (Builder $q) => $q->where('division_id', $this->division))
+            ->when($this->division, function (Builder $q) {
+                if (auth()->user()->group === 'admin' && $this->division != auth()->user()->division_id) {
+                    return $q->whereRaw('1 = 0');
+                }
+                return $q->where('division_id', $this->division);
+            })
             ->when($this->jobTitle, fn (Builder $q) => $q->where('job_title_id', $this->jobTitle))
             ->paginate(20)->through(function (User $user) {
                 if ($this->date) {
@@ -267,6 +303,11 @@ class AttendanceComponent extends Component
                 $user->attendances = $attendances;
                 return $user;
             });
-        return view('livewire.admin.attendance', ['employees' => $employees, 'dates' => $dates]);
+        $summary = $this->getAttendanceSummary($this->date, $this->week, $this->month, $this->search, $this->division, $this->jobTitle);
+
+        return view('livewire.admin.attendance', array_merge($summary, [
+            'employees' => $employees, 
+            'dates' => $dates
+        ]));
     }
 }

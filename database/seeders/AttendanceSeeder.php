@@ -22,7 +22,7 @@ class AttendanceSeeder extends Seeder
         $statuses = ['present', 'present', 'present', 'present', 'late', 'excused', 'sick'];
 
         foreach ($dates as $date) {
-            if ($date->isWeekend()) continue;
+            if ($date->isSunday()) continue;
 
             /** @var User[] */
             $users = User::inRandomOrder()->where('group', 'user')->limit(5)->get();

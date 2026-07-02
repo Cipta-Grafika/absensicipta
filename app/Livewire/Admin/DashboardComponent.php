@@ -3,56 +3,69 @@
 namespace App\Livewire\Admin;
 
 use App\Livewire\Traits\AttendanceDetailTrait;
+use App\Livewire\Traits\HasAttendanceSummary;
 use App\Models\Attendance;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class DashboardComponent extends Component
 {
-    use AttendanceDetailTrait;
+    use AttendanceDetailTrait, HasAttendanceSummary;
+    use WithPagination;
+
+
+    #[Url]
+    public $date = '';
+
+    #[Url]
+    public $week = '';
+
+    #[Url]
+    public $month = '';
+
+    public function updating($key): void
+    {
+        if ($key === 'month') {
+            $this->resetPage();
+            $this->week = '';
+            $this->date = '';
+        }
+        if ($key === 'week') {
+            $this->resetPage();
+            $this->month = '';
+            $this->date = '';
+        }
+        if ($key === 'date') {
+            $this->resetPage();
+            $this->month = '';
+            $this->week = '';
+        }
+    }
 
     public function render()
     {
-        /** @var Collection<Attendance>  */
-        $attendances = Attendance::where('date', date('Y-m-d'))
-            ->whereHas('user', function ($q) {
-                if (auth()->user()->group === 'admin') {
-                    $q->where('division_id', auth()->user()->division_id);
-                }
-            })
-            ->get();
+        $summary = $this->getAttendanceSummary($this->date, $this->week, $this->month);
+        
+        $currentAttendances = $summary['currentAttendances'];
 
-        /** @var Collection<User>  */
+        // For the employees table, we show today's status or the filtered date's status.
         $employees = User::where('group', 'user')
             ->when(auth()->user()->group === 'admin', fn ($q) => $q->where('division_id', auth()->user()->division_id))
             ->paginate(20)
-            ->through(function (User $user) use ($attendances) {
+            ->through(function (User $user) use ($currentAttendances) {
                 return $user->setAttribute(
                     'attendance',
-                    $attendances
+                    $currentAttendances
                         ->where(fn (Attendance $attendance) => $attendance->user_id === $user->id)
                         ->first(),
                 );
             });
 
-        $employeesCount = User::where('group', 'user')
-            ->when(auth()->user()->group === 'admin', fn ($q) => $q->where('division_id', auth()->user()->division_id))
-            ->count();
-        $presentCount = $attendances->where(fn ($attendance) => $attendance->status === 'present')->count();
-        $lateCount = $attendances->where(fn ($attendance) => $attendance->status === 'late')->count();
-        $excusedCount = $attendances->where(fn ($attendance) => $attendance->status === 'excused')->count();
-        $sickCount = $attendances->where(fn ($attendance) => $attendance->status === 'sick')->count();
-        $absentCount = $employeesCount - ($presentCount + $lateCount + $excusedCount + $sickCount);
-
-        return view('livewire.admin.dashboard', [
+        return view('livewire.admin.dashboard', array_merge($summary, [
             'employees' => $employees,
-            'employeesCount' => $employeesCount,
-            'presentCount' => $presentCount,
-            'lateCount' => $lateCount,
-            'excusedCount' => $excusedCount,
-            'sickCount' => $sickCount,
-            'absentCount' => $absentCount,
-        ]);
+        ]));
     }
 }
