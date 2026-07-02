@@ -200,7 +200,7 @@
     </x-slot>
     <x-slot name="footer">
       <div class="flex w-full justify-center pb-4 pt-2">
-        <button wire:click="closeMotivationModal" class="px-10 py-3 bg-red-400 hover:bg-red-500 text-white font-bold text-lg rounded-full transition shadow-lg transform hover:scale-105 focus:outline-none">
+        <button type="button" x-on:click="show = false" class="px-10 py-3 bg-red-400 hover:bg-red-500 text-white font-bold text-lg rounded-full transition shadow-lg transform hover:scale-105 focus:outline-none">
           Okay
         </button>
       </div>
