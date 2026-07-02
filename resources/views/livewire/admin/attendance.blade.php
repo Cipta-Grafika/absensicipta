@@ -273,7 +273,7 @@
                           break;
                   }
                 @endphp
-                @if (Auth::user()->isSuperadmin)
+                @if (Auth::user()->isAdmin)
                   <td
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
@@ -362,10 +362,10 @@
   <x-attendance-detail-modal :current-attendance="$currentAttendance" />
   @stack('attendance-detail-scripts')
 
-  @if (Auth::user()->isSuperadmin)
+  @if (Auth::user()->isAdmin)
     <x-dialog-modal wire:model="editingAttendance">
       <x-slot name="title">
-        {{ __('Manipulasi Absensi') }}
+        {{ Auth::user()->isSuperadmin ? __('Manipulasi Absensi') : __('Detail Absensi') }}
       </x-slot>
 
       <x-slot name="content">
@@ -377,7 +377,7 @@
             </div>
             <div class="w-full">
               <x-label for="edit_shift_id" value="{{ __('Shift') }}" />
-              <x-select id="edit_shift_id" class="mt-1 block w-full" wire:model.live="formAttendance.shift_id">
+              <x-select id="edit_shift_id" class="mt-1 block w-full" wire:model.live="formAttendance.shift_id" {{ !Auth::user()->isSuperadmin ? 'disabled' : '' }}>
                 <option value="">{{ __('Select Shift') }}</option>
                 @foreach (App\Models\Shift::all() as $shift)
                   <option value="{{ $shift->id }}">{{ $shift->name }}</option>
@@ -392,14 +392,14 @@
           <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
             <div class="w-full">
               <x-label for="edit_time_in">{{ __('Time In') }}</x-label>
-              <x-input id="edit_time_in" class="mt-1 block w-full" type="time" wire:model="formAttendance.time_in" />
+              <x-input id="edit_time_in" class="mt-1 block w-full" type="time" wire:model="formAttendance.time_in" {{ !Auth::user()->isSuperadmin ? 'disabled' : '' }} />
               @error('formAttendance.time_in')
                 <x-input-error for="formAttendance.time_in" class="mt-2" message="{{ $message }}" />
               @enderror
             </div>
             <div class="w-full">
               <x-label for="edit_time_out">{{ __('Time Out') }}</x-label>
-              <x-input id="edit_time_out" class="mt-1 block w-full" type="time" wire:model="formAttendance.time_out" />
+              <x-input id="edit_time_out" class="mt-1 block w-full" type="time" wire:model="formAttendance.time_out" {{ !Auth::user()->isSuperadmin ? 'disabled' : '' }} />
               @error('formAttendance.time_out')
                 <x-input-error for="formAttendance.time_out" class="mt-2" message="{{ $message }}" />
               @enderror
@@ -409,7 +409,7 @@
           <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
             <div class="w-full">
               <x-label for="edit_status" value="{{ __('Status') }}" />
-              <x-select id="edit_status" class="mt-1 block w-full" wire:model="formAttendance.status" required>
+              <x-select id="edit_status" class="mt-1 block w-full" wire:model="formAttendance.status" required {{ !Auth::user()->isSuperadmin ? 'disabled' : '' }}>
                 <option value="-">- (Kosong)</option>
                 <option value="present">{{ __('present') }}</option>
                 <option value="late">{{ __('late') }}</option>
@@ -427,7 +427,7 @@
 
           <div class="mt-4">
             <x-label for="edit_note">{{ __('Note') }}</x-label>
-            <x-input id="edit_note" class="mt-1 block w-full" type="text" wire:model="formAttendance.note" />
+            <x-input id="edit_note" class="mt-1 block w-full" type="text" wire:model="formAttendance.note" {{ !Auth::user()->isSuperadmin ? 'disabled' : '' }} />
             @error('formAttendance.note')
               <x-input-error for="formAttendance.note" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -436,13 +436,19 @@
       </x-slot>
 
       <x-slot name="footer">
-        <x-secondary-button wire:click="cancelEditAttendance" wire:loading.attr="disabled">
-          {{ __('Cancel') }}
-        </x-secondary-button>
+        @if (Auth::user()->isSuperadmin)
+          <x-secondary-button wire:click="cancelEditAttendance" wire:loading.attr="disabled">
+            {{ __('Cancel') }}
+          </x-secondary-button>
 
-        <x-button class="ml-2" type="submit" form="attendanceForm" wire:loading.attr="disabled">
-          {{ __('Confirm') }}
-        </x-button>
+          <x-button class="ml-2" type="submit" form="attendanceForm" wire:loading.attr="disabled">
+            {{ __('Confirm') }}
+          </x-button>
+        @else
+          <x-secondary-button wire:click="cancelEditAttendance" wire:loading.attr="disabled">
+            {{ __('Tutup') }}
+          </x-secondary-button>
+        @endif
       </x-slot>
     </x-dialog-modal>
   @endif
@@ -547,7 +553,7 @@
               }
             @endphp
             <button type="button" class="{{ $bgColor }} h-14 w-full py-1 text-center" 
-                    @if (Auth::user()->isSuperadmin) wire:click="editAttendance('{{ $detailUser->id }}', '{{ $date->format('Y-m-d') }}')" @endif>
+                    @if (Auth::user()->isAdmin) wire:click="editAttendance('{{ $detailUser->id }}', '{{ $date->format('Y-m-d') }}')" @endif>
               <span class="{{ $date->isSunday() ? 'text-red-500' : '' }} {{ $date->isFriday() ? 'text-green-600 dark:text-green-500' : '' }}">
                 {{ $date->format('d') }}
               </span>
