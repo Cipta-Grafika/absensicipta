@@ -89,6 +89,10 @@ class AttendanceComponent extends Component
             return;
         }
 
+        if (!auth()->user()->isSuperadmin) {
+            abort(403, 'Forbidden. Only Superadmin can modify attendance.');
+        }
+
         $user = User::findOrFail($this->formAttendance['user_id']);
         if (auth()->user()->group === 'admin' && $user->division_id !== auth()->user()->division_id) {
             abort(403);

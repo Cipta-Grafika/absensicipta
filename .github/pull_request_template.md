@@ -36,6 +36,7 @@
 - [ ] Master Data (Shift, Jabatan, Divisi, Kantor, Libur)
 - [ ] Laporan / Export Data
 - [ ] Shared / Global Components (Modals, Navbars, dsb.)
+- [ ] Others _____
 
 ## UI/UX & Frontend Checklist
 - [ ] Responsive on mobile/tablet/desktop
