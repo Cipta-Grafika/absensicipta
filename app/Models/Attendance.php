@@ -106,13 +106,12 @@ class Attendance extends Model
         });
     }
 
-    public function attachmentUrl(): ?Attribute
+    public function attachmentUrl(): Attribute
     {
-        if (!$this->attachment) {
-            return null;
-        }
-
-        return Attribute::get(function (): string {
+        return Attribute::get(function (): ?string {
+            if (!$this->attachment) {
+                return null;
+            }
             if (str_contains($this->attachment, 'https://') || str_contains($this->attachment, 'http://')) {
                 return $this->attachment;
             }
