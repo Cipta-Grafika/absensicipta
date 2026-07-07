@@ -157,7 +157,6 @@
       </div>
       </div>
     </div>
-  </div>
 
   <!-- Motivational Modal -->
   <x-dialog-modal wire:model.live="showMotivationModal" maxWidth="sm">

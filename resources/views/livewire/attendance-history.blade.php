@@ -23,15 +23,7 @@
           </div>
         @endforeach
       @endif
-      @php
-        $presentCount = 0;
-        $lateCount = 0;
-        $excusedCount = 0;
-        $sickCount = 0;
-        $absentCount = 0;
-        $wfhCount = 0;
-        $leaveCount = 0;
-      @endphp
+
       @foreach ($dates as $date)
         @php
           $isSunday = $date->isSunday();
@@ -44,37 +36,30 @@
               case 'present':
                   $shortStatus = 'H';
                   $bgColor = 'bg-green-200 dark:bg-green-800 hover:bg-green-300 dark:hover:bg-green-700 border border-green-300 dark:border-green-600';
-                  $presentCount++;
                   break;
               case 'late':
                   $shortStatus = 'T';
                   $bgColor = 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700 border border-orange-300 dark:border-orange-600';
-                  $lateCount++;
                   break;
               case 'excused':
                   $shortStatus = 'I';
                   $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
-                  $excusedCount++;
                   break;
               case 'sick':
                   $shortStatus = 'S';
                   $bgColor = 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-300 dark:border-yellow-600';
-                  $sickCount++;
                   break;
               case 'absent':
                   $shortStatus = 'A';
                   $bgColor = 'bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 border border-red-300 dark:border-red-600';
-                  $absentCount++;
                   break;
               case 'wfh':
                   $shortStatus = 'W';
                   $bgColor = 'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700 border border-purple-300 dark:border-purple-600';
-                  $wfhCount++;
                   break;
               case 'leave':
                   $shortStatus = 'C';
                   $bgColor = 'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
-                  $leaveCount++;
                   break;
               default:
                   $shortStatus = '-';
@@ -109,44 +94,19 @@
         @endforeach
       @endif
     </div>
-    <div class="grid h-fit w-full grid-cols-2 gap-3 lg:grid-cols-3">
-      <div
-        class="flex items-center justify-between rounded-md bg-green-200 px-4 py-2 text-gray-800 dark:bg-green-900 dark:text-white dark:shadow-gray-700">
-        <div>
-          <h4 class="text-lg font-semibold md:text-xl">Hadir: {{ $presentCount + $lateCount }}</h4>
-          Terlambat: {{ $lateCount }}
-        </div>
-      </div>
-      <div
-        class="flex items-center justify-between rounded-md bg-blue-200 px-4 py-2 text-gray-800 dark:bg-blue-900 dark:text-white dark:shadow-gray-700">
-        <div>
-          <h4 class="text-lg font-semibold md:text-xl">Izin: {{ $excusedCount }}</h4>
-        </div>
-      </div>
-      <div
-        class="flex items-center justify-between rounded-md bg-yellow-200 px-4 py-2 text-gray-800 dark:bg-yellow-900 dark:text-white dark:shadow-gray-700">
-        <div>
-          <h4 class="text-lg font-semibold md:text-xl">Sakit: {{ $sickCount }}</h4>
-        </div>
-      </div>
-      <div
-        class="flex items-center justify-between rounded-md bg-red-200 px-4 py-2 text-gray-800 dark:bg-red-900 dark:text-white dark:shadow-gray-700">
-        <div>
-          <h4 class="text-lg font-semibold md:text-xl">Absen: {{ $absentCount }}</h4>
-        </div>
-      </div>
-      <div
-        class="flex items-center justify-between rounded-md bg-purple-200 px-4 py-2 text-gray-800 dark:bg-purple-900 dark:text-white dark:shadow-gray-700">
-        <div>
-          <h4 class="text-lg font-semibold md:text-xl">WFH: {{ $wfhCount }}</h4>
-        </div>
-      </div>
-      <div
-        class="flex items-center justify-between rounded-md bg-teal-200 px-4 py-2 text-gray-800 dark:bg-teal-900 dark:text-white dark:shadow-gray-700">
-        <div>
-          <h4 class="text-lg font-semibold md:text-xl">Cuti: {{ $leaveCount }}</h4>
-        </div>
-      </div>
+    <div class="w-full">
+      @if (isset($stats) && !empty($stats))
+        <x-admin.attendance-summary-cards
+          :stats="$stats"
+          :presentCount="$presentCount"
+          :wfhCount="$wfhCount"
+          :excusedCount="$excusedCount"
+          :sickCount="$sickCount"
+          :leaveCount="$leaveCount"
+          :absentCount="$absentCount"
+          :sparklines="$sparklines"
+        />
+      @endif
     </div>
   </div>
 
