@@ -76,6 +76,12 @@ class AttendancesImport implements ToModel, WithHeadingRow, WithValidation, Skip
             case 'cuti':
             case 'leave':
                 return 'leave';
+            case 'imp':
+                return 'imp';
+            case 'cuti khusus':
+            case 'special leaves':
+            case 'special-leaves':
+                return 'special-leaves';
             default:
                 return null;
         }
