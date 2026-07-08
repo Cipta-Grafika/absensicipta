@@ -45,6 +45,10 @@
                   $shortStatus = 'I';
                   $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                   break;
+              case 'imp':
+                  $shortStatus = 'IMP';
+                  $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
+                  break;
               case 'sick':
                   $shortStatus = 'S';
                   $bgColor = 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-300 dark:border-yellow-600';
@@ -60,6 +64,10 @@
               case 'leave':
                   $shortStatus = 'C';
                   $bgColor = 'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
+                  break;
+              case 'special-leaves':
+                  $shortStatus = 'CK';
+                  $bgColor = 'bg-cyan-200 dark:bg-cyan-800 hover:bg-cyan-300 dark:hover:bg-cyan-700 border border-cyan-300 dark:border-cyan-600';
                   break;
               default:
                   $shortStatus = '-';
