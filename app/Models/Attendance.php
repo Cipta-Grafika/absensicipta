@@ -28,6 +28,8 @@ class Attendance extends Model
         'latitude',
         'longitude',
         'status',
+        'imp_duration_hours',
+        'replaced_duration_hours',
         'note',
         'attachment',
     ];

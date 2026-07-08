@@ -76,8 +76,21 @@ class AttendanceComponent extends Component
             'time_out' => $attendance ? ($attendance->time_out ? Carbon::parse($attendance->time_out)->format('H:i') : null) : null,
             'shift_id' => $attendance ? $attendance->shift_id : null,
             'status' => $attendance ? $attendance->status : '-',
+            'imp_duration_hours' => $attendance ? $attendance->imp_duration_hours : null,
             'note' => $attendance ? $attendance->note : null,
         ];
+
+        // Calculate replaced hours from replacement_hours table
+        $replacedHoursRecords = \App\Models\ReplacementHour::where('user_id', $userId)
+            ->where('replaced_date', $date)
+            ->where('status', 'approved')
+            ->get();
+            
+        $replacedMinutes = $replacedHoursRecords->sum('duration_minutes');
+        $calculatedReplacedHours = floor($replacedMinutes / 60);
+        $this->formAttendance['replaced_duration_hours'] = $attendance && $attendance->replaced_duration_hours !== null 
+            ? $attendance->replaced_duration_hours 
+            : $calculatedReplacedHours;
 
         $this->viewingMonthlyDetail = false;
         $this->editingAttendance = true;
@@ -103,6 +116,7 @@ class AttendanceComponent extends Component
             'formAttendance.time_out' => 'nullable|date_format:H:i',
             'formAttendance.shift_id' => 'nullable|exists:shifts,id',
             'formAttendance.status' => 'required|string',
+            'formAttendance.replaced_duration_hours' => 'nullable|integer',
             'formAttendance.note' => 'nullable|string',
         ]);
 
@@ -123,6 +137,7 @@ class AttendanceComponent extends Component
                     'time_out' => !empty($this->formAttendance['time_out']) ? $this->formAttendance['time_out'] : null,
                     'shift_id' => !empty($this->formAttendance['shift_id']) ? $this->formAttendance['shift_id'] : null,
                     'status' => $this->formAttendance['status'],
+                    'replaced_duration_hours' => isset($this->formAttendance['replaced_duration_hours']) ? $this->formAttendance['replaced_duration_hours'] : null,
                     'note' => !empty($this->formAttendance['note']) ? $this->formAttendance['note'] : null,
                 ]
             );
@@ -255,7 +270,7 @@ class AttendanceComponent extends Component
                             $attendances = Attendance::filter(
                                 userId: $user->id,
                                 week: $this->week,
-                            )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note']);
+                            )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_hours', 'replaced_duration_hours']);
 
                             return $attendances->map(
                                 function (Attendance $v) {
@@ -280,7 +295,7 @@ class AttendanceComponent extends Component
                             $attendances = Attendance::filter(
                                 month: $this->month,
                                 userId: $user->id,
-                            )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note']);
+                            )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_hours', 'replaced_duration_hours']);
 
                             return $attendances->map(
                                 function (Attendance $v) {
@@ -298,7 +313,7 @@ class AttendanceComponent extends Component
                 } else {
                     /** @var Collection */
                     $attendances = Attendance::where('user_id', $user->id)
-                        ->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note']);
+                        ->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_hours', 'replaced_duration_hours']);
                 }
                 $user->attendances = $attendances;
                 return $user;

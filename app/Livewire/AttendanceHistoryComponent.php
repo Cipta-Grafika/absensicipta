@@ -37,7 +37,7 @@ class AttendanceHistoryComponent extends Component
                 $attendances = Attendance::filter(
                     month: $this->month,
                     userId: $user->id,
-                )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note']);
+                )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_hours', 'replaced_duration_hours']);
 
                 return $attendances->map(
                     function (Attendance $v) {
@@ -71,7 +71,7 @@ class AttendanceHistoryComponent extends Component
             'excused' => ['current' => $currentCounts['excused'], 'last' => $prevCounts['excused']],
             'sick'    => ['current' => $currentCounts['sick'], 'last' => $prevCounts['sick']],
             'wfh'     => ['current' => $currentCounts['wfh'], 'last' => $prevCounts['wfh']],
-            'leave'   => ['current' => $currentCounts['leave'], 'last' => $prevCounts['leave']],
+            'leave'   => ['current' => $currentCounts['leave'] + $currentCounts['special-leaves'], 'last' => $prevCounts['leave'] + $prevCounts['special-leaves']],
             'absent'  => ['current' => $currentCounts['absent'], 'last' => $prevCounts['absent']],
         ];
 
@@ -104,7 +104,7 @@ class AttendanceHistoryComponent extends Component
             'wfhCount' => $currentCounts['wfh'],
             'excusedCount' => $currentCounts['excused'],
             'sickCount' => $currentCounts['sick'],
-            'leaveCount' => $currentCounts['leave'],
+            'leaveCount' => $currentCounts['leave'] + $currentCounts['special-leaves'],
             'absentCount' => $currentCounts['absent'],
         ]);
     }
@@ -112,7 +112,7 @@ class AttendanceHistoryComponent extends Component
     private function calculateCounts($dates, $attendances)
     {
         $counts = [
-            'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'absent' => 0, 'wfh' => 0, 'leave' => 0,
+            'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'absent' => 0, 'wfh' => 0, 'leave' => 0, 'special-leaves' => 0,
         ];
 
         foreach ($dates as $date) {
@@ -138,7 +138,7 @@ class AttendanceHistoryComponent extends Component
         $current = $start->copy();
         while ($current <= $end) {
             $periods[$current->format('Y-m-d')] = [
-                'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'wfh' => 0, 'leave' => 0, 'absent' => 0
+                'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'wfh' => 0, 'leave' => 0, 'absent' => 0, 'special-leaves' => 0
             ];
             if (!$current->isSunday() && $current->isPast()) {
                 $periods[$current->format('Y-m-d')]['absent'] = 1;
@@ -160,7 +160,7 @@ class AttendanceHistoryComponent extends Component
             'excused' => ['excused'], 
             'sick' => ['sick'], 
             'wfh' => ['wfh'], 
-            'leave' => ['leave'], 
+            'leave' => ['leave', 'special-leaves'], 
             'absent' => ['absent']
         ];
         

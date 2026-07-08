@@ -11,19 +11,20 @@ class UserAttendanceController extends Controller
 {
     public function applyLeave()
     {
-        $attendance = Attendance::where('user_id', Auth::user()->id)
-            ->where('date', date('Y-m-d'))
-            ->first();
-        return view('attendances.apply-leave', ['attendance' => $attendance]);
+        $attendance = null;
+        $shifts = \App\Models\Shift::all();
+        return view('attendances.apply-leave', ['attendance' => $attendance, 'shifts' => $shifts]);
     }
 
     public function storeLeaveRequest(Request $request)
     {
         $request->validate([
-            'status' => ['required', 'in:excused,sick,leave,wfh'],
+            'status' => ['required', 'in:excused,sick,leave,wfh,imp,special-leaves'],
             'note' => ['required', 'string', 'max:255'],
             'from' => ['required', 'date'],
-            'to' => ['nullable', 'date', 'after:from'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'imp_duration_hours' => ['nullable', 'integer', 'min:1', 'max:24', 'required_if:status,imp'],
+            'shift_id' => ['nullable', 'exists:shifts,id', 'required_if:status,imp'],
             'attachment' => ['nullable', 'file', 'max:3072'],
             'lat' => ['nullable', 'numeric'],
             'lng' => ['nullable', 'numeric'],
@@ -39,7 +40,20 @@ class UserAttendanceController extends Controller
             }
 
             $fromDate = Carbon::parse($request->from);
-            $fromDate->range($toDate = Carbon::parse($request->to ?? $fromDate))
+            $toDate = Carbon::parse($request->to ?? $fromDate);
+
+            $hasPresent = Attendance::where('user_id', Auth::user()->id)
+                ->whereBetween('date', [$fromDate->format('Y-m-d'), $toDate->format('Y-m-d')])
+                ->where('status', 'present')
+                ->first();
+
+            if ($hasPresent) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'from' => 'Anda tidak dapat mengajukan izin/status lain pada tanggal ' . Carbon::parse($hasPresent->date)->format('d/m/Y') . ' karena Anda sudah tercatat Hadir pada hari tersebut.'
+                ]);
+            }
+
+            $fromDate->range($toDate)
                 ->forEach(function (Carbon $date) use ($request, $newAttachment) {
                     $existing = Attendance::where('user_id', Auth::user()->id)
                         ->where('date', $date->format('Y-m-d'))
@@ -52,6 +66,8 @@ class UserAttendanceController extends Controller
                             'attachment' => $newAttachment ?? $existing->attachment,
                             'latitude' => doubleval($request->lat) ?? $existing->latitude,
                             'longitude' => doubleval($request->lng) ?? $existing->longitude,
+                            'imp_duration_hours' => $request->status === 'imp' ? $request->imp_duration_hours : $existing->imp_duration_hours,
+                            'shift_id' => $request->status === 'imp' ? $request->shift_id : $existing->shift_id,
                         ]);
                     } else {
                         Attendance::create([
@@ -62,6 +78,8 @@ class UserAttendanceController extends Controller
                             'attachment' => $newAttachment ?? null,
                             'latitude' => $request->lat ? doubleval($request->lat) : null,
                             'longitude' => $request->lng ? doubleval($request->lng) : null,
+                            'imp_duration_hours' => $request->status === 'imp' ? $request->imp_duration_hours : null,
+                            'shift_id' => $request->status === 'imp' ? $request->shift_id : null,
                         ]);
                     }
                 });
