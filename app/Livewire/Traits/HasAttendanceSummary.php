@@ -88,9 +88,10 @@ trait HasAttendanceSummary
         $sickCount = $currentAttendances->where('status', 'sick')->count();
         $wfhCount = $currentAttendances->where('status', 'wfh')->count();
         $leaveCount = $currentAttendances->where('status', 'leave')->count();
+        $specialLeaveCount = $currentAttendances->where('status', 'special-leaves')->count();
 
         if ($isTodayOnly) {
-            $absentCount = $employeesCount - ($presentCount + $excusedCount + $sickCount + $wfhCount + $leaveCount);
+            $absentCount = $employeesCount - ($presentCount + $excusedCount + $sickCount + $wfhCount + $leaveCount + $specialLeaveCount);
         } else {
             $absentCount = $currentAttendances->where('status', 'absent')->count();
         }
@@ -100,6 +101,7 @@ trait HasAttendanceSummary
         $prevSickCount = $lastAttendances->where('status', 'sick')->count();
         $prevWfhCount = $lastAttendances->where('status', 'wfh')->count();
         $prevLeaveCount = $lastAttendances->where('status', 'leave')->count();
+        $prevSpecialLeaveCount = $lastAttendances->where('status', 'special-leaves')->count();
         $prevAbsentCount = $lastAttendances->where('status', 'absent')->count();
 
         $stats = [
@@ -107,7 +109,7 @@ trait HasAttendanceSummary
             'excused' => ['current' => $excusedCount, 'last' => $prevExcusedCount],
             'sick'    => ['current' => $sickCount, 'last' => $prevSickCount],
             'wfh'     => ['current' => $wfhCount, 'last' => $prevWfhCount],
-            'leave'   => ['current' => $leaveCount, 'last' => $prevLeaveCount],
+            'leave'   => ['current' => $leaveCount + $specialLeaveCount, 'last' => $prevLeaveCount + $prevSpecialLeaveCount],
             'absent'  => ['current' => $absentCount, 'last' => $prevAbsentCount],
         ];
 
@@ -135,7 +137,7 @@ trait HasAttendanceSummary
             'excusedCount' => $excusedCount,
             'sickCount' => $sickCount,
             'wfhCount' => $wfhCount,
-            'leaveCount' => $leaveCount,
+            'leaveCount' => $leaveCount + $specialLeaveCount,
             'absentCount' => $absentCount,
             'stats' => $stats,
             'filterText' => $filterText,
@@ -180,7 +182,7 @@ trait HasAttendanceSummary
         $current = $start->copy();
         while ($current <= $end) {
             $periods[$current->format($format)] = [
-                'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'wfh' => 0, 'leave' => 0, 'absent' => 0, 'imp' => 0
+                'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'wfh' => 0, 'leave' => 0, 'absent' => 0, 'imp' => 0, 'special-leaves' => 0
             ];
             $current->$step();
         }
@@ -198,7 +200,7 @@ trait HasAttendanceSummary
             'excused' => ['excused', 'imp'], 
             'sick' => ['sick'], 
             'wfh' => ['wfh'], 
-            'leave' => ['leave'], 
+            'leave' => ['leave', 'special-leaves'], 
             'absent' => ['absent']
         ];
         

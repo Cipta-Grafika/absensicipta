@@ -19,7 +19,7 @@ class UserAttendanceController extends Controller
     public function storeLeaveRequest(Request $request)
     {
         $request->validate([
-            'status' => ['required', 'in:excused,sick,leave,wfh,imp'],
+            'status' => ['required', 'in:excused,sick,leave,wfh,imp,special-leaves'],
             'note' => ['required', 'string', 'max:255'],
             'from' => ['required', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],

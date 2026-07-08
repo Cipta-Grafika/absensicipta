@@ -79,6 +79,11 @@
             <x-input type="file" class="hidden" name="file" x-ref="file"
               x-on:change="file = $refs.file.files[0]" wire:model.live="file" />
           </div>
+          <div class="mb-4">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              * Pastikan format status pada Excel adalah salah satu dari: hadir, terlambat, izin, sakit, tidak hadir, wfh, cuti, cuti khusus, imp.
+            </p>
+          </div>
           <div class="flex items-center justify-stretch">
             <x-danger-button class="w-full"
               x-text="file ? '{{ __('Import') }} ' + file.name : '{{ __('Import') }}'">

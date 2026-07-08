@@ -2,7 +2,7 @@
   <div class="px-6 py-4">
     @if ($currentAttendance)
       @php
-        $isExcused = in_array($currentAttendance['status'], ['excused', 'sick', 'wfh', 'leave']);
+        $isExcused = in_array($currentAttendance['status'], ['excused', 'sick', 'wfh', 'leave', 'special-leaves']);
         $showMap = $currentAttendance['latitude'] && $currentAttendance['longitude'] && !$isExcused;
       @endphp
       <h3 class="mb-3 text-xl font-semibold dark:text-white">{{ $currentAttendance['name'] }}</h3>
@@ -19,7 +19,7 @@
         <div class="w-full">
           <x-label for="status" value="{{ __('Status') }}"></x-label>
           <x-input type="text" class="w-full" id="status" disabled
-            value="{{ __($currentAttendance['status']) }}"></x-input>
+            value="{{ $currentAttendance['status'] === 'imp' ? 'IMP (Izin Meninggalkan Pekerjaan)' : __($currentAttendance['status']) }}"></x-input>
         </div>
       </div>
       @if ($currentAttendance['status'] === 'imp')

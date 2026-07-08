@@ -41,6 +41,9 @@
                     <option value="imp" {{ (old('status', request('status', $attendance?->status))) === 'imp' ? 'selected' : '' }}>
                       IMP (Izin Meninggalkan Pekerjaan)
                     </option>
+                    <option value="special-leaves" {{ (old('status', request('status', $attendance?->status))) === 'special-leaves' ? 'selected' : '' }}>
+                      Cuti Khusus
+                    </option>
                   </x-select>
                   @error('status')
                     <x-input-error for="status" class="mt-2" message="{{ $message }}" />

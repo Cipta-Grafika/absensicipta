@@ -243,7 +243,7 @@
                           $excusedCount++;
                           break;
                       case 'imp':
-                          $shortStatus = 'I';
+                          $shortStatus = 'IMP';
                           $bgColor =
                               'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                           $excusedCount++;
@@ -272,6 +272,12 @@
                               'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
                           $leaveCount++;
                           break;
+                      case 'special-leaves':
+                          $shortStatus = 'CK';
+                          $bgColor =
+                              'bg-cyan-200 dark:bg-cyan-800 hover:bg-cyan-300 dark:hover:bg-cyan-700 border border-cyan-300 dark:border-cyan-600';
+                          $leaveCount++;
+                          break;
                       default:
                           $shortStatus = '-';
                           $bgColor =
@@ -283,7 +289,7 @@
                   <td
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
-                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                      {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
                     </button>
                   </td>
                 @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
@@ -291,13 +297,13 @@
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="show({{ $attendance['id'] }})"
                       onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
-                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                      {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
                     </button>
                   </td>
                 @else
                   <td
                     class="{{ $bgColor }} text-nowrap cursor-pointer px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-                    {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                    {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
                   </td>
                 @endif
               @endforeach
@@ -314,7 +320,7 @@
                   elseif ($status === 'sick') $sickCount++;
                   elseif ($status === 'absent') $absentCount++;
                   elseif ($status === 'wfh') $wfhCount++;
-                  elseif ($status === 'leave') $leaveCount++;
+                  elseif ($status === 'leave' || $status === 'special-leaves') $leaveCount++;
                 }
               @endphp
             @endif
@@ -425,6 +431,7 @@
                 <option value="absent">{{ __('absent') }}</option>
                 <option value="wfh">{{ __('WFH') }}</option>
                 <option value="leave">{{ __('Cuti') }}</option>
+                <option value="special-leaves">{{ __('Cuti Khusus') }}</option>
               </x-select>
               @error('formAttendance.status')
                 <x-input-error for="formAttendance.status" class="mt-2" message="{{ $message }}" />
@@ -554,7 +561,7 @@
                       $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                       break;
                   case 'imp':
-                      $shortStatus = 'I';
+                      $shortStatus = 'IMP';
                       $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                       break;
                   case 'sick':
