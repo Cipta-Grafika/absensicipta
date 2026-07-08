@@ -18,25 +18,28 @@
       <div class="overflow-hidden bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg">
         <div class="p-6 lg:p-8">
           {{--  --}}
-          <form action="{{ route('store-leave-request') }}" method="post" enctype="multipart/form-data">
+          <form action="{{ route('store-leave-request') }}" method="post" enctype="multipart/form-data" x-data="{ leaveStatus: '{{ old('status', request('status', $attendance?->status ?? 'excused')) }}' }">
             @csrf
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <div>
                   <x-label for="status" value="{{ __('Status') }}" />
-                  <x-select id="status" class="mt-1 block w-full" name="status" required>
+                  <x-select id="status" class="mt-1 block w-full" name="status" required x-model="leaveStatus">
                     <option value="excused"
-                      {{ (old('status') ?? $attendance?->status) === 'excused' ? 'selected' : '' }}>
+                      {{ (old('status', request('status', $attendance?->status))) === 'excused' ? 'selected' : '' }}>
                       Izin
                     </option>
-                    <option value="sick" {{ (old('status') ?? $attendance?->status) === 'sick' ? 'selected' : '' }}>
+                    <option value="sick" {{ (old('status', request('status', $attendance?->status))) === 'sick' ? 'selected' : '' }}>
                       Sakit
                     </option>
-                    <option value="leave" {{ (old('status') ?? $attendance?->status) === 'leave' ? 'selected' : '' }}>
+                    <option value="leave" {{ (old('status', request('status', $attendance?->status))) === 'leave' ? 'selected' : '' }}>
                       Cuti
                     </option>
-                    <option value="wfh" {{ (old('status') ?? $attendance?->status) === 'wfh' ? 'selected' : '' }}>
+                    <option value="wfh" {{ (old('status', request('status', $attendance?->status))) === 'wfh' ? 'selected' : '' }}>
                       WFH
+                    </option>
+                    <option value="imp" {{ (old('status', request('status', $attendance?->status))) === 'imp' ? 'selected' : '' }}>
+                      IMP (Izin Meninggalkan Pekerjaan)
                     </option>
                   </x-select>
                   @error('status')
@@ -46,21 +49,45 @@
 
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
                   <div>
-                    <x-label for="from" value="Tanggal mulai" />
-                    <x-input type="date" min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" id="from"
+                    <x-label for="from">
+                      <span x-text="leaveStatus === 'imp' ? 'Tanggal IMP' : 'Tanggal mulai'"></span>
+                    </x-label>
+                    <x-input type="date" x-bind:min="leaveStatus === 'imp' ? '{{ date('Y-m-01') }}' : '{{ date('Y-m-d') }}'" x-bind:max="leaveStatus === 'imp' ? '{{ date('Y-m-t') }}' : ''" value="{{ old('from', date('Y-m-d')) }}" id="from"
                       class="mt-1 block w-full" name="from" required />
                     @error('from')
                       <x-input-error for="from" class="mt-2" message="{{ $message }}" />
                     @enderror
                   </div>
-                  <div>
+                  <div x-show="leaveStatus !== 'imp'">
                     <x-label for="to" value="Tanggal berakhir (Opsional)" />
-                    <x-input type="date" id="to" min="{{ date('Y-m-d') }}" class="mt-1 block w-full"
-                      name="to" />
+                    <x-input type="date" id="to" x-bind:min="leaveStatus === 'imp' ? '{{ date('Y-m-01') }}' : '{{ date('Y-m-d') }}'" class="mt-1 block w-full"
+                      name="to" value="{{ old('to') }}" />
                     @error('to')
                       <x-input-error for="to" class="mt-2" message="{{ $message }}" />
                     @enderror
                   </div>
+                  <div x-show="leaveStatus === 'imp'" style="display: none;">
+                    <x-label for="imp_duration_hours" value="Durasi IMP (Jam)" />
+                    <x-input type="number" id="imp_duration_hours" min="1" max="24" class="mt-1 block w-full" name="imp_duration_hours" value="{{ old('imp_duration_hours') }}" placeholder="Contoh: 3" x-bind:required="leaveStatus === 'imp'" />
+                    @error('imp_duration_hours')
+                      <x-input-error for="imp_duration_hours" class="mt-2" message="{{ $message }}" />
+                    @enderror
+                  </div>
+                </div>
+
+
+
+                <div x-show="leaveStatus === 'imp'" class="mt-4" style="display: none;">
+                  <x-label for="shift_id" value="Pilih Shift" />
+                  <x-select id="shift_id" class="mt-1 block w-full" name="shift_id" x-bind:required="leaveStatus === 'imp'">
+                    <option value="">-- Pilih Shift --</option>
+                    @foreach($shifts ?? [] as $shift)
+                      <option value="{{ $shift->id }}" {{ old('shift_id') == $shift->id ? 'selected' : '' }}>{{ $shift->name }} (Target: {{ floor(\Carbon\Carbon::parse($shift->start_time)->diffInMinutes(\Carbon\Carbon::parse($shift->end_time)) / 60) }} jam)</option>
+                    @endforeach
+                  </x-select>
+                  @error('shift_id')
+                    <x-input-error for="shift_id" class="mt-2" message="{{ $message }}" />
+                  @enderror
                 </div>
 
                 <div class="mt-4">

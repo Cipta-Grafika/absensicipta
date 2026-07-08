@@ -242,6 +242,12 @@
                               'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                           $excusedCount++;
                           break;
+                      case 'imp':
+                          $shortStatus = 'I';
+                          $bgColor =
+                              'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
+                          $excusedCount++;
+                          break;
                       case 'sick':
                           $shortStatus = 'S';
                           $bgColor =
@@ -409,11 +415,12 @@
           <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
             <div class="w-full">
               <x-label for="edit_status" value="{{ __('Status') }}" />
-              <x-select id="edit_status" class="mt-1 block w-full" wire:model="formAttendance.status" required :disabled="!Auth::user()->isSuperadmin">
+              <x-select id="edit_status" class="mt-1 block w-full" wire:model.live="formAttendance.status" required :disabled="!Auth::user()->isSuperadmin">
                 <option value="-">- (Kosong)</option>
                 <option value="present">{{ __('present') }}</option>
                 <option value="late">{{ __('late') }}</option>
                 <option value="excused">{{ __('excused') }}</option>
+                <option value="imp">{{ __('IMP (Izin Meninggalkan Pekerjaan)') }}</option>
                 <option value="sick">{{ __('sick') }}</option>
                 <option value="absent">{{ __('absent') }}</option>
                 <option value="wfh">{{ __('WFH') }}</option>
@@ -424,6 +431,22 @@
               @enderror
             </div>
           </div>
+
+          @if(isset($formAttendance['status']) && $formAttendance['status'] === 'imp')
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full">
+              <x-label for="edit_imp_duration_hours">{{ __('Durasi IMP (Jam)') }}</x-label>
+              <x-input id="edit_imp_duration_hours" class="mt-1 block w-full bg-gray-100 dark:bg-gray-700" type="number" wire:model="formAttendance.imp_duration_hours" readonly />
+            </div>
+            <div class="w-full">
+              <x-label for="edit_replaced_duration_hours">{{ __('Ganti Jam (Jam)') }}</x-label>
+              <x-input id="edit_replaced_duration_hours" class="mt-1 block w-full" type="number" wire:model="formAttendance.replaced_duration_hours" :disabled="!Auth::user()->isSuperadmin" />
+              @error('formAttendance.replaced_duration_hours')
+                <x-input-error for="formAttendance.replaced_duration_hours" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+          </div>
+          @endif
 
           <div class="mt-4">
             <x-label for="edit_note">{{ __('Note') }}</x-label>
@@ -527,6 +550,10 @@
                       $bgColor = 'bg-orange-200 dark:bg-orange-800 hover:bg-orange-300 dark:hover:bg-orange-700 border border-orange-300 dark:border-orange-600';
                       break;
                   case 'excused':
+                      $shortStatus = 'I';
+                      $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
+                      break;
+                  case 'imp':
                       $shortStatus = 'I';
                       $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                       break;

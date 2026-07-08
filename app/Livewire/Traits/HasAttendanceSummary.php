@@ -84,7 +84,7 @@ trait HasAttendanceSummary
 
         $presentCount = $currentAttendances->whereIn('status', ['present', 'late'])->count();
         $lateCount = $currentAttendances->where('status', 'late')->count();
-        $excusedCount = $currentAttendances->where('status', 'excused')->count();
+        $excusedCount = $currentAttendances->whereIn('status', ['excused', 'imp'])->count();
         $sickCount = $currentAttendances->where('status', 'sick')->count();
         $wfhCount = $currentAttendances->where('status', 'wfh')->count();
         $leaveCount = $currentAttendances->where('status', 'leave')->count();
@@ -96,7 +96,7 @@ trait HasAttendanceSummary
         }
 
         $prevPresentCount = $lastAttendances->whereIn('status', ['present', 'late'])->count();
-        $prevExcusedCount = $lastAttendances->where('status', 'excused')->count();
+        $prevExcusedCount = $lastAttendances->whereIn('status', ['excused', 'imp'])->count();
         $prevSickCount = $lastAttendances->where('status', 'sick')->count();
         $prevWfhCount = $lastAttendances->where('status', 'wfh')->count();
         $prevLeaveCount = $lastAttendances->where('status', 'leave')->count();
@@ -180,7 +180,7 @@ trait HasAttendanceSummary
         $current = $start->copy();
         while ($current <= $end) {
             $periods[$current->format($format)] = [
-                'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'wfh' => 0, 'leave' => 0, 'absent' => 0
+                'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'wfh' => 0, 'leave' => 0, 'absent' => 0, 'imp' => 0
             ];
             $current->$step();
         }
@@ -195,7 +195,7 @@ trait HasAttendanceSummary
         $sparklines = [];
         $statuses = [
             'present' => ['present', 'late'], 
-            'excused' => ['excused'], 
+            'excused' => ['excused', 'imp'], 
             'sick' => ['sick'], 
             'wfh' => ['wfh'], 
             'leave' => ['leave'], 

@@ -37,7 +37,7 @@ class AttendanceHistoryComponent extends Component
                 $attendances = Attendance::filter(
                     month: $this->month,
                     userId: $user->id,
-                )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note']);
+                )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_hours', 'replaced_duration_hours']);
 
                 return $attendances->map(
                     function (Attendance $v) {
