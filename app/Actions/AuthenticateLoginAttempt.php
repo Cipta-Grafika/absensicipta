@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthenticateLoginAttempt
 {
@@ -17,6 +18,11 @@ class AuthenticateLoginAttempt
         }
 
         if ($user && Hash::check($request->password, $user->password)) {
+            if ($user->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'email' => __('Status kepegawaian Anda tidak aktif!'),
+                ]);
+            }
             return $user;
         }
     }

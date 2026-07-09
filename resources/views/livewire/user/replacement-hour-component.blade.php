@@ -119,6 +119,17 @@
                     </div>
                     
                     <form wire:submit.prevent="submit" class="p-4 md:p-5">
+                        @if($modalError)
+                            <div class="mb-4 flex items-center rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-gray-800 dark:text-red-400" role="alert">
+                                <svg class="me-3 inline h-4 w-4 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                                </svg>
+                                <div>
+                                    {{ $modalError }}
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="mb-4 grid grid-cols-2 gap-4">
                             <div>
                                 <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Tgl Absen Diganti</label>
@@ -167,7 +178,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Lampiran (Opsional, Max 2MB, JPG/PNG)</label>
+                            <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Lampiran (Wajib, Max 2MB, JPG/PNG)</label>
                             <div class="flex items-center gap-3 mt-1">
                                 <input type="file" id="attachment" wire:model="attachment" class="hidden">
                                 <label for="attachment" class="inline-flex cursor-pointer items-center rounded-md bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-800 transition hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
@@ -187,7 +198,7 @@
 
                         <div class="flex items-center justify-end rounded-b border-t border-gray-200 pt-4 dark:border-gray-600">
                             <button wire:click="closeModal" type="button" class="mr-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700">Batal</button>
-                            <button type="submit" class="rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Ajukan</button>
+                            <button type="submit" class="rounded-lg bg-sky-500 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-sky-600 focus:outline-none focus:ring-4 focus:ring-sky-300 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus:ring-sky-800 transition">Ajukan</button>
                         </div>
                     </form>
                 </div>
