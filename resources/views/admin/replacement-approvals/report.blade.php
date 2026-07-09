@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=0.1">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Laporan Ganti Jam</title>
+  <link rel="icon" href="{{ asset('favicon.ico') }}?v=1.0.1" type="image/x-icon">
+  <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=1.0.1" type="image/x-icon">
   <style>
     body {
       font-family: Arial, sans-serif;

@@ -42,15 +42,21 @@ class UserAttendanceController extends Controller
             $fromDate = Carbon::parse($request->from);
             $toDate = Carbon::parse($request->to ?? $fromDate);
 
-            $hasPresent = Attendance::where('user_id', Auth::user()->id)
+            $hasPresentOrLate = Attendance::where('user_id', Auth::user()->id)
                 ->whereBetween('date', [$fromDate->format('Y-m-d'), $toDate->format('Y-m-d')])
-                ->where('status', 'present')
+                ->whereIn('status', ['present', 'late'])
                 ->first();
 
-            if ($hasPresent) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'from' => 'Anda tidak dapat mengajukan izin/status lain pada tanggal ' . Carbon::parse($hasPresent->date)->format('d/m/Y') . ' karena Anda sudah tercatat Hadir pada hari tersebut.'
-                ]);
+            if ($hasPresentOrLate) {
+                if ($hasPresentOrLate->status === 'late') {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'from' => 'Anda tidak dapat mengajukan izin/status lain pada tanggal ' . Carbon::parse($hasPresentOrLate->date)->format('d/m/Y') . ' karena Anda sudah tercatat Terlambat pada hari tersebut.'
+                    ]);
+                } else if ($hasPresentOrLate->status === 'present' && $request->status !== 'imp') {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'from' => 'Anda tidak dapat mengajukan izin/status lain pada tanggal ' . Carbon::parse($hasPresentOrLate->date)->format('d/m/Y') . ' karena Anda sudah tercatat Hadir pada hari tersebut. Anda hanya dapat mengajukan Izin Meninggalkan Pekerjaan (IMP).'
+                    ]);
+                }
             }
 
             $fromDate->range($toDate)
