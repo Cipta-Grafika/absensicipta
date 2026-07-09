@@ -22,6 +22,7 @@ class ReplacementHourComponent extends Component
     public $shift_id;
     public $reason;
     public $attachment;
+    public $modalError;
 
     public $isModalOpen = false;
     public $perPage = 10;
@@ -85,11 +86,24 @@ class ReplacementHourComponent extends Component
         $this->shift_id = '';
         $this->reason = '';
         $this->attachment = null;
+        $this->modalError = null;
     }
 
     public function submit()
     {
+        $this->modalError = null;
         $this->validate();
+
+        // Validasi tambahan: Pastikan pada replaced_date terdapat data absensi berstatus IMP
+        $hasImp = \App\Models\Attendance::where('user_id', Auth::id())
+            ->where('date', $this->replaced_date)
+            ->where('status', 'imp')
+            ->exists();
+
+        if (!$hasImp) {
+            $this->modalError = 'Tanggal absen yang diganti (' . \Carbon\Carbon::parse($this->replaced_date)->format('d/m/Y') . ') tidak memiliki status IMP (Izin Meninggalkan Pekerjaan). Anda hanya bisa mengganti jam untuk hari di mana Anda melakukan IMP!';
+            return;
+        }
 
         $attachmentPath = null;
         if ($this->attachment) {
