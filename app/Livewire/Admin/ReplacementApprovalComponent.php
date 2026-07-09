@@ -25,6 +25,8 @@ class ReplacementApprovalComponent extends Component
     
     public $isModalOpen = false;
     public $selectedAttachment = null;
+    public $isDeleteModalOpen = false;
+    public $replacementToDelete = null;
 
     protected $updatesQueryString = ['statusFilter'];
 
@@ -147,15 +149,33 @@ class ReplacementApprovalComponent extends Component
         $this->banner('Pengajuan telah ditolak.');
     }
 
-    public function deleteReplacement($id)
+    public function confirmDelete($id)
     {
-        if (!Auth::user()->isSuperadmin) {
+        $this->replacementToDelete = $id;
+        $this->isDeleteModalOpen = true;
+    }
+
+    public function cancelDelete()
+    {
+        $this->isDeleteModalOpen = false;
+        $this->replacementToDelete = null;
+    }
+
+    public function deleteReplacement()
+    {
+        if (!Auth::user()->isSuperadmin || !$this->replacementToDelete) {
             abort(403);
         }
         
-        $replacement = ReplacementHour::findOrFail($id);
+        $replacement = ReplacementHour::findOrFail($this->replacementToDelete);
+        
+        if ($replacement->attachment) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($replacement->attachment);
+        }
+        
         $replacement->delete();
         
+        $this->cancelDelete();
         $this->banner('Data pengajuan ganti jam berhasil dihapus.');
     }
 

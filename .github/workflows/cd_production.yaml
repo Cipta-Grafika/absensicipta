@@ -31,7 +31,8 @@ jobs:
             # 1. Tarik pembaruan kode terbaru dari branch master
             echo "Pulling latest code from master..."
             git checkout master
-            git pull origin master
+            git fetch origin master
+            git reset --hard origin/master
             
             # 2. Install dependensi PHP (Composer)
             echo "Installing composer dependencies..."
