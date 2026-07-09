@@ -580,6 +580,10 @@
                       $shortStatus = 'C';
                       $bgColor = 'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
                       break;
+                  case 'special-leaves':
+                      $shortStatus = 'CK';
+                      $bgColor = 'bg-cyan-200 dark:bg-cyan-800 hover:bg-cyan-300 dark:hover:bg-cyan-700 border border-cyan-300 dark:border-cyan-600';
+                      break;
                   default:
                       $shortStatus = '-';
                       $bgColor = 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600';
