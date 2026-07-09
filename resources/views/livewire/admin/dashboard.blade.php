@@ -117,6 +117,11 @@
                     $bgColor =
                         'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                     break;
+                case 'imp':
+                    $shortStatus = 'IMP';
+                    $bgColor =
+                        'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
+                    break;
                 case 'sick':
                     $shortStatus = 'S';
                     $bgColor =
@@ -126,6 +131,17 @@
                     $shortStatus = 'A';
                     $bgColor =
                         'bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 border border-red-300 dark:border-red-600';
+                    break;
+                case 'wfh':
+                    $shortStatus = 'W';
+                    $bgColor =
+                        'bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700 border border-purple-300 dark:border-purple-600';
+                    break;
+                case 'leave':
+                case 'special-leaves':
+                    $shortStatus = 'C';
+                    $bgColor =
+                        'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
                     break;
                 default:
                     $shortStatus = '-';
@@ -154,7 +170,7 @@
             {{-- Absensi --}}
             <td
               class="{{ $bgColor }} text-nowrap px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-              {{ __($status) }}
+              {{ $status === 'imp' ? 'IMP' : __($status) }}
             </td>
 
             {{-- Waktu masuk/keluar --}}

@@ -1,0 +1,173 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use App\Models\ReplacementHour;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
+use Livewire\WithPagination;
+
+use Laravel\Jetstream\InteractsWithBanner;
+use Livewire\Attributes\On;
+use Carbon\Carbon;
+
+class ReplacementApprovalComponent extends Component
+{
+    use WithPagination, InteractsWithBanner;
+
+    public $statusFilter = '';
+    public ?string $month = null;
+    public ?string $week = null;
+    public ?string $date = null;
+    public ?string $division = null;
+    public ?string $jobTitle = null;
+    public ?string $search = null;
+    
+    public $isModalOpen = false;
+    public $selectedAttachment = null;
+
+    protected $updatesQueryString = ['statusFilter'];
+
+    public function updatingStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    #[On('print-report')]
+    public function printReport()
+    {
+        return redirect()->route('admin.replacement-approvals.report', [
+            'month' => $this->month,
+            'week' => $this->week,
+            'date' => $this->date,
+            'division' => $this->division,
+            'jobTitle' => $this->jobTitle,
+            'status' => $this->statusFilter,
+        ]);
+    }
+
+    public function render()
+    {
+        $query = ReplacementHour::with(['user', 'approver', 'shift'])
+            ->orderBy('created_at', 'desc');
+
+        if ($this->statusFilter) {
+            $query->where('status', $this->statusFilter);
+        }
+        
+        if ($this->date) {
+            $query->where('replaced_date', $this->date);
+        } elseif ($this->week) {
+            $start = Carbon::parse($this->week)->startOfWeek()->toDateString();
+            $end = Carbon::parse($this->week)->endOfWeek()->toDateString();
+            $query->whereBetween('replaced_date', [$start, $end]);
+        } elseif ($this->month) {
+            $date = Carbon::parse($this->month);
+            $query->whereMonth('replaced_date', $date->month)
+                  ->whereYear('replaced_date', $date->year);
+        }
+
+        if ($this->search) {
+            $query->whereHas('user', function ($q) {
+                $q->where('name', 'like', '%' . $this->search . '%')
+                  ->orWhere('nip', 'like', '%' . $this->search . '%');
+            });
+        }
+        
+        if ($this->division || $this->jobTitle) {
+            $query->whereHas('user', function ($q) {
+                if ($this->division) {
+                    $q->where('division_id', $this->division);
+                }
+                if ($this->jobTitle) {
+                    $q->where('job_title_id', $this->jobTitle);
+                }
+            });
+        }
+
+        $approvals = $query->paginate(15);
+
+        return view('livewire.admin.replacement-approval-component', [
+            'approvals' => $approvals
+        ])->layout('layouts.app');
+    }
+
+    public function approve($id)
+    {
+        $replacement = ReplacementHour::with('shift')->findOrFail($id);
+        $replacement->update([
+            'status' => 'approved',
+            'approved_by' => Auth::id()
+        ]);
+        
+        // Cek total akumulasi menit ganti jam pada tanggal tersebut
+        $totalMinutes = ReplacementHour::where('user_id', $replacement->user_id)
+            ->where('replaced_date', $replacement->replaced_date)
+            ->where('status', 'approved')
+            ->get()
+            ->sum('duration_minutes');
+            
+        $replacedHours = floor($totalMinutes / 60);
+
+        // Update Attendance record
+        $attendance = \App\Models\Attendance::where('user_id', $replacement->user_id)
+            ->whereDate('date', $replacement->replaced_date)
+            ->first();
+
+        if ($attendance) {
+            $attendance->replaced_duration_hours = $replacedHours;
+            
+            $targetMinutes = $replacement->shift ? $replacement->shift->duration_minutes : 0;
+            
+            $isImpFulfilled = $attendance->status === 'imp' 
+                && $attendance->imp_duration_hours > 0 
+                && $replacedHours >= $attendance->imp_duration_hours;
+                
+            $isShiftFulfilled = $targetMinutes > 0 && $totalMinutes >= $targetMinutes;
+            
+            if ($isImpFulfilled || $isShiftFulfilled) {
+                $attendance->status = 'present';
+            }
+            
+            $attendance->save();
+            \App\Models\Attendance::clearUserAttendanceCache($attendance->user, \Illuminate\Support\Carbon::parse($attendance->date));
+        }
+
+        $this->banner('Pengajuan berhasil disetujui.');
+    }
+
+    public function reject($id)
+    {
+        $replacement = ReplacementHour::findOrFail($id);
+        $replacement->update([
+            'status' => 'rejected',
+            'approved_by' => Auth::id()
+        ]);
+
+        $this->banner('Pengajuan telah ditolak.');
+    }
+
+    public function deleteReplacement($id)
+    {
+        if (!Auth::user()->isSuperadmin) {
+            abort(403);
+        }
+        
+        $replacement = ReplacementHour::findOrFail($id);
+        $replacement->delete();
+        
+        $this->banner('Data pengajuan ganti jam berhasil dihapus.');
+    }
+
+    public function viewAttachment($attachmentPath)
+    {
+        $this->selectedAttachment = $attachmentPath;
+        $this->isModalOpen = true;
+    }
+
+    public function closeModal()
+    {
+        $this->isModalOpen = false;
+        $this->selectedAttachment = null;
+    }
+}

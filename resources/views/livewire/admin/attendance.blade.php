@@ -242,6 +242,12 @@
                               'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                           $excusedCount++;
                           break;
+                      case 'imp':
+                          $shortStatus = 'IMP';
+                          $bgColor =
+                              'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
+                          $excusedCount++;
+                          break;
                       case 'sick':
                           $shortStatus = 'S';
                           $bgColor =
@@ -266,6 +272,12 @@
                               'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
                           $leaveCount++;
                           break;
+                      case 'special-leaves':
+                          $shortStatus = 'CK';
+                          $bgColor =
+                              'bg-cyan-200 dark:bg-cyan-800 hover:bg-cyan-300 dark:hover:bg-cyan-700 border border-cyan-300 dark:border-cyan-600';
+                          $leaveCount++;
+                          break;
                       default:
                           $shortStatus = '-';
                           $bgColor =
@@ -277,7 +289,7 @@
                   <td
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
-                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                      {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
                     </button>
                   </td>
                 @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
@@ -285,13 +297,13 @@
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="show({{ $attendance['id'] }})"
                       onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
-                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                      {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
                     </button>
                   </td>
                 @else
                   <td
                     class="{{ $bgColor }} text-nowrap cursor-pointer px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-                    {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                    {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
                   </td>
                 @endif
               @endforeach
@@ -308,7 +320,7 @@
                   elseif ($status === 'sick') $sickCount++;
                   elseif ($status === 'absent') $absentCount++;
                   elseif ($status === 'wfh') $wfhCount++;
-                  elseif ($status === 'leave') $leaveCount++;
+                  elseif ($status === 'leave' || $status === 'special-leaves') $leaveCount++;
                 }
               @endphp
             @endif
@@ -409,21 +421,39 @@
           <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
             <div class="w-full">
               <x-label for="edit_status" value="{{ __('Status') }}" />
-              <x-select id="edit_status" class="mt-1 block w-full" wire:model="formAttendance.status" required :disabled="!Auth::user()->isSuperadmin">
+              <x-select id="edit_status" class="mt-1 block w-full" wire:model.live="formAttendance.status" required :disabled="!Auth::user()->isSuperadmin">
                 <option value="-">- (Kosong)</option>
                 <option value="present">{{ __('present') }}</option>
                 <option value="late">{{ __('late') }}</option>
                 <option value="excused">{{ __('excused') }}</option>
+                <option value="imp">{{ __('IMP (Izin Meninggalkan Pekerjaan)') }}</option>
                 <option value="sick">{{ __('sick') }}</option>
                 <option value="absent">{{ __('absent') }}</option>
                 <option value="wfh">{{ __('WFH') }}</option>
                 <option value="leave">{{ __('Cuti') }}</option>
+                <option value="special-leaves">{{ __('Cuti Khusus') }}</option>
               </x-select>
               @error('formAttendance.status')
                 <x-input-error for="formAttendance.status" class="mt-2" message="{{ $message }}" />
               @enderror
             </div>
           </div>
+
+          @if(isset($formAttendance['status']) && $formAttendance['status'] === 'imp')
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full">
+              <x-label for="edit_imp_duration_hours">{{ __('Durasi IMP (Jam)') }}</x-label>
+              <x-input id="edit_imp_duration_hours" class="mt-1 block w-full bg-gray-100 dark:bg-gray-700" type="number" wire:model="formAttendance.imp_duration_hours" readonly />
+            </div>
+            <div class="w-full">
+              <x-label for="edit_replaced_duration_hours">{{ __('Ganti Jam (Jam)') }}</x-label>
+              <x-input id="edit_replaced_duration_hours" class="mt-1 block w-full" type="number" wire:model="formAttendance.replaced_duration_hours" :disabled="!Auth::user()->isSuperadmin" />
+              @error('formAttendance.replaced_duration_hours')
+                <x-input-error for="formAttendance.replaced_duration_hours" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+          </div>
+          @endif
 
           <div class="mt-4">
             <x-label for="edit_note">{{ __('Note') }}</x-label>
@@ -530,6 +560,10 @@
                       $shortStatus = 'I';
                       $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
                       break;
+                  case 'imp':
+                      $shortStatus = 'IMP';
+                      $bgColor = 'bg-blue-200 dark:bg-blue-800 hover:bg-blue-300 dark:hover:bg-blue-700 border border-blue-300 dark:border-blue-600';
+                      break;
                   case 'sick':
                       $shortStatus = 'S';
                       $bgColor = 'bg-yellow-200 dark:bg-yellow-800 hover:bg-yellow-300 dark:hover:bg-yellow-700 border border-yellow-300 dark:border-yellow-600';
@@ -545,6 +579,10 @@
                   case 'leave':
                       $shortStatus = 'C';
                       $bgColor = 'bg-teal-200 dark:bg-teal-800 hover:bg-teal-300 dark:hover:bg-teal-700 border border-teal-300 dark:border-teal-600';
+                      break;
+                  case 'special-leaves':
+                      $shortStatus = 'CK';
+                      $bgColor = 'bg-cyan-200 dark:bg-cyan-800 hover:bg-cyan-300 dark:hover:bg-cyan-700 border border-cyan-300 dark:border-cyan-600';
                       break;
                   default:
                       $shortStatus = '-';

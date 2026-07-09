@@ -35,6 +35,9 @@ Route::middleware([
 
         Route::get('/attendance-history', [UserAttendanceController::class, 'history'])
             ->name('attendance-history');
+
+        Route::get('/replacement-hours', \App\Livewire\User\ReplacementHourComponent::class)
+            ->name('user.replacement-hours');
     });
 
     // ADMIN AREA
@@ -90,6 +93,13 @@ Route::middleware([
         Route::get('/attendances/report', [AttendanceController::class, 'report'])
             ->name('admin.attendances.report');
 
+        // Replacement Approval (Ganti Jam)
+        Route::get('/replacement-approvals', \App\Livewire\Admin\ReplacementApprovalComponent::class)
+            ->name('admin.replacement-approvals');
+            
+        Route::get('/replacement-approvals/report', [\App\Http\Controllers\Admin\ReplacementApprovalController::class, 'report'])
+            ->name('admin.replacement-approvals.report');
+
         // Import/Export
         Route::get('/import-export/users', [ImportExportController::class, 'users'])
             ->name('admin.import-export.users');
@@ -116,3 +126,4 @@ Livewire::setScriptRoute(function ($handle) {
     $path = config('app.debug') ? '/livewire/livewire.js' : '/livewire/livewire.min.js';
     return Route::get(url($path), $handle);
 });
+

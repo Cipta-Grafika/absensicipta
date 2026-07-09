@@ -24,6 +24,9 @@
             <x-nav-link class="hidden md:inline-flex" href="{{ route('admin.attendances') }}" :active="request()->routeIs('admin.attendances')">
               {{ __('Attendance') }}
             </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex" href="{{ route('admin.replacement-approvals') }}" :active="request()->routeIs('admin.replacement-approvals')">
+              Ganti Jam
+            </x-nav-link>
             <x-nav-link class="hidden md:inline-flex" href="{{ route('admin.employees') }}" :active="request()->routeIs('admin.employees')">
               {{ __('Employee') }}
             </x-nav-link>
@@ -82,6 +85,9 @@
             </x-nav-link>
             <x-nav-link href="{{ route('attendance-history') }}" :active="request()->routeIs('attendance-history')">
               Riwayat Absen
+            </x-nav-link>
+            <x-nav-link href="{{ route('user.replacement-hours') }}" :active="request()->routeIs('user.replacement-hours')">
+              Ganti Jam
             </x-nav-link>
           @endif
         </div>
@@ -180,6 +186,9 @@
         <x-responsive-nav-link href="{{ route('admin.attendances') }}" :active="request()->routeIs('admin.attendances')">
           {{ __('Attendance') }}
         </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('admin.replacement-approvals') }}" :active="request()->routeIs('admin.replacement-approvals')">
+          Ganti Jam
+        </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('admin.employees') }}" :active="request()->routeIs('admin.employees')">
           {{ __('Employee') }}
         </x-responsive-nav-link>
@@ -215,6 +224,9 @@
         </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('attendance-history') }}" :active="request()->routeIs('attendance-history')">
           Riwayat Absen
+        </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('user.replacement-hours') }}" :active="request()->routeIs('user.replacement-hours')">
+          Ganti Jam
         </x-responsive-nav-link>
       @endif
     </div>

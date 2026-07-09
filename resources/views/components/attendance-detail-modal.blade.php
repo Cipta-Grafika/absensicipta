@@ -2,7 +2,7 @@
   <div class="px-6 py-4">
     @if ($currentAttendance)
       @php
-        $isExcused = in_array($currentAttendance['status'], ['excused', 'sick', 'wfh', 'leave']);
+        $isExcused = in_array($currentAttendance['status'], ['excused', 'sick', 'wfh', 'leave', 'special-leaves']);
         $showMap = $currentAttendance['latitude'] && $currentAttendance['longitude'] && !$isExcused;
       @endphp
       <h3 class="mb-3 text-xl font-semibold dark:text-white">{{ $currentAttendance['name'] }}</h3>
@@ -19,9 +19,23 @@
         <div class="w-full">
           <x-label for="status" value="{{ __('Status') }}"></x-label>
           <x-input type="text" class="w-full" id="status" disabled
-            value="{{ __($currentAttendance['status']) }}"></x-input>
+            value="{{ $currentAttendance['status'] === 'imp' ? 'IMP (Izin Meninggalkan Pekerjaan)' : ($currentAttendance['status'] === 'special-leaves' ? 'Cuti Khusus' : __($currentAttendance['status'])) }}"></x-input>
         </div>
       </div>
+      @if ($currentAttendance['status'] === 'imp')
+        <div class="mb-3 flex w-full gap-3">
+          <div class="w-full">
+            <x-label for="imp_duration" value="{{ __('Durasi IMP (Jam)') }}"></x-label>
+            <x-input type="text" class="w-full bg-gray-100 dark:bg-gray-700" id="imp_duration" disabled
+              value="{{ $currentAttendance['imp_duration_hours'] ?? '-' }}"></x-input>
+          </div>
+          <div class="w-full">
+            <x-label for="replaced_duration" value="{{ __('Ganti Jam (Jam)') }}"></x-label>
+            <x-input type="text" class="w-full bg-gray-100 dark:bg-gray-700" id="replaced_duration" disabled
+              value="{{ $currentAttendance['replaced_duration_hours'] ?? '-' }}"></x-input>
+          </div>
+        </div>
+      @endif
       @if ($isExcused)
         <div class="mb-3 w-full">
           <x-label for="address" value="{{ __('Address') }}" />

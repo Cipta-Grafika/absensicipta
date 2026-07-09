@@ -28,6 +28,8 @@ class Attendance extends Model
         'latitude',
         'longitude',
         'status',
+        'imp_duration_hours',
+        'replaced_duration_hours',
         'note',
         'attachment',
     ];
@@ -115,7 +117,7 @@ class Attendance extends Model
             if (str_contains($this->attachment, 'https://') || str_contains($this->attachment, 'http://')) {
                 return $this->attachment;
             }
-            return Storage::disk(config('jetstream.attachment_disk'))->url($this->attachment);
+            return asset('storage/' . $this->attachment);
         });
     }
 
