@@ -1,4 +1,11 @@
 <div x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <x-admin.employee-summary-cards
+    :activeSuspendCount="$activeSuspendCount"
+    :suspendCount="$suspendCount"
+    :resignCount="$resignCount"
+    :firedCount="$firedCount"
+  />
+
   <div class="mb-4">
     <div class="flex w-full flex-1 items-center gap-2">
       <div class="relative w-full">
