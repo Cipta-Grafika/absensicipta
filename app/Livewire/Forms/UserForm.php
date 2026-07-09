@@ -23,6 +23,7 @@ class UserForm extends Form
     public $group = 'user';
     public $birth_date = null;
     public $birth_place = '';
+    public $status = 'active';
     public $division_id = null;
     public $education_id = null;
     public $job_title_id = null;
@@ -53,6 +54,7 @@ class UserForm extends Form
             'group' => ['nullable', 'string', 'max:255', Rule::in(User::$groups)],
             'birth_date' => ['nullable', 'date'],
             'birth_place' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'string', 'in:active,inactive,resign,suspend,fired'],
             'division_id' => ['nullable', 'exists:divisions,id'],
             'education_id' => ['nullable', 'exists:educations,id'],
             'job_title_id' => ['nullable', 'exists:job_titles,id'],
@@ -78,6 +80,7 @@ class UserForm extends Form
             ? \Illuminate\Support\Carbon::parse($user->birth_date)->format('Y-m-d')
             : null;
         $this->birth_place = $user->birth_place;
+        $this->status = $user->status ?? 'active';
         $this->division_id = $user->division_id;
         $this->education_id = $user->education_id;
         $this->job_title_id = $user->job_title_id;
