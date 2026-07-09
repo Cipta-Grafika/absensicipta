@@ -38,7 +38,7 @@ class ReplacementHourComponent extends Component
         'end_hour' => 'required|date_format:H:i',
         'shift_id' => 'required|exists:shifts,id',
         'reason' => 'required|string|max:1000',
-        'attachment' => 'nullable|image|max:2048', // maksimal 2MB
+        'attachment' => 'required|image|max:2048', // maksimal 2MB
     ];
 
     public function render()

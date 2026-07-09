@@ -167,7 +167,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Lampiran (Opsional, Max 2MB, JPG/PNG)</label>
+                            <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Lampiran (Wajib, Max 2MB, JPG/PNG)</label>
                             <div class="flex items-center gap-3 mt-1">
                                 <input type="file" id="attachment" wire:model="attachment" class="hidden">
                                 <label for="attachment" class="inline-flex cursor-pointer items-center rounded-md bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-800 transition hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
@@ -187,7 +187,7 @@
 
                         <div class="flex items-center justify-end rounded-b border-t border-gray-200 pt-4 dark:border-gray-600">
                             <button wire:click="closeModal" type="button" class="mr-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700">Batal</button>
-                            <button type="submit" class="rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Ajukan</button>
+                            <button type="submit" class="rounded-lg bg-sky-500 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-sky-600 focus:outline-none focus:ring-4 focus:ring-sky-300 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus:ring-sky-800 transition">Ajukan</button>
                         </div>
                     </form>
                 </div>
