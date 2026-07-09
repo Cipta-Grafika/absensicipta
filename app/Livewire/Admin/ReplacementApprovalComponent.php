@@ -130,6 +130,7 @@ class ReplacementApprovalComponent extends Component
             }
             
             $attendance->save();
+            \App\Models\Attendance::clearUserAttendanceCache($attendance->user, \Illuminate\Support\Carbon::parse($attendance->date));
         }
 
         $this->banner('Pengajuan berhasil disetujui.');
