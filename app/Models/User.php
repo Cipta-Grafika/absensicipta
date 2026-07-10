@@ -84,6 +84,16 @@ class User extends Authenticatable
 
     public static $groups = ['user', 'admin', 'superadmin'];
 
+    final public function overtimes()
+    {
+        return $this->hasMany(Overtime::class, 'employee_id');
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->group === 'user';
+    }
+
     final public function getIsUserAttribute(): bool
     {
         return $this->group === 'user';
