@@ -79,6 +79,7 @@ trait HasAttendanceSummary
             ->get();
 
         $employeesCount = User::where('group', 'user')
+            ->whereIn('status', ['active', 'suspend'])
             ->where($userFilter)
             ->count();
 

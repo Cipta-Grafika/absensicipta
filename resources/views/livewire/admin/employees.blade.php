@@ -25,6 +25,14 @@
     </div>
   </div>
 
+  <x-admin.employee-summary-cards
+    :activeSuspendCount="$activeSuspendCount"
+    :suspendCount="$suspendCount"
+    :resignCount="$resignCount"
+    :firedCount="$firedCount"
+  />
+
+
   <x-filter-sidebar maxWidth="sm">
     <x-slot name="title">Karyawan Filters</x-slot>
     <x-slot name="actions">
