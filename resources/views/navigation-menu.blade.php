@@ -6,7 +6,7 @@
         <!-- Logo -->
         <div class="flex shrink-0 items-center">
           <a href="{{ Auth::user()->isAdmin ? route('admin.dashboard') : route('home') }}">
-            <x-application-mark class="block h-9 w-auto" />
+            <x-application-mark class="block h-14 w-auto" />
           </a>
         </div>
 
