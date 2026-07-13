@@ -9,11 +9,13 @@ use Livewire\Component;
 
 class PayrollDashboardComponent extends Component
 {
+    public $month = '';
+
     public function render()
     {
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
 
-        $currentMonth = date('Y-m');
+        $currentMonth = $this->month ?: date('Y-m');
         
         $totalEmployees = User::where('group', 'user')->count();
         
