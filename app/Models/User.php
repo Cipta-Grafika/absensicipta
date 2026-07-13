@@ -44,6 +44,7 @@ class User extends Authenticatable
         'job_title_id',
         'profile_photo_path',
         'status',
+        'count_wfo',
     ];
 
     /**
@@ -79,10 +80,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'birth_date' => 'datetime:Y-m-d',
             'password' => 'hashed',
+            'count_wfo' => 'boolean',
         ];
     }
 
-    public static $groups = ['user', 'admin', 'superadmin'];
+    public static $groups = ['user', 'admin', 'superadmin', 'payroll'];
 
     final public function overtimes()
     {
@@ -114,6 +116,11 @@ class User extends Authenticatable
         return !$this->isAdmin;
     }
 
+    final public function getIsPayrollAttribute(): bool
+    {
+        return $this->group === 'payroll';
+    }
+
     public function education()
     {
         return $this->belongsTo(Education::class);
@@ -132,5 +139,15 @@ class User extends Authenticatable
     public function attendances()
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    public function salary()
+    {
+        return $this->hasOne(EmployeeSalary::class, 'employee_id');
+    }
+
+    public function payrolls()
+    {
+        return $this->hasMany(Payroll::class, 'employee_id');
     }
 }

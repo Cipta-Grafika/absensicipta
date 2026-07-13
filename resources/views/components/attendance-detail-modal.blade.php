@@ -27,12 +27,12 @@
           <div class="w-full">
             <x-label for="imp_duration" value="{{ __('Durasi IMP (Jam)') }}"></x-label>
             <x-input type="text" class="w-full bg-gray-100 dark:bg-gray-700" id="imp_duration" disabled
-              value="{{ $currentAttendance['imp_duration_hours'] ?? '-' }}"></x-input>
+              value="{{ isset($currentAttendance['imp_duration_minutes']) ? floor($currentAttendance['imp_duration_minutes']/60).' Jam '.($currentAttendance['imp_duration_minutes']%60).' Menit' : '-' }}"></x-input>
           </div>
           <div class="w-full">
             <x-label for="replaced_duration" value="{{ __('Ganti Jam (Jam)') }}"></x-label>
             <x-input type="text" class="w-full bg-gray-100 dark:bg-gray-700" id="replaced_duration" disabled
-              value="{{ $currentAttendance['replaced_duration_hours'] ?? '-' }}"></x-input>
+              value="{{ isset($currentAttendance['replaced_duration_minutes']) ? floor($currentAttendance['replaced_duration_minutes']/60).' Jam '.($currentAttendance['replaced_duration_minutes']%60).' Menit' : '-' }}"></x-input>
           </div>
         </div>
       @endif
