@@ -1,7 +1,7 @@
 <x-slot name="header">
   <div class="relative flex items-center">
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Master Data Gaji Karyawan') }}
+      {{ __('Master Gaji') }}
     </h2>
   </div>
 </x-slot>
