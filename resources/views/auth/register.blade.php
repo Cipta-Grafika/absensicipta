@@ -3,7 +3,7 @@
     <x-slot name="logo">
     </x-slot>
 
-    <div class="mb-6 flex flex-col items-center sm:items-start">
+    <div class="mb-6 flex flex-col items-center text-center">
       <x-authentication-card-logo />
       <h1 class="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Join Board!</h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Create your new account</p>

@@ -108,8 +108,6 @@ class ReplacementApprovalComponent extends Component
             ->where('status', 'approved')
             ->get()
             ->sum('duration_minutes');
-            
-        $replacedHours = floor($totalMinutes / 60);
 
         // Update Attendance record
         $attendance = \App\Models\Attendance::where('user_id', $replacement->user_id)
@@ -117,13 +115,13 @@ class ReplacementApprovalComponent extends Component
             ->first();
 
         if ($attendance) {
-            $attendance->replaced_duration_hours = $replacedHours;
+            $attendance->replaced_duration_minutes = $totalMinutes;
             
             $targetMinutes = $replacement->shift ? $replacement->shift->duration_minutes : 0;
             
             $isImpFulfilled = $attendance->status === 'imp' 
-                && $attendance->imp_duration_hours > 0 
-                && $replacedHours >= $attendance->imp_duration_hours;
+                && $attendance->imp_duration_minutes > 0 
+                && $totalMinutes >= $attendance->imp_duration_minutes;
                 
             $isShiftFulfilled = $targetMinutes > 0 && $totalMinutes >= $targetMinutes;
             

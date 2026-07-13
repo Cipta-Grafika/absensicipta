@@ -401,6 +401,12 @@
             @enderror
           </div>
         </div>
+        <div class="mt-4">
+          <label for="create_count_wfo" class="flex items-center">
+            <x-checkbox id="create_count_wfo" wire:model="form.count_wfo" />
+            <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Count WFO (Centang untuk status WFH = WFO)</span>
+          </label>
+        </div>
       </x-slot>
 
       <x-slot name="footer">
@@ -628,6 +634,12 @@
               <x-input-error for="form.education_id" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
+        </div>
+        <div class="mt-4">
+          <label for="edit_count_wfo" class="flex items-center">
+            <x-checkbox id="edit_count_wfo" wire:model="form.count_wfo" />
+            <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Count WFO (Centang jika perhitungan absensi wajib WFO)</span>
+          </label>
         </div>
       </x-slot>
 

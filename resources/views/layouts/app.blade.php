@@ -9,6 +9,7 @@
   <title>{{ $title ?? config('app.name', 'Laravel') }}</title>
   <link rel="icon" href="{{ asset('favicon.ico') }}?v=1.0.1" type="image/x-icon">
   <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=1.0.1" type="image/x-icon">
+  <link rel="preload" href="{{ asset('hris.svg') }}" as="image" type="image/svg+xml">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.bunny.net">
@@ -31,21 +32,18 @@
 <body class="font-sans antialiased">
   <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
     
-    <!-- Sticky Wrapper for Navbar and Header -->
-    <div class="z-40 w-full flex flex-col" style="position: sticky; top: 0;">
-      <x-banner />
-      
-      @livewire('navigation-menu')
+    <x-banner />
+    
+    @livewire('navigation-menu')
 
-      <!-- Page Heading -->
-      @if (isset($header))
-        <header class="bg-white shadow dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            {{ $header }}
-          </div>
-        </header>
-      @endif
-    </div>
+    <!-- Page Heading -->
+    @if (isset($header))
+      <header class="bg-white shadow dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          {{ $header }}
+        </div>
+      </header>
+    @endif
 
     <!-- Page Content -->
     <main>

@@ -442,14 +442,14 @@
           @if(isset($formAttendance['status']) && $formAttendance['status'] === 'imp')
           <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
             <div class="w-full">
-              <x-label for="edit_imp_duration_hours">{{ __('Durasi IMP (Jam)') }}</x-label>
-              <x-input id="edit_imp_duration_hours" class="mt-1 block w-full bg-gray-100 dark:bg-gray-700" type="number" wire:model="formAttendance.imp_duration_hours" readonly />
+              <x-label for="edit_imp_duration_minutes">{{ __('Durasi IMP (HH:MM)') }}</x-label>
+              <x-input id="edit_imp_duration_minutes" class="mt-1 block w-full bg-gray-100 dark:bg-gray-700" type="text" wire:model="formAttendance.imp_duration_minutes" readonly />
             </div>
             <div class="w-full">
-              <x-label for="edit_replaced_duration_hours">{{ __('Ganti Jam (Jam)') }}</x-label>
-              <x-input id="edit_replaced_duration_hours" class="mt-1 block w-full" type="number" wire:model="formAttendance.replaced_duration_hours" :disabled="!Auth::user()->isSuperadmin" />
-              @error('formAttendance.replaced_duration_hours')
-                <x-input-error for="formAttendance.replaced_duration_hours" class="mt-2" message="{{ $message }}" />
+              <x-label for="edit_replaced_duration_minutes">{{ __('Ganti Jam (HH:MM)') }}</x-label>
+              <x-input id="edit_replaced_duration_minutes" class="mt-1 block w-full" type="text" placeholder="Contoh: 1:30" wire:model="formAttendance.replaced_duration_minutes" :disabled="!Auth::user()->isSuperadmin" />
+              @error('formAttendance.replaced_duration_minutes')
+                <x-input-error for="formAttendance.replaced_duration_minutes" class="mt-2" message="{{ $message }}" />
               @enderror
             </div>
           </div>
