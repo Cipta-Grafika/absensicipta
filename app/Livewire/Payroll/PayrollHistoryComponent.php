@@ -299,7 +299,11 @@ class PayrollHistoryComponent extends Component
                     $cuti_deduction = ($days_divisor > 0) ? ($effective_cuti / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
                     
                     $effective_wfh = min($total_wfh, max(1, $days_divisor));
-                    $wfh_deduction = ($days_divisor > 0) ? ($effective_wfh / $days_divisor) * (0.5 * $fixed_income) : 0;
+                    if ($emp->count_wfo) {
+                        $wfh_deduction = 0;
+                    } else {
+                        $wfh_deduction = ($days_divisor > 0) ? ($effective_wfh / $days_divisor) * (0.5 * $fixed_income) : 0;
+                    }
                     $late_penalty_deduction = ($late_days_count > 3) ? (0.10 * $salary->attendance_allowance) : 0;
 
                     // If daily worker, they already lose income by not being present, so they shouldn't get double deducted for Alpa/Sakit/Izin/Cuti
