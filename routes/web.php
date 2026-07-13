@@ -126,6 +126,17 @@ Route::middleware([
         Route::get('/attendances/export', [ImportExportController::class, 'exportAttendances'])
             ->name('admin.attendances.export');
     });
+
+    // Payroll Group
+    Route::group(['prefix' => 'payroll', 'as' => 'payroll.'], function () {
+        Route::get('/', \App\Livewire\Payroll\PayrollDashboardComponent::class)->name('dashboard');
+        Route::get('/employee-salaries', \App\Livewire\Payroll\EmployeeSalaryComponent::class)->name('employee-salaries');
+        Route::get('/history', \App\Livewire\Payroll\PayrollHistoryComponent::class)->name('history');
+    });
+
+    // User Group (for Payslips)
+    Route::get('/user/payslips', \App\Livewire\User\PayslipComponent::class)->name('user.payslips');
+
 });
 
 Livewire::setUpdateRoute(function ($handle) {

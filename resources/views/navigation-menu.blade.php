@@ -79,7 +79,19 @@
                 </x-dropdown-link>
               </x-slot>
             </x-nav-dropdown>
-          @else
+          @endif
+          @if (Auth::user()->isPayroll || Auth::user()->isSuperadmin)
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
+              Payroll Dashboard
+            </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.employee-salaries') }}" :active="request()->routeIs('payroll.employee-salaries')">
+              Master Gaji
+            </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
+              Riwayat Gaji
+            </x-nav-link>
+          @endif
+          @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll)
             <x-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
               {{ __('Home') }}
             </x-nav-link>
@@ -94,6 +106,9 @@
             </x-nav-link>
             <x-nav-link href="{{ route('user.replacement-hours') }}" :active="request()->routeIs('user.replacement-hours')">
               Ganti Jam
+            </x-nav-link>
+            <x-nav-link href="{{ route('user.payslips') }}" :active="request()->routeIs('user.payslips')">
+              Slip Gaji
             </x-nav-link>
           @endif
         </div>
@@ -224,7 +239,22 @@
         <x-responsive-nav-link href="{{ route('admin.import-export.attendances') }}" :active="request()->routeIs('admin.import-export')">
           Import & Export Absensi
         </x-responsive-nav-link>
-      @else
+      @endif
+      @if (Auth::user()->isPayroll || Auth::user()->isSuperadmin)
+        <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
+          <div class="px-4 text-xs text-gray-400">Payroll</div>
+          <x-responsive-nav-link href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
+            Dashboard
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.employee-salaries') }}" :active="request()->routeIs('payroll.employee-salaries')">
+            Master Gaji
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
+            Riwayat Gaji
+          </x-responsive-nav-link>
+        </div>
+      @endif
+      @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll)
         <x-responsive-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
           {{ __('Home') }}
         </x-responsive-nav-link>
@@ -239,6 +269,9 @@
         </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('user.replacement-hours') }}" :active="request()->routeIs('user.replacement-hours')">
           Ganti Jam
+        </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('user.payslips') }}" :active="request()->routeIs('user.payslips')">
+          Slip Gaji
         </x-responsive-nav-link>
       @endif
     </div>

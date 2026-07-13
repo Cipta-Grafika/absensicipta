@@ -70,10 +70,10 @@
                     @enderror
                   </div>
                   <div x-show="leaveStatus === 'imp'" style="display: none;">
-                    <x-label for="imp_duration_hours" value="Durasi IMP (Jam)" />
-                    <x-input type="number" id="imp_duration_hours" min="1" max="24" class="mt-1 block w-full" name="imp_duration_hours" value="{{ old('imp_duration_hours') }}" placeholder="Contoh: 3" x-bind:required="leaveStatus === 'imp'" />
-                    @error('imp_duration_hours')
-                      <x-input-error for="imp_duration_hours" class="mt-2" message="{{ $message }}" />
+                    <x-label for="imp_duration_minutes" value="Durasi IMP (HH:MM)" />
+                    <x-input type="text" id="imp_duration_minutes" pattern="^[0-9]+:[0-5][0-9]$" class="mt-1 block w-full" name="imp_duration_minutes" value="{{ old('imp_duration_minutes') }}" placeholder="Contoh: 1:30" x-bind:required="leaveStatus === 'imp'" />
+                    @error('imp_duration_minutes')
+                      <x-input-error for="imp_duration_minutes" class="mt-2" message="{{ $message }}" />
                     @enderror
                   </div>
                 </div>
