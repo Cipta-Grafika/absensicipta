@@ -1,17 +1,17 @@
-<nav x-data="{ open: false }" class="relative z-50 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
+<nav x-data="{ open: false }" class="sticky top-0 z-50 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
   <!-- Primary Navigation Menu -->
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
     <div class="flex h-16 justify-between">
       <div class="flex">
         <!-- Logo -->
         <div class="flex shrink-0 items-center">
-          <a href="{{ Auth::user()->isAdmin ? route('admin.dashboard') : route('home') }}">
-            <x-application-mark class="block h-9 w-auto" />
+          <a href="{{ Auth::user()->isAdmin ? route('admin.dashboard') : route('home') }}" class="block h-14 w-14">
+            <x-application-mark class="block h-full w-full object-contain" />
           </a>
         </div>
 
         <!-- Navigation Links -->
-        <div class="hidden space-x-2 sm:-my-px sm:ms-6 sm:flex md:ms-10 md:space-x-5 lg:space-x-8">
+        <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex sm:space-x-8">
           @if (Auth::user()->isAdmin)
             <x-nav-link href="{{ route('admin.dashboard') }}" :active="request()->routeIs('admin.dashboard')">
               {{ __('Dashboard') }}
@@ -26,6 +26,9 @@
             </x-nav-link>
             <x-nav-link class="hidden md:inline-flex" href="{{ route('admin.replacement-approvals') }}" :active="request()->routeIs('admin.replacement-approvals')">
               Ganti Jam
+            </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex" href="{{ route('admin.overtime-approvals') }}" :active="request()->routeIs('admin.overtime-approvals')">
+              Lembur
             </x-nav-link>
             <x-nav-link class="hidden md:inline-flex" href="{{ route('admin.employees') }}" :active="request()->routeIs('admin.employees')">
               {{ __('Employee') }}
@@ -76,7 +79,19 @@
                 </x-dropdown-link>
               </x-slot>
             </x-nav-dropdown>
-          @else
+          @endif
+          @if (Auth::user()->isPayroll)
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
+              Payroll Dashboard
+            </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.employee-salaries') }}" :active="request()->routeIs('payroll.employee-salaries')">
+              Master Gaji
+            </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
+              Riwayat Gaji
+            </x-nav-link>
+          @endif
+          @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll)
             <x-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
               {{ __('Home') }}
             </x-nav-link>
@@ -86,8 +101,14 @@
             <x-nav-link href="{{ route('attendance-history') }}" :active="request()->routeIs('attendance-history')">
               Riwayat Absen
             </x-nav-link>
+            <x-nav-link href="{{ route('user.overtimes') }}" :active="request()->routeIs('user.overtimes')">
+              Lembur
+            </x-nav-link>
             <x-nav-link href="{{ route('user.replacement-hours') }}" :active="request()->routeIs('user.replacement-hours')">
               Ganti Jam
+            </x-nav-link>
+            <x-nav-link href="{{ route('user.payslips') }}" :active="request()->routeIs('user.payslips')">
+              Slip Gaji
             </x-nav-link>
           @endif
         </div>
@@ -189,6 +210,9 @@
         <x-responsive-nav-link href="{{ route('admin.replacement-approvals') }}" :active="request()->routeIs('admin.replacement-approvals')">
           Ganti Jam
         </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('admin.overtime-approvals') }}" :active="request()->routeIs('admin.overtime-approvals')">
+          Lembur
+        </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('admin.employees') }}" :active="request()->routeIs('admin.employees')">
           {{ __('Employee') }}
         </x-responsive-nav-link>
@@ -215,7 +239,22 @@
         <x-responsive-nav-link href="{{ route('admin.import-export.attendances') }}" :active="request()->routeIs('admin.import-export')">
           Import & Export Absensi
         </x-responsive-nav-link>
-      @else
+      @endif
+      @if (Auth::user()->isPayroll)
+        <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
+          <div class="px-4 text-xs text-gray-400">Payroll</div>
+          <x-responsive-nav-link href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
+            Dashboard
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.employee-salaries') }}" :active="request()->routeIs('payroll.employee-salaries')">
+            Master Gaji
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
+            Riwayat Gaji
+          </x-responsive-nav-link>
+        </div>
+      @endif
+      @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll)
         <x-responsive-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
           {{ __('Home') }}
         </x-responsive-nav-link>
@@ -225,8 +264,14 @@
         <x-responsive-nav-link href="{{ route('attendance-history') }}" :active="request()->routeIs('attendance-history')">
           Riwayat Absen
         </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('user.overtimes') }}" :active="request()->routeIs('user.overtimes')">
+          Lembur
+        </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('user.replacement-hours') }}" :active="request()->routeIs('user.replacement-hours')">
           Ganti Jam
+        </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('user.payslips') }}" :active="request()->routeIs('user.payslips')">
+          Slip Gaji
         </x-responsive-nav-link>
       @endif
     </div>

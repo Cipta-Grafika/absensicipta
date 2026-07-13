@@ -28,6 +28,7 @@ class UserForm extends Form
     public $education_id = null;
     public $job_title_id = null;
     public $photo = null;
+    public bool $count_wfo = false;
 
     public function rules()
     {
@@ -59,6 +60,7 @@ class UserForm extends Form
             'education_id' => ['nullable', 'exists:educations,id'],
             'job_title_id' => ['nullable', 'exists:job_titles,id'],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
+            'count_wfo' => ['boolean'],
         ];
     }
 
@@ -84,6 +86,7 @@ class UserForm extends Form
         $this->division_id = $user->division_id;
         $this->education_id = $user->education_id;
         $this->job_title_id = $user->job_title_id;
+        $this->count_wfo = (bool) $user->count_wfo;
         return $this;
     }
 

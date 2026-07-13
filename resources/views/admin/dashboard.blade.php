@@ -2,7 +2,7 @@
   <x-slot name="header">
     <div class="relative flex items-center">
       <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-        {{ __('Dashboard') }}
+        {{ __('Absensi Hari Ini') }}
       </h2>
       <div class="absolute right-0 flex items-center gap-2">
         <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
