@@ -1,17 +1,17 @@
-<nav x-data="{ open: false }" class="relative z-50 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
+<nav x-data="{ open: false }" class="sticky top-0 z-50 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
   <!-- Primary Navigation Menu -->
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
     <div class="flex h-16 justify-between">
       <div class="flex">
         <!-- Logo -->
         <div class="flex shrink-0 items-center">
-          <a href="{{ Auth::user()->isAdmin ? route('admin.dashboard') : route('home') }}">
-            <x-application-mark class="block h-14 w-auto" />
+          <a href="{{ Auth::user()->isAdmin ? route('admin.dashboard') : route('home') }}" class="block h-14 w-14">
+            <x-application-mark class="block h-full w-full object-contain" />
           </a>
         </div>
 
         <!-- Navigation Links -->
-        <div class="hidden space-x-2 sm:-my-px sm:ms-6 sm:flex md:ms-10 md:space-x-5 lg:space-x-8">
+        <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex sm:space-x-8">
           @if (Auth::user()->isAdmin)
             <x-nav-link href="{{ route('admin.dashboard') }}" :active="request()->routeIs('admin.dashboard')">
               {{ __('Dashboard') }}
@@ -80,7 +80,7 @@
               </x-slot>
             </x-nav-dropdown>
           @endif
-          @if (Auth::user()->isPayroll || Auth::user()->isSuperadmin)
+          @if (Auth::user()->isPayroll)
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
               Payroll Dashboard
             </x-nav-link>
@@ -240,7 +240,7 @@
           Import & Export Absensi
         </x-responsive-nav-link>
       @endif
-      @if (Auth::user()->isPayroll || Auth::user()->isSuperadmin)
+      @if (Auth::user()->isPayroll)
         <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
           <div class="px-4 text-xs text-gray-400">Payroll</div>
           <x-responsive-nav-link href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
