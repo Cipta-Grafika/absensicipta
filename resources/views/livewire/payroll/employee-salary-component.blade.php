@@ -10,14 +10,23 @@
   <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
     <div class="bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
       
-      <div class="mb-4 flex items-center justify-between">
-        <div class="relative w-full max-w-sm">
-          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+      <div class="mb-4">
+        <div class="flex w-full flex-1 items-center gap-2">
+          <div class="relative w-full">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <x-input type="text" class="block w-full pl-10 pr-10" name="search_employee" id="search_employee" autocomplete="off" wire:model.live.debounce.300ms="search" placeholder="Cari Karyawan..." />
+            @if ($search)
+              <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            @endif
           </div>
-          <x-input type="text" class="block w-full pl-10" wire:model.live.debounce.300ms="search" placeholder="Cari Karyawan..." />
         </div>
       </div>
 
@@ -32,7 +41,7 @@
               <th scope="col" class="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Aksi</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-800">
+          <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
             @forelse ($employees as $emp)
               <tr>
                 <td class="whitespace-nowrap px-3 py-4">
@@ -43,17 +52,17 @@
                     <div class="ml-4">
                       <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $emp->name }}</div>
                       <div class="text-xs text-gray-500 dark:text-gray-400">{{ $emp->nip }}</div>
-                      <div class="text-xs text-blue-500">{{ $emp->division->name ?? '-' }} | {{ $emp->jobTitle->name ?? '-' }}</div>
+                      <div class="text-xs text-blue-500 dark:text-blue-400">{{ $emp->division->name ?? '-' }} | {{ $emp->jobTitle->name ?? '-' }}</div>
                     </div>
                   </div>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-300">
                   @if($emp->salary)
-                    <span class="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800">
+                    <span class="inline-flex rounded-full bg-blue-100 px-2 text-xs font-semibold leading-5 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                       {{ ucfirst($emp->salary->salary_type) }}
                     </span>
                   @else
-                    <span class="inline-flex rounded-full bg-gray-100 px-2 text-xs font-semibold leading-5 text-gray-800">Belum Diset</span>
+                    <span class="inline-flex rounded-full bg-gray-100 px-2 text-xs font-semibold leading-5 text-gray-800 dark:bg-gray-700 dark:text-gray-300">Belum Diset</span>
                   @endif
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-300">

@@ -58,10 +58,10 @@
       </div>
 
       <!-- Card: Quick Actions -->
-      <div class="flex flex-col justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-6 shadow-sm text-white">
+      <div class="flex flex-col justify-center rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 p-6 shadow-sm text-white">
         <h3 class="text-lg font-bold">Akses Cepat</h3>
-        <p class="mt-1 text-sm text-indigo-100">Jalankan proses penggajian bulan ini.</p>
-        <a href="{{ route('payroll.history') }}" class="mt-4 inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-indigo-600 shadow-sm hover:bg-gray-50">
+        <p class="mt-1 text-sm text-blue-100">Jalankan proses penggajian bulan ini.</p>
+        <a href="{{ route('payroll.history') }}" class="mt-4 inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50">
           Proses Gaji Sekarang &rarr;
         </a>
       </div>
@@ -75,19 +75,19 @@
         <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3 text-sm text-gray-600 dark:text-gray-400">
           
           <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 font-bold mb-3">1</div>
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 font-bold mb-3">1</div>
             <h4 class="font-semibold text-gray-900 dark:text-gray-200">Atur Master Gaji</h4>
             <p class="mt-1">Pilih tipe gaji harian/bulanan dan atur besaran gaji pokok serta tunjangan untuk setiap karyawan di menu Master Gaji.</p>
           </div>
 
           <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 font-bold mb-3">2</div>
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 font-bold mb-3">2</div>
             <h4 class="font-semibold text-gray-900 dark:text-gray-200">Generate Payroll</h4>
             <p class="mt-1">Tentukan rentang tanggal cut-off absensi. Sistem akan menarik data kehadiran, lembur, dan ganti jam secara otomatis.</p>
           </div>
 
           <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 font-bold mb-3">3</div>
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 font-bold mb-3">3</div>
             <h4 class="font-semibold text-gray-900 dark:text-gray-200">Review & Paid</h4>
             <p class="mt-1">Tinjau slip gaji yang berstatus Draft di Riwayat Gaji, ubah status ke Paid agar karyawan bisa melihat dan mengunduh slip mereka.</p>
           </div>

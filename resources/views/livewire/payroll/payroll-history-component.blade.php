@@ -95,7 +95,7 @@
               <th scope="col" class="whitespace-nowrap px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status & Aksi</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-800">
+          <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
             @forelse ($payrolls as $pr)
               <tr>
                 <td class="px-3 py-4 whitespace-nowrap">
@@ -182,16 +182,16 @@
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-center text-sm">
                   @if($pr->status == 'draft')
-                    <span class="inline-flex rounded-full bg-yellow-100 px-2 text-xs font-semibold leading-5 text-yellow-800">Draft</span>
+                    <span class="inline-flex rounded-full bg-yellow-100 px-2 text-xs font-semibold leading-5 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Draft</span>
                     <div class="mt-2 flex flex-col items-center space-y-1">
-                        <button wire:click="markAsPaid('{{ $pr->id }}')" class="text-xs text-blue-600 hover:underline">Mark as Paid</button>
-                        <button wire:click="confirmDelete('{{ $pr->id }}')" class="text-xs text-red-600 hover:underline">Hapus</button>
+                        <button wire:click="markAsPaid('{{ $pr->id }}')" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Mark as Paid</button>
+                        <button wire:click="confirmDelete('{{ $pr->id }}')" class="text-xs text-red-600 dark:text-red-400 hover:underline">Hapus</button>
                     </div>
                   @else
-                    <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">Paid</span>
+                    <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900 dark:text-green-300">Paid</span>
                     <div class="text-xs text-gray-500 mt-1">{{ \Carbon\Carbon::parse($pr->payment_date)->format('d/m/Y') }}</div>
                     <div class="mt-2">
-                        <button wire:click="confirmDelete('{{ $pr->id }}')" class="text-xs text-red-600 hover:underline">Hapus</button>
+                        <button wire:click="confirmDelete('{{ $pr->id }}')" class="text-xs text-red-600 dark:text-red-400 hover:underline">Hapus</button>
                     </div>
                   @endif
                 </td>
