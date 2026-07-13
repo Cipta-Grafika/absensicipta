@@ -44,6 +44,7 @@ class User extends Authenticatable
         'job_title_id',
         'profile_photo_path',
         'status',
+        'count_wfo',
     ];
 
     /**
@@ -79,6 +80,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'birth_date' => 'datetime:Y-m-d',
             'password' => 'hashed',
+            'count_wfo' => 'boolean',
         ];
     }
 
