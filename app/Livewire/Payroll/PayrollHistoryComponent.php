@@ -195,9 +195,11 @@ class PayrollHistoryComponent extends Component
                     $consecutive_cuti = 0;
                     $penalized_cuti_days = 0;
                     $late_days_count = 0;
+                    $actual_working_days = 0;
 
                     for ($d = $start_period->copy(); $d->lte($end_period); $d->addDay()) {
                         if (!$d->isSunday()) {
+                            $actual_working_days++;
                             $records = $attendancesByDate->get($d->format('Y-m-d'), collect());
                             $hasValidRecord = $records->where('status', '!=', 'absent')->isNotEmpty();
                             if (!$hasValidRecord) {
@@ -277,6 +279,11 @@ class PayrollHistoryComponent extends Component
                     // Fixed Income for deductions reference
                     $fixed_income = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
                     $days_divisor = $salary->working_days_per_month ?? 25;
+                    
+                    if ($actual_working_days > 0 && $actual_working_days < $days_divisor) {
+                        $days_divisor = $actual_working_days;
+                    }
+                    
                     $daily_rate_approx = $days_divisor > 0 ? $fixed_income / $days_divisor : 0;
 
                     // Standard Deductions
