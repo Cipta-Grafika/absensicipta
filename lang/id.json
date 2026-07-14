@@ -374,7 +374,7 @@
     "This password reset link will expire in :count minutes.": "Tautan pengaturan ulang kata sandi ini akan kedaluwarsa dalam :count menit.",
     "This user already belongs to the team.": "Pengguna ini sudah menjadi anggota tim.",
     "This user has already been invited to the team.": "Pengguna ini sudah diundang ke dalam tim.",
-    "to": "kepada",
+    "to": "-",
     "To finish enabling two factor authentication, scan the following QR code using your phone's authenticator application or enter the setup key and provide the generated OTP code.": "Untuk selesai mengaktifkan dua otentikasi faktor, pindai kode QR berikut menggunakan aplikasi Authenticator ponsel Anda atau memasukkan setup key dan berikan kode OTP yang dihasilkan.",
     "Toggle navigation": "Alihkan navigasi",
     "Token Name": "Nama Token",
