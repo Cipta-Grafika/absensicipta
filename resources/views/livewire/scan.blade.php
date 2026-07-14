@@ -139,19 +139,26 @@
 
       <hr class="my-4">
 
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3" wire:ignore>
-        <a href="{{ route('apply-leave') }}">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-3" wire:ignore>
+        <a href="{{ route('apply-leave') }}" class="col-span-1">
           <div
-            class="flex flex-col-reverse items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-4 py-2 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:flex-row md:gap-3">
-            Ajukan Izin
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-4 py-2 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:gap-3">
             <x-heroicon-o-envelope-open class="h-6 w-6 text-white" />
+            Ajukan Izin
           </div>
         </a>
-        <a href="{{ route('attendance-history') }}">
+        <a href="{{ route('attendance-history') }}" class="col-span-1">
           <div
-            class="flex flex-col-reverse items-center justify-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-center font-medium text-white hover:bg-blue-600 md:flex-row md:gap-3">
-            Riwayat Absen
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-center font-medium text-white hover:bg-blue-600 md:gap-3">
             <x-heroicon-o-clock class="h-6 w-6 text-white" />
+            Riwayat Absen
+          </div>
+        </a>
+        <a href="{{ route('user.payslips') }}" class="col-span-2 md:col-span-1 lg:col-span-1">
+          <div
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-green-500 px-4 py-2 text-center font-medium text-white hover:bg-green-600 md:gap-3">
+            <x-heroicon-o-document-text class="h-6 w-6 text-white" />
+            Slip Gaji
           </div>
         </a>
       </div>
