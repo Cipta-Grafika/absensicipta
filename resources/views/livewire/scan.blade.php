@@ -140,7 +140,7 @@
       <hr class="my-4">
 
       <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-3" wire:ignore>
-        <a href="{{ route('apply-leave') }}" class="col-span-1">
+        <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
           <div
             class="flex flex-row items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-4 py-2 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:gap-3">
             <x-heroicon-o-envelope-open class="h-6 w-6 text-white" />
@@ -212,6 +212,8 @@
       </div>
     </x-slot>
   </x-dialog-modal>
+
+  @livewire('user.apply-leave-modal-component')
 
 </div>
 
