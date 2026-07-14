@@ -324,15 +324,18 @@
                     <div>Pembayaran Gaji telah dilakukan oleh Perusahaan</div>
                     <div>Secara transfer ke rekening karyawan</div>
                     <table style="margin-top: 5px;">
+                        @php
+                            $pm = $payroll->employee->paymentMethod;
+                        @endphp
                         <tr>
-                            <td style="width: 25%;">Bank Permata</td>
+                            <td style="width: 25%;">{{ $pm ? $pm->payment_name : 'Belum Diatur' }}</td>
                             <td style="width: 5%;">:</td>
-                            <td style="font-weight: bold;">{{ $payroll->employee->bank_account ?? '9940957106' }}</td>
+                            <td style="font-weight: bold;">{{ $pm && $pm->bank_account ? $pm->bank_account : '-' }}</td>
                         </tr>
                         <tr>
                             <td>Atas Nama</td>
                             <td>:</td>
-                            <td style="font-weight: bold;">{{ strtoupper($payroll->employee->name) }}</td>
+                            <td style="font-weight: bold;">{{ strtoupper($pm && $pm->account_name ? $pm->account_name : $payroll->employee->name) }}</td>
                         </tr>
                     </table>
                 </td>

@@ -80,6 +80,7 @@
                       <li>Kehadiran: Rp{{ number_format($emp->salary->attendance_allowance, 0, ',', '.') }}</li>
                       <li>Lembur/Jam: Rp{{ number_format($emp->salary->overtime_rate, 0, ',', '.') }}</li>
                       <li>Telat/Mnt: Rp{{ number_format($emp->salary->late_deduction_rate, 0, ',', '.') }}</li>
+                      <li>Syirkah: {{ $emp->salary->savings ? $emp->salary->savings->savings_name : 'Tidak Ada' }}</li>
                     </ul>
                   @else
                     -
@@ -176,6 +177,18 @@
           <x-input id="annual_leave_quota" type="number" class="mt-1 block w-full" wire:model="annual_leave_quota" min="0" />
           <p class="mt-1 text-xs text-gray-500">Jumlah hari cuti yang dapat diambil dalam setahun (opsional, untuk pendataan).</p>
           <x-input-error for="annual_leave_quota" class="mt-2" />
+        </div>
+
+        <div class="sm:col-span-2">
+          <x-label for="savings_id" value="{{ __('Syirkah / Tabungan (Opsional)') }}" />
+          <select id="savings_id" wire:model="savings_id" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+            <option value="">-- Tidak Ada --</option>
+            @foreach($savingsList as $s)
+              <option value="{{ $s->id }}">{{ $s->savings_name }} (Wajib: Rp{{ number_format($s->mandatory_savings, 0, ',', '.') }})</option>
+            @endforeach
+          </select>
+          <p class="mt-1 text-xs text-gray-500">Pilih program syirkah yang diikuti oleh karyawan ini.</p>
+          <x-input-error for="savings_id" class="mt-2" />
         </div>
       </div>
     </x-slot>

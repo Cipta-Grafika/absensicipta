@@ -102,17 +102,21 @@ class ApplyLeaveModalComponent extends Component
                 ->forEach(function (Carbon $date) use ($newAttachment, $parsedImpDurationMinutes) {
                     $existing = Attendance::where('user_id', Auth::user()->id)
                         ->where('date', $date->format('Y-m-d'))
-                        ->first();
+                        ->get();
 
-                    if ($existing) {
-                        $existing->update([
+                    if ($existing->isNotEmpty()) {
+                        $first = $existing->first();
+                        // Hapus duplikat jika ada untuk menjaga integritas data (hanya 1 absen per hari)
+                        $existing->where('id', '!=', $first->id)->each->delete();
+
+                        $first->update([
                             'status' => $this->status,
                             'note' => $this->note,
-                            'attachment' => $newAttachment ?? $existing->attachment,
-                            'latitude' => $this->lat ? doubleval($this->lat) : $existing->latitude,
-                            'longitude' => $this->lng ? doubleval($this->lng) : $existing->longitude,
-                            'imp_duration_minutes' => $this->status === 'imp' ? $parsedImpDurationMinutes : $existing->imp_duration_minutes,
-                            'shift_id' => $this->status === 'imp' ? $this->shift_id : $existing->shift_id,
+                            'attachment' => $newAttachment ?? $first->attachment,
+                            'latitude' => $this->lat ? doubleval($this->lat) : $first->latitude,
+                            'longitude' => $this->lng ? doubleval($this->lng) : $first->longitude,
+                            'imp_duration_minutes' => $this->status === 'imp' ? $parsedImpDurationMinutes : $first->imp_duration_minutes,
+                            'shift_id' => $this->status === 'imp' ? $this->shift_id : $first->shift_id,
                         ]);
                     } else {
                         Attendance::create([

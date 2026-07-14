@@ -21,10 +21,16 @@ class EmployeeSalary extends Model
         'attendance_allowance',
         'late_deduction_rate',
         'annual_leave_quota',
+        'savings_id',
     ];
 
     public function employee()
     {
         return $this->belongsTo(User::class, 'employee_id');
+    }
+
+    public function savings()
+    {
+        return $this->belongsTo(Saving::class, 'savings_id');
     }
 }
