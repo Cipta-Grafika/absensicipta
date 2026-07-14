@@ -36,8 +36,14 @@ Route::middleware([
         Route::get('/attendance-history', [UserAttendanceController::class, 'history'])
             ->name('attendance-history');
 
+        Route::get('/overtimes', \App\Livewire\User\OvertimeComponent::class)
+            ->name('user.overtimes');
+
         Route::get('/replacement-hours', \App\Livewire\User\ReplacementHourComponent::class)
             ->name('user.replacement-hours');
+
+        Route::get('/user/payslips/{id}/print', [\App\Http\Controllers\User\PayslipPrintController::class, 'print'])
+            ->name('user.payslip.print');
     });
 
     // ADMIN AREA
@@ -100,6 +106,13 @@ Route::middleware([
         Route::get('/replacement-approvals/report', [\App\Http\Controllers\Admin\ReplacementApprovalController::class, 'report'])
             ->name('admin.replacement-approvals.report');
 
+        // Overtime Approval (Lembur)
+        Route::get('/overtime-approvals', \App\Livewire\Admin\OvertimeApprovalComponent::class)
+            ->name('admin.overtime-approvals');
+            
+        Route::get('/overtime-approvals/report', [\App\Http\Controllers\Admin\OvertimeApprovalController::class, 'report'])
+            ->name('admin.overtime-approvals.report');
+
         // Import/Export
         Route::get('/import-export/users', [ImportExportController::class, 'users'])
             ->name('admin.import-export.users');
@@ -116,6 +129,20 @@ Route::middleware([
         Route::get('/attendances/export', [ImportExportController::class, 'exportAttendances'])
             ->name('admin.attendances.export');
     });
+
+    // Payroll Group
+    Route::group(['prefix' => 'payroll', 'as' => 'payroll.', 'middleware' => ['payroll']], function () {
+        Route::get('/', \App\Livewire\Payroll\PayrollDashboardComponent::class)->name('dashboard');
+        Route::get('/employee-salaries', \App\Livewire\Payroll\EmployeeSalaryComponent::class)->name('employee-salaries');
+        Route::get('/payment-methods', \App\Livewire\Payroll\PaymentMethodComponent::class)->name('payment-methods');
+        Route::get('/history', \App\Livewire\Payroll\PayrollHistoryComponent::class)->name('history');
+        Route::get('/savings', \App\Livewire\Payroll\SavingComponent::class)->name('savings');
+        Route::get('/savings-history', \App\Livewire\Payroll\SavingsHistoryComponent::class)->name('savings-history');
+    });
+
+    // User Group (for Payslips)
+    Route::get('/user/payslips', \App\Livewire\User\PayslipComponent::class)->name('user.payslips');
+
 });
 
 Livewire::setUpdateRoute(function ($handle) {

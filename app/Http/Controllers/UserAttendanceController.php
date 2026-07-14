@@ -23,7 +23,7 @@ class UserAttendanceController extends Controller
             'note' => ['required', 'string', 'max:255'],
             'from' => ['required', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
-            'imp_duration_hours' => ['nullable', 'integer', 'min:1', 'max:24', 'required_if:status,imp'],
+            'imp_duration_minutes' => ['nullable', 'string', 'regex:/^([0-9]+):([0-5][0-9])$/', 'required_if:status,imp'],
             'shift_id' => ['nullable', 'exists:shifts,id', 'required_if:status,imp'],
             'attachment' => ['nullable', 'file', 'max:3072'],
             'lat' => ['nullable', 'numeric'],
@@ -41,6 +41,17 @@ class UserAttendanceController extends Controller
 
             $fromDate = Carbon::parse($request->from);
             $toDate = Carbon::parse($request->to ?? $fromDate);
+
+            $parsedImpDurationMinutes = null;
+            if ($request->status === 'imp' && $request->imp_duration_minutes) {
+                list($h, $m) = explode(':', $request->imp_duration_minutes);
+                $parsedImpDurationMinutes = ((int)$h * 60) + (int)$m;
+                if ($parsedImpDurationMinutes <= 0) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'imp_duration_minutes' => 'Durasi IMP tidak boleh 0.'
+                    ]);
+                }
+            }
 
             $hasPresentOrLate = Attendance::where('user_id', Auth::user()->id)
                 ->whereBetween('date', [$fromDate->format('Y-m-d'), $toDate->format('Y-m-d')])
@@ -60,7 +71,7 @@ class UserAttendanceController extends Controller
             }
 
             $fromDate->range($toDate)
-                ->forEach(function (Carbon $date) use ($request, $newAttachment) {
+                ->forEach(function (Carbon $date) use ($request, $newAttachment, $parsedImpDurationMinutes) {
                     $existing = Attendance::where('user_id', Auth::user()->id)
                         ->where('date', $date->format('Y-m-d'))
                         ->first();
@@ -72,7 +83,7 @@ class UserAttendanceController extends Controller
                             'attachment' => $newAttachment ?? $existing->attachment,
                             'latitude' => doubleval($request->lat) ?? $existing->latitude,
                             'longitude' => doubleval($request->lng) ?? $existing->longitude,
-                            'imp_duration_hours' => $request->status === 'imp' ? $request->imp_duration_hours : $existing->imp_duration_hours,
+                            'imp_duration_minutes' => $request->status === 'imp' ? $parsedImpDurationMinutes : $existing->imp_duration_minutes,
                             'shift_id' => $request->status === 'imp' ? $request->shift_id : $existing->shift_id,
                         ]);
                     } else {
@@ -84,7 +95,7 @@ class UserAttendanceController extends Controller
                             'attachment' => $newAttachment ?? null,
                             'latitude' => $request->lat ? doubleval($request->lat) : null,
                             'longitude' => $request->lng ? doubleval($request->lng) : null,
-                            'imp_duration_hours' => $request->status === 'imp' ? $request->imp_duration_hours : null,
+                            'imp_duration_minutes' => $request->status === 'imp' ? $parsedImpDurationMinutes : null,
                             'shift_id' => $request->status === 'imp' ? $request->shift_id : null,
                         ]);
                     }

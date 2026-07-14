@@ -76,7 +76,7 @@ class AttendanceComponent extends Component
             'time_out' => $attendance ? ($attendance->time_out ? Carbon::parse($attendance->time_out)->format('H:i') : null) : null,
             'shift_id' => $attendance ? $attendance->shift_id : null,
             'status' => $attendance ? $attendance->status : '-',
-            'imp_duration_hours' => $attendance ? $attendance->imp_duration_hours : null,
+            'imp_duration_minutes' => $attendance && $attendance->imp_duration_minutes ? floor($attendance->imp_duration_minutes / 60).':'.str_pad($attendance->imp_duration_minutes % 60, 2, '0', STR_PAD_LEFT) : null,
             'note' => $attendance ? $attendance->note : null,
         ];
 
@@ -87,13 +87,24 @@ class AttendanceComponent extends Component
             ->get();
             
         $replacedMinutes = $replacedHoursRecords->sum('duration_minutes');
-        $calculatedReplacedHours = floor($replacedMinutes / 60);
-        $this->formAttendance['replaced_duration_hours'] = $attendance && $attendance->replaced_duration_hours !== null 
-            ? $attendance->replaced_duration_hours 
-            : $calculatedReplacedHours;
+        $dbReplacedMinutes = $attendance && $attendance->replaced_duration_minutes !== null 
+            ? $attendance->replaced_duration_minutes 
+            : $replacedMinutes;
+            
+        $this->formAttendance['replaced_duration_minutes'] = $dbReplacedMinutes > 0 
+            ? floor($dbReplacedMinutes / 60) . ':' . str_pad($dbReplacedMinutes % 60, 2, '0', STR_PAD_LEFT) 
+            : null;
 
         $this->viewingMonthlyDetail = false;
         $this->editingAttendance = true;
+    }
+
+    private function parseHHMM($string) {
+        if (!$string) return null;
+        if (preg_match('/^([0-9]+):([0-5][0-9])$/', $string, $matches)) {
+            return ($matches[1] * 60) + $matches[2];
+        }
+        return null;
     }
 
     public function saveAttendance()
@@ -111,22 +122,34 @@ class AttendanceComponent extends Component
             abort(403);
         }
 
+        foreach (['time_in', 'time_out', 'shift_id', 'imp_duration_minutes', 'replaced_duration_minutes', 'note'] as $key) {
+            if (isset($this->formAttendance[$key]) && trim($this->formAttendance[$key]) === '') {
+                $this->formAttendance[$key] = null;
+            }
+        }
+
         $this->validate([
             'formAttendance.time_in' => 'nullable|date_format:H:i',
             'formAttendance.time_out' => 'nullable|date_format:H:i',
             'formAttendance.shift_id' => 'nullable|exists:shifts,id',
             'formAttendance.status' => 'required|string',
-            'formAttendance.replaced_duration_hours' => 'nullable|integer',
+            'formAttendance.imp_duration_minutes' => 'nullable|string|regex:/^([0-9]+):([0-5][0-9])$/',
+            'formAttendance.replaced_duration_minutes' => 'nullable|string|regex:/^([0-9]+):([0-5][0-9])$/',
             'formAttendance.note' => 'nullable|string',
         ]);
 
         if ($this->formAttendance['status'] == '-') {
-            $attendance = Attendance::where('user_id', $this->formAttendance['user_id'])
-                ->whereDate('date', $this->formAttendance['date'])->first();
-            if ($attendance) {
-                $attendance->delete();
-            }
+            Attendance::where('user_id', $this->formAttendance['user_id'])
+                ->whereDate('date', $this->formAttendance['date'])->delete();
         } else {
+            $existing = Attendance::where('user_id', $this->formAttendance['user_id'])
+                ->whereDate('date', $this->formAttendance['date'])->get();
+                
+            if ($existing->isNotEmpty()) {
+                $first = $existing->first();
+                // Hapus duplikat (jika ada lebih dari 1 record di hari yang sama)
+                $existing->where('id', '!=', $first->id)->each->delete();
+            }
             Attendance::updateOrCreate(
                 [
                     'user_id' => $this->formAttendance['user_id'],
@@ -137,7 +160,8 @@ class AttendanceComponent extends Component
                     'time_out' => !empty($this->formAttendance['time_out']) ? $this->formAttendance['time_out'] : null,
                     'shift_id' => !empty($this->formAttendance['shift_id']) ? $this->formAttendance['shift_id'] : null,
                     'status' => $this->formAttendance['status'],
-                    'replaced_duration_hours' => isset($this->formAttendance['replaced_duration_hours']) ? $this->formAttendance['replaced_duration_hours'] : null,
+                    'imp_duration_minutes' => isset($this->formAttendance['imp_duration_minutes']) ? $this->parseHHMM($this->formAttendance['imp_duration_minutes']) : null,
+                    'replaced_duration_minutes' => isset($this->formAttendance['replaced_duration_minutes']) ? $this->parseHHMM($this->formAttendance['replaced_duration_minutes']) : null,
                     'note' => !empty($this->formAttendance['note']) ? $this->formAttendance['note'] : null,
                 ]
             );
@@ -270,7 +294,7 @@ class AttendanceComponent extends Component
                             $attendances = Attendance::filter(
                                 userId: $user->id,
                                 week: $this->week,
-                            )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_hours', 'replaced_duration_hours']);
+                            )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_minutes', 'replaced_duration_minutes']);
 
                             return $attendances->map(
                                 function (Attendance $v) {
@@ -295,7 +319,7 @@ class AttendanceComponent extends Component
                             $attendances = Attendance::filter(
                                 month: $this->month,
                                 userId: $user->id,
-                            )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_hours', 'replaced_duration_hours']);
+                            )->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_minutes', 'replaced_duration_minutes']);
 
                             return $attendances->map(
                                 function (Attendance $v) {
@@ -313,7 +337,7 @@ class AttendanceComponent extends Component
                 } else {
                     /** @var Collection */
                     $attendances = Attendance::where('user_id', $user->id)
-                        ->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_hours', 'replaced_duration_hours']);
+                        ->get(['id', 'status', 'date', 'latitude', 'longitude', 'attachment', 'note', 'imp_duration_minutes', 'replaced_duration_minutes']);
                 }
                 $user->attendances = $attendances;
                 return $user;

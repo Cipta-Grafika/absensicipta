@@ -90,8 +90,15 @@ class EmployeeComponent extends Component
 
     public function render()
     {
-        $users = User::where('group', 'user')
-            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
+        $baseQuery = User::where('group', 'user')
+            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id));
+
+        $activeSuspendCount = (clone $baseQuery)->whereIn('status', ['active', 'suspend'])->count();
+        $suspendCount = (clone $baseQuery)->where('status', 'suspend')->count();
+        $resignCount = (clone $baseQuery)->where('status', 'resign')->count();
+        $firedCount = (clone $baseQuery)->where('status', 'fired')->count();
+
+        $users = (clone $baseQuery)
             ->when($this->search, function (Builder $q) {
                 return $q->where(function (Builder $query) {
                     $query->where('name', 'like', '%' . $this->search . '%')
@@ -110,6 +117,13 @@ class EmployeeComponent extends Component
             ->when($this->education, fn (Builder $q) => $q->where('education_id', $this->education))
             ->orderBy('name')
             ->paginate(20);
-        return view('livewire.admin.employees', ['users' => $users]);
+
+        return view('livewire.admin.employees', [
+            'users' => $users,
+            'activeSuspendCount' => $activeSuspendCount,
+            'suspendCount' => $suspendCount,
+            'resignCount' => $resignCount,
+            'firedCount' => $firedCount,
+        ]);
     }
 }

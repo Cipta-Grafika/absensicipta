@@ -31,6 +31,10 @@ class FortifyServiceProvider extends ServiceProvider
                     return redirect('/admin');
                 }
 
+                if (Auth::user() && Auth::user()->isPayroll) {
+                    return redirect('/payroll');
+                }
+
                 return redirect('/');
             }
         });

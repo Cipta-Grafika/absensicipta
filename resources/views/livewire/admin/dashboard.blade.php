@@ -35,14 +35,7 @@
     </x-slot>
   </x-filter-sidebar>
 
-  <div class="flex flex-col justify-between sm:flex-row items-center mb-4">
-    <h3 class="text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      Absensi {{ $titlePrefix }}
-    </h3>
-    <h3 class="text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200 mt-4 sm:mt-0">
-      Jumlah Karyawan: {{ $employeesCount }}
-    </h3>
-  </div>
+
   <x-admin.attendance-summary-cards
     :stats="$stats"
     :presentCount="$presentCount"
@@ -170,7 +163,7 @@
             {{-- Absensi --}}
             <td
               class="{{ $bgColor }} text-nowrap px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-              {{ $status === 'imp' ? 'IMP' : __($status) }}
+              {{ __($status) }}
             </td>
 
             {{-- Waktu masuk/keluar --}}

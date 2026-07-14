@@ -289,7 +289,7 @@
                   <td
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
-                      {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
+                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
                     </button>
                   </td>
                 @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
@@ -426,7 +426,7 @@
                 <option value="present">{{ __('present') }}</option>
                 <option value="late">{{ __('late') }}</option>
                 <option value="excused">{{ __('excused') }}</option>
-                <option value="imp">{{ __('IMP (Izin Meninggalkan Pekerjaan)') }}</option>
+                <option value="imp">{{ __('IMP') }}</option>
                 <option value="sick">{{ __('sick') }}</option>
                 <option value="absent">{{ __('absent') }}</option>
                 <option value="wfh">{{ __('WFH') }}</option>
@@ -442,14 +442,14 @@
           @if(isset($formAttendance['status']) && $formAttendance['status'] === 'imp')
           <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
             <div class="w-full">
-              <x-label for="edit_imp_duration_hours">{{ __('Durasi IMP (Jam)') }}</x-label>
-              <x-input id="edit_imp_duration_hours" class="mt-1 block w-full bg-gray-100 dark:bg-gray-700" type="number" wire:model="formAttendance.imp_duration_hours" readonly />
+              <x-label for="edit_imp_duration_minutes">{{ __('Durasi IMP (HH:MM)') }}</x-label>
+              <x-input id="edit_imp_duration_minutes" class="mt-1 block w-full bg-gray-100 dark:bg-gray-700" type="text" wire:model="formAttendance.imp_duration_minutes" readonly />
             </div>
             <div class="w-full">
-              <x-label for="edit_replaced_duration_hours">{{ __('Ganti Jam (Jam)') }}</x-label>
-              <x-input id="edit_replaced_duration_hours" class="mt-1 block w-full" type="number" wire:model="formAttendance.replaced_duration_hours" :disabled="!Auth::user()->isSuperadmin" />
-              @error('formAttendance.replaced_duration_hours')
-                <x-input-error for="formAttendance.replaced_duration_hours" class="mt-2" message="{{ $message }}" />
+              <x-label for="edit_replaced_duration_minutes">{{ __('Ganti Jam (HH:MM)') }}</x-label>
+              <x-input id="edit_replaced_duration_minutes" class="mt-1 block w-full" type="text" placeholder="Contoh: 1:30" wire:model="formAttendance.replaced_duration_minutes" :disabled="!Auth::user()->isSuperadmin" />
+              @error('formAttendance.replaced_duration_minutes')
+                <x-input-error for="formAttendance.replaced_duration_minutes" class="mt-2" message="{{ $message }}" />
               @enderror
             </div>
           </div>
