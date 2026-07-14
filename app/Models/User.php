@@ -146,6 +146,11 @@ class User extends Authenticatable
         return $this->hasOne(EmployeeSalary::class, 'employee_id');
     }
 
+    public function paymentMethod()
+    {
+        return $this->hasOne(PaymentMethod::class, 'user_id');
+    }
+
     public function payrolls()
     {
         return $this->hasMany(Payroll::class, 'employee_id');

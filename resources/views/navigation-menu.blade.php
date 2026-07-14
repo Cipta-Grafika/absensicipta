@@ -87,8 +87,17 @@
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.employee-salaries') }}" :active="request()->routeIs('payroll.employee-salaries')">
               Master Gaji
             </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.payment-methods') }}" :active="request()->routeIs('payroll.payment-methods')">
+              Metode Pembayaran
+            </x-nav-link>
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
               Riwayat Gaji
+            </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.savings') }}" :active="request()->routeIs('payroll.savings')">
+              Syirkah
+            </x-nav-link>
+            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.savings-history') }}" :active="request()->routeIs('payroll.savings-history')">
+              Riwayat Syirkah
             </x-nav-link>
           @endif
           @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll)
@@ -249,8 +258,17 @@
           <x-responsive-nav-link href="{{ route('payroll.employee-salaries') }}" :active="request()->routeIs('payroll.employee-salaries')">
             Master Gaji
           </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.payment-methods') }}" :active="request()->routeIs('payroll.payment-methods')">
+            Metode Pembayaran
+          </x-responsive-nav-link>
           <x-responsive-nav-link href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
             Riwayat Gaji
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.savings') }}" :active="request()->routeIs('payroll.savings')">
+            Syirkah
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.savings-history') }}" :active="request()->routeIs('payroll.savings-history')">
+            Riwayat Syirkah
           </x-responsive-nav-link>
         </div>
       @endif

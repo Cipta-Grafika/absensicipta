@@ -19,7 +19,7 @@
         <div class="w-full">
           <x-label for="status" value="{{ __('Status') }}"></x-label>
           <x-input type="text" class="w-full" id="status" disabled
-            value="{{ $currentAttendance['status'] === 'imp' ? 'IMP (Izin Meninggalkan Pekerjaan)' : ($currentAttendance['status'] === 'special-leaves' ? 'Cuti Khusus' : __($currentAttendance['status'])) }}"></x-input>
+            value="{{ __($currentAttendance['status']) }}"></x-input>
         </div>
       </div>
       @if ($currentAttendance['status'] === 'imp')

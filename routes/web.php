@@ -41,6 +41,9 @@ Route::middleware([
 
         Route::get('/replacement-hours', \App\Livewire\User\ReplacementHourComponent::class)
             ->name('user.replacement-hours');
+
+        Route::get('/user/payslips/{id}/print', [\App\Http\Controllers\User\PayslipPrintController::class, 'print'])
+            ->name('user.payslip.print');
     });
 
     // ADMIN AREA
@@ -131,7 +134,10 @@ Route::middleware([
     Route::group(['prefix' => 'payroll', 'as' => 'payroll.', 'middleware' => ['payroll']], function () {
         Route::get('/', \App\Livewire\Payroll\PayrollDashboardComponent::class)->name('dashboard');
         Route::get('/employee-salaries', \App\Livewire\Payroll\EmployeeSalaryComponent::class)->name('employee-salaries');
+        Route::get('/payment-methods', \App\Livewire\Payroll\PaymentMethodComponent::class)->name('payment-methods');
         Route::get('/history', \App\Livewire\Payroll\PayrollHistoryComponent::class)->name('history');
+        Route::get('/savings', \App\Livewire\Payroll\SavingComponent::class)->name('savings');
+        Route::get('/savings-history', \App\Livewire\Payroll\SavingsHistoryComponent::class)->name('savings-history');
     });
 
     // User Group (for Payslips)

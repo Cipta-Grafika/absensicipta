@@ -31,7 +31,6 @@ class Payroll extends Model
         'total_deduction',
         'net_salary',
         'status',
-        'payment_method',
         'payment_date',
     ];
 
