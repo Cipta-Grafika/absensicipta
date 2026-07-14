@@ -1,14 +1,42 @@
 <x-slot name="header">
-  <div class="relative flex items-center justify-between">
+  <div class="relative flex items-center">
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Slip Gaji Saya (Payslips)') }}
+      {{ __('Slip Gaji') }}
     </h2>
+    <div class="absolute right-0 flex items-center gap-2">
+      <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
+        <x-heroicon-o-funnel class="sm:mr-1.5 h-4 w-4 text-sky-500" />
+        <span class="hidden sm:inline">Filter</span>
+      </x-secondary-button>
+    </div>
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-12">
-  <div class="mx-auto max-w-5xl sm:px-6 lg:px-8">
-    <div class="bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
+<div class="py-0 sm:py-12" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+    
+    <x-filter-sidebar maxWidth="sm">
+      <x-slot name="title">Filter Data</x-slot>
+      <x-slot name="actions">
+        <button type="button" wire:click="$set('month', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </button>
+      </x-slot>
+      
+      <x-slot name="content">
+        <div class="flex flex-col gap-6">
+          <div>
+            <x-label for="month_filter" value="Pilih Bulan Periode" class="mb-1"></x-label>
+            <x-input type="month" id="month_filter" class="w-full block" wire:model.live="month" />
+          </div>
+        </div>
+      </x-slot>
+    </x-filter-sidebar>
+
+    <div class="overflow-hidden bg-white shadow-xl sm:rounded-lg dark:bg-gray-800">
+      <div class="p-6 lg:p-8 text-gray-900 dark:text-gray-100">
 
       <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         @forelse ($payrolls as $pr)
@@ -33,12 +61,12 @@
             </div>
             
             <div class="mt-5 text-center">
-              <button disabled class="w-full rounded bg-gray-100 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500">
+              <a href="{{ route('user.payslip.print', $pr->id) }}" target="_blank" class="block w-full rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-green-600 dark:text-white dark:hover:bg-green-500 transition-colors">
                 <div class="flex items-center justify-center">
-                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                  Unduh PDF (Segera)
+                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                  Unduh PDF
                 </div>
-              </button>
+              </a>
             </div>
           </div>
         @empty
@@ -52,6 +80,7 @@
         {{ $payrolls->links() }}
       </div>
 
+      </div>
     </div>
   </div>
 </div>

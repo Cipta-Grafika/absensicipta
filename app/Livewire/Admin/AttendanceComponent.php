@@ -139,12 +139,17 @@ class AttendanceComponent extends Component
         ]);
 
         if ($this->formAttendance['status'] == '-') {
-            $attendance = Attendance::where('user_id', $this->formAttendance['user_id'])
-                ->whereDate('date', $this->formAttendance['date'])->first();
-            if ($attendance) {
-                $attendance->delete();
-            }
+            Attendance::where('user_id', $this->formAttendance['user_id'])
+                ->whereDate('date', $this->formAttendance['date'])->delete();
         } else {
+            $existing = Attendance::where('user_id', $this->formAttendance['user_id'])
+                ->whereDate('date', $this->formAttendance['date'])->get();
+                
+            if ($existing->isNotEmpty()) {
+                $first = $existing->first();
+                // Hapus duplikat (jika ada lebih dari 1 record di hari yang sama)
+                $existing->where('id', '!=', $first->id)->each->delete();
+            }
             Attendance::updateOrCreate(
                 [
                     'user_id' => $this->formAttendance['user_id'],

@@ -39,7 +39,7 @@
                       WFH
                     </option>
                     <option value="imp" {{ (old('status', request('status', $attendance?->status))) === 'imp' ? 'selected' : '' }}>
-                      IMP (Izin Meninggalkan Pekerjaan)
+                      IMP
                     </option>
                     <option value="special-leaves" {{ (old('status', request('status', $attendance?->status))) === 'special-leaves' ? 'selected' : '' }}>
                       Cuti Khusus

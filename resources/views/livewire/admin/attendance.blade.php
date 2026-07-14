@@ -289,7 +289,7 @@
                   <td
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
-                      {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
+                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
                     </button>
                   </td>
                 @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
@@ -426,7 +426,7 @@
                 <option value="present">{{ __('present') }}</option>
                 <option value="late">{{ __('late') }}</option>
                 <option value="excused">{{ __('excused') }}</option>
-                <option value="imp">{{ __('IMP (Izin Meninggalkan Pekerjaan)') }}</option>
+                <option value="imp">{{ __('IMP') }}</option>
                 <option value="sick">{{ __('sick') }}</option>
                 <option value="absent">{{ __('absent') }}</option>
                 <option value="wfh">{{ __('WFH') }}</option>

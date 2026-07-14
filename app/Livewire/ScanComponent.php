@@ -49,7 +49,6 @@ class ScanComponent extends Component
         /** @var Attendance */
         $existingAttendance = Attendance::where('user_id', Auth::user()->id)
             ->where('date', date('Y-m-d'))
-            ->where('barcode_id', $barcode->id)
             ->first();
 
         if (!$existingAttendance) {

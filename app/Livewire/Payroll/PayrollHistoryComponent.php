@@ -151,7 +151,7 @@ class PayrollHistoryComponent extends Component
             $generatedCount = 0;
             \Illuminate\Support\Facades\DB::transaction(function () use (&$generatedCount) {
                 // Get active employees who have a salary setup
-                $employees = \App\Models\User::where('group', 'user')->whereHas('salary')->with('salary')->get();
+                $employees = \App\Models\User::where('group', 'user')->whereHas('salary')->with(['salary.savings'])->get();
 
                 if ($employees->isEmpty()) {
                     throw new \Exception("Tidak ada karyawan aktif yang memiliki pengaturan gaji.");
@@ -180,7 +180,8 @@ class PayrollHistoryComponent extends Component
                         ->with('shift')
                         ->get();
 
-                    $total_present = $attendances->whereIn('status', ['present', 'late', 'wfh', 'imp'])->count();
+                    $total_paid_days = $attendances->whereIn('status', ['present', 'late', 'wfh', 'imp'])->count();
+                    $total_present = $attendances->whereIn('status', ['present', 'late'])->count();
                     
                     // Dynamic Absent Calculation (including missing records, skipping Sundays, up to today)
                     $start_period = \Carbon\Carbon::parse($this->generate_start_date);
@@ -195,9 +196,11 @@ class PayrollHistoryComponent extends Component
                     $consecutive_cuti = 0;
                     $penalized_cuti_days = 0;
                     $late_days_count = 0;
+                    $actual_working_days = 0;
 
                     for ($d = $start_period->copy(); $d->lte($end_period); $d->addDay()) {
                         if (!$d->isSunday()) {
+                            $actual_working_days++;
                             $records = $attendancesByDate->get($d->format('Y-m-d'), collect());
                             $hasValidRecord = $records->where('status', '!=', 'absent')->isNotEmpty();
                             if (!$hasValidRecord) {
@@ -260,9 +263,9 @@ class PayrollHistoryComponent extends Component
                     
                     // Daily vs Monthly Logic
                     if ($salary->salary_type == 'daily') {
-                        $basic_salary_earned = $salary->basic_salary * $total_present;
-                        $meal_allowance = $salary->meal_allowance * $total_present;
-                        $transport_allowance = $salary->transport_allowance * $total_present;
+                        $basic_salary_earned = $salary->basic_salary * $total_paid_days;
+                        $meal_allowance = $salary->meal_allowance * $total_paid_days;
+                        $transport_allowance = $salary->transport_allowance * $total_paid_days;
                         $attendance_allowance = $salary->attendance_allowance;
                     } else { // monthly
                         $basic_salary_earned = $salary->basic_salary;
@@ -277,6 +280,11 @@ class PayrollHistoryComponent extends Component
                     // Fixed Income for deductions reference
                     $fixed_income = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
                     $days_divisor = $salary->working_days_per_month ?? 25;
+                    
+                    if ($actual_working_days > 0 && $actual_working_days < $days_divisor) {
+                        $days_divisor = $actual_working_days;
+                    }
+                    
                     $daily_rate_approx = $days_divisor > 0 ? $fixed_income / $days_divisor : 0;
 
                     // Standard Deductions
@@ -319,7 +327,49 @@ class PayrollHistoryComponent extends Component
                         // If you want it applied to daily, you can adjust this later.
                     }
 
-                    $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction;
+                    // Syirkah / Savings Logic
+                    $syirkah_deduction = 0;
+                    $period_date = \Carbon\Carbon::parse($this->generate_period_month . '-01');
+                    
+                    // Cleanup existing history for this generated month
+                    \App\Models\SavingsHistory::where('user_id', $emp->id)
+                        ->whereYear('created_at', $period_date->year)
+                        ->whereMonth('created_at', $period_date->month)
+                        ->delete();
+
+                    if ($salary->savings_id && $salary->savings) {
+                        $savingProgram = $salary->savings;
+                        $syirkah_mandatory = $savingProgram->mandatory_savings;
+                        $syirkah_secondary = $savingProgram->secondary_savings;
+                        $syirkah_deduction = $syirkah_mandatory + $syirkah_secondary;
+                        
+                        if ($syirkah_deduction > 0) {
+                            $prev_history = \App\Models\SavingsHistory::where('user_id', $emp->id)
+                                ->orderBy('created_at', 'desc')
+                                ->first();
+                                
+                            $prev_mandatory = $prev_history ? $prev_history->total_mandatory : 0;
+                            $prev_secondary = $prev_history ? $prev_history->total_secondary : 0;
+                            
+                            $new_total_mandatory = $prev_mandatory + $syirkah_mandatory;
+                            $new_total_secondary = $prev_secondary + $syirkah_secondary;
+                            $new_total_savings = $new_total_mandatory + $new_total_secondary;
+                            
+                            \App\Models\SavingsHistory::create([
+                                'user_id' => $emp->id,
+                                'savings_id' => $savingProgram->id,
+                                'mandatory_savings' => $syirkah_mandatory,
+                                'secondary_savings' => $syirkah_secondary,
+                                'total_mandatory' => $new_total_mandatory,
+                                'total_secondary' => $new_total_secondary,
+                                'total_savings' => $new_total_savings,
+                                'created_at' => $period_date->copy()->endOfMonth(),
+                                'updated_at' => $period_date->copy()->endOfMonth(),
+                            ]);
+                        }
+                    }
+
+                    $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction;
 
                     $net_salary = $basic_salary_earned + $total_allowance + $total_overtime_pay - $total_deduction;
 
@@ -378,6 +428,7 @@ class PayrollHistoryComponent extends Component
                     }
                     if ($late_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Terlambat ($total_late_minutes Menit)", 'amount' => $late_deduction]);
                     if ($imp_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan IMP Tdk Diganti ($total_unreplaced_imp_hours Jam)", 'amount' => $imp_deduction]);
+                    if ($syirkah_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Syirkah", 'amount' => $syirkah_deduction]);
                 }
             });
 

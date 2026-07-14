@@ -163,7 +163,7 @@
             {{-- Absensi --}}
             <td
               class="{{ $bgColor }} text-nowrap px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-              {{ $status === 'imp' ? 'IMP' : __($status) }}
+              {{ __($status) }}
             </td>
 
             {{-- Waktu masuk/keluar --}}
