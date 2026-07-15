@@ -28,10 +28,6 @@ Route::middleware([
     Route::middleware('user')->group(function () {
         Route::get('/home', HomeController::class)->name('home');
 
-        Route::get('/apply-leave', [UserAttendanceController::class, 'applyLeave'])
-            ->name('apply-leave');
-        Route::post('/apply-leave', [UserAttendanceController::class, 'storeLeaveRequest'])
-            ->name('store-leave-request');
 
         Route::get('/attendance-history', [UserAttendanceController::class, 'history'])
             ->name('attendance-history');
