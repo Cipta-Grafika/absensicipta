@@ -18,6 +18,12 @@
               <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Admin') }}</span>
             </x-label>
           </div>
+          <div class="mt-4">
+            <x-label for="payroll" class="flex items-center">
+              <x-checkbox value="payroll" id="payroll" wire:model.live="groups" />
+              <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Payroll') }}</span>
+            </x-label>
+          </div>
           @if(Auth::user()->isSuperadmin)
           <div class="mt-4">
             <x-label for="superadmin" class="flex items-center">
