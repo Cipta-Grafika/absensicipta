@@ -97,7 +97,7 @@ class User extends Component
     private function validateGroups()
     {
         $this->validate([
-            'groups.*' => ['string', 'in:user,admin,superadmin'],
+            'groups.*' => ['string', 'in:user,admin,payroll,superadmin'],
             'groups' => ['required', 'array']
         ]);
     }

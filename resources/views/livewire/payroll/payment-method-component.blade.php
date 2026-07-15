@@ -1,7 +1,7 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Master Metode Pembayaran') }}
+      {{ __('Metode Pembayaran') }}
     </h2>
     <x-button x-data @click="$dispatch('open-payment-modal')" class="bg-sky-500 hover:bg-sky-600 focus:bg-sky-600 active:bg-sky-700">
       <svg class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

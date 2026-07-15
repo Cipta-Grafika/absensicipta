@@ -177,8 +177,7 @@
                 <td style="width: 64%; padding-left: 5px;">
                     <div style="font-weight: bold; color: #2A549B; font-size: 18pt;">Cipta Grafika</div>
                     <div style="font-size: 8.5pt; color: black; line-height: 1.2;">
-                        Ruko Broadway Blok III No. B 17<br>
-                        Kompleks Galuh Mas - Karawang<br>
+                        Ruko Broadway Blok III No. B 17, Kompleks Galuh Mas - Karawang<br>
                         Telp : 0267 8455970-51<br>
                         Email : ciptagrafika@gmail.com
                     </div>
@@ -255,22 +254,48 @@
                     $deductionRows = [];
                     $deductions = $payroll->details->where('type', 'deduction');
                     
-                    $impDeduction = $deductions->first(function($d) { return stripos($d->name, 'IMP') !== false; });
-                    $syirkahDeduction = $deductions->first(function($d) { return stripos($d->name, 'Syirkah') !== false; });
-                    $pphDeduction = $deductions->first(function($d) { return stripos($d->name, 'PPh 21') !== false; });
-                    $absensiDeduction = $deductions->first(function($d) { return stripos($d->name, 'Absensi') !== false; });
-                    $telatDeduction = $deductions->first(function($d) { return stripos($d->name, 'Telat') !== false; });
+                    $lateMinuteDetail = $deductions->first(function($d) { return stripos($d->name, 'Keterlambatan') !== false || stripos($d->name, 'Telat') !== false; });
+                    $latePenaltyDetail = $deductions->first(function($d) { return stripos($d->name, 'Penalti Sering Terlambat') !== false; });
                     
-                    $deductionRows[] = ['name' => 'Absensi', 'amount' => $absensiDeduction ? $absensiDeduction->amount : 0];
-                    $deductionRows[] = ['name' => 'Telat', 'amount' => $telatDeduction ? $telatDeduction->amount : 0];
-                    $deductionRows[] = ['name' => 'IMP', 'amount' => $impDeduction ? $impDeduction->amount : 0];
-                    $deductionRows[] = ['name' => 'Syirkah', 'amount' => $syirkahDeduction ? $syirkahDeduction->amount : 0];
-                    $deductionRows[] = ['name' => 'PPh 21', 'amount' => $pphDeduction ? $pphDeduction->amount : 0];
+                    $totalLateAmount = ($lateMinuteDetail ? $lateMinuteDetail->amount : 0) + ($latePenaltyDetail ? $latePenaltyDetail->amount : 0);
+                    $lateMinutes = abs($payroll->total_late_minutes ?: 0);
+                    $lateLabel = "Telat ({$lateMinutes} menit)";
+
+                    $absensiDetail = $deductions->first(function($d) { return stripos($d->name, 'Mangkir') !== false || stripos($d->name, 'Absensi') !== false; });
+                    $absensiLabel = 'Absensi' . ($payroll->total_absent > 0 ? " ({$payroll->total_absent} Hari)" : '');
+
+                    $impDetail = $deductions->first(function($d) { return stripos($d->name, 'IMP') !== false; });
+                    $impLabel = 'IMP' . ($payroll->total_unreplaced_imp_hours > 0 ? " ({$payroll->total_unreplaced_imp_hours} Jam)" : '');
+
+                    $syirkahDetail = $deductions->first(function($d) { return stripos($d->name, 'Syirkah') !== false; });
                     
-                    $coveredNames = array_filter([$impDeduction?->name, $syirkahDeduction?->name, $pphDeduction?->name, $absensiDeduction?->name, $telatDeduction?->name]);
+                    $cutiDetail = $deductions->first(function($d) { return stripos($d->name, 'Cuti Beruntun') !== false || stripos($d->name, 'Penalti Cuti') !== false; });
+                    $cutiLabel = 'Penalti Cuti' . ($payroll->penalized_cuti_days > 0 ? " ({$payroll->penalized_cuti_days} Hari)" : '');
+
+                    $pphDetail = $deductions->first(function($d) { return stripos($d->name, 'PPh 21') !== false; });
+                    
+                    $deductionRows[] = ['name' => $absensiLabel, 'amount' => $absensiDetail ? $absensiDetail->amount : 0];
+                    $deductionRows[] = ['name' => $lateLabel, 'amount' => $totalLateAmount];
+                    $deductionRows[] = ['name' => $impLabel, 'amount' => $impDetail ? $impDetail->amount : 0];
+                    $deductionRows[] = ['name' => 'Syirkah', 'amount' => $syirkahDetail ? $syirkahDetail->amount : 0];
+                    if ($cutiDetail && $cutiDetail->amount > 0) {
+                        $deductionRows[] = ['name' => $cutiLabel, 'amount' => $cutiDetail->amount];
+                    }
+                    $deductionRows[] = ['name' => 'PPh 21', 'amount' => $pphDetail ? $pphDetail->amount : 0];
+                    
+                    $coveredNames = array_filter([
+                        $lateMinuteDetail?->name, 
+                        $latePenaltyDetail?->name, 
+                        $absensiDetail?->name, 
+                        $impDetail?->name, 
+                        $syirkahDetail?->name, 
+                        $cutiDetail?->name, 
+                        $pphDetail?->name
+                    ]);
+
                     foreach($deductions as $d) {
                         if (!in_array($d->name, $coveredNames)) {
-                            $cleanName = str_ireplace('Potongan WFH/WFA', 'WFH/A', $d->name);
+                            $cleanName = str_ireplace(['Potongan WFH/WFA', 'Potongan Sakit', 'Potongan Izin'], ['WFH/A', 'Sakit', 'Izin'], $d->name);
                             $deductionRows[] = ['name' => $cleanName, 'amount' => $d->amount];
                         }
                     }
@@ -321,23 +346,40 @@
         <table class="summary-table">
             <tr>
                 <td style="width: 60%;">
-                    <div>Pembayaran Gaji telah dilakukan oleh Perusahaan</div>
-                    <div>Secara transfer ke rekening karyawan</div>
-                    <table style="margin-top: 5px;">
-                        @php
-                            $pm = $payroll->employee->paymentMethod;
-                        @endphp
-                        <tr>
-                            <td style="width: 25%;">{{ $pm ? $pm->payment_name : 'Belum Diatur' }}</td>
-                            <td style="width: 5%;">:</td>
-                            <td style="font-weight: bold;">{{ $pm && $pm->bank_account ? $pm->bank_account : '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td>Atas Nama</td>
-                            <td>:</td>
-                            <td style="font-weight: bold;">{{ strtoupper($pm && $pm->account_name ? $pm->account_name : $payroll->employee->name) }}</td>
-                        </tr>
-                    </table>
+                    @php
+                        $pm = $payroll->employee->paymentMethod;
+                    @endphp
+                    @if($pm)
+                        <div>Pembayaran Gaji telah dilakukan oleh Perusahaan</div>
+                        <div>Secara transfer ke rekening karyawan</div>
+                        <table style="margin-top: 5px;">
+                            <tr>
+                                <td style="width: 25%;">{{ $pm->payment_name }}</td>
+                                <td style="width: 5%;">:</td>
+                                <td style="font-weight: bold;">{{ $pm->bank_account ?? '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td>Atas Nama</td>
+                                <td>:</td>
+                                <td style="font-weight: bold;">{{ strtoupper($pm->account_name ?: $payroll->employee->name) }}</td>
+                            </tr>
+                        </table>
+                    @else
+                        <div>Pembayaran Gaji telah dilakukan oleh Perusahaan</div>
+                        <div>Secara CASH kepada karyawan berikut:</div>
+                        <table style="margin-top: 5px;">
+                            <tr>
+                                <td style="width: 25%;">Metode</td>
+                                <td style="width: 5%;">:</td>
+                                <td style="font-weight: bold;">CASH</td>
+                            </tr>
+                            <tr>
+                                <td>Atas Nama</td>
+                                <td>:</td>
+                                <td style="font-weight: bold;">{{ strtoupper($payroll->employee->name) }}</td>
+                            </tr>
+                        </table>
+                    @endif
                 </td>
                 <td style="width: 40%;" class="total-payroll-box">
                     <div class="total-payroll-title">TOTAL PAYROLL</div>
