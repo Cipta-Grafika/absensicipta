@@ -85,9 +85,9 @@
             </p>
           </div>
           <div class="flex items-center justify-stretch">
-            <x-danger-button class="w-full"
-              x-text="file ? '{{ __('Import') }} ' + file.name : '{{ __('Import') }}'">
-            </x-danger-button>
+            <x-success-button class="w-full"
+              x-text="file ? '{{ __('Confirm & Import') }} ' + file.name : '{{ __('Import') }}'">
+            </x-success-button>
           </div>
         </form>
       </div>
