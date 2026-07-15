@@ -19,7 +19,14 @@ class PayrollHistoryComponent extends Component
     public $generate_period_month;
     public $generate_start_date;
     public $generate_end_date;
+    public $showDeductionModal = false;
+    public $showIncomeModal = false;
+    public $selectedDeductions = [];
+    public $selectedIncomes = [];
+    public $selectedPayrollEmployeeName = '';
     public $isGenerating = false;
+
+    protected $queryString = [];
 
     public function mount()
     {
@@ -337,7 +344,7 @@ class PayrollHistoryComponent extends Component
                         ->whereMonth('created_at', $period_date->month)
                         ->delete();
 
-                    if ($salary->savings_id && $salary->savings) {
+                    if ($salary->savings_id && $salary->savings && $total_paid_days >= 7) {
                         $savingProgram = $salary->savings;
                         $syirkah_mandatory = $savingProgram->mandatory_savings;
                         $syirkah_secondary = $savingProgram->secondary_savings;
@@ -345,6 +352,7 @@ class PayrollHistoryComponent extends Component
                         
                         if ($syirkah_deduction > 0) {
                             $prev_history = \App\Models\SavingsHistory::where('user_id', $emp->id)
+                                ->where('created_at', '<', $period_date->copy()->startOfMonth())
                                 ->orderBy('created_at', 'desc')
                                 ->first();
                                 
@@ -444,6 +452,58 @@ class PayrollHistoryComponent extends Component
         }
 
         $this->isGenerating = false;
+    }
+
+    public function showDeductions($payrollId)
+    {
+        $payroll = \App\Models\Payroll::with(['details', 'employee'])->find($payrollId);
+        if ($payroll) {
+            $this->selectedDeductions = $payroll->details->where('type', 'deduction')->toArray();
+            $this->selectedPayrollEmployeeName = $payroll->employee->name ?? 'Karyawan';
+            $this->showDeductionModal = true;
+        }
+    }
+
+    public function closeDeductionModal()
+    {
+        $this->showDeductionModal = false;
+        // Data selectedDeductions dan selectedPayrollEmployeeName JANGAN di-clear di sini.
+        // Hal ini untuk menjaga state DOM tetap terisi saat animasi transisi (fade out) penutupan modal berjalan.
+        // Data tersebut akan otomatis tertimpa (overwrite) ketika user membuka modal untuk payroll yang lain.
+    }
+
+    public function showIncomes($payrollId)
+    {
+        $payroll = \App\Models\Payroll::with(['details', 'employee'])->find($payrollId);
+        if ($payroll) {
+            $incomes = [];
+            
+            // Tambahkan Gaji Pokok dari master/tabel payroll
+            if ($payroll->basic_salary_earned > 0) {
+                $incomes[] = [
+                    'name' => 'Gaji Pokok',
+                    'amount' => $payroll->basic_salary_earned
+                ];
+            }
+
+            // Tambahkan Tunjangan dan Lembur dari detail (earning)
+            $earnings = $payroll->details->where('type', 'earning');
+            foreach ($earnings as $earning) {
+                $incomes[] = [
+                    'name' => $earning->name,
+                    'amount' => $earning->amount
+                ];
+            }
+
+            $this->selectedIncomes = $incomes;
+            $this->selectedPayrollEmployeeName = $payroll->employee->name ?? 'Karyawan';
+            $this->showIncomeModal = true;
+        }
+    }
+
+    public function closeIncomeModal()
+    {
+        $this->showIncomeModal = false;
     }
 
     public function render()

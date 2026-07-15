@@ -83,7 +83,7 @@
         <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th scope="col" class="whitespace-nowrap px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Periode & Karyawan</th>
+              <th scope="col" class="min-w-[15rem] whitespace-nowrap px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Periode & Karyawan</th>
               @foreach (['H', 'A', 'T', 'L', 'IMP', 'S', 'I', 'C', 'W'] as $_st)
                 <th scope="col" class="w-12 min-w-[3rem] border border-gray-300 p-0 text-center text-xs font-medium text-gray-500 dark:border-gray-600 dark:text-gray-300" title="{{ $_st }}">
                   <div class="flex h-12 w-12 items-center justify-center">{{ $_st }}</div>
@@ -101,9 +101,12 @@
                 <td class="px-3 py-4 whitespace-nowrap">
                   <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ \Carbon\Carbon::parse($pr->period_month)->format('F Y') }}</div>
                   <div class="mt-1 flex items-center">
-                    <img class="h-8 w-8 rounded-full object-cover" src="{{ $pr->employee->profile_photo_url }}" alt="">
-                    <div class="ml-3">
-                      <div class="text-sm font-medium text-gray-900 dark:text-gray-200">{{ $pr->employee->name }}</div>
+                    <img class="hidden h-8 w-8 rounded-full object-cover mr-3 lg:block" src="{{ $pr->employee->profile_photo_url }}" alt="">
+                    <div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-200 whitespace-nowrap" title="{{ $pr->employee->name }}">
+                        <span class="lg:hidden">{{ \Illuminate\Support\Str::limit($pr->employee->name, 15, '...') }}</span>
+                        <span class="hidden lg:block">{{ $pr->employee->name }}</span>
+                      </div>
                       <div class="text-xs text-gray-500">{{ $pr->employee->nip }}</div>
                     </div>
                   </div>
@@ -172,10 +175,14 @@
                   </div>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-green-600 dark:text-green-400">
-                  Rp {{ number_format($pr->basic_salary_earned + $pr->total_allowance + $pr->total_overtime_pay, 0, ',', '.') }}
+                  <button wire:click="showIncomes('{{ $pr->id }}')" class="hover:underline focus:outline-none" title="Klik untuk melihat detail pemasukan">
+                    Rp {{ number_format($pr->basic_salary_earned + $pr->total_allowance + $pr->total_overtime_pay, 0, ',', '.') }}
+                  </button>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-red-600 dark:text-red-400">
-                  Rp {{ number_format($pr->total_deduction, 0, ',', '.') }}
+                  <button wire:click="showDeductions('{{ $pr->id }}')" class="hover:underline focus:outline-none" title="Klik untuk melihat detail potongan">
+                    Rp {{ number_format($pr->total_deduction, 0, ',', '.') }}
+                  </button>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm font-bold text-gray-900 dark:text-gray-100">
                   Rp {{ number_format($pr->net_salary, 0, ',', '.') }}
@@ -198,7 +205,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">Tidak ada data penggajian.</td>
+                <td colspan="14" class="px-3 py-4 text-center text-sm text-gray-500">Tidak ada data penggajian.</td>
               </tr>
             @endforelse
           </tbody>
@@ -261,4 +268,104 @@
       deleteAction="deletePayroll" 
       cancelAction="cancelDelete" 
   />
+
+  <!-- Modal Detail Potongan -->
+  <x-dialog-modal wire:model.live="showDeductionModal" maxWidth="lg">
+    <x-slot name="title">
+      Detail Potongan - {{ $selectedPayrollEmployeeName }}
+    </x-slot>
+
+    <x-slot name="content">
+      @if(count($selectedDeductions) > 0)
+        <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+          <table class="w-full divide-y divide-gray-300 dark:divide-gray-600">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th scope="col" class="w-3/5 py-3 pl-4 pr-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-300 sm:pl-6">Jenis Potongan</th>
+                <th scope="col" class="w-2/5 whitespace-nowrap px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-300">Nominal</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800">
+              @php $totalDeduction = 0; @endphp
+              @foreach($selectedDeductions as $deduction)
+                @php $totalDeduction += $deduction['amount']; @endphp
+                <tr>
+                  <td class="w-3/5 whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-gray-100 sm:pl-6">
+                    {{ $deduction['name'] }}
+                  </td>
+                  <td class="w-2/5 whitespace-nowrap px-3 py-4 text-sm text-right text-red-600 dark:text-red-400">
+                    Rp {{ number_format($deduction['amount'], 0, ',', '.') }}
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+            <tfoot class="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th scope="row" class="w-3/5 py-3 pl-4 pr-3 text-left text-sm font-bold text-gray-900 dark:text-white sm:pl-6">Total Potongan</th>
+                <td class="w-2/5 whitespace-nowrap px-3 py-3 text-right text-sm font-bold text-red-600 dark:text-red-400">Rp {{ number_format($totalDeduction, 0, ',', '.') }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      @else
+        <p class="text-sm text-gray-500 dark:text-gray-400">Tidak ada detail potongan untuk payroll ini.</p>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-secondary-button wire:click="closeDeductionModal" wire:loading.attr="disabled">
+        {{ __('Tutup') }}
+      </x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- Modal Detail Pemasukan -->
+  <x-dialog-modal wire:model.live="showIncomeModal" maxWidth="lg">
+    <x-slot name="title">
+      Detail Pemasukan - {{ $selectedPayrollEmployeeName }}
+    </x-slot>
+
+    <x-slot name="content">
+      @if(count($selectedIncomes) > 0)
+        <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+          <table class="w-full divide-y divide-gray-300 dark:divide-gray-600">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th scope="col" class="w-3/5 py-3 pl-4 pr-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-300 sm:pl-6">Jenis Pemasukan</th>
+                <th scope="col" class="w-2/5 whitespace-nowrap px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-300">Nominal</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800">
+              @php $totalIncome = 0; @endphp
+              @foreach($selectedIncomes as $income)
+                @php $totalIncome += $income['amount']; @endphp
+                <tr>
+                  <td class="w-3/5 whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-gray-100 sm:pl-6">
+                    {{ $income['name'] }}
+                  </td>
+                  <td class="w-2/5 whitespace-nowrap px-3 py-4 text-sm text-right text-green-600 dark:text-green-400">
+                    Rp {{ number_format($income['amount'], 0, ',', '.') }}
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+            <tfoot class="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th scope="row" class="w-3/5 py-3 pl-4 pr-3 text-left text-sm font-bold text-gray-900 dark:text-white sm:pl-6">Total Pemasukan</th>
+                <td class="w-2/5 whitespace-nowrap px-3 py-3 text-right text-sm font-bold text-green-600 dark:text-green-400">Rp {{ number_format($totalIncome, 0, ',', '.') }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      @else
+        <p class="text-sm text-gray-500 dark:text-gray-400">Tidak ada detail pemasukan untuk payroll ini.</p>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-secondary-button wire:click="closeIncomeModal" wire:loading.attr="disabled">
+        {{ __('Tutup') }}
+      </x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
 </div>

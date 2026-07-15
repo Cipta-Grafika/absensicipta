@@ -18,6 +18,8 @@ class SavingsHistory extends Model
         'total_mandatory',
         'total_secondary',
         'total_savings',
+        'created_at',
+        'updated_at',
     ];
 
     public function user()

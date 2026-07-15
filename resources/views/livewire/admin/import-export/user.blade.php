@@ -18,6 +18,12 @@
               <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Admin') }}</span>
             </x-label>
           </div>
+          <div class="mt-4">
+            <x-label for="payroll" class="flex items-center">
+              <x-checkbox value="payroll" id="payroll" wire:model.live="groups" />
+              <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Payroll') }}</span>
+            </x-label>
+          </div>
           @if(Auth::user()->isSuperadmin)
           <div class="mt-4">
             <x-label for="superadmin" class="flex items-center">
@@ -65,9 +71,9 @@
               x-on:change="file = $refs.file.files[0]" wire:model.live="file" />
           </div>
           <div class="flex items-center justify-stretch">
-            <x-danger-button class="w-full"
+            <x-success-button class="w-full"
               x-text="file ? '{{ __('Confirm & Import') }} ' + file.name : '{{ __('Import') }}'">
-            </x-danger-button>
+            </x-success-button>
           </div>
         </form>
       </div>
