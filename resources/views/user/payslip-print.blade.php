@@ -177,8 +177,7 @@
                 <td style="width: 64%; padding-left: 5px;">
                     <div style="font-weight: bold; color: #2A549B; font-size: 18pt;">Cipta Grafika</div>
                     <div style="font-size: 8.5pt; color: black; line-height: 1.2;">
-                        Ruko Broadway Blok III No. B 17<br>
-                        Kompleks Galuh Mas - Karawang<br>
+                        Ruko Broadway Blok III No. B 17, Kompleks Galuh Mas - Karawang<br>
                         Telp : 0267 8455970-51<br>
                         Email : ciptagrafika@gmail.com
                     </div>
@@ -279,7 +278,9 @@
                     $deductionRows[] = ['name' => $lateLabel, 'amount' => $totalLateAmount];
                     $deductionRows[] = ['name' => $impLabel, 'amount' => $impDetail ? $impDetail->amount : 0];
                     $deductionRows[] = ['name' => 'Syirkah', 'amount' => $syirkahDetail ? $syirkahDetail->amount : 0];
-                    $deductionRows[] = ['name' => $cutiLabel, 'amount' => $cutiDetail ? $cutiDetail->amount : 0];
+                    if ($cutiDetail && $cutiDetail->amount > 0) {
+                        $deductionRows[] = ['name' => $cutiLabel, 'amount' => $cutiDetail->amount];
+                    }
                     $deductionRows[] = ['name' => 'PPh 21', 'amount' => $pphDetail ? $pphDetail->amount : 0];
                     
                     $coveredNames = array_filter([
@@ -345,23 +346,40 @@
         <table class="summary-table">
             <tr>
                 <td style="width: 60%;">
-                    <div>Pembayaran Gaji telah dilakukan oleh Perusahaan</div>
-                    <div>Secara transfer ke rekening karyawan</div>
-                    <table style="margin-top: 5px;">
-                        @php
-                            $pm = $payroll->employee->paymentMethod;
-                        @endphp
-                        <tr>
-                            <td style="width: 25%;">{{ $pm ? $pm->payment_name : 'Belum Diatur' }}</td>
-                            <td style="width: 5%;">:</td>
-                            <td style="font-weight: bold;">{{ $pm && $pm->bank_account ? $pm->bank_account : '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td>Atas Nama</td>
-                            <td>:</td>
-                            <td style="font-weight: bold;">{{ strtoupper($pm && $pm->account_name ? $pm->account_name : $payroll->employee->name) }}</td>
-                        </tr>
-                    </table>
+                    @php
+                        $pm = $payroll->employee->paymentMethod;
+                    @endphp
+                    @if($pm)
+                        <div>Pembayaran Gaji telah dilakukan oleh Perusahaan</div>
+                        <div>Secara transfer ke rekening karyawan</div>
+                        <table style="margin-top: 5px;">
+                            <tr>
+                                <td style="width: 25%;">{{ $pm->payment_name }}</td>
+                                <td style="width: 5%;">:</td>
+                                <td style="font-weight: bold;">{{ $pm->bank_account ?? '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td>Atas Nama</td>
+                                <td>:</td>
+                                <td style="font-weight: bold;">{{ strtoupper($pm->account_name ?: $payroll->employee->name) }}</td>
+                            </tr>
+                        </table>
+                    @else
+                        <div>Pembayaran Gaji telah dilakukan oleh Perusahaan</div>
+                        <div>Secara CASH kepada karyawan berikut:</div>
+                        <table style="margin-top: 5px;">
+                            <tr>
+                                <td style="width: 25%;">Metode</td>
+                                <td style="width: 5%;">:</td>
+                                <td style="font-weight: bold;">CASH</td>
+                            </tr>
+                            <tr>
+                                <td>Atas Nama</td>
+                                <td>:</td>
+                                <td style="font-weight: bold;">{{ strtoupper($payroll->employee->name) }}</td>
+                            </tr>
+                        </table>
+                    @endif
                 </td>
                 <td style="width: 40%;" class="total-payroll-box">
                     <div class="total-payroll-title">TOTAL PAYROLL</div>
