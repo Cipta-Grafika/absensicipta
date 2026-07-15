@@ -134,6 +134,11 @@ Route::middleware([
         Route::get('/history', \App\Livewire\Payroll\PayrollHistoryComponent::class)->name('history');
         Route::get('/savings', \App\Livewire\Payroll\SavingComponent::class)->name('savings');
         Route::get('/savings-history', \App\Livewire\Payroll\SavingsHistoryComponent::class)->name('savings-history');
+
+        // Import/Export
+        Route::get('/import-export/employee-salaries', [\App\Http\Controllers\Payroll\ImportExportController::class, 'employeeSalaries'])->name('import-export.employee-salaries');
+        Route::get('/import-export/payment-methods', [\App\Http\Controllers\Payroll\ImportExportController::class, 'paymentMethods'])->name('import-export.payment-methods');
+        Route::get('/import-export/savings', [\App\Http\Controllers\Payroll\ImportExportController::class, 'savings'])->name('import-export.savings');
     });
 
     // User Group (for Payslips)

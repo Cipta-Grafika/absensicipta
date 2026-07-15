@@ -107,6 +107,23 @@
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.savings-history') }}" :active="request()->routeIs('payroll.savings-history')">
               Riwayat Syirkah
             </x-nav-link>
+            <x-nav-dropdown :active="request()->routeIs('payroll.import-export.*')" triggerClasses="text-nowrap">
+              <x-slot name="trigger">
+                Import & Export
+                <x-heroicon-o-chevron-down class="ms-2 h-5 w-5 text-gray-400" />
+              </x-slot>
+              <x-slot name="content">
+                <x-dropdown-link href="{{ route('payroll.import-export.employee-salaries') }}" :active="request()->routeIs('payroll.import-export.employee-salaries')">
+                  Master Gaji
+                </x-dropdown-link>
+                <x-dropdown-link href="{{ route('payroll.import-export.payment-methods') }}" :active="request()->routeIs('payroll.import-export.payment-methods')">
+                  Metode Pembayaran
+                </x-dropdown-link>
+                <x-dropdown-link href="{{ route('payroll.import-export.savings') }}" :active="request()->routeIs('payroll.import-export.savings')">
+                  Syirkah
+                </x-dropdown-link>
+              </x-slot>
+            </x-nav-dropdown>
           @endif
           @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll)
             <x-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
@@ -275,6 +292,16 @@
           </x-responsive-nav-link>
           <x-responsive-nav-link href="{{ route('payroll.savings-history') }}" :active="request()->routeIs('payroll.savings-history')">
             Riwayat Syirkah
+          </x-responsive-nav-link>
+          <div class="px-4 text-xs text-gray-400 mt-2">Import & Export</div>
+          <x-responsive-nav-link href="{{ route('payroll.import-export.employee-salaries') }}" :active="request()->routeIs('payroll.import-export.employee-salaries')">
+            Master Gaji
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.import-export.payment-methods') }}" :active="request()->routeIs('payroll.import-export.payment-methods')">
+            Metode Pembayaran
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.import-export.savings') }}" :active="request()->routeIs('payroll.import-export.savings')">
+            Syirkah
           </x-responsive-nav-link>
         </div>
       @endif
