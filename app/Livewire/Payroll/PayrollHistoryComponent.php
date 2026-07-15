@@ -352,6 +352,7 @@ class PayrollHistoryComponent extends Component
                         
                         if ($syirkah_deduction > 0) {
                             $prev_history = \App\Models\SavingsHistory::where('user_id', $emp->id)
+                                ->where('created_at', '<', $period_date->copy()->startOfMonth())
                                 ->orderBy('created_at', 'desc')
                                 ->first();
                                 

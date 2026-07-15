@@ -11,12 +11,7 @@ class SavingsHistoryComponent extends Component
     use WithPagination;
 
     public $search = '';
-    public $month;
-
-    public function mount()
-    {
-        $this->month = \Carbon\Carbon::now()->format('Y-m');
-    }
+    public $month = '';
 
     public function updatingSearch()
     {
