@@ -3,10 +3,16 @@
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
       {{ __('Riwayat Syirkah') }}
     </h2>
+    <div class="flex items-center gap-2">
+      <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
+        <x-heroicon-o-funnel class="sm:mr-1.5 h-4 w-4 text-sky-500" />
+        <span class="hidden sm:inline">Filter</span>
+      </x-secondary-button>
+    </div>
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-12">
+<div class="py-0 sm:py-12" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
   <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
     <div class="bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
       
@@ -37,7 +43,7 @@
               <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Waktu</th>
               <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Karyawan</th>
               <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Syirkah</th>
-              <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Potongan Bulan Ini</th>
+              <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Nominal Bulanan</th>
               <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Akumulasi</th>
             </tr>
           </thead>
@@ -60,12 +66,8 @@
                     <li>Sukarela: Rp{{ number_format($history->secondary_savings, 0, ',', '.') }}</li>
                   </ul>
                 </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-300 font-semibold text-sky-600">
-                  <ul class="list-disc pl-4 text-xs text-gray-900 dark:text-gray-300 font-normal mb-1">
-                    <li>Wajib: Rp{{ number_format($history->total_mandatory, 0, ',', '.') }}</li>
-                    <li>Sukarela: Rp{{ number_format($history->total_secondary, 0, ',', '.') }}</li>
-                  </ul>
-                  Total: Rp{{ number_format($history->total_savings, 0, ',', '.') }}
+                <td class="whitespace-nowrap px-3 py-4 text-sm font-semibold text-sky-600 dark:text-sky-400">
+                  Rp{{ number_format($history->total_savings, 0, ',', '.') }}
                 </td>
               </tr>
             @empty
@@ -83,4 +85,23 @@
 
     </div>
   </div>
+
+  <x-filter-sidebar maxWidth="sm">
+    <x-slot name="title">Filter Riwayat Syirkah</x-slot>
+    <x-slot name="actions">
+      <button type="button" wire:click="$set('month', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filter">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+      </button>
+    </x-slot>
+    <x-slot name="content">
+      <div class="flex flex-col gap-6">
+        <div>
+          <x-label for="month_filter" value="Pilih Bulan Periode" class="mb-1"></x-label>
+          <x-input type="month" id="month_filter" class="block w-full" wire:model.live="month" />
+        </div>
+      </div>
+    </x-slot>
+  </x-filter-sidebar>
 </div>
