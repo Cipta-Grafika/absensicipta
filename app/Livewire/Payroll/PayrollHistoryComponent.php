@@ -19,7 +19,14 @@ class PayrollHistoryComponent extends Component
     public $generate_period_month;
     public $generate_start_date;
     public $generate_end_date;
+    public $showDeductionModal = false;
+    public $showIncomeModal = false;
+    public $selectedDeductions = [];
+    public $selectedIncomes = [];
+    public $selectedPayrollEmployeeName = '';
     public $isGenerating = false;
+
+    protected $queryString = [];
 
     public function mount()
     {
@@ -151,7 +158,7 @@ class PayrollHistoryComponent extends Component
             $generatedCount = 0;
             \Illuminate\Support\Facades\DB::transaction(function () use (&$generatedCount) {
                 // Get active employees who have a salary setup
-                $employees = \App\Models\User::where('group', 'user')->whereHas('salary')->with('salary')->get();
+                $employees = \App\Models\User::where('group', 'user')->whereHas('salary')->with(['salary.savings'])->get();
 
                 if ($employees->isEmpty()) {
                     throw new \Exception("Tidak ada karyawan aktif yang memiliki pengaturan gaji.");
@@ -169,6 +176,8 @@ class PayrollHistoryComponent extends Component
                     }
 
                     if ($existing) {
+                        \App\Models\LoanInstallment::where('payroll_id', $existing->id)->delete();
+                        \App\Models\SavingTransaction::where('reference_type', 'payroll')->where('reference_id', $existing->id)->delete();
                         $existing->delete();
                     }
 
@@ -180,7 +189,8 @@ class PayrollHistoryComponent extends Component
                         ->with('shift')
                         ->get();
 
-                    $total_present = $attendances->whereIn('status', ['present', 'late', 'wfh', 'imp'])->count();
+                    $total_paid_days = $attendances->whereIn('status', ['present', 'late', 'wfh', 'imp'])->count();
+                    $total_present = $attendances->whereIn('status', ['present', 'late'])->count();
                     
                     // Dynamic Absent Calculation (including missing records, skipping Sundays, up to today)
                     $start_period = \Carbon\Carbon::parse($this->generate_start_date);
@@ -195,9 +205,11 @@ class PayrollHistoryComponent extends Component
                     $consecutive_cuti = 0;
                     $penalized_cuti_days = 0;
                     $late_days_count = 0;
+                    $actual_working_days = 0;
 
                     for ($d = $start_period->copy(); $d->lte($end_period); $d->addDay()) {
                         if (!$d->isSunday()) {
+                            $actual_working_days++;
                             $records = $attendancesByDate->get($d->format('Y-m-d'), collect());
                             $hasValidRecord = $records->where('status', '!=', 'absent')->isNotEmpty();
                             if (!$hasValidRecord) {
@@ -260,9 +272,9 @@ class PayrollHistoryComponent extends Component
                     
                     // Daily vs Monthly Logic
                     if ($salary->salary_type == 'daily') {
-                        $basic_salary_earned = $salary->basic_salary * $total_present;
-                        $meal_allowance = $salary->meal_allowance * $total_present;
-                        $transport_allowance = $salary->transport_allowance * $total_present;
+                        $basic_salary_earned = $salary->basic_salary * $total_paid_days;
+                        $meal_allowance = $salary->meal_allowance * $total_paid_days;
+                        $transport_allowance = $salary->transport_allowance * $total_paid_days;
                         $attendance_allowance = $salary->attendance_allowance;
                     } else { // monthly
                         $basic_salary_earned = $salary->basic_salary;
@@ -277,6 +289,11 @@ class PayrollHistoryComponent extends Component
                     // Fixed Income for deductions reference
                     $fixed_income = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
                     $days_divisor = $salary->working_days_per_month ?? 25;
+                    
+                    if ($actual_working_days > 0 && $actual_working_days < $days_divisor) {
+                        $days_divisor = $actual_working_days;
+                    }
+                    
                     $daily_rate_approx = $days_divisor > 0 ? $fixed_income / $days_divisor : 0;
 
                     // Standard Deductions
@@ -319,7 +336,35 @@ class PayrollHistoryComponent extends Component
                         // If you want it applied to daily, you can adjust this later.
                     }
 
-                    $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction;
+                    // Syirkah / Savings Logic
+                    $syirkah_deduction = 0;
+                    $syirkah_mandatory = 0;
+                    $syirkah_secondary = 0;
+                    $savingProgram = null;
+
+                    if ($salary->savings_id && $salary->savings && $total_paid_days >= 7) {
+                        $savingProgram = $salary->savings;
+                        $syirkah_mandatory = $savingProgram->mandatory_savings;
+                        $syirkah_secondary = $savingProgram->secondary_savings;
+                        $syirkah_deduction = $syirkah_mandatory + $syirkah_secondary;
+                    }
+
+                    // Loan / Kasbon Logic
+                    $active_loans = \App\Models\Loan::where('user_id', $emp->id)->where('status', 'active')->get();
+                    $loan_deduction = 0;
+                    $loan_installments_to_save = [];
+                    foreach ($active_loans as $loan) {
+                        $installment = min($loan->installment_amount, $loan->remaining_balance);
+                        if ($installment > 0) {
+                            $loan_deduction += $installment;
+                            $loan_installments_to_save[] = [
+                                'loan' => $loan,
+                                'amount' => $installment,
+                            ];
+                        }
+                    }
+
+                    $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction;
 
                     $net_salary = $basic_salary_earned + $total_allowance + $total_overtime_pay - $total_deduction;
 
@@ -351,6 +396,43 @@ class PayrollHistoryComponent extends Component
                         'notes' => 'Generated automatically.',
                     ]);
 
+                    $period_date = \Carbon\Carbon::parse($this->generate_period_month . '-01')->endOfMonth();
+
+                    // Save SavingTransaction
+                    if ($syirkah_deduction > 0 && $savingProgram) {
+                        $lastTransaction = \App\Models\SavingTransaction::where('user_id', $emp->id)->latest()->first();
+                        $balMandatory = $lastTransaction ? $lastTransaction->balance_mandatory : 0;
+                        $balSecondary = $lastTransaction ? $lastTransaction->balance_secondary : 0;
+                        
+                        $st = \App\Models\SavingTransaction::create([
+                            'user_id' => $emp->id,
+                            'savings_id' => $savingProgram->id,
+                            'transaction_type' => 'deposit',
+                            'mandatory_amount' => $syirkah_mandatory,
+                            'secondary_amount' => $syirkah_secondary,
+                            'balance_mandatory' => $balMandatory + $syirkah_mandatory,
+                            'balance_secondary' => $balSecondary + $syirkah_secondary,
+                            'reference_type' => 'payroll',
+                            'reference_id' => $payroll->id,
+                            'description' => 'Potongan Syirkah Payroll ' . $this->generate_period_month,
+                            'created_at' => $period_date,
+                            'updated_at' => $period_date,
+                        ]);
+                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Syirkah Koperasi', 'amount' => $syirkah_deduction]);
+                    }
+
+                    // Save LoanInstallments
+                    foreach ($loan_installments_to_save as $item) {
+                        \App\Models\LoanInstallment::create([
+                            'loan_id' => $item['loan']->id,
+                            'amount_paid' => $item['amount'],
+                            'payment_method' => 'payroll_deduction',
+                            'payroll_id' => $payroll->id,
+                            'status' => 'pending',
+                        ]);
+                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Cicilan Pinjaman', 'amount' => $item['amount']]);
+                    }
+
                     // Save Payroll Details (Rincian)
                     if ($meal_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Makan', 'amount' => $meal_allowance]);
                     if ($transport_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Transport', 'amount' => $transport_allowance]);
@@ -378,6 +460,7 @@ class PayrollHistoryComponent extends Component
                     }
                     if ($late_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Terlambat ($total_late_minutes Menit)", 'amount' => $late_deduction]);
                     if ($imp_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan IMP Tdk Diganti ($total_unreplaced_imp_hours Jam)", 'amount' => $imp_deduction]);
+                    if ($syirkah_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Syirkah", 'amount' => $syirkah_deduction]);
                 }
             });
 
@@ -393,6 +476,58 @@ class PayrollHistoryComponent extends Component
         }
 
         $this->isGenerating = false;
+    }
+
+    public function showDeductions($payrollId)
+    {
+        $payroll = \App\Models\Payroll::with(['details', 'employee'])->find($payrollId);
+        if ($payroll) {
+            $this->selectedDeductions = $payroll->details->where('type', 'deduction')->toArray();
+            $this->selectedPayrollEmployeeName = $payroll->employee->name ?? 'Karyawan';
+            $this->showDeductionModal = true;
+        }
+    }
+
+    public function closeDeductionModal()
+    {
+        $this->showDeductionModal = false;
+        // Data selectedDeductions dan selectedPayrollEmployeeName JANGAN di-clear di sini.
+        // Hal ini untuk menjaga state DOM tetap terisi saat animasi transisi (fade out) penutupan modal berjalan.
+        // Data tersebut akan otomatis tertimpa (overwrite) ketika user membuka modal untuk payroll yang lain.
+    }
+
+    public function showIncomes($payrollId)
+    {
+        $payroll = \App\Models\Payroll::with(['details', 'employee'])->find($payrollId);
+        if ($payroll) {
+            $incomes = [];
+            
+            // Tambahkan Gaji Pokok dari master/tabel payroll
+            if ($payroll->basic_salary_earned > 0) {
+                $incomes[] = [
+                    'name' => 'Gaji Pokok',
+                    'amount' => $payroll->basic_salary_earned
+                ];
+            }
+
+            // Tambahkan Tunjangan dan Lembur dari detail (earning)
+            $earnings = $payroll->details->where('type', 'earning');
+            foreach ($earnings as $earning) {
+                $incomes[] = [
+                    'name' => $earning->name,
+                    'amount' => $earning->amount
+                ];
+            }
+
+            $this->selectedIncomes = $incomes;
+            $this->selectedPayrollEmployeeName = $payroll->employee->name ?? 'Karyawan';
+            $this->showIncomeModal = true;
+        }
+    }
+
+    public function closeIncomeModal()
+    {
+        $this->showIncomeModal = false;
     }
 
     public function render()

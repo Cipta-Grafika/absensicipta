@@ -14,7 +14,7 @@
 
 <div x-data="{ show: @entangle($attributes->wire('model')).live }" x-on:close.stop="show = false; {{ $onclose }}"
   x-on:keydown.escape.window="show = false; {{ $onclose }}" x-show="show" id="{{ $id }}"
-  class="jetstream-modal fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0" style="display: none;"
+  class="jetstream-modal fixed inset-0 z-50 flex min-h-full items-center justify-center overflow-y-auto px-4 py-6 sm:px-0" style="display: none;"
   x-init="$watch('show', value => {
       if (value) {
           document.body.classList.add('overflow-y-hidden');
@@ -40,7 +40,7 @@
   </div>
 
   <div x-show="show"
-    class="{{ $maxWidth }} mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all dark:bg-gray-800 sm:mx-auto sm:w-full"
+    class="{{ $maxWidth }} transform overflow-hidden rounded-lg bg-white shadow-xl transition-all dark:bg-gray-800 sm:mx-auto sm:w-full"
     x-trap.inert="show" x-transition:enter="ease-out duration-300"
     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200"

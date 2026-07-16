@@ -28,10 +28,6 @@ Route::middleware([
     Route::middleware('user')->group(function () {
         Route::get('/home', HomeController::class)->name('home');
 
-        Route::get('/apply-leave', [UserAttendanceController::class, 'applyLeave'])
-            ->name('apply-leave');
-        Route::post('/apply-leave', [UserAttendanceController::class, 'storeLeaveRequest'])
-            ->name('store-leave-request');
 
         Route::get('/attendance-history', [UserAttendanceController::class, 'history'])
             ->name('attendance-history');
@@ -41,6 +37,9 @@ Route::middleware([
 
         Route::get('/replacement-hours', \App\Livewire\User\ReplacementHourComponent::class)
             ->name('user.replacement-hours');
+
+        Route::get('/user/payslips/{id}/print', [\App\Http\Controllers\User\PayslipPrintController::class, 'print'])
+            ->name('user.payslip.print');
     });
 
     // ADMIN AREA
@@ -131,7 +130,16 @@ Route::middleware([
     Route::group(['prefix' => 'payroll', 'as' => 'payroll.', 'middleware' => ['payroll']], function () {
         Route::get('/', \App\Livewire\Payroll\PayrollDashboardComponent::class)->name('dashboard');
         Route::get('/employee-salaries', \App\Livewire\Payroll\EmployeeSalaryComponent::class)->name('employee-salaries');
+        Route::get('/payment-methods', \App\Livewire\Payroll\PaymentMethodComponent::class)->name('payment-methods');
         Route::get('/history', \App\Livewire\Payroll\PayrollHistoryComponent::class)->name('history');
+        Route::get('/savings', \App\Livewire\Payroll\SavingComponent::class)->name('savings');
+        Route::get('/saving-transactions', \App\Livewire\Payroll\SavingTransactionComponent::class)->name('saving-transactions');
+        Route::get('/loans', \App\Livewire\Payroll\LoanComponent::class)->name('loans');
+
+        // Import/Export
+        Route::get('/import-export/employee-salaries', [\App\Http\Controllers\Payroll\ImportExportController::class, 'employeeSalaries'])->name('import-export.employee-salaries');
+        Route::get('/import-export/payment-methods', [\App\Http\Controllers\Payroll\ImportExportController::class, 'paymentMethods'])->name('import-export.payment-methods');
+        Route::get('/import-export/savings', [\App\Http\Controllers\Payroll\ImportExportController::class, 'savings'])->name('import-export.savings');
     });
 
     // User Group (for Payslips)

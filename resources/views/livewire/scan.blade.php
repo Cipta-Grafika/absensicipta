@@ -86,7 +86,8 @@
       </h4>
       <div class="grid grid-cols-2 gap-3 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
         <div
-          class="{{ $attendance?->status == 'late' ? 'bg-orange-200 dark:bg-orange-900' : 'bg-green-200 dark:bg-green-900' }} flex items-center justify-between rounded-md px-4 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
+          class="{{ $attendance?->status == 'late' ? 'bg-orange-200 dark:bg-orange-900' : 'bg-green-200 dark:bg-green-900' }} flex items-center gap-3 rounded-md px-4 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
+          <x-heroicon-o-arrows-pointing-in class="h-6 w-6 shrink-0 opacity-75" />
           <div>
             <h4 class="text-lg font-semibold md:text-xl">Absen Masuk</h4>
             <div class="flex flex-col sm:flex-row">
@@ -103,10 +104,10 @@
               <span>{{ $attendance?->status == 'late' ? 'Terlambat: Ya' : '' }}</span>
             </div>
           </div>
-          <x-heroicon-o-arrows-pointing-in class="h-5 w-5" />
         </div>
         <div
-          class="flex items-center justify-between rounded-md bg-orange-200 px-4 py-2 text-gray-800 dark:bg-orange-900 dark:text-white dark:shadow-gray-700">
+          class="flex items-center gap-3 rounded-md bg-orange-200 px-4 py-2 text-gray-800 dark:bg-orange-900 dark:text-white dark:shadow-gray-700">
+          <x-heroicon-o-arrows-pointing-out class="h-6 w-6 shrink-0 opacity-75" />
           <div>
             <h4 class="text-lg font-semibold md:text-xl">Absen Keluar</h4>
             @if ($isAbsence)
@@ -115,11 +116,11 @@
               {{ $attendance?->time_out ? Carbon::parse($attendance?->time_out)->format('H:i:s') : 'Belum Absen' }}
             @endif
           </div>
-          <x-heroicon-o-arrows-pointing-out class="h-5 w-5" />
         </div>
         <button
-          class="col-span-2 flex items-center justify-between rounded-md bg-blue-200 px-4 py-2 text-gray-800 dark:bg-blue-900 dark:text-white dark:shadow-gray-700 md:col-span-1 lg:col-span-2 xl:col-span-1"
+          class="col-span-2 flex items-center gap-3 rounded-md bg-blue-200 px-4 py-2 text-left text-gray-800 dark:bg-blue-900 dark:text-white dark:shadow-gray-700 md:col-span-1 lg:col-span-2 xl:col-span-1"
           {{ is_null($attendance?->lat_lng) ? 'disabled' : 'onclick=toggleMap()' }} id="toggleMap">
+          <x-heroicon-o-map-pin class="h-6 w-6 shrink-0 opacity-75" />
           <div>
             <h4 class="text-lg font-semibold md:text-xl">Koordinat Absen</h4>
             @if (is_null($attendance?->lat_lng))
@@ -131,7 +132,6 @@
               </a>
             @endif
           </div>
-          <x-heroicon-o-map-pin class="h-6 w-6" />
         </button>
       </div>
 
@@ -139,19 +139,26 @@
 
       <hr class="my-4">
 
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3" wire:ignore>
-        <a href="{{ route('apply-leave') }}">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-3" wire:ignore>
+        <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
           <div
-            class="flex flex-col-reverse items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-4 py-2 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:flex-row md:gap-3">
-            Ajukan Izin
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-4 py-2 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:gap-3">
             <x-heroicon-o-envelope-open class="h-6 w-6 text-white" />
+            Ajukan Izin
           </div>
         </a>
-        <a href="{{ route('attendance-history') }}">
+        <a href="{{ route('attendance-history') }}" class="col-span-1">
           <div
-            class="flex flex-col-reverse items-center justify-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-center font-medium text-white hover:bg-blue-600 md:flex-row md:gap-3">
-            Riwayat Absen
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-center font-medium text-white hover:bg-blue-600 md:gap-3">
             <x-heroicon-o-clock class="h-6 w-6 text-white" />
+            Absensi
+          </div>
+        </a>
+        <a href="{{ route('user.payslips') }}" class="col-span-2 md:col-span-1 lg:col-span-1">
+          <div
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-green-500 px-4 py-2 text-center font-medium text-white hover:bg-green-600 md:gap-3">
+            <x-heroicon-o-document-text class="h-6 w-6 text-white" />
+            Slip Gaji
           </div>
         </a>
       </div>
@@ -205,6 +212,8 @@
       </div>
     </x-slot>
   </x-dialog-modal>
+
+  @livewire('user.apply-leave-modal-component')
 
 </div>
 

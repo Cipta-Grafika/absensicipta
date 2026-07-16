@@ -75,7 +75,7 @@
                   break;
           }
         @endphp
-        @if ($attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
+        @if ($attendance && isset($attendance['id']))
           <button class="{{ $bgColor }} h-14 w-full py-1 text-center" wire:click="show({{ $attendance['id'] }})"
             onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
             <span
