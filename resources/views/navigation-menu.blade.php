@@ -104,9 +104,20 @@
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
               Riwayat Gaji
             </x-nav-link>
-            <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.savings-history') }}" :active="request()->routeIs('payroll.savings-history')">
-              Riwayat Syirkah
-            </x-nav-link>
+            <x-nav-dropdown :active="request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.loans')" triggerClasses="text-nowrap">
+              <x-slot name="trigger">
+                Koperasi & Syirkah
+                <x-heroicon-o-chevron-down class="ms-2 h-5 w-5 text-gray-400" />
+              </x-slot>
+              <x-slot name="content">
+                <x-dropdown-link href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
+                  Mutasi Syirkah
+                </x-dropdown-link>
+                <x-dropdown-link href="{{ route('payroll.loans') }}" :active="request()->routeIs('payroll.loans')">
+                  Pinjaman Karyawan
+                </x-dropdown-link>
+              </x-slot>
+            </x-nav-dropdown>
             <x-nav-dropdown :active="request()->routeIs('payroll.import-export.*')" triggerClasses="text-nowrap">
               <x-slot name="trigger">
                 Import & Export
@@ -290,8 +301,12 @@
           <x-responsive-nav-link href="{{ route('payroll.savings') }}" :active="request()->routeIs('payroll.savings')">
             Syirkah
           </x-responsive-nav-link>
-          <x-responsive-nav-link href="{{ route('payroll.savings-history') }}" :active="request()->routeIs('payroll.savings-history')">
-            Riwayat Syirkah
+          <div class="px-4 text-xs text-gray-400 mt-2">Koperasi & Syirkah</div>
+          <x-responsive-nav-link href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
+            Mutasi Syirkah
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.loans') }}" :active="request()->routeIs('payroll.loans')">
+            Pinjaman Karyawan
           </x-responsive-nav-link>
           <div class="px-4 text-xs text-gray-400 mt-2">Import & Export</div>
           <x-responsive-nav-link href="{{ route('payroll.import-export.employee-salaries') }}" :active="request()->routeIs('payroll.import-export.employee-salaries')">

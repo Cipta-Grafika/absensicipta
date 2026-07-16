@@ -176,6 +176,8 @@ class PayrollHistoryComponent extends Component
                     }
 
                     if ($existing) {
+                        \App\Models\LoanInstallment::where('payroll_id', $existing->id)->delete();
+                        \App\Models\SavingTransaction::where('reference_type', 'payroll')->where('reference_id', $existing->id)->delete();
                         $existing->delete();
                     }
 
@@ -336,48 +338,33 @@ class PayrollHistoryComponent extends Component
 
                     // Syirkah / Savings Logic
                     $syirkah_deduction = 0;
-                    $period_date = \Carbon\Carbon::parse($this->generate_period_month . '-01');
-                    
-                    // Cleanup existing history for this generated month
-                    \App\Models\SavingsHistory::where('user_id', $emp->id)
-                        ->whereYear('created_at', $period_date->year)
-                        ->whereMonth('created_at', $period_date->month)
-                        ->delete();
+                    $syirkah_mandatory = 0;
+                    $syirkah_secondary = 0;
+                    $savingProgram = null;
 
                     if ($salary->savings_id && $salary->savings && $total_paid_days >= 7) {
                         $savingProgram = $salary->savings;
                         $syirkah_mandatory = $savingProgram->mandatory_savings;
                         $syirkah_secondary = $savingProgram->secondary_savings;
                         $syirkah_deduction = $syirkah_mandatory + $syirkah_secondary;
-                        
-                        if ($syirkah_deduction > 0) {
-                            $prev_history = \App\Models\SavingsHistory::where('user_id', $emp->id)
-                                ->where('created_at', '<', $period_date->copy()->startOfMonth())
-                                ->orderBy('created_at', 'desc')
-                                ->first();
-                                
-                            $prev_mandatory = $prev_history ? $prev_history->total_mandatory : 0;
-                            $prev_secondary = $prev_history ? $prev_history->total_secondary : 0;
-                            
-                            $new_total_mandatory = $prev_mandatory + $syirkah_mandatory;
-                            $new_total_secondary = $prev_secondary + $syirkah_secondary;
-                            $new_total_savings = $new_total_mandatory + $new_total_secondary;
-                            
-                            \App\Models\SavingsHistory::create([
-                                'user_id' => $emp->id,
-                                'savings_id' => $savingProgram->id,
-                                'mandatory_savings' => $syirkah_mandatory,
-                                'secondary_savings' => $syirkah_secondary,
-                                'total_mandatory' => $new_total_mandatory,
-                                'total_secondary' => $new_total_secondary,
-                                'total_savings' => $new_total_savings,
-                                'created_at' => $period_date->copy()->endOfMonth(),
-                                'updated_at' => $period_date->copy()->endOfMonth(),
-                            ]);
+                    }
+
+                    // Loan / Kasbon Logic
+                    $active_loans = \App\Models\Loan::where('user_id', $emp->id)->where('status', 'active')->get();
+                    $loan_deduction = 0;
+                    $loan_installments_to_save = [];
+                    foreach ($active_loans as $loan) {
+                        $installment = min($loan->installment_amount, $loan->remaining_balance);
+                        if ($installment > 0) {
+                            $loan_deduction += $installment;
+                            $loan_installments_to_save[] = [
+                                'loan' => $loan,
+                                'amount' => $installment,
+                            ];
                         }
                     }
 
-                    $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction;
+                    $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction;
 
                     $net_salary = $basic_salary_earned + $total_allowance + $total_overtime_pay - $total_deduction;
 
@@ -408,6 +395,43 @@ class PayrollHistoryComponent extends Component
                         'payment_date' => null,
                         'notes' => 'Generated automatically.',
                     ]);
+
+                    $period_date = \Carbon\Carbon::parse($this->generate_period_month . '-01')->endOfMonth();
+
+                    // Save SavingTransaction
+                    if ($syirkah_deduction > 0 && $savingProgram) {
+                        $lastTransaction = \App\Models\SavingTransaction::where('user_id', $emp->id)->latest()->first();
+                        $balMandatory = $lastTransaction ? $lastTransaction->balance_mandatory : 0;
+                        $balSecondary = $lastTransaction ? $lastTransaction->balance_secondary : 0;
+                        
+                        $st = \App\Models\SavingTransaction::create([
+                            'user_id' => $emp->id,
+                            'savings_id' => $savingProgram->id,
+                            'transaction_type' => 'deposit',
+                            'mandatory_amount' => $syirkah_mandatory,
+                            'secondary_amount' => $syirkah_secondary,
+                            'balance_mandatory' => $balMandatory + $syirkah_mandatory,
+                            'balance_secondary' => $balSecondary + $syirkah_secondary,
+                            'reference_type' => 'payroll',
+                            'reference_id' => $payroll->id,
+                            'description' => 'Potongan Syirkah Payroll ' . $this->generate_period_month,
+                            'created_at' => $period_date,
+                            'updated_at' => $period_date,
+                        ]);
+                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Syirkah Koperasi', 'amount' => $syirkah_deduction]);
+                    }
+
+                    // Save LoanInstallments
+                    foreach ($loan_installments_to_save as $item) {
+                        \App\Models\LoanInstallment::create([
+                            'loan_id' => $item['loan']->id,
+                            'amount_paid' => $item['amount'],
+                            'payment_method' => 'payroll_deduction',
+                            'payroll_id' => $payroll->id,
+                            'status' => 'pending',
+                        ]);
+                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Cicilan Pinjaman', 'amount' => $item['amount']]);
+                    }
 
                     // Save Payroll Details (Rincian)
                     if ($meal_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Makan', 'amount' => $meal_allowance]);
