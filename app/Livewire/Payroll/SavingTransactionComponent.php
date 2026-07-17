@@ -63,14 +63,13 @@ class SavingTransactionComponent extends Component
 
         DB::beginTransaction();
         try {
-            // Get last balance
-            $lastTransaction = SavingTransaction::where('user_id', $this->withdrawal_user_id)
-                ->where('savings_id', $this->withdrawal_savings_id)
-                ->latest()
-                ->first();
-
-            $balanceMandatory = $lastTransaction ? $lastTransaction->balance_mandatory : 0;
-            $balanceSecondary = $lastTransaction ? $lastTransaction->balance_secondary : 0;
+            // Calculate true balance dynamically for maximum accuracy
+            $summary = \App\Models\SavingSummary::firstOrCreate(
+                ['user_id' => $this->withdrawal_user_id, 'savings_id' => $this->withdrawal_savings_id],
+                ['total_mandatory' => 0, 'total_secondary' => 0]
+            );
+            $balanceMandatory = $summary->total_mandatory;
+            $balanceSecondary = $summary->total_secondary;
 
             $withdrawMandatory = 0;
             $withdrawSecondary = 0;
@@ -160,10 +159,29 @@ class SavingTransactionComponent extends Component
         $users = User::where('group', 'user')->orderBy('name')->get();
         $savingsList = Saving::orderBy('savings_name')->get();
 
+        // Calculate dynamic true balance for summary
+        $summaryQuery = \App\Models\SavingSummary::query();
+        if ($this->search) {
+            $summaryQuery->where(function($q) {
+                $q->whereHas('user', function($subQ) {
+                    $subQ->where('name', 'like', '%' . $this->search . '%')
+                         ->orWhere('nip', 'like', '%' . $this->search . '%');
+                })
+                ->orWhereHas('masterSaving', function($subQ) {
+                    $subQ->where('savings_name', 'like', '%' . $this->search . '%');
+                });
+            });
+        }
+        
+        $totalWajib = $summaryQuery->sum('total_mandatory');
+        $totalSukarela = $summaryQuery->sum('total_secondary');
+
         return view('livewire.payroll.saving-transaction-component', [
             'transactions' => $transactions,
             'users' => $users,
             'savingsList' => $savingsList,
+            'totalWajib' => $totalWajib,
+            'totalSukarela' => $totalSukarela,
         ])->layout('layouts.app');
     }
 }

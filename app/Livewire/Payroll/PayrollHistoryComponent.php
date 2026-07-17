@@ -400,9 +400,13 @@ class PayrollHistoryComponent extends Component
 
                     // Save SavingTransaction
                     if ($syirkah_deduction > 0 && $savingProgram) {
-                        $lastTransaction = \App\Models\SavingTransaction::where('user_id', $emp->id)->latest()->first();
-                        $balMandatory = $lastTransaction ? $lastTransaction->balance_mandatory : 0;
-                        $balSecondary = $lastTransaction ? $lastTransaction->balance_secondary : 0;
+                        // Secure true balance calculation dynamically from SavingSummary
+                        $summary = \App\Models\SavingSummary::firstOrCreate(
+                            ['user_id' => $emp->id, 'savings_id' => $savingProgram->id],
+                            ['total_mandatory' => 0, 'total_secondary' => 0]
+                        );
+                        $balMandatory = $summary->total_mandatory;
+                        $balSecondary = $summary->total_secondary;
                         
                         $st = \App\Models\SavingTransaction::create([
                             'user_id' => $emp->id,
