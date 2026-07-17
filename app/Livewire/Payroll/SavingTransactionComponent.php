@@ -58,7 +58,7 @@ class SavingTransactionComponent extends Component
             'withdrawal_user_id' => 'required|exists:users,id',
             'withdrawal_savings_id' => 'required|exists:savings,id',
             'withdrawal_amount' => 'required|numeric|min:1',
-            'withdrawal_type' => 'required|in:mandatory,secondary',
+            'withdrawal_type' => 'required|in:mandatory,secondary,both',
         ]);
 
         DB::beginTransaction();
@@ -72,27 +72,48 @@ class SavingTransactionComponent extends Component
             $balanceMandatory = $lastTransaction ? $lastTransaction->balance_mandatory : 0;
             $balanceSecondary = $lastTransaction ? $lastTransaction->balance_secondary : 0;
 
-            if ($this->withdrawal_type === 'mandatory' && $this->withdrawal_amount > $balanceMandatory) {
-                $this->addError('withdrawal_amount', 'Saldo Wajib tidak mencukupi.');
-                DB::rollBack();
-                return;
+            $withdrawMandatory = 0;
+            $withdrawSecondary = 0;
+
+            if ($this->withdrawal_type === 'mandatory') {
+                if ($this->withdrawal_amount > $balanceMandatory) {
+                    $this->addError('withdrawal_amount', 'Saldo Wajib tidak mencukupi (Tersedia: Rp ' . number_format($balanceMandatory, 0, ',', '.') . ').');
+                    DB::rollBack();
+                    return;
+                }
+                $withdrawMandatory = $this->withdrawal_amount;
+            } elseif ($this->withdrawal_type === 'secondary') {
+                if ($this->withdrawal_amount > $balanceSecondary) {
+                    $this->addError('withdrawal_amount', 'Saldo Sukarela tidak mencukupi (Tersedia: Rp ' . number_format($balanceSecondary, 0, ',', '.') . ').');
+                    DB::rollBack();
+                    return;
+                }
+                $withdrawSecondary = $this->withdrawal_amount;
+            } elseif ($this->withdrawal_type === 'both') {
+                if ($this->withdrawal_amount > ($balanceMandatory + $balanceSecondary)) {
+                    $this->addError('withdrawal_amount', 'Total Saldo (Wajib + Sukarela) tidak mencukupi.');
+                    DB::rollBack();
+                    return;
+                }
+                
+                // Prioritaskan potong dari Sukarela dulu
+                if ($this->withdrawal_amount <= $balanceSecondary) {
+                    $withdrawSecondary = $this->withdrawal_amount;
+                } else {
+                    $withdrawSecondary = $balanceSecondary;
+                    $withdrawMandatory = $this->withdrawal_amount - $balanceSecondary;
+                }
             }
 
-            if ($this->withdrawal_type === 'secondary' && $this->withdrawal_amount > $balanceSecondary) {
-                $this->addError('withdrawal_amount', 'Saldo Sukarela tidak mencukupi.');
-                DB::rollBack();
-                return;
-            }
-
-            $newBalanceMandatory = $balanceMandatory - ($this->withdrawal_type === 'mandatory' ? $this->withdrawal_amount : 0);
-            $newBalanceSecondary = $balanceSecondary - ($this->withdrawal_type === 'secondary' ? $this->withdrawal_amount : 0);
+            $newBalanceMandatory = $balanceMandatory - $withdrawMandatory;
+            $newBalanceSecondary = $balanceSecondary - $withdrawSecondary;
 
             SavingTransaction::create([
                 'user_id' => $this->withdrawal_user_id,
                 'savings_id' => $this->withdrawal_savings_id,
                 'transaction_type' => 'withdrawal',
-                'mandatory_amount' => $this->withdrawal_type === 'mandatory' ? $this->withdrawal_amount : 0,
-                'secondary_amount' => $this->withdrawal_type === 'secondary' ? $this->withdrawal_amount : 0,
+                'mandatory_amount' => $withdrawMandatory,
+                'secondary_amount' => $withdrawSecondary,
                 'balance_mandatory' => $newBalanceMandatory,
                 'balance_secondary' => $newBalanceSecondary,
                 'description' => $this->withdrawal_description ?: 'Pencairan Syirkah',
@@ -136,7 +157,7 @@ class SavingTransactionComponent extends Component
         }
 
         $transactions = $query->latest()->paginate(15);
-        $users = User::orderBy('name')->get();
+        $users = User::where('group', 'user')->orderBy('name')->get();
         $savingsList = Saving::orderBy('savings_name')->get();
 
         return view('livewire.payroll.saving-transaction-component', [

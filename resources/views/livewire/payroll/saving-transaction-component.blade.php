@@ -169,6 +169,7 @@
           <x-select id="withdrawal_type" class="mt-1 block w-full" wire:model="withdrawal_type">
             <option value="secondary">Syirkah Sukarela</option>
             <option value="mandatory">Syirkah Wajib</option>
+            <option value="both">Keduanya (Syirkah Wajib + Sukarela)</option>
           </x-select>
           <x-input-error for="withdrawal_type" class="mt-2" />
         </div>
