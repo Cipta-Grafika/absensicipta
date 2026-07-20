@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class ReplacementApprovalController extends Controller
 {
@@ -30,6 +31,12 @@ class ReplacementApprovalController extends Controller
 
         $query = ReplacementHour::with(['user.division', 'user.jobTitle', 'approver', 'shift'])
             ->orderBy('created_at', 'desc');
+
+        if (Auth::user()->group === 'admin') {
+            $query->whereHas('user', function (Builder $q) {
+                $q->where('division_id', Auth::user()->division_id);
+            });
+        }
 
         if ($request->status) {
             $query->where('status', $request->status);
