@@ -53,6 +53,12 @@ class ReplacementApprovalComponent extends Component
         $query = ReplacementHour::with(['user', 'approver', 'shift'])
             ->orderBy('created_at', 'desc');
 
+        if (Auth::user()->group === 'admin') {
+            $query->whereHas('user', function ($q) {
+                $q->where('division_id', Auth::user()->division_id);
+            });
+        }
+
         if ($this->statusFilter) {
             $query->where('status', $this->statusFilter);
         }
@@ -96,7 +102,16 @@ class ReplacementApprovalComponent extends Component
 
     public function approve($id)
     {
-        $replacement = ReplacementHour::with('shift')->findOrFail($id);
+        if (!in_array(Auth::user()->group, ['admin', 'superadmin'])) {
+            abort(403);
+        }
+
+        $replacement = ReplacementHour::with(['shift', 'user'])->findOrFail($id);
+
+        if (Auth::user()->group === 'admin' && $replacement->user->division_id !== Auth::user()->division_id) {
+            abort(403, 'Unauthorized access.');
+        }
+
         $replacement->update([
             'status' => 'approved',
             'approved_by' => Auth::id()
@@ -138,7 +153,16 @@ class ReplacementApprovalComponent extends Component
 
     public function reject($id)
     {
-        $replacement = ReplacementHour::findOrFail($id);
+        if (!in_array(Auth::user()->group, ['admin', 'superadmin'])) {
+            abort(403);
+        }
+
+        $replacement = ReplacementHour::with('user')->findOrFail($id);
+
+        if (Auth::user()->group === 'admin' && $replacement->user->division_id !== Auth::user()->division_id) {
+            abort(403, 'Unauthorized access.');
+        }
+
         $replacement->update([
             'status' => 'rejected',
             'approved_by' => Auth::id()
