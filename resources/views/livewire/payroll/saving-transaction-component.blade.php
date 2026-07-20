@@ -52,6 +52,22 @@
 
     <div class="bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
       
+      <!-- SUMMARY CARDS -->
+      <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="overflow-hidden rounded-lg bg-indigo-50 px-4 py-5 shadow sm:p-6 dark:bg-indigo-900/30">
+          <dt class="truncate text-sm font-medium text-indigo-500 dark:text-indigo-300">Total Saldo Wajib</dt>
+          <dd class="mt-1 text-2xl font-semibold tracking-tight text-indigo-900 dark:text-indigo-100">Rp {{ number_format($totalWajib, 0, ',', '.') }}</dd>
+        </div>
+        <div class="overflow-hidden rounded-lg bg-green-50 px-4 py-5 shadow sm:p-6 dark:bg-green-900/30">
+          <dt class="truncate text-sm font-medium text-green-500 dark:text-green-300">Total Saldo Sukarela</dt>
+          <dd class="mt-1 text-2xl font-semibold tracking-tight text-green-900 dark:text-green-100">Rp {{ number_format($totalSukarela, 0, ',', '.') }}</dd>
+        </div>
+        <div class="overflow-hidden rounded-lg bg-sky-50 px-4 py-5 shadow sm:p-6 dark:bg-sky-900/30">
+          <dt class="truncate text-sm font-medium text-sky-500 dark:text-sky-300">Total Keseluruhan</dt>
+          <dd class="mt-1 text-2xl font-semibold tracking-tight text-sky-900 dark:text-sky-100">Rp {{ number_format($totalWajib + $totalSukarela, 0, ',', '.') }}</dd>
+        </div>
+      </div>
+
       <div class="mb-4">
         <div class="flex w-full flex-1 items-center gap-2">
           <div class="relative w-full">
@@ -80,8 +96,10 @@
               <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Karyawan</th>
               <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Jenis Syirkah</th>
               <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipe</th>
-              <th scope="col" class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Wajib</th>
-              <th scope="col" class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Sukarela</th>
+              <th scope="col" class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Mutasi Wajib</th>
+              <th scope="col" class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Mutasi Sukarela</th>
+              <th scope="col" class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Saldo Wajib</th>
+              <th scope="col" class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Saldo Sukarela</th>
               <th scope="col" class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Keterangan</th>
             </tr>
           </thead>
@@ -105,11 +123,17 @@
                     <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Withdrawal</span>
                   @endif
                 </td>
-                <td class="whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 dark:text-gray-300">
-                  Rp {{ number_format($trx->mandatory_amount, 0, ',', '.') }}
+                <td class="whitespace-nowrap px-3 py-4 text-right text-sm {{ $trx->transaction_type == 'deposit' ? 'text-green-600' : 'text-red-600' }}">
+                  {{ $trx->transaction_type == 'deposit' ? '+' : '-' }} Rp {{ number_format($trx->mandatory_amount, 0, ',', '.') }}
                 </td>
-                <td class="whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 dark:text-gray-300">
-                  Rp {{ number_format($trx->secondary_amount, 0, ',', '.') }}
+                <td class="whitespace-nowrap px-3 py-4 text-right text-sm {{ $trx->transaction_type == 'deposit' ? 'text-green-600' : 'text-red-600' }}">
+                  {{ $trx->transaction_type == 'deposit' ? '+' : '-' }} Rp {{ number_format($trx->secondary_amount, 0, ',', '.') }}
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 dark:text-gray-200">
+                  Rp {{ number_format($trx->balance_mandatory, 0, ',', '.') }}
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 dark:text-gray-200">
+                  Rp {{ number_format($trx->balance_secondary, 0, ',', '.') }}
                 </td>
                 <td class="px-3 py-4 text-sm text-gray-900 dark:text-gray-300">
                   {{ $trx->description }}
@@ -117,7 +141,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="7" class="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colspan="9" class="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   Belum ada data mutasi.
                 </td>
               </tr>
@@ -169,6 +193,7 @@
           <x-select id="withdrawal_type" class="mt-1 block w-full" wire:model="withdrawal_type">
             <option value="secondary">Syirkah Sukarela</option>
             <option value="mandatory">Syirkah Wajib</option>
+            <option value="both">Keduanya (Syirkah Wajib + Sukarela)</option>
           </x-select>
           <x-input-error for="withdrawal_type" class="mt-2" />
         </div>

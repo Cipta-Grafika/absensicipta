@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class OvertimeApprovalController extends Controller
 {
@@ -24,6 +25,12 @@ class OvertimeApprovalController extends Controller
 
         $query = Overtime::with(['employee.division', 'employee.jobTitle', 'approver'])
             ->orderBy('created_at', 'desc');
+
+        if (Auth::user()->group === 'admin') {
+            $query->whereHas('employee', function (Builder $q) {
+                $q->where('division_id', Auth::user()->division_id);
+            });
+        }
 
         if ($request->status) {
             $query->where('status', $request->status);

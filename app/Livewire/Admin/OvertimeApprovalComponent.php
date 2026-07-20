@@ -51,6 +51,12 @@ class OvertimeApprovalComponent extends Component
         $query = Overtime::with(['employee', 'approver'])
             ->orderBy('created_at', 'desc');
 
+        if (Auth::user()->group === 'admin') {
+            $query->whereHas('employee', function ($q) {
+                $q->where('division_id', Auth::user()->division_id);
+            });
+        }
+
         if ($this->statusFilter) {
             $query->where('status', $this->statusFilter);
         }
@@ -98,7 +104,12 @@ class OvertimeApprovalComponent extends Component
             abort(403);
         }
 
-        $overtime = Overtime::findOrFail($id);
+        $overtime = Overtime::with('employee')->findOrFail($id);
+
+        if (Auth::user()->group === 'admin' && $overtime->employee->division_id !== Auth::user()->division_id) {
+            abort(403, 'Unauthorized access.');
+        }
+
         $overtime->update([
             'status' => 'approved',
             'approved_by' => Auth::id(),
@@ -114,7 +125,12 @@ class OvertimeApprovalComponent extends Component
             abort(403);
         }
 
-        $overtime = Overtime::findOrFail($id);
+        $overtime = Overtime::with('employee')->findOrFail($id);
+
+        if (Auth::user()->group === 'admin' && $overtime->employee->division_id !== Auth::user()->division_id) {
+            abort(403, 'Unauthorized access.');
+        }
+
         $overtime->update([
             'status' => 'rejected',
             'approved_by' => Auth::id(),
