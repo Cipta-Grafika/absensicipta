@@ -22,7 +22,7 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/', fn () => Auth::user()->isAdmin ? redirect('/admin') : redirect('/home'));
+    Route::get('/', fn () => Auth::user()->isAdmin ? redirect('/hr') : redirect('/home'));
 
     // USER AREA
     Route::middleware('user')->group(function () {
@@ -42,12 +42,12 @@ Route::middleware([
             ->name('user.payslip.print');
     });
 
-    // ADMIN AREA
-    Route::prefix('admin')->middleware('admin')->group(function () {
-        Route::get('/', fn () => redirect('/admin/dashboard'));
+    // HR AREA (formerly ADMIN)
+    Route::prefix('hr')->middleware('admin')->group(function () {
+        Route::get('/', fn () => redirect('/hr/dashboard'));
         Route::get('/dashboard', function () {
             return view('admin.dashboard');
-        })->name('admin.dashboard');
+        })->name('hr.dashboard');
 
         // Superadmin ONLY routes (Global Master Data & Barcodes)
         Route::middleware([App\Http\Middleware\SuperAdminMiddleware::class])->group(function () {
@@ -55,75 +55,75 @@ Route::middleware([
             Route::resource('/barcodes', BarcodeController::class)
                 ->only(['index', 'show', 'create', 'store', 'edit', 'update'])
                 ->names([
-                    'index' => 'admin.barcodes',
-                    'show' => 'admin.barcodes.show',
-                    'create' => 'admin.barcodes.create',
-                    'store' => 'admin.barcodes.store',
-                    'edit' => 'admin.barcodes.edit',
-                    'update' => 'admin.barcodes.update',
+                    'index' => 'hr.barcodes',
+                    'show' => 'hr.barcodes.show',
+                    'create' => 'hr.barcodes.create',
+                    'store' => 'hr.barcodes.store',
+                    'edit' => 'hr.barcodes.edit',
+                    'update' => 'hr.barcodes.update',
                 ]);
             Route::get('/barcodes/download/all', [BarcodeController::class, 'downloadAll'])
-                ->name('admin.barcodes.downloadall');
+                ->name('hr.barcodes.downloadall');
             Route::get('/barcodes/{id}/download', [BarcodeController::class, 'download'])
-                ->name('admin.barcodes.download');
+                ->name('hr.barcodes.download');
 
             // Global Master Data
             Route::get('/masterdata/division', [MasterDataController::class, 'division'])
-                ->name('admin.masters.division');
+                ->name('hr.masters.division');
             Route::get('/masterdata/job-title', [MasterDataController::class, 'jobTitle'])
-                ->name('admin.masters.job-title');
+                ->name('hr.masters.job-title');
             Route::get('/masterdata/education', [MasterDataController::class, 'education'])
-                ->name('admin.masters.education');
+                ->name('hr.masters.education');
             Route::get('/masterdata/shift', [MasterDataController::class, 'shift'])
-                ->name('admin.masters.shift');
+                ->name('hr.masters.shift');
         });
 
         // User/Employee/Karyawan
         Route::resource('/employees', EmployeeController::class)
             ->only(['index'])
-            ->names(['index' => 'admin.employees']);
+            ->names(['index' => 'hr.employees']);
 
         // Scoped Master Data (Allowed for Admin)
         Route::get('/masterdata/admin', [MasterDataController::class, 'admin'])
-            ->name('admin.masters.admin');
+            ->name('hr.masters.admin');
 
         // Presence/Absensi
         Route::get('/attendances', [AttendanceController::class, 'index'])
-            ->name('admin.attendances');
+            ->name('hr.attendances');
 
         // Presence/Absensi
         Route::get('/attendances/report', [AttendanceController::class, 'report'])
-            ->name('admin.attendances.report');
+            ->name('hr.attendances.report');
 
         // Replacement Approval (Ganti Jam)
         Route::get('/replacement-approvals', \App\Livewire\Admin\ReplacementApprovalComponent::class)
-            ->name('admin.replacement-approvals');
+            ->name('hr.replacement-approvals');
             
         Route::get('/replacement-approvals/report', [\App\Http\Controllers\Admin\ReplacementApprovalController::class, 'report'])
-            ->name('admin.replacement-approvals.report');
+            ->name('hr.replacement-approvals.report');
 
         // Overtime Approval (Lembur)
         Route::get('/overtime-approvals', \App\Livewire\Admin\OvertimeApprovalComponent::class)
-            ->name('admin.overtime-approvals');
+            ->name('hr.overtime-approvals');
             
         Route::get('/overtime-approvals/report', [\App\Http\Controllers\Admin\OvertimeApprovalController::class, 'report'])
-            ->name('admin.overtime-approvals.report');
+            ->name('hr.overtime-approvals.report');
 
         // Import/Export
         Route::get('/import-export/users', [ImportExportController::class, 'users'])
-            ->name('admin.import-export.users');
+            ->name('hr.import-export.users');
         Route::get('/import-export/attendances', [ImportExportController::class, 'attendances'])
-            ->name('admin.import-export.attendances');
+            ->name('hr.import-export.attendances');
 
         Route::post('/users/import', [ImportExportController::class, 'importUsers'])
-            ->name('admin.users.import');
+            ->name('hr.users.import');
         Route::post('/attendances/import', [ImportExportController::class, 'importAttendances'])
-            ->name('admin.attendances.import');
+            ->name('hr.attendances.import');
 
         Route::get('/users/export', [ImportExportController::class, 'exportUsers'])
-            ->name('admin.users.export');
+            ->name('hr.users.export');
         Route::get('/attendances/export', [ImportExportController::class, 'exportAttendances'])
-            ->name('admin.attendances.export');
+            ->name('hr.attendances.export');
     });
 
     // Payroll Group
