@@ -18,6 +18,7 @@ class EmployeeSalariesExport implements FromCollection, WithHeadings, WithMappin
     {
         return [
             'employee_nip',
+            'employee_name',
             'salary_type',
             'working_days_per_month',
             'basic_salary',
@@ -35,6 +36,7 @@ class EmployeeSalariesExport implements FromCollection, WithHeadings, WithMappin
     {
         return [
             $salary->employee->nip ?? '',
+            $salary->employee->name ?? '',
             $salary->salary_type,
             $salary->working_days_per_month,
             $salary->basic_salary,
