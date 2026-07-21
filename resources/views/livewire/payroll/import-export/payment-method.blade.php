@@ -45,8 +45,10 @@
               x-on:change="file = $refs.file.files[0]" wire:model.live="file" />
           </div>
           <div class="flex items-center justify-stretch">
-            <x-success-button class="w-full"
-              x-text="file ? '{{ __('Confirm & Import') }} ' + file.name : '{{ __('Import') }}'">
+            <x-success-button class="w-full">
+              <span x-text="file ? '{{ __('Confirm & Import') }} ' + file.name : '{{ __('Import') }}'">
+                {{ __('Import') }}
+              </span>
             </x-success-button>
           </div>
         </form>
