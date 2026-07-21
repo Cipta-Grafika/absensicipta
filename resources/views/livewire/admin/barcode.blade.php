@@ -6,10 +6,10 @@
         class="flex flex-col rounded-lg bg-white p-4 shadow hover:bg-gray-100 dark:bg-gray-800 dark:shadow-gray-600 hover:dark:bg-gray-700">
 
         <div class="mt-4 flex items-center justify-center gap-2">
-          <x-secondary-button href="{{ route('admin.barcodes.download', $barcode->id) }}">
+          <x-secondary-button href="{{ route('hr.barcodes.download', $barcode->id) }}">
             Download
           </x-secondary-button>
-          <x-button href="{{ route('admin.barcodes.edit', $barcode->id) }}">
+          <x-button href="{{ route('hr.barcodes.edit', $barcode->id) }}">
             Edit
           </x-button>
           <x-danger-button wire:click="confirmDeletion({{ $barcode->id }}, '{{ $barcode->name }}')">

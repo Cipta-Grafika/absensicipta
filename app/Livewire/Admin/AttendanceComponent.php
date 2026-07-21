@@ -23,7 +23,7 @@ class AttendanceComponent extends Component
     #[On('print-report')]
     public function printReport()
     {
-        return redirect()->route('admin.attendances.report', [
+        return redirect()->route('hr.attendances.report', [
             'month' => $this->month,
             'week' => $this->week,
             'date' => $this->date,
