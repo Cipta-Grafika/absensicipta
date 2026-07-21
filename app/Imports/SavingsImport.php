@@ -49,5 +49,10 @@ class SavingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 
     public function onFailure(Failure ...$failures)
     {
+        $messages = [];
+        foreach ($failures as $failure) {
+            $messages[] = 'Row ' . $failure->row() . ': ' . implode(', ', $failure->errors());
+        }
+        throw new \Exception(implode('<br>', $messages));
     }
 }

@@ -71,8 +71,8 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
     public function rules(): array
     {
         return [
-            'employee_nip' => ['nullable', 'string'],
-            'employee_name' => ['nullable', 'string'],
+            'employee_nip' => ['nullable'],
+            'employee_name' => ['nullable'],
             'salary_type' => ['required'],
             'working_days_per_month' => ['required', 'numeric'],
             'basic_salary' => ['required', 'numeric'],
@@ -88,5 +88,10 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
 
     public function onFailure(Failure ...$failures)
     {
+        $messages = [];
+        foreach ($failures as $failure) {
+            $messages[] = 'Row ' . $failure->row() . ': ' . implode(', ', $failure->errors());
+        }
+        throw new \Exception(implode('<br>', $messages));
     }
 }
