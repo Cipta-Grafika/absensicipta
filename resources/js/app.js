@@ -1,5 +1,8 @@
 import './bootstrap';
 
+import TomSelect from 'tom-select';
+window.TomSelect = TomSelect;
+
 Alpine.store('darkMode', {
     on: localStorage.getItem('isDark') === 'true',
     init() {

@@ -1,6 +1,16 @@
+@import 'tom-select/dist/css/tom-select.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+    .ts-control, .ts-control input, .ts-dropdown {
+        @apply text-base text-gray-900 dark:text-gray-100;
+    }
+    .ts-control > .item {
+        @apply truncate;
+    }
+}
 
 [x-cloak] {
     display: none;

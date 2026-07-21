@@ -14,7 +14,6 @@ class PaymentMethodComponent extends Component
 
     public $search = '';
     public $division = '';
-    public $userSearch = '';
     public $isModalOpen = false;
     public $isConfirmingDeletion = false;
 
@@ -57,7 +56,7 @@ class PaymentMethodComponent extends Component
     public function openModal()
     {
         $this->resetValidation();
-        $this->reset(['payment_id', 'user_id', 'userSearch', 'payment_name', 'bank_account', 'account_name']);
+        $this->reset(['payment_id', 'user_id', 'payment_name', 'bank_account', 'account_name']);
         $this->isModalOpen = true;
     }
 
@@ -70,7 +69,7 @@ class PaymentMethodComponent extends Component
     public function edit($id)
     {
         $this->resetValidation();
-        $payment = PaymentMethod::findOrFail($id);
+        $payment = PaymentMethod::with('user')->findOrFail($id);
         
         $this->payment_id = $payment->id;
         $this->user_id = $payment->user_id;
@@ -79,6 +78,14 @@ class PaymentMethodComponent extends Component
         $this->account_name = $payment->account_name;
 
         $this->isModalOpen = true;
+
+        if ($payment->user) {
+            $this->dispatch('set-tomselect-option-user_id', [
+                'id' => $payment->user->id,
+                'name' => $payment->user->name,
+                'nip' => $payment->user->nip,
+            ]);
+        }
     }
 
     public function save()
@@ -140,14 +147,8 @@ class PaymentMethodComponent extends Component
             ->latest()
             ->paginate(10);
 
-        $employeesQuery = User::where('group', 'user')->orderBy('name');
-        if ($this->userSearch) {
-            $employeesQuery->where('name', 'like', '%' . $this->userSearch . '%');
-        }
-
         return view('livewire.payroll.payment-method-component', [
-            'methods' => $methods,
-            'employees' => $employeesQuery->get()
+            'methods' => $methods
         ])->layout('layouts.app');
     }
 }

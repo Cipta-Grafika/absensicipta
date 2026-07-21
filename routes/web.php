@@ -23,6 +23,7 @@ Route::middleware([
     'verified',
 ])->group(function () {
     Route::get('/', fn () => Auth::user()->isAdmin ? redirect('/hr') : redirect('/home'));
+    Route::get('/api/employees/search', [\App\Http\Controllers\Admin\EmployeeController::class, 'search'])->name('api.employees.search');
 
     // USER AREA
     Route::middleware('user')->group(function () {
