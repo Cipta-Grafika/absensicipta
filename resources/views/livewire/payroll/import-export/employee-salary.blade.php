@@ -1,4 +1,4 @@
-<div>
+<div x-data="{ file: null }">
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
     @if ($mode != 'import')
       <div>
@@ -29,7 +29,7 @@
         <h3 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
           Impor Data Master Gaji
         </h3>
-        <form x-data="{ file: null }" method="post" wire:submit.prevent="import" enctype="multipart/form-data">
+        <form method="post" wire:submit.prevent="import" enctype="multipart/form-data">
           @csrf
           <div class="mb-4 flex items-center gap-3">
             <x-secondary-button class="me-2" type="button" x-on:click.prevent="$refs.file.click()"
