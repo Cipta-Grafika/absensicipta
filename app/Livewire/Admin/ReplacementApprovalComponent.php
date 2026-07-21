@@ -38,7 +38,7 @@ class ReplacementApprovalComponent extends Component
     #[On('print-report')]
     public function printReport()
     {
-        return redirect()->route('admin.replacement-approvals.report', [
+        return redirect()->route('hr.replacement-approvals.report', [
             'month' => $this->month,
             'week' => $this->week,
             'date' => $this->date,

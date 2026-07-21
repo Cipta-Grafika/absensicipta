@@ -14,7 +14,7 @@
     <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
       <div class="overflow-hidden bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg">
         <div class="p-6 lg:p-8">
-          <form action="{{ route('admin.barcodes.update', $barcode->id) }}" method="post">
+          <form action="{{ route('hr.barcodes.update', $barcode->id) }}" method="post">
             @csrf
             @method('PATCH')
 
