@@ -14,6 +14,7 @@ class PayrollHistoryComponent extends Component
     public $month = '';
     public $search = '';
     public $status = '';
+    public $division = '';
 
     // Generate Form Properties
     public $generate_period_month;
@@ -59,6 +60,11 @@ class PayrollHistoryComponent extends Component
     }
 
     public function updatingStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDivision()
     {
         $this->resetPage();
     }
@@ -548,6 +554,12 @@ class PayrollHistoryComponent extends Component
             $query->whereHas('employee', function ($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
                   ->orWhere('nip', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        if ($this->division) {
+            $query->whereHas('employee', function ($q) {
+                $q->where('division_id', $this->division);
             });
         }
 
