@@ -18,7 +18,16 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
 
     public function model(array $row)
     {
-        $user = User::where('nip', $row['employee_nip'])->first();
+        $user = null;
+
+        if (!empty($row['employee_nip'])) {
+            $user = User::where('nip', $row['employee_nip'])->first();
+        }
+
+        if (!$user && !empty($row['employee_name'])) {
+            $user = User::where('name', $row['employee_name'])->first();
+        }
+
         if (!$user) {
             return null; // Skip if user not found
         }
@@ -62,7 +71,8 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
     public function rules(): array
     {
         return [
-            'employee_nip' => ['required', 'exists:users,nip'],
+            'employee_nip' => ['nullable', 'string'],
+            'employee_name' => ['nullable', 'string'],
             'salary_type' => ['required'],
             'working_days_per_month' => ['required', 'numeric'],
             'basic_salary' => ['required', 'numeric'],
