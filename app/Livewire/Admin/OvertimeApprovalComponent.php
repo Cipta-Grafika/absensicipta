@@ -36,7 +36,7 @@ class OvertimeApprovalComponent extends Component
     #[On('print-report')]
     public function printReport()
     {
-        return redirect()->route('admin.overtime-approvals.report', [
+        return redirect()->route('hr.overtime-approvals.report', [
             'month' => $this->month,
             'week' => $this->week,
             'date' => $this->date,

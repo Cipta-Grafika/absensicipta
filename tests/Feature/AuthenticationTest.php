@@ -29,7 +29,7 @@ test('admin users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect('/admin');
+    $response->assertRedirect('/hr');
 });
 
 test('users cannot authenticate with invalid password', function () {

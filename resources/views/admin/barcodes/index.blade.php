@@ -5,11 +5,11 @@
         {{ __('Barcode') }}
       </h2>
       <div class="absolute right-0 flex items-center gap-2">
-        <x-secondary-button href="{{ route('admin.barcodes.downloadall') }}" class="!py-1.5 !px-3">
+        <x-secondary-button href="{{ route('hr.barcodes.downloadall') }}" class="!py-1.5 !px-3">
           <x-heroicon-o-arrow-down-tray class="mr-1.5 h-4 w-4 text-sky-500" />
           Download Semua
         </x-secondary-button>
-        <x-button href="{{ route('admin.barcodes.create') }}" class="!py-1.5 !px-3">
+        <x-button href="{{ route('hr.barcodes.create') }}" class="!py-1.5 !px-3">
           <x-heroicon-o-plus class="mr-1.5 h-4 w-4" />
           Buat Baru
         </x-button>

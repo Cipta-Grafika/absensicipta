@@ -50,7 +50,7 @@ class BarcodeController extends Controller
                 'longitude' => doubleval($request->lng),
                 'radius' => $request->radius,
             ]);
-            return redirect()->route('admin.barcodes')->with('flash.banner', __('Created successfully.'));
+            return redirect()->route('hr.barcodes')->with('flash.banner', __('Created successfully.'));
         } catch (\Throwable $th) {
             return redirect()->back()
                 ->with('flash.banner', $th->getMessage())
@@ -76,7 +76,7 @@ class BarcodeController extends Controller
                 'longitude' => doubleval($request->lng),
                 'radius' => $request->radius,
             ]);
-            return redirect()->route('admin.barcodes')->with('flash.banner', __('Updated successfully.'));
+            return redirect()->route('hr.barcodes')->with('flash.banner', __('Updated successfully.'));
         } catch (\Throwable $th) {
             return redirect()->back()
                 ->with('flash.banner', $th->getMessage())
