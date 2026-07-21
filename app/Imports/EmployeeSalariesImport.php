@@ -25,7 +25,7 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
         }
 
         if (!$user && !empty($row['employee_name'])) {
-            $user = User::where('name', $row['employee_name'])->first();
+            $user = User::whereRaw('LOWER(name) = ?', [strtolower($row['employee_name'])])->first();
         }
 
         if (!$user) {
