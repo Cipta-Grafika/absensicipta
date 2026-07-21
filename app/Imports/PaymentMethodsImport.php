@@ -52,5 +52,10 @@ class PaymentMethodsImport implements ToModel, WithHeadingRow, WithValidation, S
 
     public function onFailure(Failure ...$failures)
     {
+        $messages = [];
+        foreach ($failures as $failure) {
+            $messages[] = 'Row ' . $failure->row() . ': ' . implode(', ', $failure->errors());
+        }
+        throw new \Exception(implode('<br>', $messages));
     }
 }
