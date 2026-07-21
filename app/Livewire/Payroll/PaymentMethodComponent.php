@@ -13,6 +13,7 @@ class PaymentMethodComponent extends Component
     use WithPagination, InteractsWithBanner;
 
     public $search = '';
+    public $division = '';
     public $userSearch = '';
     public $isModalOpen = false;
     public $isConfirmingDeletion = false;
@@ -44,6 +45,11 @@ class PaymentMethodComponent extends Component
     }
 
     public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDivision()
     {
         $this->resetPage();
     }
@@ -118,11 +124,18 @@ class PaymentMethodComponent extends Component
     public function render()
     {
         $methods = PaymentMethod::with('user')
-            ->where('payment_name', 'like', '%' . $this->search . '%')
-            ->orWhere('bank_account', 'like', '%' . $this->search . '%')
-            ->orWhere('account_name', 'like', '%' . $this->search . '%')
-            ->orWhereHas('user', function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%');
+            ->where(function ($query) {
+                $query->where('payment_name', 'like', '%' . $this->search . '%')
+                      ->orWhere('bank_account', 'like', '%' . $this->search . '%')
+                      ->orWhere('account_name', 'like', '%' . $this->search . '%')
+                      ->orWhereHas('user', function($q) {
+                          $q->where('name', 'like', '%' . $this->search . '%');
+                      });
+            })
+            ->when($this->division, function ($query) {
+                $query->whereHas('user', function ($q) {
+                    $q->where('division_id', $this->division);
+                });
             })
             ->latest()
             ->paginate(10);
