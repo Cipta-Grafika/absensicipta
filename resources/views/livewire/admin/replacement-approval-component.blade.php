@@ -120,9 +120,11 @@
           <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 min-w-[120px]">
             Status
           </th>
+          @if(Auth::user()->isSuperadmin)
           <th scope="col" class="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 min-w-[160px]">
             Aksi
           </th>
+          @endif
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -184,6 +186,7 @@
                   <div class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">by {{ $approval->approver->name ?? '-' }}</div>
               @endif
             </td>
+            @if(Auth::user()->isSuperadmin)
             <td class="whitespace-nowrap px-2 py-4 text-center text-sm font-medium">
               <div class="flex items-center justify-center space-x-2">
                 @if($approval->status == 'pending')
@@ -199,19 +202,18 @@
                     </button>
                 @endif
                 
-                @if(Auth::user()->isSuperadmin)
-                    <button wire:click="confirmDelete({{ $approval->id }})" class="rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none" title="Hapus Permanen">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                @endif
+                <button wire:click="confirmDelete({{ $approval->id }})" class="rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none" title="Hapus Permanen">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
               </div>
             </td>
+            @endif
           </tr>
         @empty
           <tr>
-            <td colspan="5" class="px-2 py-8 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+            <td colspan="{{ Auth::user()->isSuperadmin ? 5 : 4 }}" class="px-2 py-8 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
               Belum ada data pengajuan ganti jam.
             </td>
           </tr>
