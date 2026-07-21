@@ -21,4 +21,25 @@ class EmployeeController extends Controller
     public function show(string $id)
     {
     }
+
+    public function search(\Illuminate\Http\Request $request)
+    {
+        $search = $request->query('q');
+        
+        $query = User::where('group', 'user');
+
+        if ($search) {
+            if (strlen($search) < 2) {
+                return response()->json([]);
+            }
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('nip', 'like', "%{$search}%");
+            });
+        }
+
+        $employees = $query->orderBy('name')->limit(20)->get(['id', 'name', 'nip']);
+
+        return response()->json($employees);
+    }
 }

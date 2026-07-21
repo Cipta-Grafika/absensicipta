@@ -139,22 +139,33 @@
     <x-slot name="content">
       <form wire:submit.prevent="save" id="paymentForm">
         <div class="grid grid-cols-1 gap-4">
-          <div>
-            <x-label for="user_id" value="Karyawan" />
-            <x-input type="text" wire:model.live.debounce.300ms="userSearch" placeholder="Ketik nama untuk mencari..." class="mb-2 mt-1 block w-full text-sm" />
-            <select id="user_id" wire:model="user_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-sky-600 dark:focus:ring-sky-600">
-              <option value="">-- Pilih Karyawan --</option>
-              @foreach($employees as $emp)
-                <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-              @endforeach
-            </select>
-            <x-input-error for="user_id" class="mt-2" />
-          </div>
-
-          <div>
-            <x-label for="payment_name" value="Nama Metode/Bank" />
-            <x-input id="payment_name" type="text" class="mt-1 block w-full" wire:model="payment_name" required placeholder="Contoh: BCA, Mandiri, Cash" />
-            <x-input-error for="payment_name" class="mt-2" />
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <x-label for="user_id" value="Karyawan" class="mb-1" />
+              <x-tom-select 
+                  id="user_id"
+                  wire:model="user_id"
+                  endpoint="/api/employees/search"
+                  placeholder="Cari Karyawan..."
+                  searchField="['name', 'nip']"
+                  renderOption="function(item, escape) {
+                      return `<div class='py-2 px-3'>
+                          <span class='block font-semibold text-gray-800 dark:text-gray-200'>${escape(item.name)}</span>
+                          <span class='block text-xs text-gray-500'>NIP: ${escape(item.nip)}</span>
+                      </div>`;
+                  }"
+                  renderItem="function(item, escape) {
+                      return `<div class='font-medium text-gray-900 dark:text-gray-100'>${escape(item.name)} (${escape(item.nip)})</div>`;
+                  }"
+              />
+              <x-input-error for="user_id" class="mt-2" />
+            </div>
+  
+            <div>
+              <x-label for="payment_name" value="Nama Metode/Bank" class="mb-1" />
+              <x-input id="payment_name" type="text" class="mt-1 block w-full" wire:model="payment_name" required placeholder="Contoh: BCA, Mandiri, Cash" />
+              <x-input-error for="payment_name" class="mt-2" />
+            </div>
           </div>
 
           <div>

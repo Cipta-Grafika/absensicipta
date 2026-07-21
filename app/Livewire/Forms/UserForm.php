@@ -108,6 +108,10 @@ class UserForm extends Form
             $data['division_id'] = Auth::user()->division_id;
         }
 
+        if (!Auth::user()?->isSuperadmin) {
+            unset($data['count_wfo']);
+        }
+
         /** @var User $user */
         $user = User::create([
             ...$data,
@@ -134,6 +138,10 @@ class UserForm extends Form
 
         if (Auth::user()?->group === 'admin') {
             $data['division_id'] = Auth::user()->division_id;
+        }
+
+        if (!Auth::user()?->isSuperadmin) {
+            unset($data['count_wfo']);
         }
 
         $this->user->update([
