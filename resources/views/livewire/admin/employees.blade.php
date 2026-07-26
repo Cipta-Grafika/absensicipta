@@ -401,12 +401,14 @@
             @enderror
           </div>
         </div>
+        @if (Auth::user()->isSuperadmin)
         <div class="mt-4">
           <label for="create_count_wfo" class="flex items-center">
             <x-checkbox id="create_count_wfo" wire:model="form.count_wfo" />
             <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Count WFO (Centang jika perhitungan WFH = WFO)</span>
           </label>
         </div>
+        @endif
       </x-slot>
 
       <x-slot name="footer">
@@ -635,12 +637,14 @@
             @enderror
           </div>
         </div>
+        @if (Auth::user()->isSuperadmin)
         <div class="mt-4">
           <label for="edit_count_wfo" class="flex items-center">
             <x-checkbox id="edit_count_wfo" wire:model="form.count_wfo" />
             <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Count WFO (Centang jika perhitungan WFH = WFO)</span>
           </label>
         </div>
+        @endif
       </x-slot>
 
       <x-slot name="footer">

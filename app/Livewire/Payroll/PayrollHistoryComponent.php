@@ -14,6 +14,7 @@ class PayrollHistoryComponent extends Component
     public $month = '';
     public $search = '';
     public $status = '';
+    public $division = '';
 
     // Generate Form Properties
     public $generate_period_month;
@@ -59,6 +60,11 @@ class PayrollHistoryComponent extends Component
     }
 
     public function updatingStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDivision()
     {
         $this->resetPage();
     }
@@ -164,6 +170,9 @@ class PayrollHistoryComponent extends Component
                     throw new \Exception("Tidak ada karyawan aktif yang memiliki pengaturan gaji.");
                 }
 
+                // Build bulk schedule context for all employees in period
+                $scheduleContext = \App\Services\AttendanceScheduleService::buildContext($employees, $this->generate_start_date, $this->generate_end_date);
+
                 foreach ($employees as $emp) {
                     $generatedCount++;
                     // Check if payroll already exists for this period, delete it (overwrite draft)
@@ -192,7 +201,7 @@ class PayrollHistoryComponent extends Component
                     $total_paid_days = $attendances->whereIn('status', ['present', 'late', 'wfh', 'imp'])->count();
                     $total_present = $attendances->whereIn('status', ['present', 'late'])->count();
                     
-                    // Dynamic Absent Calculation (including missing records, skipping Sundays, up to today)
+                    // Dynamic Absent Calculation (using AttendanceScheduleService as single source of truth)
                     $start_period = \Carbon\Carbon::parse($this->generate_start_date);
                     $end_period = \Carbon\Carbon::parse($this->generate_end_date);
                     $today_date = \Carbon\Carbon::today();
@@ -208,11 +217,13 @@ class PayrollHistoryComponent extends Component
                     $actual_working_days = 0;
 
                     for ($d = $start_period->copy(); $d->lte($end_period); $d->addDay()) {
-                        if (!$d->isSunday()) {
+                        if ($scheduleContext->isWorkingDay($emp, $d)) {
                             $actual_working_days++;
                             $records = $attendancesByDate->get($d->format('Y-m-d'), collect());
-                            $hasValidRecord = $records->where('status', '!=', 'absent')->isNotEmpty();
-                            if (!$hasValidRecord) {
+                            $hasValidRecord = $records->whereNotIn('status', ['absent', 'dayoff'])->isNotEmpty();
+                            $isExplicitDayOff = $records->where('status', 'dayoff')->isNotEmpty();
+
+                            if (!$hasValidRecord && !$isExplicitDayOff) {
                                 $missing_absent_days++;
                             }
                             
@@ -548,6 +559,12 @@ class PayrollHistoryComponent extends Component
             $query->whereHas('employee', function ($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
                   ->orWhere('nip', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        if ($this->division) {
+            $query->whereHas('employee', function ($q) {
+                $q->where('division_id', $this->division);
             });
         }
 

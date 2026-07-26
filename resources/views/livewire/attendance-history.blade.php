@@ -26,10 +26,10 @@
 
       @foreach ($dates as $date)
         @php
-          $isSunday = $date->isSunday();
+          $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay(auth()->user(), $date);
           $attendance = $attendances->first(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
           $status = ($attendance ?? [
-              'status' => $isSunday || !$date->isPast() ? '-' : 'absent',
+              'status' => !$isWorkingDay || !$date->isPast() ? '-' : 'absent',
           ])['status'];
 
           switch ($status) {

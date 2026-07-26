@@ -1,4 +1,4 @@
-<div>
+<div x-data="{ file: null }">
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
     @if ($mode != 'import')
       <div>
@@ -29,24 +29,28 @@
         <h3 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
           Impor Data Master Gaji
         </h3>
-        <form x-data="{ file: null }" method="post" wire:submit.prevent="import" enctype="multipart/form-data">
+        <form method="post" wire:submit.prevent="import" enctype="multipart/form-data">
           @csrf
-          <div class="mb-4 flex items-center gap-3">
-            <x-secondary-button class="me-2" type="button" x-on:click.prevent="$refs.file.click()"
-              x-text="file ? 'Ganti File' : 'Pilih File dan Pratinjau'">
-              Pilih File
-            </x-secondary-button>
-            <x-secondary-button class="me-2" type="button" x-show="file"
-              x-on:click.prevent="$refs.file.files[0] = null; file = null; $wire.$set('file', null)">
-              Hapus File
-            </x-secondary-button>
-            <h5 class="text-sm dark:text-gray-200" x-text="file ? file.name : 'File Belum Dipilih'"></h5>
+          <div class="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
+            <div class="flex items-center gap-2 shrink-0">
+              <x-secondary-button type="button" class="whitespace-nowrap" x-on:click.prevent="$refs.file.click()"
+                x-text="file ? 'Ganti File' : 'Pilih File dan Pratinjau'">
+                Pilih File
+              </x-secondary-button>
+              <x-danger-button type="button" class="whitespace-nowrap" x-show="file"
+                x-on:click.prevent="$refs.file.files[0] = null; file = null; $wire.$set('file', null)">
+                Hapus File
+              </x-danger-button>
+            </div>
+            <h5 class="text-sm dark:text-gray-200 truncate w-full" x-text="file ? file.name : 'File Belum Dipilih'"></h5>
             <x-input type="file" class="hidden" name="file" x-ref="file"
               x-on:change="file = $refs.file.files[0]" wire:model.live="file" />
           </div>
           <div class="flex items-center justify-stretch">
-            <x-success-button class="w-full"
-              x-text="file ? '{{ __('Confirm & Import') }} ' + file.name : '{{ __('Import') }}'">
+            <x-success-button class="w-full">
+              <span x-text="file ? '{{ __('Confirm & Import') }} ' + file.name : '{{ __('Import') }}'">
+                {{ __('Import') }}
+              </span>
             </x-success-button>
           </div>
         </form>

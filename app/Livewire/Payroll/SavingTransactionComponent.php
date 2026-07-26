@@ -17,6 +17,7 @@ class SavingTransactionComponent extends Component
     public $search = '';
     public $month = '';
     public $type = '';
+    public $division = '';
 
     // Modal Pencairan
     public $withdrawalModalOpen = false;
@@ -37,6 +38,11 @@ class SavingTransactionComponent extends Component
     }
 
     public function updatingType()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDivision()
     {
         $this->resetPage();
     }
@@ -155,6 +161,12 @@ class SavingTransactionComponent extends Component
             $query->where('transaction_type', $this->type);
         }
 
+        if ($this->division) {
+            $query->whereHas('user', function($q) {
+                $q->where('division_id', $this->division);
+            });
+        }
+
         $transactions = $query->latest()->paginate(15);
         $users = User::where('group', 'user')->orderBy('name')->get();
         $savingsList = Saving::orderBy('savings_name')->get();
@@ -170,6 +182,12 @@ class SavingTransactionComponent extends Component
                 ->orWhereHas('masterSaving', function($subQ) {
                     $subQ->where('savings_name', 'like', '%' . $this->search . '%');
                 });
+            });
+        }
+        
+        if ($this->division) {
+            $summaryQuery->whereHas('user', function($q) {
+                $q->where('division_id', $this->division);
             });
         }
         

@@ -23,6 +23,7 @@ Route::middleware([
     'verified',
 ])->group(function () {
     Route::get('/', fn () => Auth::user()->isAdmin ? redirect('/hr') : redirect('/home'));
+    Route::get('/api/employees/search', [\App\Http\Controllers\Admin\EmployeeController::class, 'search'])->name('api.employees.search');
 
     // USER AREA
     Route::middleware('user')->group(function () {
@@ -108,6 +109,13 @@ Route::middleware([
             
         Route::get('/overtime-approvals/report', [\App\Http\Controllers\Admin\OvertimeApprovalController::class, 'report'])
             ->name('hr.overtime-approvals.report');
+
+        // Work Schedule Roster & Holiday Management
+        Route::get('/work-schedules', \App\Livewire\Admin\WorkScheduleManagementComponent::class)
+            ->name('hr.work-schedules');
+
+        Route::get('/holidays', \App\Livewire\Admin\HolidayManagementComponent::class)
+            ->name('hr.holidays');
 
         // Import/Export
         Route::get('/import-export/users', [ImportExportController::class, 'users'])
