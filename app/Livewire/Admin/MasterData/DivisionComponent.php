@@ -13,21 +13,28 @@ class DivisionComponent extends Component
     use InteractsWithBanner;
 
     public $name;
+    public array $off_days = ['sunday'];
     public $deleteName = null;
     public $creating = false;
     public $editing = false;
     public $confirmingDeletion = false;
     public $selectedId = null;
 
-    protected $rules = [
-        'name' => ['required', 'string', 'max:255', 'unique:divisions'],
-    ];
+    protected function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('divisions')->ignore($this->selectedId)],
+            'off_days' => ['nullable', 'array'],
+            'off_days.*' => ['string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
+        ];
+    }
 
     #[On('show-creating')]
     public function showCreating()
     {
         $this->reset();
         $this->resetErrorBag();
+        $this->off_days = ['sunday'];
         $this->creating = true;
     }
 
@@ -37,9 +44,13 @@ class DivisionComponent extends Component
             return abort(403);
         }
         $this->validate();
-        Division::create(['name' => $this->name]);
+        Division::create([
+            'name' => $this->name,
+            'off_days' => $this->off_days,
+        ]);
         $this->creating = false;
         $this->name = null;
+        $this->off_days = ['sunday'];
         $this->banner(__('Created successfully.'));
     }
 
@@ -48,8 +59,9 @@ class DivisionComponent extends Component
         $this->resetErrorBag();
         $this->editing = true;
         $division = Division::find($id);
-        $this->name = $division->name;
         $this->selectedId = $id;
+        $this->name = $division->name;
+        $this->off_days = $division->off_days ?? ['sunday'];
     }
 
     public function update()
@@ -59,7 +71,10 @@ class DivisionComponent extends Component
         }
         $this->validate();
         $division = Division::find($this->selectedId);
-        $division->update(['name' => $this->name]);
+        $division->update([
+            'name' => $this->name,
+            'off_days' => $this->off_days,
+        ]);
         $this->editing = false;
         $this->selectedId = null;
         $this->banner(__('Updated successfully.'));

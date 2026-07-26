@@ -6,6 +6,9 @@
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
           Divisi
         </th>
+        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+          Hari Libur Rutin
+        </th>
         <th scope="col" class="relative px-6 py-3">
           <span class="sr-only">Actions</span>
         </th>
@@ -16,6 +19,13 @@
         <tr>
           <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
             {{ $division->name }}
+          </td>
+          <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
+            @if(!empty($division->off_days))
+              {{ implode(', ', array_map('ucfirst', $division->off_days)) }}
+            @else
+              Sunday (Default)
+            @endif
           </td>
           <td class="relative flex justify-end gap-2 px-6 py-4">
             <x-button wire:click="edit({{ $division->id }})">
@@ -62,6 +72,21 @@
         @error('name')
           <x-input-error for="name" class="mt-2" message="{{ $message }}" />
         @enderror
+
+        <div class="mt-4">
+          <x-label value="Hari Libur Rutin Mingguan" />
+          <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            @foreach(['sunday' => 'Minggu', 'monday' => 'Senin', 'tuesday' => 'Selasa', 'wednesday' => 'Rabu', 'thursday' => 'Kamis', 'friday' => 'Jumat', 'saturday' => 'Sabtu'] as $dayKey => $dayLabel)
+              <label class="inline-flex items-center">
+                <input type="checkbox" wire:model="off_days" value="{{ $dayKey }}" class="rounded text-indigo-600 focus:ring-indigo-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ $dayLabel }}</span>
+              </label>
+            @endforeach
+          </div>
+          @error('off_days')
+            <x-input-error for="off_days" class="mt-2" message="{{ $message }}" />
+          @enderror
+        </div>
       </x-slot>
 
       <x-slot name="footer">
@@ -83,11 +108,26 @@
 
     <form wire:submit.prevent="update">
       <x-slot name="content">
-        <x-label for="name">Nama Divisi</x-label>
-        <x-input id="name" class="mt-1 block w-full" type="text" wire:model="name" />
+        <x-label for="edit_name">Nama Divisi</x-label>
+        <x-input id="edit_name" class="mt-1 block w-full" type="text" wire:model="name" />
         @error('name')
           <x-input-error for="name" class="mt-2" message="{{ $message }}" />
         @enderror
+
+        <div class="mt-4">
+          <x-label value="Hari Libur Rutin Mingguan" />
+          <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            @foreach(['sunday' => 'Minggu', 'monday' => 'Senin', 'tuesday' => 'Selasa', 'wednesday' => 'Rabu', 'thursday' => 'Kamis', 'friday' => 'Jumat', 'saturday' => 'Sabtu'] as $dayKey => $dayLabel)
+              <label class="inline-flex items-center">
+                <input type="checkbox" wire:model="off_days" value="{{ $dayKey }}" class="rounded text-indigo-600 focus:ring-indigo-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ $dayLabel }}</span>
+              </label>
+            @endforeach
+          </div>
+          @error('off_days')
+            <x-input-error for="off_days" class="mt-2" message="{{ $message }}" />
+          @enderror
+        </div>
       </x-slot>
 
       <x-slot name="footer">
