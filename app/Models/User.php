@@ -45,6 +45,7 @@ class User extends Authenticatable
         'profile_photo_path',
         'status',
         'count_wfo',
+        'off_days',
     ];
 
     /**
@@ -81,6 +82,7 @@ class User extends Authenticatable
             'birth_date' => 'datetime:Y-m-d',
             'password' => 'hashed',
             'count_wfo' => 'boolean',
+            'off_days' => 'array',
         ];
     }
 
@@ -154,5 +156,15 @@ class User extends Authenticatable
     public function payrolls()
     {
         return $this->hasMany(Payroll::class, 'employee_id');
+    }
+
+    public function holidays()
+    {
+        return $this->belongsToMany(Holiday::class, 'holiday_user');
+    }
+
+    public function workSchedules()
+    {
+        return $this->hasMany(WorkSchedule::class);
     }
 }

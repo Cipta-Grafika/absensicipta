@@ -218,10 +218,10 @@
             @if (!$month)
               @foreach ($dates as $date)
                 @php
-                  $isSunday = $date->isSunday();
+                  $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay($employee, $date);
                   $attendance = $attendances->firstWhere(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
                   $status = ($attendance ?? [
-                      'status' => $isSunday || !$date->isPast() ? '-' : 'absent',
+                      'status' => !$isWorkingDay || !$date->isPast() ? '-' : 'absent',
                   ])['status'];
                   switch ($status) {
                       case 'present':
@@ -311,9 +311,9 @@
               @php
                 // Just count for the month
                 foreach ($dates as $date) {
-                  $isSunday = $date->isSunday();
+                  $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay($employee, $date);
                   $attendance = $attendances->firstWhere(fn($v, $k) => $v['date'] === $date->format('Y-m-d'));
-                  $status = ($attendance ?? ['status' => $isSunday || !$date->isPast() ? '-' : 'absent'])['status'];
+                  $status = ($attendance ?? ['status' => !$isWorkingDay || !$date->isPast() ? '-' : 'absent'])['status'];
                   if ($status === 'present') $presentCount++;
                   elseif ($status === 'late') $lateCount++;
                   elseif ($status === 'excused') $excusedCount++;
@@ -534,14 +534,14 @@
           
           @foreach ($dates as $date)
             @php
-              $isSunday = $date->isSunday();
+              $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay($detailUser, $date);
               $attendance = $detailUser->attendances->firstWhere('date', $date->format('Y-m-d'));
               
               // Handle array vs object depending on whether it was eager loaded via array or eloquent model
               $status = '-';
               if ($attendance) {
                   $status = is_array($attendance) ? $attendance['status'] : $attendance->status;
-              } elseif ($isSunday || !$date->isPast()) {
+              } elseif (!$isWorkingDay || !$date->isPast()) {
                   $status = '-';
               } else {
                   $status = 'absent';
@@ -592,7 +592,7 @@
             @endphp
             <button type="button" class="{{ $bgColor }} h-14 w-full py-1 text-center" 
                     @if (Auth::user()->isAdmin) wire:click="editAttendance('{{ $detailUser->id }}', '{{ $date->format('Y-m-d') }}')" @endif>
-              <span class="{{ $date->isSunday() ? 'text-red-500' : '' }} {{ $date->isFriday() ? 'text-green-600 dark:text-green-500' : '' }}">
+              <span class="{{ !$isWorkingDay ? 'text-red-500' : '' }} {{ $date->isFriday() ? 'text-green-600 dark:text-green-500' : '' }}">
                 {{ $date->format('d') }}
               </span>
               <br>

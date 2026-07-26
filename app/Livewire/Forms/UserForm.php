@@ -29,6 +29,7 @@ class UserForm extends Form
     public $job_title_id = null;
     public $photo = null;
     public bool $count_wfo = false;
+    public array $off_days = [];
 
     public function rules()
     {
@@ -61,6 +62,8 @@ class UserForm extends Form
             'job_title_id' => ['nullable', 'exists:job_titles,id'],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
             'count_wfo' => ['boolean'],
+            'off_days' => ['nullable', 'array'],
+            'off_days.*' => ['string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
         ];
     }
 
@@ -87,6 +90,7 @@ class UserForm extends Form
         $this->education_id = $user->education_id;
         $this->job_title_id = $user->job_title_id;
         $this->count_wfo = (bool) $user->count_wfo;
+        $this->off_days = $user->off_days ?? [];
         return $this;
     }
 

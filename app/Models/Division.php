@@ -11,6 +11,19 @@ class Division extends Model
     use HasFactory, HasTimestamps;
 
     protected $fillable = [
-        'name'
+        'name',
+        'off_days',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'off_days' => 'array',
+        ];
+    }
+
+    public function holidays()
+    {
+        return $this->hasMany(Holiday::class);
+    }
 }
