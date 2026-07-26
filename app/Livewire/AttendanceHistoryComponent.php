@@ -111,14 +111,15 @@ class AttendanceHistoryComponent extends Component
 
     private function calculateCounts($dates, $attendances)
     {
+        $user = auth()->user();
         $counts = [
-            'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'absent' => 0, 'wfh' => 0, 'leave' => 0, 'special-leaves' => 0,
+            'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'absent' => 0, 'wfh' => 0, 'leave' => 0, 'special-leaves' => 0, 'dayoff' => 0,
         ];
 
         foreach ($dates as $date) {
-            $isSunday = $date->isSunday();
+            $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay($user, $date);
             $attendance = collect($attendances)->firstWhere('date', $date->format('Y-m-d'));
-            $status = ($attendance ?? ['status' => $isSunday || !$date->isPast() ? '-' : 'absent'])['status'];
+            $status = ($attendance ?? ['status' => !$isWorkingDay || !$date->isPast() ? '-' : 'absent'])['status'];
             if (array_key_exists($status, $counts)) {
                 $counts[$status]++;
             }
@@ -137,10 +138,11 @@ class AttendanceHistoryComponent extends Component
         $periods = [];
         $current = $start->copy();
         while ($current <= $end) {
+            $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay($user, $current);
             $periods[$current->format('Y-m-d')] = [
-                'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'wfh' => 0, 'leave' => 0, 'absent' => 0, 'special-leaves' => 0
+                'present' => 0, 'late' => 0, 'excused' => 0, 'sick' => 0, 'wfh' => 0, 'leave' => 0, 'absent' => 0, 'special-leaves' => 0, 'dayoff' => 0
             ];
-            if (!$current->isSunday() && $current->isPast()) {
+            if ($isWorkingDay && $current->isPast()) {
                 $periods[$current->format('Y-m-d')]['absent'] = 1;
             }
             $current->addDay();
@@ -150,7 +152,9 @@ class AttendanceHistoryComponent extends Component
             $p = Carbon::parse($r->date)->format('Y-m-d');
             if (isset($periods[$p])) {
                 $periods[$p][$r->status] = $r->count;
-                $periods[$p]['absent'] = 0;
+                if ($r->status !== 'absent') {
+                    $periods[$p]['absent'] = 0;
+                }
             }
         }
 
