@@ -167,9 +167,9 @@
           @endphp
           @foreach ($dates as $date)
             @php
-              $isSunday = $date->isSunday();
+              $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay($employee, $date);
               $status = ($attendances->firstWhere(fn($v, $k) => $v['date'] === $date->format('Y-m-d')) ?? [
-                  'status' => $isSunday || !$date->isPast() ? '-' : 'absent',
+                  'status' => !$isWorkingDay || !$date->isPast() ? '-' : 'absent',
               ])['status'];
               switch ($status) {
                   case 'present':

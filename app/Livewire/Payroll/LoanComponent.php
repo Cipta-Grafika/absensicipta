@@ -14,6 +14,7 @@ class LoanComponent extends Component
 
     public $search = '';
     public $status = '';
+    public $division = '';
 
     // Modal Create Loan
     public $createModalOpen = false;
@@ -31,6 +32,11 @@ class LoanComponent extends Component
     }
 
     public function updatingStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDivision()
     {
         $this->resetPage();
     }
@@ -112,6 +118,12 @@ class LoanComponent extends Component
 
         if ($this->status) {
             $query->where('status', $this->status);
+        }
+
+        if ($this->division) {
+            $query->whereHas('user', function($q) {
+                $q->where('division_id', $this->division);
+            });
         }
 
         $loans = $query->latest()->paginate(15);

@@ -90,9 +90,9 @@
             $attendance = $employee->attendance;
             $timeIn = $attendance ? $attendance?->time_in?->format('H:i:s') : null;
             $timeOut = $attendance ? $attendance?->time_out?->format('H:i:s') : null;
-            $isSunday = $date->isSunday();
+            $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay($employee, $date);
             $status = ($attendance ?? [
-                'status' => $isSunday || !$date->isPast() ? '-' : 'absent',
+                'status' => !$isWorkingDay || !$date->isPast() ? '-' : 'absent',
             ])['status'];
             switch ($status) {
                 case 'present':

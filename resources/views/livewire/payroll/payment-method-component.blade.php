@@ -3,17 +3,48 @@
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
       {{ __('Metode Pembayaran') }}
     </h2>
-    <x-button x-data @click="$dispatch('open-payment-modal')" class="bg-sky-500 hover:bg-sky-600 focus:bg-sky-600 active:bg-sky-700">
-      <svg class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-      </svg>
-      Tambah Baru
-    </x-button>
+    <div class="flex items-center gap-2">
+      <x-button x-data @click="$dispatch('open-payment-modal')" class="bg-sky-500 hover:bg-sky-600 focus:bg-sky-600 active:bg-sky-700">
+        <svg class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        <span class="hidden sm:inline">Tambah Baru</span>
+      </x-button>
+      <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
+        <x-heroicon-o-funnel class="sm:mr-1.5 h-4 w-4 text-sky-500" />
+        <span class="hidden sm:inline">Filter</span>
+      </x-secondary-button>
+    </div>
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-12" x-data @open-payment-modal.window="$wire.openModal()">
+<div class="py-0 sm:py-12" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-payment-modal.window="$wire.openModal()">
   <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+    <x-filter-sidebar maxWidth="sm">
+      <x-slot name="title">Filter Karyawan</x-slot>
+      <x-slot name="actions">
+        <button type="button" wire:click="$set('division', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </button>
+      </x-slot>
+      
+      <x-slot name="content">
+        <div class="flex flex-col gap-6">
+          <div>
+            <x-label for="division_filter" value="Divisi" class="mb-1"></x-label>
+            <x-select id="division_filter" class="w-full" wire:model.live="division">
+              <option value="">Semua Divisi</option>
+              @foreach (\App\Models\Division::all() as $div)
+                <option value="{{ $div->id }}">{{ $div->name }}</option>
+              @endforeach
+            </x-select>
+          </div>
+        </div>
+      </x-slot>
+    </x-filter-sidebar>
+
     <div class="bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
       
       <div class="mb-4">
@@ -108,22 +139,33 @@
     <x-slot name="content">
       <form wire:submit.prevent="save" id="paymentForm">
         <div class="grid grid-cols-1 gap-4">
-          <div>
-            <x-label for="user_id" value="Karyawan" />
-            <x-input type="text" wire:model.live.debounce.300ms="userSearch" placeholder="Ketik nama untuk mencari..." class="mb-2 mt-1 block w-full text-sm" />
-            <select id="user_id" wire:model="user_id" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-sky-600 dark:focus:ring-sky-600">
-              <option value="">-- Pilih Karyawan --</option>
-              @foreach($employees as $emp)
-                <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-              @endforeach
-            </select>
-            <x-input-error for="user_id" class="mt-2" />
-          </div>
-
-          <div>
-            <x-label for="payment_name" value="Nama Metode/Bank" />
-            <x-input id="payment_name" type="text" class="mt-1 block w-full" wire:model="payment_name" required placeholder="Contoh: BCA, Mandiri, Cash" />
-            <x-input-error for="payment_name" class="mt-2" />
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <x-label for="user_id" value="Karyawan" class="mb-1" />
+              <x-tom-select 
+                  id="user_id"
+                  wire:model="user_id"
+                  endpoint="/api/employees/search"
+                  placeholder="Cari Karyawan..."
+                  searchField="['name', 'nip']"
+                  renderOption="function(item, escape) {
+                      return `<div class='py-2 px-3'>
+                          <span class='block font-semibold text-gray-800 dark:text-gray-200'>${escape(item.name)}</span>
+                          <span class='block text-xs text-gray-500'>NIP: ${escape(item.nip)}</span>
+                      </div>`;
+                  }"
+                  renderItem="function(item, escape) {
+                      return `<div class='font-medium text-gray-900 dark:text-gray-100'>${escape(item.name)} (${escape(item.nip)})</div>`;
+                  }"
+              />
+              <x-input-error for="user_id" class="mt-2" />
+            </div>
+  
+            <div>
+              <x-label for="payment_name" value="Nama Metode/Bank" class="mb-1" />
+              <x-input id="payment_name" type="text" class="mt-1 block w-full" wire:model="payment_name" required placeholder="Contoh: BCA, Mandiri, Cash" />
+              <x-input-error for="payment_name" class="mt-2" />
+            </div>
           </div>
 
           <div>

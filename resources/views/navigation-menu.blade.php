@@ -33,6 +33,20 @@
             <x-nav-link class="hidden md:inline-flex" href="{{ route('hr.employees') }}" :active="request()->routeIs('hr.employees')">
               {{ __('Employee') }}
             </x-nav-link>
+            <x-nav-dropdown :active="request()->routeIs('hr.work-schedules') || request()->routeIs('hr.holidays')" triggerClasses="text-nowrap">
+              <x-slot name="trigger">
+                Jadwal & Libur
+                <x-heroicon-o-chevron-down class="ms-2 h-5 w-5 text-gray-400" />
+              </x-slot>
+              <x-slot name="content">
+                <x-dropdown-link href="{{ route('hr.work-schedules') }}" :active="request()->routeIs('hr.work-schedules')">
+                  Jadwal Rolling (Roster)
+                </x-dropdown-link>
+                <x-dropdown-link href="{{ route('hr.holidays') }}" :active="request()->routeIs('hr.holidays')">
+                  Manajemen Hari Libur
+                </x-dropdown-link>
+              </x-slot>
+            </x-nav-dropdown>
             <x-nav-dropdown :active="request()->routeIs('hr.masters.*')" triggerClasses="text-nowrap">
               <x-slot name="trigger">
                 {{ __('Master Data') }}

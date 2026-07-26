@@ -13,7 +13,7 @@ class PaymentMethodComponent extends Component
     use WithPagination, InteractsWithBanner;
 
     public $search = '';
-    public $userSearch = '';
+    public $division = '';
     public $isModalOpen = false;
     public $isConfirmingDeletion = false;
 
@@ -48,10 +48,15 @@ class PaymentMethodComponent extends Component
         $this->resetPage();
     }
 
+    public function updatingDivision()
+    {
+        $this->resetPage();
+    }
+
     public function openModal()
     {
         $this->resetValidation();
-        $this->reset(['payment_id', 'user_id', 'userSearch', 'payment_name', 'bank_account', 'account_name']);
+        $this->reset(['payment_id', 'user_id', 'payment_name', 'bank_account', 'account_name']);
         $this->isModalOpen = true;
     }
 
@@ -64,7 +69,7 @@ class PaymentMethodComponent extends Component
     public function edit($id)
     {
         $this->resetValidation();
-        $payment = PaymentMethod::findOrFail($id);
+        $payment = PaymentMethod::with('user')->findOrFail($id);
         
         $this->payment_id = $payment->id;
         $this->user_id = $payment->user_id;
@@ -73,6 +78,14 @@ class PaymentMethodComponent extends Component
         $this->account_name = $payment->account_name;
 
         $this->isModalOpen = true;
+
+        if ($payment->user) {
+            $this->dispatch('set-tomselect-option-user_id', [
+                'id' => $payment->user->id,
+                'name' => $payment->user->name,
+                'nip' => $payment->user->nip,
+            ]);
+        }
     }
 
     public function save()
@@ -118,23 +131,24 @@ class PaymentMethodComponent extends Component
     public function render()
     {
         $methods = PaymentMethod::with('user')
-            ->where('payment_name', 'like', '%' . $this->search . '%')
-            ->orWhere('bank_account', 'like', '%' . $this->search . '%')
-            ->orWhere('account_name', 'like', '%' . $this->search . '%')
-            ->orWhereHas('user', function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%');
+            ->where(function ($query) {
+                $query->where('payment_name', 'like', '%' . $this->search . '%')
+                      ->orWhere('bank_account', 'like', '%' . $this->search . '%')
+                      ->orWhere('account_name', 'like', '%' . $this->search . '%')
+                      ->orWhereHas('user', function($q) {
+                          $q->where('name', 'like', '%' . $this->search . '%');
+                      });
+            })
+            ->when($this->division, function ($query) {
+                $query->whereHas('user', function ($q) {
+                    $q->where('division_id', $this->division);
+                });
             })
             ->latest()
             ->paginate(10);
 
-        $employeesQuery = User::where('group', 'user')->orderBy('name');
-        if ($this->userSearch) {
-            $employeesQuery->where('name', 'like', '%' . $this->userSearch . '%');
-        }
-
         return view('livewire.payroll.payment-method-component', [
-            'methods' => $methods,
-            'employees' => $employeesQuery->get()
+            'methods' => $methods
         ])->layout('layouts.app');
     }
 }

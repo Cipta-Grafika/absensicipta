@@ -13,6 +13,7 @@ class EmployeeSalaryComponent extends Component
     use WithPagination, InteractsWithBanner;
 
     public $search = '';
+    public $division = '';
     public $isModalOpen = false;
 
     // Form fields
@@ -43,6 +44,11 @@ class EmployeeSalaryComponent extends Component
     ];
 
     public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDivision()
     {
         $this->resetPage();
     }
@@ -118,6 +124,9 @@ class EmployeeSalaryComponent extends Component
             ->when($this->search, function ($query) {
                 $query->where('name', 'like', '%' . $this->search . '%')
                       ->orWhere('nip', 'like', '%' . $this->search . '%');
+            })
+            ->when($this->division, function ($query) {
+                $query->where('division_id', $this->division);
             })
             ->with(['salary', 'division', 'jobTitle'])
             ->paginate(15);
