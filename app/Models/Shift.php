@@ -14,7 +14,67 @@ class Shift extends Model
         'name',
         'start_time',
         'end_time',
+        'division_id',
     ];
+
+    /**
+     * Relationship with Division
+     */
+    public function division()
+    {
+        return $this->belongsTo(Division::class);
+    }
+
+    /**
+     * Scope shifts accessible by a user for selecting/viewing (own division + global).
+     */
+    public function scopeForUser($query, $user = null)
+    {
+        if (!$user) {
+            $user = auth()->user();
+        }
+
+        if (!$user) {
+            return $query;
+        }
+
+        if ($user->isSuperadmin) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user) {
+            if ($user->division_id) {
+                $q->where('division_id', $user->division_id)
+                  ->orWhereNull('division_id');
+            } else {
+                $q->whereNull('division_id');
+            }
+        });
+    }
+
+    /**
+     * Scope shifts manageable by an Admin in HR Master Data.
+     */
+    public function scopeForAdminManagement($query, $user = null)
+    {
+        if (!$user) {
+            $user = auth()->user();
+        }
+
+        if (!$user) {
+            return $query;
+        }
+
+        if ($user->isSuperadmin) {
+            return $query;
+        }
+
+        if ($user->division_id) {
+            return $query->where('division_id', $user->division_id);
+        }
+
+        return $query->whereNull('division_id');
+    }
 
     /**
      * Calculate duration in minutes between start_time and end_time

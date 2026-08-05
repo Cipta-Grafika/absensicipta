@@ -18,9 +18,15 @@ class AuthenticateLoginAttempt
         }
 
         if ($user && Hash::check($request->password, $user->password)) {
-            if ($user->status !== 'active') {
+            if (in_array($user->status, ['inactive', 'resign', 'fired'])) {
+                $statusText = match ($user->status) {
+                    'inactive' => 'Tidak Aktif',
+                    'resign' => 'Mengundurkan Diri',
+                    'fired' => 'Dipecat',
+                    default => 'Non-Aktif',
+                };
                 throw ValidationException::withMessages([
-                    'email' => __('Status kepegawaian Anda tidak aktif!'),
+                    'email' => __('Akun Anda sudah tidak aktif (Status: ' . $statusText . '). Silakan hubungi administrator.'),
                 ]);
             }
             return $user;

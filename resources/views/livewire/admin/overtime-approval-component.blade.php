@@ -117,6 +117,9 @@
           <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 min-w-[200px]">
             Alasan
           </th>
+          <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 min-w-[140px]">
+            Bayaran Lembur
+          </th>
           <th scope="col" class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 min-w-[120px]">
             Status
           </th>
@@ -150,6 +153,16 @@
             </td>
             <td class="px-2 py-4 text-sm text-gray-900 dark:text-gray-300 min-w-[200px]">
               {{ Str::limit($approval->reason, 100) }}
+            </td>
+            <td class="px-2 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400 min-w-[140px]">
+              @if(!is_null($approval->total_pay))
+                Rp {{ number_format($approval->total_pay, 0, ',', '.') }}
+              @else
+                @php
+                  $est = \App\Models\OvertimeRate::calculatePayForDuration((float) $approval->duration_hours, $approval->employee);
+                @endphp
+                <span class="text-gray-500 dark:text-gray-400 font-medium text-xs">(Est: Rp {{ number_format($est['total_pay'], 0, ',', '.') }})</span>
+              @endif
             </td>
             <td class="whitespace-nowrap px-2 py-4 text-sm">
               @if($approval->status == 'pending')
@@ -195,7 +208,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="5" class="px-2 py-8 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+            <td colspan="6" class="px-2 py-8 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
               Belum ada data pengajuan lembur.
             </td>
           </tr>

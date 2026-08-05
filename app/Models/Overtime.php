@@ -16,6 +16,8 @@ class Overtime extends Model
         'start_time',
         'end_time',
         'duration_hours',
+        'applied_rate_amount',
+        'total_pay',
         'reason',
         'status',
         'approved_by',
@@ -26,6 +28,8 @@ class Overtime extends Model
         'overtime_date' => 'date',
         'approval_date' => 'datetime',
         'duration_hours' => 'float',
+        'applied_rate_amount' => 'float',
+        'total_pay' => 'float',
     ];
 
     /**

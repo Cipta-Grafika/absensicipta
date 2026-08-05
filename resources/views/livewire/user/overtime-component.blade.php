@@ -42,6 +42,7 @@
                                 <th class="px-4 py-3 whitespace-nowrap">Tanggal Lembur</th>
                                 <th class="px-4 py-3 whitespace-nowrap">Waktu</th>
                                 <th class="px-4 py-3 whitespace-nowrap">Durasi</th>
+                                <th class="px-4 py-3 whitespace-nowrap">Bayaran</th>
                                 <th class="px-4 py-3 whitespace-nowrap min-w-[200px]">Alasan</th>
                             </tr>
                         </thead>
@@ -72,13 +73,23 @@
                                     <td class="px-4 py-3 text-sm font-semibold">
                                         {{ $overtime->duration_hours }} Jam
                                     </td>
+                                    <td class="px-4 py-3 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                        @if(!is_null($overtime->total_pay))
+                                            Rp {{ number_format($overtime->total_pay, 0, ',', '.') }}
+                                        @else
+                                            @php
+                                                $est = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, Auth::user());
+                                            @endphp
+                                            <span class="text-gray-400 dark:text-gray-500 font-medium text-xs">(Est: Rp {{ number_format($est['total_pay'], 0, ',', '.') }})</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-sm truncate max-w-[200px]" title="{{ $overtime->reason }}">
                                         {{ $overtime->reason }}
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-4 py-3 text-center text-sm text-gray-500">
+                                    <td colspan="6" class="px-4 py-8 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
                                         Belum ada riwayat pengajuan lembur.
                                     </td>
                                 </tr>

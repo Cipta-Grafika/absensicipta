@@ -52,9 +52,15 @@
     @endif
     @if ($mode != 'export')
       <div>
-        <h3 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
-          Impor Data Karyawan/Admin
-        </h3>
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
+            Impor Data Karyawan/Admin
+          </h3>
+          <x-secondary-button type="button" wire:click="downloadTemplate" class="!py-1 !px-2.5 text-xs">
+            <x-heroicon-o-arrow-down-tray class="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
+            Download Template
+          </x-secondary-button>
+        </div>
         <form x-data="{ file: null }" method="post" wire:submit.prevent="import" enctype="multipart/form-data">
           @csrf
           <div class="mb-4 flex items-center gap-3">
@@ -70,6 +76,14 @@
             <x-input type="file" class="hidden" name="file" x-ref="file"
               x-on:change="file = $refs.file.files[0]" wire:model.live="file" />
           </div>
+
+          <div class="mb-4 space-y-1 rounded-md bg-blue-50 p-3 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+            <p class="font-semibold">* Ketentuan Format Excel Karyawan/User:</p>
+            <p>1. Header kolom wajib: <b>nip</b>, <b>name</b>, <b>email</b>, <b>gender</b>, <b>password</b>.</p>
+            <p>2. Kolom opsional: <b>division</b>, <b>job_title</b>, <b>education</b>, <b>phone</b>, <b>birth_date</b>, <b>birth_place</b>, <b>address</b>, <b>city</b>.</p>
+            <p>3. Format gender valid: <b>Laki-Laki</b> / <b>Perempuan</b> (atau male/female).</p>
+          </div>
+
           <div class="flex items-center justify-stretch">
             <x-success-button class="w-full">
               <span x-text="file ? '{{ __('Confirm & Import') }} ' + file.name : '{{ __('Import') }}'">

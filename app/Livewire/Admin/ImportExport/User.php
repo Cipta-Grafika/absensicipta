@@ -35,6 +35,48 @@ class User extends Component
         $this->validateGroups();
     }
 
+    public function downloadTemplate()
+    {
+        $templateData = [
+            [
+                'nip' => 'EMP-001',
+                'name' => 'Budi Santoso',
+                'email' => 'budi.santoso@example.com',
+                'password' => 'password123',
+                'gender' => 'Laki-Laki',
+                'division' => 'Teknologi Informasi',
+                'job_title' => 'Software Engineer',
+                'education' => 'S1 Teknik Informatika',
+                'phone' => '081234567890',
+                'birth_date' => '1995-05-15',
+                'birth_place' => 'Jakarta',
+                'address' => 'Jl. Sudirman No. 123',
+                'city' => 'Jakarta Selatan',
+            ],
+            [
+                'nip' => 'EMP-002',
+                'name' => 'Siti Rahma',
+                'email' => 'siti.rahma@example.com',
+                'password' => 'password123',
+                'gender' => 'Perempuan',
+                'division' => 'Sumber Daya Manusia',
+                'job_title' => 'HR Specialist',
+                'education' => 'S1 Psikologi',
+                'phone' => '081987654321',
+                'birth_date' => '1998-08-20',
+                'birth_place' => 'Bandung',
+                'address' => 'Jl. Asia Afrika No. 45',
+                'city' => 'Bandung',
+            ],
+        ];
+
+        return Excel::download(new class($templateData) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+            public function __construct(private array $data) {}
+            public function array(): array { return $this->data; }
+            public function headings(): array { return ['nip', 'name', 'email', 'password', 'gender', 'division', 'job_title', 'education', 'phone', 'birth_date', 'birth_place', 'address', 'city']; }
+        }, 'template_import_karyawan.xlsx');
+    }
+
     public function render()
     {
         $users = null;

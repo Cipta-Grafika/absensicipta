@@ -243,6 +243,7 @@ class AttendanceComponent extends Component
             $dates = $start->range($end)->toArray();
         }
         $employees = User::where('group', 'user')
+            ->whereIn('status', ['active', 'suspend'])
             ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
             ->when($this->search, function (Builder $q) {
                 return $q->where(function (Builder $query) {

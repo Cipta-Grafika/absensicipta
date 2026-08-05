@@ -26,7 +26,7 @@ class EmployeeController extends Controller
     {
         $search = $request->query('q');
         
-        $query = User::where('group', 'user');
+        $query = User::where('group', 'user')->whereIn('status', ['active', 'suspend']);
 
         if ($search) {
             if (strlen($search) < 2) {
