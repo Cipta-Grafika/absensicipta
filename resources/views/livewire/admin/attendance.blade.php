@@ -34,7 +34,7 @@
   <x-filter-sidebar maxWidth="sm">
     <x-slot name="title">Absensi Filters</x-slot>
     <x-slot name="actions">
-      <button type="button" wire:click="$set('month', ''); $set('week', ''); $set('date', ''); $set('division', ''); $set('jobTitle', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
+      <button type="button" wire:click="$set('month', ''); $set('week', ''); $set('date', ''); $set('attendanceStatus', ''); $set('division', ''); $set('jobTitle', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
         </svg>
@@ -56,6 +56,21 @@
           <x-input type="date" name="day_filter" id="day_filter" class="w-full" wire:model.live="date" />
         </div>
         <hr class="dark:border-gray-700">
+        <div>
+          <x-label for="attendanceStatus" value="Pilih Status Absensi" class="mb-1"></x-label>
+          <x-select id="attendanceStatus" class="w-full" wire:model.live="attendanceStatus">
+            <option value="">Semua Status</option>
+            <option value="present">Hadir (Present)</option>
+            <option value="late">Terlambat (Late)</option>
+            <option value="excused">Izin (Excused)</option>
+            <option value="imp">IMP</option>
+            <option value="sick">Sakit (Sick)</option>
+            <option value="absent">Alpa (Absent)</option>
+            <option value="wfh">WFH</option>
+            <option value="leave">Cuti</option>
+            <option value="special-leaves">Cuti Khusus</option>
+          </x-select>
+        </div>
         @if (Auth::user()->isSuperadmin)
         <div>
           <x-label for="division" value="Pilih Divisi" class="mb-1"></x-label>
