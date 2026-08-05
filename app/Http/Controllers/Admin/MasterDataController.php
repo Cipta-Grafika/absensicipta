@@ -30,4 +30,9 @@ class MasterDataController extends Controller
     {
         return view('admin.master-data.admin');
     }
+
+    public function overtimeRate()
+    {
+        return view('admin.master-data.overtime-rate');
+    }
 }

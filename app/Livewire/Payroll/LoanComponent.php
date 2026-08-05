@@ -127,7 +127,7 @@ class LoanComponent extends Component
         }
 
         $loans = $query->latest()->paginate(15);
-        $users = User::where('group', 'user')->orderBy('name')->get();
+        $users = User::where('group', 'user')->whereIn('status', ['active', 'suspend'])->orderBy('name')->get();
 
         return view('livewire.payroll.loan-component', [
             'loans' => $loans,

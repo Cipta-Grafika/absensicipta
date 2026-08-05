@@ -121,6 +121,7 @@ class EmployeeSalaryComponent extends Component
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
 
         $employees = User::where('group', 'user')
+            ->whereIn('status', ['active', 'suspend'])
             ->when($this->search, function ($query) {
                 $query->where('name', 'like', '%' . $this->search . '%')
                       ->orWhere('nip', 'like', '%' . $this->search . '%');

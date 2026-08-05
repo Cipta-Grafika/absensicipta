@@ -217,7 +217,7 @@ class ApplyLeaveModalComponent extends Component
     public function render()
     {
         return view('livewire.user.apply-leave-modal-component', [
-            'shifts' => Shift::all()
+            'shifts' => Shift::forUser(Auth::user())->get()
         ]);
     }
 }

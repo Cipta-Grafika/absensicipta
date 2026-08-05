@@ -50,6 +50,7 @@ class AttendanceController extends Controller
             $dates = $start->range($end)->toArray();
         }
         $employees = User::where('group', 'user')
+            ->whereIn('status', ['active', 'suspend'])
             ->when($request->division, fn (Builder $q) => $q->where('division_id', $request->division))
             ->when($request->jobTitle, fn (Builder $q) => $q->where('job_title_id', $request->jobTitle))
             ->get()
