@@ -32,6 +32,7 @@ class HolidayManagementComponent extends Component
     // Filters
     public ?string $search = null;
     public ?string $filter_type = null;
+    public ?string $filter_year = null;
     public function mount()
     {
         if (!Auth::user()?->isSuperadmin) {

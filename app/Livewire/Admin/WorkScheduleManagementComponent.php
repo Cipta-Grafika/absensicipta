@@ -18,15 +18,23 @@ class WorkScheduleManagementComponent extends Component
     use WithPagination;
     use InteractsWithBanner;
 
-    // Form inputs
+    // Form inputs (Create)
     public array $user_ids = [];
     public ?string $start_date = null;
     public ?string $end_date = null;
     public int|bool $is_working_day = 1;
     public ?string $note = null;
 
+    // Form inputs (Edit)
+    public ?int $editing_id = null;
+    public ?string $edit_user_id = null;
+    public ?string $edit_date = null;
+    public int|bool $edit_is_working_day = 1;
+    public ?string $edit_note = null;
+
     // Modal state
     public bool $creating = false;
+    public bool $editing = false;
     public bool $confirmingDeletion = false;
     public ?int $selectedId = null;
 
@@ -113,7 +121,64 @@ class WorkScheduleManagementComponent extends Component
         });
 
         $this->creating = false;
-        $this->banner(__('Roster work schedule saved successfully.'));
+        $this->banner(__('Jadwal kerja rolling berhasil disimpan.'));
+    }
+
+    public function edit(int $id)
+    {
+        $user = Auth::user();
+        $sched = WorkSchedule::with('user')->findOrFail($id);
+
+        // Authorization Check
+        if (!$user->isSuperadmin && $sched->user?->division_id !== $user->division_id) {
+            return abort(403, 'Akses Ditolak: Anda hanya berhak mengubah jadwal karyawan divisi Anda.');
+        }
+
+        $this->resetErrorBag();
+        $this->editing_id = $sched->id;
+        $this->edit_user_id = (string) $sched->user_id;
+        $this->edit_date = $sched->date?->format('Y-m-d');
+        $this->edit_is_working_day = $sched->is_working_day ? 1 : 0;
+        $this->edit_note = $sched->note;
+
+        $this->editing = true;
+    }
+
+    public function update()
+    {
+        $user = Auth::user();
+        if ($user->isNotAdmin) {
+            abort(403);
+        }
+
+        $sched = WorkSchedule::with('user')->findOrFail($this->editing_id);
+        if (!$user->isSuperadmin && $sched->user?->division_id !== $user->division_id) {
+            return abort(403, 'Akses Ditolak: Anda hanya berhak mengubah jadwal karyawan divisi Anda.');
+        }
+
+        $this->validate([
+            'edit_user_id' => ['required', 'exists:users,id'],
+            'edit_date' => ['required', 'date'],
+            'edit_is_working_day' => ['required', 'boolean'],
+            'edit_note' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $targetUser = User::findOrFail($this->edit_user_id);
+        if (!$user->isSuperadmin && $targetUser->division_id !== $user->division_id) {
+            $this->addError('edit_user_id', 'Karyawan yang dipilih tidak berada di divisi Anda.');
+            return;
+        }
+
+        $sched->update([
+            'user_id' => $this->edit_user_id,
+            'date' => $this->edit_date,
+            'is_working_day' => $this->edit_is_working_day,
+            'note' => $this->edit_note,
+        ]);
+
+        $this->editing = false;
+        $this->editing_id = null;
+        $this->banner(__('Jadwal kerja berhasil diperbarui.'));
     }
 
     public function confirmDeletion(int $id)
@@ -143,7 +208,7 @@ class WorkScheduleManagementComponent extends Component
                     return abort(403, 'Akses Ditolak: Anda hanya berhak menghapus jadwal karyawan divisi Anda.');
                 }
                 $sched->delete();
-                $this->banner(__('Schedule entry deleted successfully.'));
+                $this->banner(__('Jadwal kerja berhasil dihapus.'));
             }
         }
 
@@ -180,7 +245,7 @@ class WorkScheduleManagementComponent extends Component
         $divisions = $user->isSuperadmin ? Division::orderBy('name')->get() : collect();
 
         // Scope employee options for modal & filters based on user role
-        $usersQuery = User::where('group', 'user')->where('status', 'active');
+        $usersQuery = User::where('group', 'user')->whereIn('status', ['active', 'suspend']);
         if (!$user->isSuperadmin) {
             $usersQuery->where('division_id', $user->division_id);
         }
