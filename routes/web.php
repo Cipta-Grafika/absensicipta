@@ -166,6 +166,13 @@ Route::middleware([
 
 });
 
+// Public Robots.txt Route
+Route::get('/robots.txt', function () {
+    $path = public_path('robots.txt');
+    $content = file_exists($path) ? file_get_contents($path) : "User-agent: *\nDisallow: /\n";
+    return response($content, 200)->header('Content-Type', 'text/plain');
+});
+
 Livewire::setUpdateRoute(function ($handle) {
     return Route::post(Helpers::getNonRootBaseUrlPath() . '/livewire/update', $handle);
 });
