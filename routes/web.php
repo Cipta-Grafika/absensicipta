@@ -75,6 +75,10 @@ Route::middleware([
                 ->name('hr.masters.job-title');
             Route::get('/masterdata/education', [MasterDataController::class, 'education'])
                 ->name('hr.masters.education');
+            Route::get('/masterdata/leaderboard', [MasterDataController::class, 'leaderboard'])
+                ->name('hr.masters.leaderboard');
+            Route::get('/masterdata/scan-feedback', [MasterDataController::class, 'scanFeedback'])
+                ->name('hr.masters.scan-feedback');
         });
 
         // User/Employee/Karyawan
@@ -156,6 +160,9 @@ Route::middleware([
 
     // User Group (for Payslips)
     Route::get('/user/payslips', \App\Livewire\User\PayslipComponent::class)->name('user.payslips');
+
+    // Real-time SSE Leaderboard Stream Endpoint
+    Route::get('/api/leaderboard/stream', [\App\Http\Controllers\Api\LeaderboardStreamController::class, 'stream'])->name('api.leaderboard.stream');
 
 });
 
