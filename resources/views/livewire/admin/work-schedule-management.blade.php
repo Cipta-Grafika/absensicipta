@@ -4,7 +4,7 @@
       Jadwal Kerja
     </h2>
     <div class="absolute right-0 flex items-center gap-2">
-      <x-button type="button" x-data @click.prevent="Livewire.dispatch('show-creating')">
+      <x-button type="button" x-data @click.prevent="Livewire.dispatch('show-creating')" class="!py-1.5 !px-3">
         <x-heroicon-o-plus class="mr-1.5 h-4 w-4" />
         Tambah
       </x-button>
@@ -55,15 +55,17 @@
 
         <x-slot name="content">
           <div class="flex flex-col gap-6">
-            <div>
-              <x-label for="filter_division_id" value="Pilih Divisi" class="mb-1"></x-label>
-              <x-select id="filter_division_id" class="w-full" wire:model.live="filter_division_id">
-                <option value="">Semua Divisi</option>
-                @foreach ($divisions as $div)
-                  <option value="{{ $div->id }}">{{ $div->name }}</option>
-                @endforeach
-              </x-select>
-            </div>
+            @if(auth()->user()->isSuperadmin)
+              <div>
+                <x-label for="filter_division_id" value="Pilih Divisi" class="mb-1"></x-label>
+                <x-select id="filter_division_id" class="w-full" wire:model.live="filter_division_id">
+                  <option value="">Semua Divisi</option>
+                  @foreach ($divisions as $div)
+                    <option value="{{ $div->id }}">{{ $div->name }}</option>
+                  @endforeach
+                </x-select>
+              </div>
+            @endif
 
             <div>
               <x-label for="filter_user_id" value="Pilih Karyawan" class="mb-1"></x-label>
@@ -127,11 +129,11 @@
                 </td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm">
                   @if ($sched->is_working_day)
-                    <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    <span class="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900 dark:text-green-200">
                       Hari Kerja (Wajib Masuk)
                     </span>
                   @else
-                    <span class="inline-flex rounded-full bg-amber-100 px-2 text-xs font-semibold leading-5 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                    <span class="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold leading-5 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                       Hari Libur (Day Off)
                     </span>
                   @endif
@@ -140,9 +142,14 @@
                   {{ $sched->note ?? '-' }}
                 </td>
                 <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                  <x-danger-button wire:click="confirmDeletion({{ $sched->id }})">
-                    Hapus
-                  </x-danger-button>
+                  <div class="flex justify-end gap-2">
+                    <x-button wire:click="edit({{ $sched->id }})">
+                      Edit
+                    </x-button>
+                    <x-danger-button wire:click="confirmDeletion({{ $sched->id }})">
+                      Hapus
+                    </x-danger-button>
+                  </div>
                 </td>
               </tr>
             @empty
@@ -265,6 +272,61 @@
 
         <x-button class="ml-2" wire:click="create" wire:loading.attr="disabled">
           Simpan Jadwal
+        </x-button>
+      </x-slot>
+    </form>
+  </x-dialog-modal>
+
+  <!-- Edit Modal -->
+  <x-dialog-modal wire:model="editing">
+    <x-slot name="title">
+      Edit Jadwal Roster Karyawan
+    </x-slot>
+
+    <form wire:submit.prevent="update" id="edit-work-schedule-form">
+      <x-slot name="content">
+        <div>
+          <x-label for="edit_user_id" value="Karyawan" />
+          <select id="edit_user_id" wire:model="edit_user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <option value="">Pilih Karyawan</option>
+            @foreach ($users as $u)
+              <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->division->name ?? 'Tanpa Divisi' }})</option>
+            @endforeach
+          </select>
+          <x-input-error for="edit_user_id" class="mt-1" />
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <x-label for="edit_date" value="Tanggal Roster" />
+            <x-input id="edit_date" type="date" class="mt-1 block w-full" wire:model="edit_date" required />
+            <x-input-error for="edit_date" class="mt-1" />
+          </div>
+
+          <div>
+            <x-label for="edit_is_working_day" value="Status Roster" />
+            <select id="edit_is_working_day" wire:model="edit_is_working_day" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              <option value="1">Hari Kerja (Masuk)</option>
+              <option value="0">Hari Libur (Day Off)</option>
+            </select>
+            <x-input-error for="edit_is_working_day" class="mt-1" />
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <x-label for="edit_note" value="Catatan / Keperluan" />
+          <x-input id="edit_note" type="text" class="mt-1 block w-full" wire:model="edit_note" placeholder="Misal: Rolling piket Minggu" />
+          <x-input-error for="edit_note" class="mt-1" />
+        </div>
+      </x-slot>
+
+      <x-slot name="footer">
+        <x-secondary-button wire:click="$toggle('editing')" wire:loading.attr="disabled">
+          Batal
+        </x-secondary-button>
+
+        <x-button class="ml-2" wire:click="update" wire:loading.attr="disabled">
+          Perbarui Jadwal
         </x-button>
       </x-slot>
     </form>
