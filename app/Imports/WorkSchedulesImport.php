@@ -96,16 +96,8 @@ class WorkSchedulesImport implements ToModel, WithHeadingRow, WithValidation, Sk
             throw new \Exception("Gagal Import: Format tanggal '{$dateRaw}' tidak valid untuk karyawan '{$user->name}'. Gunakan format YYYY-MM-DD.");
         }
 
-        $schedule = (new WorkSchedule)->forceFill([
-            'user_id' => $user->id,
-            'date' => $parsedDate,
-            'is_working_day' => $isWorkingDay,
-            'note' => $note,
-            'created_by' => $authUser?->id,
-        ]);
-
         if ($this->save) {
-            WorkSchedule::updateOrCreate(
+            return WorkSchedule::updateOrCreate(
                 [
                     'user_id' => $user->id,
                     'date' => $parsedDate,
@@ -118,7 +110,13 @@ class WorkSchedulesImport implements ToModel, WithHeadingRow, WithValidation, Sk
             );
         }
 
-        return $schedule;
+        return (new WorkSchedule)->forceFill([
+            'user_id' => $user->id,
+            'date' => $parsedDate,
+            'is_working_day' => $isWorkingDay,
+            'note' => $note,
+            'created_by' => $authUser?->id,
+        ]);
     }
 
     public function rules(): array
