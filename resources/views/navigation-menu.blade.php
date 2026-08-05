@@ -42,9 +42,11 @@
                 <x-dropdown-link href="{{ route('hr.work-schedules') }}" :active="request()->routeIs('hr.work-schedules')">
                   Jadwal Rolling (Roster)
                 </x-dropdown-link>
-                <x-dropdown-link href="{{ route('hr.holidays') }}" :active="request()->routeIs('hr.holidays')">
-                  Manajemen Hari Libur
-                </x-dropdown-link>
+                @if (Auth::user()?->isSuperadmin)
+                  <x-dropdown-link href="{{ route('hr.holidays') }}" :active="request()->routeIs('hr.holidays')">
+                    Manajemen Hari Libur
+                  </x-dropdown-link>
+                @endif
               </x-slot>
             </x-nav-dropdown>
             <x-nav-dropdown :active="request()->routeIs('hr.masters.*')" triggerClasses="text-nowrap">
@@ -69,8 +71,13 @@
                   <x-dropdown-link href="{{ route('hr.masters.education') }}" :active="request()->routeIs('hr.masters.education')">
                     {{ __('Education') }}
                   </x-dropdown-link>
+                @endif
+                @if (Auth::user()?->isAdmin)
                   <x-dropdown-link href="{{ route('hr.masters.shift') }}" :active="request()->routeIs('hr.masters.shift')">
                     {{ __('Shift') }}
+                  </x-dropdown-link>
+                  <x-dropdown-link href="{{ route('hr.masters.overtime-rate') }}" :active="request()->routeIs('hr.masters.overtime-rate')">
+                    Tarif Lembur
                   </x-dropdown-link>
                   <hr>
                 @endif
@@ -90,6 +97,9 @@
                 </x-dropdown-link>
                 <x-dropdown-link href="{{ route('hr.import-export.attendances') }}" :active="request()->routeIs('hr.import-export.attendances')">
                   {{ __('Attendance') }}
+                </x-dropdown-link>
+                <x-dropdown-link href="{{ route('hr.import-export.work-schedules') }}" :active="request()->routeIs('hr.import-export.work-schedules')">
+                  Jadwal Rolling
                 </x-dropdown-link>
               </x-slot>
             </x-nav-dropdown>
@@ -283,8 +293,13 @@
           <x-responsive-nav-link href="{{ route('hr.masters.education') }}" :active="request()->routeIs('hr.masters.education')">
             {{ __('Education') }}
           </x-responsive-nav-link>
+        @endif
+        @if (Auth::user()?->isAdmin)
           <x-responsive-nav-link href="{{ route('hr.masters.shift') }}" :active="request()->routeIs('hr.masters.shift')">
             {{ __('Shift') }}
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('hr.masters.overtime-rate') }}" :active="request()->routeIs('hr.masters.overtime-rate')">
+            Tarif Lembur
           </x-responsive-nav-link>
         @endif
         <x-responsive-nav-link href="{{ route('hr.masters.admin') }}" :active="request()->routeIs('hr.masters.admin')">
@@ -295,6 +310,9 @@
         </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('hr.import-export.attendances') }}" :active="request()->routeIs('hr.import-export')">
           Import & Export Absensi
+        </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('hr.import-export.work-schedules') }}" :active="request()->routeIs('hr.import-export')">
+          Import & Export Jadwal Rolling
         </x-responsive-nav-link>
       @endif
       @if (Auth::user()->isPayroll)

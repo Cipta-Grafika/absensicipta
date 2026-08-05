@@ -36,7 +36,7 @@
   <x-filter-sidebar maxWidth="sm">
     <x-slot name="title">Karyawan Filters</x-slot>
     <x-slot name="actions">
-      <button type="button" wire:click="$set('division', ''); $set('jobTitle', ''); $set('education', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
+      <button type="button" wire:click="$set('status', ''); $set('division', ''); $set('jobTitle', ''); $set('education', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
         </svg>
@@ -45,6 +45,17 @@
     
     <x-slot name="content">
       <div class="flex flex-col gap-6">
+        <div>
+          <x-label for="status_filter" value="Pilih Status Karyawan" class="mb-1"></x-label>
+          <x-select id="status_filter" class="w-full" wire:model.live="status">
+            <option value="">Semua Karyawan Aktif</option>
+            <option value="active">Aktif</option>
+            <option value="suspend">Diskors (Suspend)</option>
+            <option value="inactive">Tidak Aktif</option>
+            <option value="resign">Mengundurkan Diri (Resign)</option>
+            <option value="fired">Dipecat (Fired)</option>
+          </x-select>
+        </div>
         @if (Auth::user()->isSuperadmin)
         <div>
           <x-label for="division_filter" value="Pilih Divisi" class="mb-1"></x-label>
@@ -103,6 +114,9 @@
           <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
             {{ __('Phone Number') }}
           </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            Status
+          </th>
           <th scope="col"
             class="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 sm:table-cell">
             {{ __('City') }}
@@ -140,6 +154,19 @@
             <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
               {{ $wireClick }}>
               {{ $user->phone }}
+            </td>
+            <td class="{{ $class }} px-6 py-4 text-sm font-medium" {{ $wireClick }}>
+              @if($user->status === 'active')
+                <span class="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-200">Aktif</span>
+              @elseif($user->status === 'suspend')
+                <span class="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900 dark:text-amber-200">Diskors</span>
+              @elseif($user->status === 'inactive')
+                <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-300">Tidak Aktif</span>
+              @elseif($user->status === 'resign')
+                <span class="inline-flex rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">Resign</span>
+              @elseif($user->status === 'fired')
+                <span class="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-900 dark:text-red-200">Dipecat</span>
+              @endif
             </td>
             <td
               class="{{ $class }} hidden px-6 py-4 text-sm font-medium text-gray-900 dark:text-white sm:table-cell"

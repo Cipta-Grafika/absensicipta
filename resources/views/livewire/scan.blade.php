@@ -1,4 +1,4 @@
-<div class="w-full">
+<div class="w-full" x-data="{ hasLocation: @js(!is_null($currentLiveCoords)) }" @location-acquired.window="hasLocation = true">
   @php
     use Illuminate\Support\Carbon;
   @endphp
@@ -54,8 +54,32 @@
             <x-input-error for="shift" class="mt-2" message={{ $message }} />
           @enderror
         </div>
-        <div class="flex justify-center outline outline-gray-100 dark:outline-slate-700" wire:ignore>
-          <div id="scanner" class="min-h-72 sm:min-h-96 w-72 rounded-sm outline-dashed outline-slate-500 sm:w-96">
+        <div class="relative flex justify-center outline outline-gray-100 dark:outline-slate-700 overflow-hidden rounded-md">
+          <!-- Floating Date Badge (Top Center) -->
+          <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            <div class="inline-flex h-8 items-center gap-2 rounded-full bg-blue-50/90 dark:bg-blue-950/90 px-3.5 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200/90 dark:border-blue-800/90 shadow-md backdrop-blur-sm">
+              <x-heroicon-o-calendar class="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
+              <span class="whitespace-nowrap">{{ now()->isoFormat('D MMMM YYYY') }}</span>
+            </div>
+          </div>
+
+          <!-- Camera Scanner Box -->
+          <div id="scanner" class="min-h-72 sm:min-h-96 w-72 rounded-sm outline-dashed outline-slate-500 sm:w-96" wire:ignore>
+          </div>
+
+          <!-- Floating Location Badge (Bottom Center) -->
+          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            <button type="button" x-show="hasLocation" wire:click="$set('showLocationMapModal', true)"
+              class="inline-flex h-8 items-center gap-2 rounded-full bg-emerald-50/90 dark:bg-emerald-950/90 px-3.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200/90 dark:border-emerald-800/90 shadow-md backdrop-blur-sm transition hover:bg-emerald-100 dark:hover:bg-emerald-900/90">
+              <x-heroicon-s-check-circle class="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span class="whitespace-nowrap">Lokasi Terdeteksi</span>
+              <x-heroicon-o-map-pin class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-0.5" />
+            </button>
+            <div x-show="!hasLocation"
+              class="inline-flex h-8 items-center gap-2 rounded-full bg-red-50/90 dark:bg-red-950/90 px-3.5 text-xs font-semibold text-red-700 dark:text-red-300 border border-red-200/90 dark:border-red-800/90 shadow-md backdrop-blur-sm">
+              <x-heroicon-s-x-circle class="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+              <span class="whitespace-nowrap">Lokasi Belum Terdeteksi</span>
+            </div>
           </div>
         </div>
       </div>
@@ -66,31 +90,49 @@
       <h4 id="scanner-result" class="mb-3 hidden text-lg font-semibold text-green-500 dark:text-green-400 sm:text-xl">
         {{ $successMsg }}
       </h4>
-      <h4 id="latlng" class="mb-3 text-lg font-semibold text-gray-600 dark:text-gray-100 sm:text-xl">
-        {{ __('Date') . ': ' . now()->format('d/m/Y') }}<br>
 
-        @if (!is_null($currentLiveCoords))
-          <div class="flex justify-between">
-            <a href="{{ \App\Helpers::getGoogleMapsUrl($currentLiveCoords[0], $currentLiveCoords[1]) }}" target="_blank"
-              class="underline hover:text-blue-400">
-              {{ __('Your location') . ': ' . $currentLiveCoords[0] . ', ' . $currentLiveCoords[1] }}
-            </a>
-            <button class="text-nowrap h-6" onclick="toggleCurrentMap()" id="toggleCurrentMap">
-              <x-heroicon-s-chevron-down class="mr-2 h-5 w-5" />
-            </button>
+      @if ($isAbsence)
+        <div id="latlng" class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-700/60 pb-3">
+          <div class="inline-flex h-8 items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-900/50 px-3.5 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 shadow-sm">
+            <x-heroicon-o-calendar class="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
+            <span>{{ now()->isoFormat('D MMMM YYYY') }}</span>
           </div>
-        @else
-          {{ __('Your location') . ': -, -' }}
-        @endif
-        <div class="my-6 h-72 w-full md:h-96" id="currentMap" wire:ignore></div>
-      </h4>
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+
+          <div>
+            <button type="button" x-show="hasLocation" wire:click="$set('showLocationMapModal', true)"
+              class="inline-flex h-8 items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-900/50 px-3.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 shadow-sm transition hover:bg-emerald-100 dark:hover:bg-emerald-900/80">
+              <x-heroicon-s-check-circle class="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>Lokasi Terdeteksi</span>
+              <x-heroicon-o-map-pin class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-0.5" />
+            </button>
+            <div x-show="!hasLocation"
+              class="inline-flex h-8 items-center gap-2 rounded-full bg-red-50 dark:bg-red-900/50 px-3.5 text-xs font-semibold text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60 shadow-sm">
+              <x-heroicon-s-x-circle class="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+              <span>Lokasi Belum Terdeteksi</span>
+            </div>
+          </div>
+        </div>
+      @endif
+
+      <!-- 1. Card Potongan (Top Banner) -->
+      <div class="mb-3 flex items-center gap-3 rounded-md bg-red-200 px-4 py-2.5 text-gray-800 dark:bg-red-900 dark:text-white dark:shadow-gray-700">
+        <x-heroicon-o-exclamation-triangle class="h-6 w-6 shrink-0 text-red-600 dark:text-red-300 opacity-90" />
+        <div>
+          <h4 class="text-base font-semibold sm:text-lg md:text-xl">Potongan</h4>
+          <div class="font-bold text-red-700 dark:text-red-200 text-xs sm:text-sm md:text-base">
+            Rp {{ number_format($this->getRealtimeDeduction(), 0, ',', '.') }}
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Cards Jam Masuk & Jam Keluar -->
+      <div class="grid grid-cols-2 gap-3 mb-3">
         <div
-          class="{{ $attendance?->status == 'late' ? 'bg-orange-200 dark:bg-orange-900' : 'bg-green-200 dark:bg-green-900' }} flex items-center gap-3 rounded-md px-4 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
+          class="col-span-1 {{ $attendance?->status == 'late' ? 'bg-orange-200 dark:bg-orange-900' : 'bg-green-200 dark:bg-green-900' }} flex items-center gap-3 rounded-md px-3 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
           <x-heroicon-o-arrows-pointing-in class="h-6 w-6 shrink-0 opacity-75" />
           <div>
-            <h4 class="text-lg font-semibold md:text-xl">Absen Masuk</h4>
-            <div class="flex flex-col sm:flex-row">
+            <h4 class="text-base font-semibold sm:text-lg md:text-xl">Jam Masuk</h4>
+            <div class="flex flex-col text-xs sm:text-sm sm:flex-row">
               <span>
                 @if ($isAbsence)
                   {{ __($attendance?->status) ?? '-' }}
@@ -106,64 +148,74 @@
           </div>
         </div>
         <div
-          class="flex items-center gap-3 rounded-md bg-orange-200 px-4 py-2 text-gray-800 dark:bg-orange-900 dark:text-white dark:shadow-gray-700">
+          class="col-span-1 flex items-center gap-3 rounded-md bg-orange-200 px-3 py-2 text-gray-800 dark:bg-orange-900 dark:text-white dark:shadow-gray-700">
           <x-heroicon-o-arrows-pointing-out class="h-6 w-6 shrink-0 opacity-75" />
           <div>
-            <h4 class="text-lg font-semibold md:text-xl">Absen Keluar</h4>
-            @if ($isAbsence)
-              {{ __($attendance?->status) ?? '-' }}
-            @else
-              {{ $attendance?->time_out ? Carbon::parse($attendance?->time_out)->format('H:i:s') : 'Belum Absen' }}
-            @endif
+            <h4 class="text-base font-semibold sm:text-lg md:text-xl">Jam Keluar</h4>
+            <div class="text-xs sm:text-sm">
+              @if ($isAbsence)
+                {{ __($attendance?->status) ?? '-' }}
+              @else
+                {{ $attendance?->time_out ? Carbon::parse($attendance?->time_out)->format('H:i:s') : 'Belum Absen' }}
+              @endif
+            </div>
           </div>
         </div>
-        <button
-          class="col-span-2 flex items-center gap-3 rounded-md bg-blue-200 px-4 py-2 text-left text-gray-800 dark:bg-blue-900 dark:text-white dark:shadow-gray-700 md:col-span-1 lg:col-span-2 xl:col-span-1"
-          {{ is_null($attendance?->lat_lng) ? 'disabled' : 'onclick=toggleMap()' }} id="toggleMap">
-          <x-heroicon-o-map-pin class="h-6 w-6 shrink-0 opacity-75" />
-          <div>
-            <h4 class="text-lg font-semibold md:text-xl">Koordinat Absen</h4>
-            @if (is_null($attendance?->lat_lng))
-              Belum Absen
-            @else
-              <a href="{{ \App\Helpers::getGoogleMapsUrl($attendance?->latitude, $attendance?->longitude) }}"
-                target="_blank" class="underline hover:text-blue-400">
-                {{ $attendance?->latitude . ', ' . $attendance?->longitude }}
-              </a>
-            @endif
-          </div>
-        </button>
       </div>
 
-      <div class="my-6 h-52 w-full md:h-64" id="map" wire:ignore></div>
-
-      <hr class="my-4">
-
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-3" wire:ignore>
-        <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
+      <!-- 3. Navigation Buttons: Absensi & Slip Gaji -->
+      <div class="grid grid-cols-2 gap-3">
+        <a href="{{ route('attendance-history') }}" class="col-span-1 cursor-pointer">
           <div
-            class="flex flex-row items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-4 py-2 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:gap-3">
-            <x-heroicon-o-envelope-open class="h-6 w-6 text-white" />
-            Ajukan Izin
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-blue-600 dark:bg-blue-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-blue-700 dark:hover:bg-blue-500 md:gap-2">
+            <x-heroicon-o-clock class="h-5 w-5 text-white shrink-0" />
+            <span class="whitespace-nowrap">Absensi</span>
           </div>
         </a>
-        <a href="{{ route('attendance-history') }}" class="col-span-1">
+        <a href="{{ route('user.payslips') }}" class="col-span-1 cursor-pointer">
           <div
-            class="flex flex-row items-center justify-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-center font-medium text-white hover:bg-blue-600 md:gap-3">
-            <x-heroicon-o-clock class="h-6 w-6 text-white" />
-            Absensi
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-green-600 dark:bg-green-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-green-700 dark:hover:bg-green-500 md:gap-2">
+            <x-heroicon-o-document-text class="h-5 w-5 text-white shrink-0" />
+            <span class="whitespace-nowrap">Slip Gaji</span>
           </div>
         </a>
-        <a href="{{ route('user.payslips') }}" class="col-span-2 md:col-span-1 lg:col-span-1">
-          <div
-            class="flex flex-row items-center justify-center gap-2 rounded-md bg-green-500 px-4 py-2 text-center font-medium text-white hover:bg-green-600 md:gap-3">
-            <x-heroicon-o-document-text class="h-6 w-6 text-white" />
-            Slip Gaji
-          </div>
-        </a>
-      </div>
       </div>
     </div>
+  </div>
+
+  <hr class="my-6">
+
+  <!-- 4 Submission Action Buttons -->
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4" wire:ignore>
+    <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
+      <div
+        class="flex flex-row items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:gap-2">
+        <x-heroicon-o-envelope-open class="h-5 w-5 text-white shrink-0" />
+        <span class="whitespace-nowrap">Ajukan Izin</span>
+      </div>
+    </a>
+    <a href="#" x-data @click.prevent="$dispatch('open-apply-imp-modal')" class="col-span-1 cursor-pointer">
+      <div
+        class="flex flex-row items-center justify-center gap-2 rounded-md bg-orange-500 dark:bg-orange-500 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-orange-600 dark:hover:bg-orange-400 md:gap-2">
+        <x-heroicon-o-arrow-right-on-rectangle class="h-5 w-5 text-white shrink-0" />
+        <span class="whitespace-nowrap">Ajukan IMP</span>
+      </div>
+    </a>
+    <a href="#" x-data @click.prevent="$dispatch('open-apply-sick-modal')" class="col-span-1 cursor-pointer">
+      <div
+        class="flex flex-row items-center justify-center gap-2 rounded-md bg-rose-500 dark:bg-rose-500 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-rose-600 dark:hover:bg-rose-400 md:gap-2">
+        <x-heroicon-o-heart class="h-5 w-5 text-white shrink-0" />
+        <span class="whitespace-nowrap">Ajukan Sakit</span>
+      </div>
+    </a>
+    <a href="#" x-data @click.prevent="$dispatch('open-apply-cuti-modal')" class="col-span-1 cursor-pointer">
+      <div
+        class="flex flex-row items-center justify-center gap-2 rounded-md bg-indigo-600 dark:bg-indigo-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-indigo-700 dark:hover:bg-indigo-500 md:gap-2">
+        <x-heroicon-o-calendar class="h-5 w-5 text-white shrink-0" />
+        <span class="whitespace-nowrap">Ajukan Cuti</span>
+      </div>
+    </a>
+  </div>
 
   <!-- Motivational Modal -->
   <x-dialog-modal wire:model.live="showMotivationModal" maxWidth="sm">
@@ -213,6 +265,69 @@
     </x-slot>
   </x-dialog-modal>
 
+  <!-- Modal Detail Lokasi Anda -->
+  <x-dialog-modal wire:model.live="showLocationMapModal" maxWidth="lg">
+    <x-slot name="title">
+      <div class="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+        <x-heroicon-o-map-pin class="h-6 w-6 text-emerald-500 shrink-0" />
+        <span>Detail Lokasi Anda</span>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      <div class="flex flex-col gap-4" x-data x-effect="if($wire.showLocationMapModal) { setTimeout(() => window.initModalLiveMap && window.initModalLiveMap(), 250); }">
+        
+        <!-- Leaflet Map Container inside Modal -->
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 shadow-sm dark:border-gray-700">
+          <div id="currentMapModal" class="h-64 sm:h-80 w-full rounded-xl bg-gray-100 dark:bg-gray-900" wire:ignore></div>
+        </div>
+
+        <!-- User Friendly Location Info Box -->
+        @if (!is_null($currentLiveCoords))
+          <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700/60">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-gray-200 dark:border-gray-600">
+              <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status GPS</span>
+              <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <x-heroicon-s-check-circle class="h-4 w-4" /> Lokasi Akurat
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-xs text-gray-700 dark:text-gray-300">
+              <div>
+                <span class="text-gray-400 dark:text-gray-400 block text-[10px] uppercase font-semibold">Latitude</span>
+                <span class="font-mono font-medium text-sm">{{ number_format($currentLiveCoords[0], 6) }}</span>
+              </div>
+              <div>
+                <span class="text-gray-400 dark:text-gray-400 block text-[10px] uppercase font-semibold">Longitude</span>
+                <span class="font-mono font-medium text-sm">{{ number_format($currentLiveCoords[1], 6) }}</span>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600 flex justify-end">
+              <a href="{{ \App\Helpers::getGoogleMapsUrl($currentLiveCoords[0], $currentLiveCoords[1]) }}" target="_blank"
+                class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+                <span>Buka di Google Maps</span>
+                <x-heroicon-o-arrow-top-right-on-square class="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        @else
+          <div class="rounded-lg bg-red-50 p-4 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-center">
+            <x-heroicon-o-exclamation-triangle class="mx-auto h-8 w-8 text-red-500 mb-1" />
+            <p class="text-xs font-semibold text-red-700 dark:text-red-300">Lokasi GPS belum terdeteksi.</p>
+            <p class="text-[11px] text-red-600 dark:text-red-400 mt-0.5">Pastikan izin lokasi (GPS) pada browser sudah diaktifkan.</p>
+          </div>
+        @endif
+      </div>
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-secondary-button wire:click="$set('showLocationMapModal', false)">
+        Tutup
+      </x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
+
   @livewire('user.apply-leave-modal-component')
 
 </div>
@@ -222,28 +337,92 @@
     const errorMsg = document.querySelector('#scanner-error');
     getLocation();
 
+    let modalLiveMap = null;
+    let modalMarker = null;
+
+    let lastLat = null;
+    let lastLng = null;
+
     async function getLocation() {
       if (navigator.geolocation) {
-        const map = L.map('currentMap');
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 21,
-        }).addTo(map);
-        navigator.geolocation.watchPosition((position) => {
-          console.log(position);
-          $wire.$set('currentLiveCoords', [position.coords.latitude, position.coords.longitude]);
-          map.setView([
-            Number(position.coords.latitude),
-            Number(position.coords.longitude),
-          ], 13);
-          L.marker([position.coords.latitude, position.coords.longitude]).addTo(map);
-        }, (err) => {
-          console.error(`ERROR(${err.code}): ${err.message}`);
-          alert('{{ __('Please enable your location') }}');
+        const updateCoords = (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          window.dispatchEvent(new CustomEvent('location-acquired', { detail: { lat, lng } }));
+
+          if (lastLat === null || Math.abs(lat - lastLat) > 0.00005 || Math.abs(lng - lastLng) > 0.00005) {
+            lastLat = lat;
+            lastLng = lng;
+            $wire.set('currentLiveCoords', [lat, lng]);
+          }
+
+          if (modalLiveMap) {
+            modalLiveMap.setView([Number(lat), Number(lng)], 15);
+            if (modalMarker) {
+              modalMarker.setLatLng([lat, lng]);
+            } else {
+              modalMarker = L.marker([lat, lng]).addTo(modalLiveMap);
+            }
+          }
+        };
+
+        const handleErr = (err) => {
+          console.warn(`GPS HighAccuracy failed code ${err.code}: ${err.message}, trying standard accuracy...`);
+          navigator.geolocation.getCurrentPosition(updateCoords, (fallbackErr) => {
+            console.error(`Geolocation fallback error code ${fallbackErr.code}: ${fallbackErr.message}`);
+          }, {
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 60000
+          });
+        };
+
+        // 1. Immediate position call
+        navigator.geolocation.getCurrentPosition(updateCoords, handleErr, {
+          enableHighAccuracy: true,
+          timeout: 8000,
+          maximumAge: 0
+        });
+
+        // 2. Continuous watch
+        navigator.geolocation.watchPosition(updateCoords, handleErr, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 5000
         });
       } else {
-        document.querySelector('#scanner-error').innerHTML = "Gagal mendeteksi lokasi";
+        if (document.querySelector('#scanner-error')) {
+          document.querySelector('#scanner-error').innerHTML = "Gagal mendeteksi lokasi";
+        }
       }
     }
+
+    window.initModalLiveMap = function() {
+      const container = document.querySelector('#currentMapModal');
+      if (!container) return;
+
+      if (!modalLiveMap) {
+        modalLiveMap = L.map('currentMapModal');
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 21,
+        }).addTo(modalLiveMap);
+      }
+
+      if ($wire.currentLiveCoords) {
+        const lat = Number($wire.currentLiveCoords[0]);
+        const lng = Number($wire.currentLiveCoords[1]);
+        modalLiveMap.setView([lat, lng], 15);
+        if (modalMarker) {
+          modalMarker.setLatLng([lat, lng]);
+        } else {
+          modalMarker = L.marker([lat, lng]).addTo(modalLiveMap);
+        }
+      }
+      setTimeout(() => {
+        modalLiveMap.invalidateSize();
+      }, 200);
+    };
 
     if (!$wire.isAbsence) {
       const scanner = new Html5Qrcode('scanner');
@@ -378,17 +557,20 @@
         }
       });
 
-      const map = L.map('map').setView([
-        Number({{ $attendance?->latitude }}),
-        Number({{ $attendance?->longitude }}),
-      ], 13);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 21,
-      }).addTo(map);
-      L.marker([
-        Number({{ $attendance?->latitude }}),
-        Number({{ $attendance?->longitude }}),
-      ]).addTo(map);
+      const cardMapEl = document.querySelector('#map');
+      if (cardMapEl && {{ !is_null($attendance?->latitude) ? 'true' : 'false' }}) {
+        const map = L.map('map').setView([
+          Number({{ $attendance?->latitude ?? 0 }}),
+          Number({{ $attendance?->longitude ?? 0 }}),
+        ], 13);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 21,
+        }).addTo(map);
+        L.marker([
+          Number({{ $attendance?->latitude ?? 0 }}),
+          Number({{ $attendance?->longitude ?? 0 }}),
+        ]).addTo(map);
+      }
     }
   </script>
 @endscript

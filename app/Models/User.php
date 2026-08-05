@@ -167,4 +167,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(WorkSchedule::class);
     }
+
+    /**
+     * Scope query to only include working employees (active or suspend).
+     */
+    public function scopeWorkingEmployees($query)
+    {
+        return $query->whereIn('status', ['active', 'suspend']);
+    }
 }
