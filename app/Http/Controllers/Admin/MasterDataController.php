@@ -35,4 +35,14 @@ class MasterDataController extends Controller
     {
         return view('admin.master-data.overtime-rate');
     }
+
+    public function leaderboard()
+    {
+        return view('admin.master-data.leaderboard');
+    }
+
+    public function scanFeedback()
+    {
+        return view('admin.master-data.scan-feedback');
+    }
 }
