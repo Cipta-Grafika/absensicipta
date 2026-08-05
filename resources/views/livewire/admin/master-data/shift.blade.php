@@ -13,6 +13,9 @@
           <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 whitespace-nowrap">
             {{ __('Time End') }}
           </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 whitespace-nowrap">
+            Divisi
+          </th>
           <th scope="col" class="relative px-6 py-3">
             <span class="sr-only">Actions</span>
           </th>
@@ -29,6 +32,17 @@
             </td>
             <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
               {{ $shift->end_time ?? '-' }}
+            </td>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+              @if($shift->division)
+                <span class="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-900/40 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-700/10">
+                  {{ $shift->division->name }}
+                </span>
+              @else
+                <span class="inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-700 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                  Global (Semua Divisi)
+                </span>
+              @endif
             </td>
             <td class="relative flex justify-end gap-2 px-6 py-4 whitespace-nowrap">
               <x-button wire:click="edit({{ $shift->id }})">
@@ -69,7 +83,7 @@
       Shift Baru
     </x-slot>
 
-    <form wire:submit="create">
+    <form wire:submit.prevent="create">
       <x-slot name="content">
         <div>
           <x-label for="name">Nama Shift</x-label>
@@ -93,6 +107,27 @@
               <x-input-error for="form.end_time" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
+        </div>
+
+        <div class="mt-4">
+          @if(auth()->user()->isSuperadmin)
+            <x-label for="division_id">Divisi Scope</x-label>
+            <select id="division_id" wire:model="form.division_id"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              <option value="">Global (Semua Divisi)</option>
+              @foreach ($divisions as $division)
+                <option value="{{ $division->id }}">{{ $division->name }}</option>
+              @endforeach
+            </select>
+            @error('form.division_id')
+              <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
+            @enderror
+          @else
+            <x-label>Divisi Scope</x-label>
+            <div class="mt-1 p-2 bg-gray-100 dark:bg-gray-900 rounded-md text-sm text-gray-700 dark:text-gray-300 font-medium">
+              {{ auth()->user()->division?->name ?? 'Divisi Anda' }} (Otomatis)
+            </div>
+          @endif
         </div>
       </x-slot>
 
@@ -137,6 +172,27 @@
               <x-input-error for="form.end_time" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
+        </div>
+
+        <div class="mt-4">
+          @if(auth()->user()->isSuperadmin)
+            <x-label for="edit_division_id">Divisi Scope</x-label>
+            <select id="edit_division_id" wire:model="form.division_id"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              <option value="">Global (Semua Divisi)</option>
+              @foreach ($divisions as $division)
+                <option value="{{ $division->id }}">{{ $division->name }}</option>
+              @endforeach
+            </select>
+            @error('form.division_id')
+              <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
+            @enderror
+          @else
+            <x-label>Divisi Scope</x-label>
+            <div class="mt-1 p-2 bg-gray-100 dark:bg-gray-900 rounded-md text-sm text-gray-700 dark:text-gray-300 font-medium">
+              {{ auth()->user()->division?->name ?? 'Divisi Anda' }} (Otomatis)
+            </div>
+          @endif
         </div>
       </x-slot>
 

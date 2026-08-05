@@ -14,6 +14,7 @@ class ShiftForm extends Form
     public $name = '';
     public $start_time = null;
     public $end_time = null;
+    public $division_id = null;
 
     public function rules()
     {
@@ -26,6 +27,7 @@ class ShiftForm extends Form
             ],
             'start_time' => ['required'],
             'end_time' => ['nullable'],
+            'division_id' => ['nullable', 'exists:divisions,id'],
         ];
     }
 
@@ -35,14 +37,21 @@ class ShiftForm extends Form
         $this->name = $shift->name;
         $this->start_time = $shift->start_time;
         $this->end_time = $shift->end_time;
+        $this->division_id = $shift->division_id;
         return $this;
     }
 
     public function store()
     {
-        if (Auth::user()->isNotAdmin) {
+        $user = Auth::user();
+        if ($user->isNotAdmin) {
             return abort(403);
         }
+
+        if (!$user->isSuperadmin) {
+            $this->division_id = $user->division_id;
+        }
+
         $this->validate();
         Shift::create($this->all());
         $this->reset();
@@ -50,9 +59,19 @@ class ShiftForm extends Form
 
     public function update()
     {
-        if (Auth::user()->isNotAdmin) {
+        $user = Auth::user();
+        if ($user->isNotAdmin) {
             return abort(403);
         }
+
+        if (!$user->isSuperadmin && $this->shift->division_id !== $user->division_id) {
+            return abort(403);
+        }
+
+        if (!$user->isSuperadmin) {
+            $this->division_id = $user->division_id;
+        }
+
         $this->validate();
         $this->shift->update($this->all());
         $this->reset();
@@ -60,9 +79,15 @@ class ShiftForm extends Form
 
     public function delete()
     {
-        if (Auth::user()->isNotAdmin) {
+        $user = Auth::user();
+        if ($user->isNotAdmin) {
             return abort(403);
         }
+
+        if (!$user->isSuperadmin && $this->shift->division_id !== $user->division_id) {
+            return abort(403);
+        }
+
         $this->shift->delete();
         $this->reset();
     }

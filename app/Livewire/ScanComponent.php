@@ -162,21 +162,29 @@ class ScanComponent extends Component
 
     public function mount()
     {
-        $this->shifts = Shift::all();
+        $user = Auth::user();
+        $this->shifts = Shift::forUser($user)->get();
 
         /** @var Attendance */
-        $attendance = Attendance::where('user_id', Auth::user()->id)
+        $attendance = Attendance::where('user_id', $user->id)
             ->where('date', date('Y-m-d'))->first();
         if ($attendance) {
             $this->setAttendance($attendance);
         } else {
-            // get closest shift from current time
-            $closest = ExtendedCarbon::now()
-                ->closestFromDateArray($this->shifts->pluck('start_time')->toArray());
+            if ($this->shifts->isNotEmpty()) {
+                // Priority 1: User's division-specific shifts
+                $divisionShifts = $this->shifts->filter(fn (Shift $s) => !is_null($s->division_id) && $s->division_id == $user->division_id);
+                $candidateShifts = $divisionShifts->isNotEmpty() ? $divisionShifts : $this->shifts;
 
-            $this->shift_id = $this->shifts
-                ->where(fn (Shift $shift) => $shift->start_time == $closest->format('H:i:s'))
-                ->first()->id;
+                $closest = ExtendedCarbon::now()
+                    ->closestFromDateArray($candidateShifts->pluck('start_time')->toArray());
+
+                $matchedShift = $candidateShifts
+                    ->where(fn (Shift $shift) => $shift->start_time == $closest->format('H:i:s'))
+                    ->first();
+
+                $this->shift_id = $matchedShift?->id ?? $candidateShifts->first()?->id;
+            }
         }
     }
 
