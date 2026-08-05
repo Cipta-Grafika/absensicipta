@@ -8,6 +8,7 @@ use App\Models\Barcode;
 use App\Models\Shift;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
+use App\Services\AttendanceScheduleService;
 use Ballen\Distical\Calculator as DistanceCalculator;
 use Ballen\Distical\Entities\LatLong;
 use Illuminate\Support\Carbon;
@@ -21,6 +22,7 @@ class ScanComponent extends Component
     public string $successMsg = '';
     public bool $isAbsence = false;
     public bool $showMotivationModal = false;
+    public bool $showLocationMapModal = false;
     public string $motivationTitle = '';
     public string $motivationMessage = '';
     public string $motivationType = '';
@@ -176,6 +178,129 @@ class ScanComponent extends Component
                 ->where(fn (Shift $shift) => $shift->start_time == $closest->format('H:i:s'))
                 ->first()->id;
         }
+    }
+
+    public function getRealtimeDeduction(): float
+    {
+        $user = Auth::user();
+        if (!$user) return 0;
+
+        $salary = $user->salary;
+        if (!$salary) return 0;
+
+        $startPeriod = Carbon::now()->startOfMonth();
+        $today = Carbon::today();
+
+        $startDateStr = $startPeriod->format('Y-m-d');
+        $endDateStr = $today->format('Y-m-d');
+
+        $scheduleContext = AttendanceScheduleService::buildContext([$user], $startDateStr, $endDateStr);
+
+        $attendances = Attendance::where('user_id', $user->id)
+            ->whereBetween('date', [$startDateStr, $endDateStr])
+            ->with('shift')
+            ->get();
+
+        $attendancesByDate = $attendances->groupBy(function ($item) {
+            return Carbon::parse($item->date)->format('Y-m-d');
+        });
+
+        $missing_absent_days = 0;
+        $consecutive_cuti = 0;
+        $penalized_cuti_days = 0;
+        $late_days_count = 0;
+
+        for ($d = $startPeriod->copy(); $d->lte($today); $d->addDay()) {
+            if ($scheduleContext->isWorkingDay($user, $d)) {
+                $records = $attendancesByDate->get($d->format('Y-m-d'), collect());
+                $hasValidRecord = $records->whereNotIn('status', ['absent', 'dayoff'])->isNotEmpty();
+                $isExplicitDayOff = $records->where('status', 'dayoff')->isNotEmpty();
+
+                if (!$hasValidRecord && !$isExplicitDayOff) {
+                    $missing_absent_days++;
+                }
+
+                if ($records->where('status', 'leave')->isNotEmpty()) {
+                    $consecutive_cuti++;
+                    if ($consecutive_cuti > 2) {
+                        $penalized_cuti_days++;
+                    }
+                } else {
+                    $consecutive_cuti = 0;
+                }
+
+                if ($records->where('status', 'late')->isNotEmpty()) {
+                    $late_days_count++;
+                }
+            }
+        }
+
+        $days_divisor = $salary->working_days_per_month ?? 25;
+        $fixed_income = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
+        $daily_rate_approx = $days_divisor > 0 ? $fixed_income / $days_divisor : 0;
+
+        $total_absent = $missing_absent_days + $attendances->where('status', 'absent')->count();
+        $total_excused = $attendances->where('status', 'excused')->count();
+        $total_sick = $attendances->where('status', 'sick')->count();
+        $total_wfh = $attendances->where('status', 'wfh')->count();
+
+        // Late Minutes
+        $total_late_minutes = 0;
+        foreach ($attendances->where('status', 'late') as $att) {
+            if ($att->shift && $att->time_in) {
+                $timeIn = Carbon::parse($att->time_in);
+                $shiftStart = Carbon::parse($att->shift->start_time);
+                if ($timeIn->greaterThan($shiftStart)) {
+                    $total_late_minutes += $timeIn->diffInMinutes($shiftStart);
+                }
+            }
+        }
+
+        // Unreplaced IMP Minutes
+        $total_unreplaced_imp_minutes = 0;
+        foreach ($attendances->where('status', 'imp') as $att) {
+            $imp_duration = $att->imp_duration_minutes ?? 0;
+            $replaced = $att->replaced_duration_minutes ?? 0;
+            $unreplaced = max(0, $imp_duration - $replaced);
+            $total_unreplaced_imp_minutes += $unreplaced;
+        }
+
+        $late_rate = $salary->late_deduction_per_minute ?? $salary->late_deduction_rate ?? 0;
+        $late_deduction = $total_late_minutes * $late_rate;
+        $imp_deduction = ($days_divisor > 0) ? $total_unreplaced_imp_minutes * ($fixed_income / ($days_divisor * 8 * 60)) : 0;
+
+        $effective_absent = min($total_absent, max(1, $days_divisor));
+        $absent_deduction = $daily_rate_approx * $effective_absent;
+
+        $effective_excused = min($total_excused, max(1, $days_divisor));
+        $excused_deduction = ($days_divisor > 0) ? ($effective_excused / ($days_divisor * 2)) * $fixed_income + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+
+        $effective_sick = min($total_sick, max(1, $days_divisor));
+        $sick_deduction = ($days_divisor > 0) ? ($effective_sick / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+
+        $effective_cuti = min($penalized_cuti_days, max(1, $days_divisor));
+        $cuti_deduction = ($days_divisor > 0) ? ($effective_cuti / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+
+        $effective_wfh = min($total_wfh, max(1, $days_divisor));
+        if ($user->count_wfo) {
+            $wfh_deduction = 0;
+        } else {
+            $wfh_deduction = ($days_divisor > 0) ? ($effective_wfh / $days_divisor) * (0.5 * $fixed_income) : 0;
+        }
+
+        $late_penalty_deduction = ($late_days_count > 3) ? (0.10 * $salary->attendance_allowance) : 0;
+
+        if ($salary->salary_type == 'daily') {
+            $absent_deduction = 0;
+            $excused_deduction = 0;
+            $sick_deduction = 0;
+            $cuti_deduction = 0;
+            $wfh_deduction = 0;
+        }
+
+        $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction;
+
+        return round($total_deduction, 0);
     }
 
     public function render()

@@ -14,6 +14,7 @@ class ApplyLeaveModalComponent extends Component
 {
     use WithFileUploads, InteractsWithBanner;
 
+    public $modalMode = 'leave';
     public $status = 'excused';
     public $note;
     public $from;
@@ -26,26 +27,84 @@ class ApplyLeaveModalComponent extends Component
 
     public $isModalOpen = false;
 
-    protected $listeners = ['open-apply-leave-modal' => 'openModal'];
+    protected $listeners = [
+        'open-apply-leave-modal' => 'openLeaveModal',
+        'open-apply-imp-modal' => 'openImpModal',
+        'open-apply-sick-modal' => 'openSickModal',
+        'open-apply-cuti-modal' => 'openCutiModal',
+    ];
 
     public function mount()
     {
         $this->from = date('Y-m-d');
     }
 
-    public function openModal()
+    public function openModal($mode = 'leave')
+    {
+        if ($mode === 'imp') {
+            $this->openImpModal();
+        } elseif ($mode === 'sick') {
+            $this->openSickModal();
+        } elseif ($mode === 'cuti') {
+            $this->openCutiModal();
+        } else {
+            $this->openLeaveModal();
+        }
+    }
+
+    public function openLeaveModal()
     {
         $this->resetErrorBag();
-        $this->reset(['status', 'note', 'to', 'imp_duration_minutes', 'shift_id', 'attachment', 'lat', 'lng']);
+        $this->reset(['note', 'to', 'imp_duration_minutes', 'shift_id', 'attachment', 'lat', 'lng']);
+        $this->modalMode = 'leave';
         $this->status = 'excused';
+        $this->from = date('Y-m-d');
+        $this->isModalOpen = true;
+    }
+
+    public function openImpModal()
+    {
+        $this->resetErrorBag();
+        $this->reset(['note', 'to', 'imp_duration_minutes', 'shift_id', 'attachment', 'lat', 'lng']);
+        $this->modalMode = 'imp';
+        $this->status = 'imp';
+        $this->from = date('Y-m-d');
+        $this->isModalOpen = true;
+    }
+
+    public function openSickModal()
+    {
+        $this->resetErrorBag();
+        $this->reset(['note', 'to', 'imp_duration_minutes', 'shift_id', 'attachment', 'lat', 'lng']);
+        $this->modalMode = 'sick';
+        $this->status = 'sick';
+        $this->from = date('Y-m-d');
+        $this->isModalOpen = true;
+    }
+
+    public function openCutiModal()
+    {
+        $this->resetErrorBag();
+        $this->reset(['note', 'to', 'imp_duration_minutes', 'shift_id', 'attachment', 'lat', 'lng']);
+        $this->modalMode = 'cuti';
+        $this->status = 'leave';
         $this->from = date('Y-m-d');
         $this->isModalOpen = true;
     }
 
     protected function rules()
     {
+        $statusIn = 'in:excused,wfh';
+        if ($this->modalMode === 'imp') {
+            $statusIn = 'in:imp';
+        } elseif ($this->modalMode === 'sick') {
+            $statusIn = 'in:sick';
+        } elseif ($this->modalMode === 'cuti') {
+            $statusIn = 'in:leave,special-leaves';
+        }
+
         return [
-            'status' => ['required', 'in:excused,sick,leave,wfh,imp,special-leaves'],
+            'status' => ['required', $statusIn],
             'note' => ['required', 'string', 'max:255'],
             'from' => ['required', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
@@ -139,7 +198,15 @@ class ApplyLeaveModalComponent extends Component
             }
 
             $this->isModalOpen = false;
-            $this->banner('Pengajuan izin berhasil dibuat.');
+            $successMsg = 'Pengajuan izin berhasil dibuat.';
+            if ($this->modalMode === 'imp') {
+                $successMsg = 'Pengajuan IMP berhasil dibuat.';
+            } elseif ($this->modalMode === 'sick') {
+                $successMsg = 'Pengajuan sakit berhasil dibuat.';
+            } elseif ($this->modalMode === 'cuti') {
+                $successMsg = 'Pengajuan cuti berhasil dibuat.';
+            }
+            $this->banner($successMsg);
             $this->dispatch('leave-submitted');
 
         } catch (\Throwable $th) {

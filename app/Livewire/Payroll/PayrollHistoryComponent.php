@@ -433,7 +433,6 @@ class PayrollHistoryComponent extends Component
                             'created_at' => $period_date,
                             'updated_at' => $period_date,
                         ]);
-                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Syirkah Koperasi', 'amount' => $syirkah_deduction]);
                     }
 
                     // Save LoanInstallments
