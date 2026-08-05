@@ -68,15 +68,13 @@ Route::middleware([
             Route::get('/barcodes/{id}/download', [BarcodeController::class, 'download'])
                 ->name('hr.barcodes.download');
 
-            // Global Master Data
+            // Global Master Data (Superadmin ONLY)
             Route::get('/masterdata/division', [MasterDataController::class, 'division'])
                 ->name('hr.masters.division');
             Route::get('/masterdata/job-title', [MasterDataController::class, 'jobTitle'])
                 ->name('hr.masters.job-title');
             Route::get('/masterdata/education', [MasterDataController::class, 'education'])
                 ->name('hr.masters.education');
-            Route::get('/masterdata/shift', [MasterDataController::class, 'shift'])
-                ->name('hr.masters.shift');
         });
 
         // User/Employee/Karyawan
@@ -84,7 +82,11 @@ Route::middleware([
             ->only(['index'])
             ->names(['index' => 'hr.employees']);
 
-        // Scoped Master Data (Allowed for Admin)
+        // Scoped Master Data (Allowed for Admin & SuperAdmin)
+        Route::get('/masterdata/shift', [MasterDataController::class, 'shift'])
+            ->name('hr.masters.shift');
+        Route::get('/masterdata/overtime-rate', [MasterDataController::class, 'overtimeRate'])
+            ->name('hr.masters.overtime-rate');
         Route::get('/masterdata/admin', [MasterDataController::class, 'admin'])
             ->name('hr.masters.admin');
 
@@ -122,6 +124,8 @@ Route::middleware([
             ->name('hr.import-export.users');
         Route::get('/import-export/attendances', [ImportExportController::class, 'attendances'])
             ->name('hr.import-export.attendances');
+        Route::get('/import-export/work-schedules', [ImportExportController::class, 'workSchedules'])
+            ->name('hr.import-export.work-schedules');
 
         Route::post('/users/import', [ImportExportController::class, 'importUsers'])
             ->name('hr.users.import');
