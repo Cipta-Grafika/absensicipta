@@ -5,7 +5,7 @@
 <h1 align="center">Absensi Cipta Grafika</h1>
 
 <p align="center">
-  Sistem Informasi Manajemen Presensi, Payroll, Lembur & Leaderboard Karyawan berbasis QR Code dan Real-Time GPS Geolocation untuk PT Cipta Grafika.
+  Sistem Informasi Manajemen Presensi, Payroll, Lembur & Leaderboard Karyawan berbasis QR Code dan Real-Time GPS Geolocation untuk CV. Cipta Grafika.
 </p>
 
 <p align="center">
@@ -248,5 +248,5 @@ Proyek ini dilisensikan di bawah **MIT License**.
 ---
 
 <p align="center">
-  Dibuat dengan 🔥 oleh <a href="https://github.com/astrocoding">Zaenal Alfian</a> untuk <strong>PT Cipta Grafika</strong>
+  Dibuat dengan 🔥 oleh <a href="https://github.com/astrocoding">Zaenal Alfian</a> untuk <strong>Cipta Grafika</strong>
 </p>
