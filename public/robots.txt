@@ -1,2 +1,8 @@
 User-agent: *
 Disallow: /
+Disallow: /login
+Disallow: /register
+Disallow: /home
+Disallow: /hr/
+Disallow: /user/
+Disallow: /api/

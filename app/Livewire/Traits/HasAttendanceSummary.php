@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 trait HasAttendanceSummary
 {
-    public function getAttendanceSummary($date, $week, $month, $search = null, $division = null, $jobTitle = null)
+    public function getAttendanceSummary($date, $week, $month, $search = null, $division = null, $jobTitle = null, $attendanceStatus = null)
     {
         $queryDateStart = now()->startOfDay();
         $queryDateEnd = now()->endOfDay();
@@ -50,7 +50,7 @@ trait HasAttendanceSummary
 
         $user = auth()->user();
 
-        $userFilter = function (Builder $q) use ($user, $search, $division, $jobTitle) {
+        $userFilter = function (Builder $q) use ($user, $search, $division, $jobTitle, $attendanceStatus, $date, $week, $month) {
             if ($user->group === 'admin') {
                 $q->where('division_id', $user->division_id);
             }
@@ -61,10 +61,54 @@ trait HasAttendanceSummary
                 });
             }
             if ($division) {
-                $q->where('division_id', $division);
+                if ($user->group === 'admin' && $division != $user->division_id) {
+                    $q->whereRaw('1 = 0');
+                } else {
+                    $q->where('division_id', $division);
+                }
             }
             if ($jobTitle) {
                 $q->where('job_title_id', $jobTitle);
+            }
+            if ($attendanceStatus) {
+                $status = $attendanceStatus;
+                if ($date) {
+                    $rangeStart = Carbon::parse($date)->startOfDay();
+                    $rangeEnd = Carbon::parse($date)->endOfDay();
+                } elseif ($week) {
+                    $rangeStart = Carbon::parse($week)->startOfWeek();
+                    $rangeEnd = Carbon::parse($week)->endOfWeek();
+                } elseif ($month) {
+                    $rangeStart = Carbon::parse($month)->startOfMonth();
+                    $rangeEnd = Carbon::parse($month)->endOfMonth();
+                } else {
+                    $rangeStart = now()->startOfDay();
+                    $rangeEnd = now()->endOfDay();
+                }
+
+                $q->where(function (Builder $subQ) use ($status, $rangeStart, $rangeEnd, $date) {
+                    $subQ->whereHas('attendances', function (Builder $attQ) use ($status, $rangeStart, $rangeEnd) {
+                        $attQ->where('status', $status)
+                            ->whereBetween('date', [$rangeStart->format('Y-m-d'), $rangeEnd->format('Y-m-d')]);
+                    });
+
+                    if ($status === 'absent') {
+                        $pastEnd = $rangeEnd->gt(now()) ? now()->endOfDay() : $rangeEnd;
+
+                        if ($rangeStart->lte($pastEnd)) {
+                            $subQ->orWhereDoesntHave('attendances', function (Builder $attQ) use ($rangeStart, $pastEnd) {
+                                $attQ->whereBetween('date', [$rangeStart->format('Y-m-d'), $pastEnd->format('Y-m-d')]);
+                            });
+
+                            if (!$date && $rangeStart->lt($pastEnd->copy()->startOfDay())) {
+                                $daysDiff = $rangeStart->diffInDays($pastEnd->copy()->startOfDay()) + 1;
+                                $subQ->orWhereHas('attendances', function (Builder $attQ) use ($rangeStart, $pastEnd) {
+                                    $attQ->whereBetween('date', [$rangeStart->format('Y-m-d'), $pastEnd->format('Y-m-d')]);
+                                }, '<', $daysDiff);
+                            }
+                        }
+                    }
+                });
             }
         };
 

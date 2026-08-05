@@ -51,8 +51,64 @@ class AttendanceController extends Controller
         }
         $employees = User::where('group', 'user')
             ->whereIn('status', ['active', 'suspend'])
-            ->when($request->division, fn (Builder $q) => $q->where('division_id', $request->division))
+            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
+            ->when($request->search, function (Builder $q) use ($request) {
+                return $q->where(function (Builder $query) use ($request) {
+                    $query->where('name', 'like', '%' . $request->search . '%')
+                        ->orWhere('nip', 'like', '%' . $request->search . '%');
+                });
+            })
+            ->when($request->division, function (Builder $q) use ($request) {
+                if (auth()->user()->group === 'admin' && $request->division != auth()->user()->division_id) {
+                    return $q->whereRaw('1 = 0');
+                }
+                return $q->where('division_id', $request->division);
+            })
             ->when($request->jobTitle, fn (Builder $q) => $q->where('job_title_id', $request->jobTitle))
+            ->when($request->attendanceStatus, function (Builder $q) use ($request) {
+                $status = $request->attendanceStatus;
+                $date = $request->date;
+                $week = $request->week;
+                $month = $request->month;
+
+                if ($date) {
+                    $rangeStart = Carbon::parse($date)->startOfDay();
+                    $rangeEnd = Carbon::parse($date)->endOfDay();
+                } elseif ($week) {
+                    $rangeStart = Carbon::parse($week)->startOfWeek();
+                    $rangeEnd = Carbon::parse($week)->endOfWeek();
+                } elseif ($month) {
+                    $rangeStart = Carbon::parse($month)->startOfMonth();
+                    $rangeEnd = Carbon::parse($month)->endOfMonth();
+                } else {
+                    $rangeStart = now()->startOfDay();
+                    $rangeEnd = now()->endOfDay();
+                }
+
+                $q->where(function (Builder $subQ) use ($status, $rangeStart, $rangeEnd, $date) {
+                    $subQ->whereHas('attendances', function (Builder $attQ) use ($status, $rangeStart, $rangeEnd) {
+                        $attQ->where('status', $status)
+                            ->whereBetween('date', [$rangeStart->format('Y-m-d'), $rangeEnd->format('Y-m-d')]);
+                    });
+
+                    if ($status === 'absent') {
+                        $pastEnd = $rangeEnd->gt(now()) ? now()->endOfDay() : $rangeEnd;
+
+                        if ($rangeStart->lte($pastEnd)) {
+                            $subQ->orWhereDoesntHave('attendances', function (Builder $attQ) use ($rangeStart, $pastEnd) {
+                                $attQ->whereBetween('date', [$rangeStart->format('Y-m-d'), $pastEnd->format('Y-m-d')]);
+                            });
+
+                            if (!$date && $rangeStart->lt($pastEnd->copy()->startOfDay())) {
+                                $daysDiff = $rangeStart->diffInDays($pastEnd->copy()->startOfDay()) + 1;
+                                $subQ->orWhereHas('attendances', function (Builder $attQ) use ($rangeStart, $pastEnd) {
+                                    $attQ->whereBetween('date', [$rangeStart->format('Y-m-d'), $pastEnd->format('Y-m-d')]);
+                                }, '<', $daysDiff);
+                            }
+                        }
+                    }
+                });
+            })
             ->get()
             ->map(function ($user) use ($request) {
                 if ($request->date) {

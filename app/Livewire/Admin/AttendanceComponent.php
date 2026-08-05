@@ -27,8 +27,10 @@ class AttendanceComponent extends Component
             'month' => $this->month,
             'week' => $this->week,
             'date' => $this->date,
+            'attendanceStatus' => $this->attendanceStatus,
             'division' => $this->division,
             'jobTitle' => $this->jobTitle,
+            'search' => $this->search,
         ]);
     }
 
@@ -36,6 +38,7 @@ class AttendanceComponent extends Component
     public ?string $month = null;
     public ?string $week = null;
     public ?string $date = null;
+    public ?string $attendanceStatus = null;
     public ?string $division = null;
     public ?string $jobTitle = null;
     public ?string $search = null;
@@ -197,7 +200,7 @@ class AttendanceComponent extends Component
 
     public function updating($key): void
     {
-        if ($key === 'search' || $key === 'division' || $key === 'jobTitle') {
+        if ($key === 'search' || $key === 'division' || $key === 'jobTitle' || $key === 'attendanceStatus') {
             $this->resetPage();
         }
         if ($key === 'month') {
@@ -258,6 +261,50 @@ class AttendanceComponent extends Component
                 return $q->where('division_id', $this->division);
             })
             ->when($this->jobTitle, fn (Builder $q) => $q->where('job_title_id', $this->jobTitle))
+            ->when($this->attendanceStatus, function (Builder $q) {
+                $status = $this->attendanceStatus;
+                $date = $this->date;
+                $week = $this->week;
+                $month = $this->month;
+
+                if ($date) {
+                    $rangeStart = Carbon::parse($date)->startOfDay();
+                    $rangeEnd = Carbon::parse($date)->endOfDay();
+                } elseif ($week) {
+                    $rangeStart = Carbon::parse($week)->startOfWeek();
+                    $rangeEnd = Carbon::parse($week)->endOfWeek();
+                } elseif ($month) {
+                    $rangeStart = Carbon::parse($month)->startOfMonth();
+                    $rangeEnd = Carbon::parse($month)->endOfMonth();
+                } else {
+                    $rangeStart = now()->startOfDay();
+                    $rangeEnd = now()->endOfDay();
+                }
+
+                $q->where(function (Builder $subQ) use ($status, $rangeStart, $rangeEnd, $date) {
+                    $subQ->whereHas('attendances', function (Builder $attQ) use ($status, $rangeStart, $rangeEnd) {
+                        $attQ->where('status', $status)
+                            ->whereBetween('date', [$rangeStart->format('Y-m-d'), $rangeEnd->format('Y-m-d')]);
+                    });
+
+                    if ($status === 'absent') {
+                        $pastEnd = $rangeEnd->gt(now()) ? now()->endOfDay() : $rangeEnd;
+
+                        if ($rangeStart->lte($pastEnd)) {
+                            $subQ->orWhereDoesntHave('attendances', function (Builder $attQ) use ($rangeStart, $pastEnd) {
+                                $attQ->whereBetween('date', [$rangeStart->format('Y-m-d'), $pastEnd->format('Y-m-d')]);
+                            });
+
+                            if (!$date && $rangeStart->lt($pastEnd->copy()->startOfDay())) {
+                                $daysDiff = $rangeStart->diffInDays($pastEnd->copy()->startOfDay()) + 1;
+                                $subQ->orWhereHas('attendances', function (Builder $attQ) use ($rangeStart, $pastEnd) {
+                                    $attQ->whereBetween('date', [$rangeStart->format('Y-m-d'), $pastEnd->format('Y-m-d')]);
+                                }, '<', $daysDiff);
+                            }
+                        }
+                    }
+                });
+            })
             ->paginate(20)->through(function (User $user) {
                 if ($this->date) {
                     $attendances = new Collection(Cache::remember(
@@ -343,7 +390,7 @@ class AttendanceComponent extends Component
                 $user->attendances = $attendances;
                 return $user;
             });
-        $summary = $this->getAttendanceSummary($this->date, $this->week, $this->month, $this->search, $this->division, $this->jobTitle);
+        $summary = $this->getAttendanceSummary($this->date, $this->week, $this->month, $this->search, $this->division, $this->jobTitle, $this->attendanceStatus);
 
         return view('livewire.admin.attendance', array_merge($summary, [
             'employees' => $employees, 
