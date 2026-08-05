@@ -61,9 +61,15 @@
     @endif
     @if ($mode != 'export')
       <div>
-        <h3 class="mb-4 text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
-          Impor Data Absensi
-        </h3>
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold leading-tight text-gray-800 dark:text-gray-200">
+            Impor Data Absensi
+          </h3>
+          <x-secondary-button type="button" wire:click="downloadTemplate" class="!py-1 !px-2.5 text-xs">
+            <x-heroicon-o-arrow-down-tray class="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
+            Download Template
+          </x-secondary-button>
+        </div>
         <form x-data="{ file: null }" wire:submit.prevent="import" method="post" enctype="multipart/form-data">
           @csrf
           <div class="mb-4 flex items-center gap-3">
@@ -79,10 +85,12 @@
             <x-input type="file" class="hidden" name="file" x-ref="file"
               x-on:change="file = $refs.file.files[0]" wire:model.live="file" />
           </div>
-          <div class="mb-4">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              * Pastikan format status pada Excel adalah salah satu dari: hadir, terlambat, izin, sakit, tidak hadir, wfh, cuti, cuti khusus, imp.
-            </p>
+
+          <div class="mb-4 space-y-1 rounded-md bg-blue-50 p-3 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+            <p class="font-semibold">* Ketentuan Format Excel Absensi:</p>
+            <p>1. Header kolom wajib: <b>user_id</b>, <b>date</b>, <b>status</b>.</p>
+            <p>2. Kolom opsional: <b>time_in</b>, <b>time_out</b>, <b>shift</b>, <b>barcode_id</b>, <b>coordinates</b>, <b>note</b>.</p>
+            <p>3. Format status valid: <b>hadir</b>, <b>terlambat</b>, <b>izin</b>, <b>sakit</b>, <b>tidak hadir</b>, <b>wfh</b>, <b>cuti</b>, <b>cuti khusus</b>, <b>imp</b>.</p>
           </div>
           <div class="flex items-center justify-stretch">
             <x-success-button class="w-full">
