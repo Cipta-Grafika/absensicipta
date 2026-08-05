@@ -75,6 +75,10 @@ Route::middleware([
                 ->name('hr.masters.job-title');
             Route::get('/masterdata/education', [MasterDataController::class, 'education'])
                 ->name('hr.masters.education');
+            Route::get('/masterdata/leaderboard', [MasterDataController::class, 'leaderboard'])
+                ->name('hr.masters.leaderboard');
+            Route::get('/masterdata/scan-feedback', [MasterDataController::class, 'scanFeedback'])
+                ->name('hr.masters.scan-feedback');
         });
 
         // User/Employee/Karyawan
@@ -157,6 +161,16 @@ Route::middleware([
     // User Group (for Payslips)
     Route::get('/user/payslips', \App\Livewire\User\PayslipComponent::class)->name('user.payslips');
 
+    // Real-time SSE Leaderboard Stream Endpoint
+    Route::get('/api/leaderboard/stream', [\App\Http\Controllers\Api\LeaderboardStreamController::class, 'stream'])->name('api.leaderboard.stream');
+
+});
+
+// Public Robots.txt Route
+Route::get('/robots.txt', function () {
+    $path = public_path('robots.txt');
+    $content = file_exists($path) ? file_get_contents($path) : "User-agent: *\nDisallow: /\n";
+    return response($content, 200)->header('Content-Type', 'text/plain');
 });
 
 Livewire::setUpdateRoute(function ($handle) {

@@ -5,114 +5,127 @@
 <h1 align="center">Absensi Cipta Grafika</h1>
 
 <p align="center">
-  Aplikasi web manajemen absensi karyawan berbasis QR Code dan GPS untuk PT Cipta Grafika.
+  Sistem Informasi Manajemen Presensi, Payroll, Lembur & Leaderboard Karyawan berbasis QR Code dan Real-Time GPS Geolocation untuk CV. Cipta Grafika.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Laravel-11-FF2D20?logo=laravel" alt="Laravel" />
-  <img src="https://img.shields.io/badge/PHP-8.2+-777BB4?logo=php" alt="PHP" />
-  <img src="https://img.shields.io/badge/Livewire-3-FB70A9?logo=livewire" alt="Livewire" />
-  <img src="https://img.shields.io/badge/Jetstream-5-4A5568" alt="Jetstream" />
-  <img src="https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql" alt="MySQL" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite" alt="Vite" />
+  <img src="https://img.shields.io/badge/Laravel-12.0-FF2D20?logo=laravel" alt="Laravel 12" />
+  <img src="https://img.shields.io/badge/PHP-8.2+-777BB4?logo=php" alt="PHP 8.2+" />
+  <img src="https://img.shields.io/badge/Livewire-3.0-FB70A9?logo=livewire" alt="Livewire 3" />
+  <img src="https://img.shields.io/badge/Jetstream-5.1-4A5568" alt="Jetstream 5" />
+  <img src="https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql" alt="MySQL 8" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss" alt="Tailwind CSS 3.4" />
+  <img src="https://img.shields.io/badge/Vite-6.4-646CFF?logo=vite" alt="Vite 6.4" />
+  <img src="https://img.shields.io/badge/Testing-Pest_3-8B5CF6?logo=pest" alt="Pest 3" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
 
 ---
 
-## ✨ Fitur
+## ✨ Fitur Utama & Modul Sistem
 
-- **Absensi QR Code** — Karyawan melakukan scan QR Code unik miliknya untuk check-in & check-out
-- **Validasi GPS / Lokasi** — Memverifikasi lokasi karyawan menggunakan Leaflet.js + OpenStreetMap saat absensi
-- **Dashboard Admin** — Ringkasan statistik kehadiran, ketidakhadiran, dan izin secara real-time
-- **Manajemen Karyawan** — CRUD lengkap data karyawan beserta foto profil
-- **Manajemen Absensi** — Rekap absensi harian, laporan bulanan, dan filter per karyawan
-- **Pengajuan Izin/Cuti** — Karyawan dapat mengajukan izin langsung dari portal mereka
-- **Master Data** — Manajemen Divisi, Jabatan, Pendidikan, dan Shift kerja
-- **Manajemen Barcode** — Generate, cetak, dan unduh QR Code per karyawan (Superadmin)
-- **Import & Export** — Import/export data karyawan dan absensi via file Excel (`.xlsx`)
-- **Laporan PDF** — Cetak laporan absensi dalam format PDF menggunakan DomPDF
-- **Autentikasi & Otorisasi** — Sistem login dengan tiga level akses: Karyawan, Admin, Superadmin
-- **Two-Factor Authentication (2FA)** — Keamanan login berlapis via Laravel Jetstream
-- **Riwayat Absensi** — Karyawan dapat melihat riwayat kehadiran pribadi mereka
-- **Manajemen Profil** — Karyawan & admin dapat memperbarui data profil dan foto
+### 📍 1. Presensi QR Code & Real-Time GPS Geolocation
+- **Absensi QR Code Instan** — Karyawan melakukan scan QR Code lokasi/kantor untuk *check-in* & *check-out*.
+- **Validasi GPS Radius Precision** — Verifikasi koordinat lokasi karyawan menggunakan **Leaflet.js + OpenStreetMap** secara presisi.
+- **Kamera Scanner QR Code High-Performance** — Pemindai kamera reaktif berbasis `html5-qrcode` yang cepat dan responsif.
+- **Deduction & Penalty Calculator** — Penghitungan otomatis denda keterlambatan, potongan absen, WFH, dan pengajuan IMP.
+
+### 🏆 2. Real-Time Leaderboard Kerajinan (Top 5 Early Birds)
+- **Leaderboard Real-Time via Server-Sent Events (SSE)** — Pembaruan leaderboard secara simultan tanpa *interval polling* menggunakan koneksi SSE (`/api/leaderboard/stream`).
+- **Skor & Poin Presensi Bulanan** — Akumulasi menit kedatangan lebih awal (*early arrival minutes*), jumlah hari hadir, dan kalkulasi poin performa otomatis per periode bulan.
+- **Peringkat Top 5 per Divisi** — Menampilkan Top 5 Karyawan Terrajin di halaman Beranda (`/home`) dilengkapi lencana medali Gold 🥇, Silver 🥈, Bronze 🥉, dan indikator Pts pastel green.
+- **SuperAdmin Recalculation Tool** — Fitur hitung ulang statistik leaderboard bulanan dengan 1-klik di panel Master Data.
+
+### 💬 3. Dynamic Scan Feedback & Ucapan Motivasi
+- **Ucapan Dynamic Randomizer** — Pop-up feedback otomatis saat scan berdasarkan kategori waktu (`super_early`, `early`, `on_time`, `late_mild`, `late_severe`, `out`).
+- **Personalized Placeholder `{name}`** — Menyebut nama depan karyawan secara ramah pada setiap pesan feedback.
+- **SuperAdmin Scan Feedback CRUD** — Fitur Kelola Ucapan di Master Data khusus SuperAdmin untuk menambah, mengedit, mengaktifkan/menonaktifkan, dan menghapus variasi ucapan.
+
+### 💰 4. Penggajian & Payroll Management
+- **Dashboard Payroll** — Ringkasan statistik pengeluaran gaji, total potongan, dan tabungan karyawan.
+- **Manajemen Gaji Karyawan** — Pengaturan komponen gaji pokok, tunjangan, dan potongan tetap per karyawan.
+- **Metode Pembayaran (Payment Methods)** — Pengelolaan rekening bank & dompet digital pembayaran gaji.
+- **Riwayat Gaji & Cetak Slip Gaji (Payslips)** — Generasi riwayat gaji bulanan dan cetak Slip Gaji PDF untuk karyawan.
+- **Tabungan Karyawan (Savings & Transactions)** — Manajemen saldo tabungan dan riwayat setoran/penarikan tabungan.
+- **Pinjaman Karyawan (Loans)** — Pengelolaan pinjaman/kasbon karyawan beserta pemotongan gaji otomatis.
+
+### ⏰ 5. Manajemen Lembur (Overtime Management)
+- **Pengajuan Lembur Karyawan** — Portal pengajuan jam lembur karyawan beserta deskripsi pekerjaan.
+- **Tarif Lembur Dinamis (Overtime Rates)** — Pengaturan tarif lembur per jam di Master Data oleh SuperAdmin.
+- **Kalkulasi & Approval Lembur** — Verifikasi, persetujuan admin, dan penghitungan kompensasi lembur otomatis.
+
+### 📂 6. Import & Export Excel & Laporan PDF
+- **Import/Export Data Karyawan & Absensi** — Fitur ekspor/impor massal data karyawan dan presensi via berkas Excel (`.xlsx`).
+- **Import/Export Roster Jadwal Kerja (Work Schedules)** — Pengaturan dan impor jadwal kerja shift karyawan bulanan via Excel.
+- **Import/Export Payroll Data** — Ekspor & impor data gaji, metode pembayaran, dan tabungan karyawan.
+- **Cetak Laporan PDF** — Ekspor rekapitulasi absensi dan slip gaji ke format PDF menggunakan **DomPDF**.
+
+### 🔒 7. Keamanan & Proteksi Search Engine (Robots.txt & Meta Noindex)
+- **Robots.txt Security Rules** — Konfigurasi `public/robots.txt` publik untuk memblokir crawling search engine pada `/login`, `/register`, `/home`, `/hr/`, `/user/`, dan `/api/`.
+- **Meta Noindex & Nofollow** — Proteksi header HTML berlapis pada `guest.blade.php` dan `app.blade.php`.
+- **Level Akses Tiga Peran (RBAC)** — Otorisasi ketat untuk **Karyawan**, **Admin Divisi**, dan **Superadmin**.
+- **Two-Factor Authentication (2FA)** — Keamanan login berlapis via Laravel Jetstream & Sanctum.
 
 ---
 
-## 🛠 Tech Stack
+## 🛠 Tech Stack & Versi
 
-| Layer | Teknologi | Versi |
-|---|---|---|
-| Framework | [Laravel](https://laravel.com) | ^11.9 |
-| Bahasa | PHP | ^8.2 |
-| Auth & Profile | [Laravel Jetstream](https://jetstream.laravel.com) | ^5.1 |
-| API Auth Token | [Laravel Sanctum](https://laravel.com/docs/sanctum) | ^4.0 |
-| Reaktif UI | [Livewire](https://livewire.laravel.com) | ^3.0 |
-| Database | MySQL / MariaDB | 8+ |
-| QR Code | [Endroid QR Code](https://github.com/endroid/qr-code) | ^5.0 |
-| Peta & GPS | [Leaflet.js](https://leafletjs.com) + OpenStreetMap | — |
-| Export PDF | [barryvdh/laravel-dompdf](https://github.com/barryvdh/laravel-dompdf) | ^2.2 |
-| Import/Export Excel | [Maatwebsite Excel](https://laravel-excel.com) | ^3.1 |
-| Pemrosesan Gambar | [Intervention Image](https://image.intervention.io) | ^3.6 |
-| Kalkulasi Jarak | [ballen/distical](https://packagist.org/packages/ballen/distical) | ^3.1 |
-| Ikon | [Blade Heroicons](https://github.com/blade-ui-kit/blade-heroicons) | ^2.3 |
-| Styling | [Tailwind CSS](https://tailwindcss.com) | ^3.4 |
-| Build Tool | [Vite](https://vitejs.dev) + [Laravel Vite Plugin](https://laravel.com/docs/vite) | ^5.0 |
-| Testing | [Pest PHP](https://pestphp.com) | ^2.0 |
+| Layer | Teknologi / Library | Versi | Deskripsi |
+|---|---|---|---|
+| **Framework** | [Laravel](https://laravel.com) | `^12.0` | Framework utama PHP versi 12 |
+| **Bahasa** | PHP | `^8.2` | Bahasa pemrograman backend |
+| **Reaktif UI** | [Livewire](https://livewire.laravel.com) | `^3.0` | Full-stack reaktif framework untuk Laravel |
+| **Auth & Profile** | [Laravel Jetstream](https://jetstream.laravel.com) | `^5.1` | Sistem autentikasi, profil & 2FA |
+| **API Security** | [Laravel Sanctum](https://laravel.com/docs/sanctum) | `^4.0` | Autentikasi token API & SPA |
+| **Database** | MySQL / MariaDB | `8.0+` | Database relasional |
+| **Real-time SSE** | Server-Sent Events (Native PHP Stream) | — | Push update leaderboard real-time tanpa polling |
+| **Styling** | [Tailwind CSS](https://tailwindcss.com) | `^3.4` | Utility-first CSS framework |
+| **Build Tool** | [Vite](https://vitejs.dev) | `^6.4` | Frontend bundler & HMR dev server |
+| **Selector UI** | [Tom Select](https://tom-select.js.org) | `^2.6` | Component autocomplete & select box |
+| **Peta & GPS** | [Leaflet.js](https://leafletjs.com) + OpenStreetMap | `1.9.4` | Peta interaktif & lokasi GPS |
+| **QR Code Scanner**| [Html5-Qrcode](https://github.com/mebjas/html5-qrcode) | `2.3.8` | Pemindai QR Code via kamera browser |
+| **Generator QR** | [Endroid QR Code](https://github.com/endroid/qr-code) | `^5.0` | Builder gambar QR Code barcode |
+| **Export PDF** | [barryvdh/laravel-dompdf](https://github.com/barryvdh/laravel-dompdf) | `^3.0` | Generator laporan & slip gaji PDF |
+| **Excel Export/Import**| [Maatwebsite Excel](https://laravel-excel.com) | `^3.1` | Generator & parser spreadsheet Excel |
+| **Kalkulasi Jarak** | [ballen/distical](https://packagist.org/packages/ballen/distical) | `^3.1` | Perhitungan jarak koordinat GPS |
+| **Image Processing**| [Intervention Image](https://image.intervention.io) | `^3.6` | Pemrosesan foto profil & avatar |
+| **Testing** | [Pest PHP](https://pestphp.com) | `^3.0` | Framework pengujian otomatis (Unit & Feature) |
 
 ---
 
-## 🚀 Instalasi & Konfigurasi
+## 🚀 Instalasi & Konfigurasi Lokal
 
-### Prasyarat
+### Prasyarat System
 
-Pastikan sistem Anda sudah terpasang:
-
-- **PHP** `>= 8.2` dengan ekstensi: `mbstring`, `xml`, `pdo_mysql`, `zip`, `gd`, `fileinfo`
+Pastikan perangkat Anda sudah terpasang:
+- **PHP** `>= 8.2` (ekstensi: `mbstring`, `xml`, `pdo_mysql`, `zip`, `gd`, `fileinfo`, `ctype`, `curl`)
 - **Composer** `>= 2.x`
 - **Node.js** `>= 18.x` & **npm**
-- **MySQL** `>= 8` atau **MariaDB** `>= 10.4`
+- **MySQL** `>= 8.0` atau **MariaDB** `>= 10.4`
 
 ---
 
-### 1. Clone Repository
+### Langkah Instalasi
 
+#### 1. Clone Repository
 ```bash
 git clone https://github.com/Cipta-Grafika/absensicipta.git
 cd absensicipta
 ```
 
----
-
-### 2. Install Dependency PHP
-
+#### 2. Install Dependency PHP & Node.js
 ```bash
 composer install
-```
-
----
-
-### 3. Install Dependency JavaScript
-
-```bash
 npm install
 ```
 
----
-
-### 4. Konfigurasi Environment
-
-Buat file `.env` dari template contoh:
-
+#### 3. Konfigurasi Environment File
+Salin file `.env.example` menjadi `.env`:
 ```bash
 cp .env.example .env
 ```
-
-Kemudian edit file `.env` dan sesuaikan nilai berikut:
-
+Sesuaikan pengaturan database dan URL di file `.env`:
 ```env
-# Nama Aplikasi
 APP_NAME="Absensi Karyawan"
 APP_ENV=local
 APP_DEBUG=true
@@ -120,186 +133,110 @@ APP_URL=http://localhost:8000
 APP_TIMEZONE=Asia/Jakarta
 APP_LOCALE=id
 
-# Database
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=db_absensi_karyawan
 DB_USERNAME=root
-DB_PASSWORD=your_password
+DB_PASSWORD=
 ```
 
----
-
-### 5. Generate Application Key
-
+#### 4. Generate Application Key
 ```bash
 php artisan key:generate --ansi
 ```
 
----
-
-### 6. Migrasi Database
-
-Jalankan migrasi untuk membuat seluruh tabel yang diperlukan:
-
+#### 5. Migrasi & Seed Database
+Jalankan migrasi untuk membuat 21+ tabel database:
 ```bash
-php artisan migrate
-```
+# Jalankan migrasi dan seeder awal (Admin, Superadmin & Master Data)
+php artisan migrate --seed
 
-Tabel yang akan dibuat meliputi: `users`, `attendances`, `barcodes`, `shifts`, `divisions`, `job_titles`, `educations`, `personal_access_tokens`, `sessions`, `cache`, dan `jobs`.
-
----
-
-### 7. Seed Data Awal
-
-Pilih salah satu opsi berikut sesuai kebutuhan:
-
-```bash
-# Opsi A: Seed data dasar saja (admin, superadmin, master data)
-php artisan db:seed DatabaseSeeder
-
-# Opsi B: Seed data lengkap + data dummy (karyawan & absensi acak)
+# (Opsional) Jalankan seeder data dummy karyawan & presensi lengkap
 php artisan db:seed FakeDataSeeder
 ```
 
-> **Akun default setelah seeding:**
+> 🔐 **Akun Default Kredensial (Setelah Seeding):**
 >
-> | Role | Email | Password |
-> |---|---|---|
-> | Superadmin | `superadmin@example.com` | `password` |
-> | Admin | `admin@example.com` | `password` |
-> | Karyawan | `karyawan@example.com` | `password` |
+> | Role | Email | Password | Hak Akses |
+> |---|---|---|---|
+> | **Superadmin** | `superadmin@example.com` | `password` | Akses Penuh Seluruh Sistem & Master Data |
+> | **Admin** | `admin@example.com` | `password` | Akses Manajemen Presensi & Karyawan Divisi |
+> | **Karyawan** | `karyawan@example.com` | `password` | Scan Absensi, Pengajuan Izin/Lembur, Slip Gaji |
 
----
-
-### 8. Build Aset Frontend
-
+#### 6. Build Aset Frontend & Jalankan Server
 ```bash
-# Mode development (dengan hot-reload)
+# Mode Development (Vite HMR)
 npm run dev
 
-# Mode produksi (untuk deployment)
-npm run build
-```
-
----
-
-### 9. Jalankan Server
-
-```bash
+# Di terminal terpisah, jalankan server Laravel:
 php artisan serve
 ```
-
-Buka [http://localhost:8000](http://localhost:8000) di browser Anda.
+Akses aplikasi di browser: **[http://localhost:8000](http://localhost:8000)**.
 
 ---
 
-## 📁 Struktur Proyek
+## 📋 Struktur Menu & Modul Navigasi
 
 ```
-absensicipta/
-├── app/
-│   ├── Actions/             # Fortify & Jetstream actions (create team, dll)
-│   ├── Exports/             # Class export Excel (karyawan & absensi)
-│   ├── Imports/             # Class import Excel (karyawan & absensi)
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── Admin/       # Controller area admin (Attendance, Barcode, Employee, dll)
-│   │   │   ├── HomeController.php
-│   │   │   └── UserAttendanceController.php
-│   │   └── Middleware/      # Middleware (Admin, User, SuperAdmin)
-│   ├── Livewire/
-│   │   ├── Admin/
-│   │   │   ├── MasterData/  # Komponen Livewire: Divisi, Jabatan, Pendidikan, Shift
-│   │   │   ├── ImportExport/# Komponen import/export karyawan & absensi
-│   │   │   ├── AttendanceComponent.php
-│   │   │   ├── EmployeeComponent.php
-│   │   │   ├── BarcodeComponent.php
-│   │   │   └── DashboardComponent.php
-│   │   ├── ScanComponent.php         # Komponen scan QR Code karyawan
-│   │   └── AttendanceHistoryComponent.php
-│   ├── Models/              # Eloquent Models: User, Attendance, Barcode, Shift, dll
-│   ├── BarcodeGenerator.php # Service pembuat QR Code
-│   └── Helpers.php          # Helper global aplikasi
-├── database/
-│   ├── migrations/          # Semua file migrasi tabel
-│   ├── seeders/             # DatabaseSeeder, AdminSeeder, FakeDataSeeder
-│   └── factories/           # Factory untuk data dummy
-├── resources/
-│   ├── css/                 # File CSS kustom
-│   ├── js/                  # Entry point JavaScript (app.js)
-│   └── views/
-│       ├── admin/           # Blade views area admin
-│       ├── livewire/        # Blade views komponen Livewire
-│       ├── attendances/     # Views absensi karyawan
-│       ├── auth/            # Views autentikasi (login, register, 2FA)
-│       ├── layouts/         # Layout utama aplikasi
-│       └── profile/         # Views manajemen profil
-├── routes/
-│   ├── web.php              # Definisi semua route web
-│   └── api.php              # Route API
-├── docs/                    # Dokumentasi tambahan (deployment, MySQL config)
-├── .env.example             # Template konfigurasi environment
-├── composer.json            # Dependency PHP
-├── package.json             # Dependency JavaScript
-├── tailwind.config.cjs      # Konfigurasi Tailwind CSS
-└── vite.config.js           # Konfigurasi Vite
+│
+├── 🏠 Beranda (/home)
+│   ├── Scanner QR Code & Lokasi GPS Live
+│   ├── Status Presensi Hari Ini & Penghitungan Potongan
+│   ├── Dynamic Scan Feedback Greetings Modal
+│   └── Real-time Leaderboard Kerajinan (Top 5 Early Birds)
+│
+├── 📊 Presensi (/hr/attendances)
+│   ├── Rekapitulasi Presensi Karyawan
+│   ├── Filtering Status (Hadirlah, Terlambat, Izin, Sakit, Cuti, IMP, WFH, Absent)
+│   ├── Filter Scope (Hari ini, Minggu ini, Bulan ini, Custom Range)
+│   └── Export Data Presensi Excel / PDF
+│
+├── 👥 Karyawan (/hr/users)
+│   ├── Daftar & CRUD Karyawan
+│   └── Import & Export Data Karyawan Excel
+│
+├── 💳 Payroll & Gaji (/payroll)
+│   ├── Dashboard Payroll (/payroll)
+│   ├── Gaji Karyawan (/payroll/employee-salaries)
+│   ├── Metode Pembayaran (/payroll/payment-methods)
+│   ├── Riwayat Gaji (/payroll/history)
+│   ├── Tabungan Karyawan (/payroll/savings)
+│   ├── Transaksi Tabungan (/payroll/saving-transactions)
+│   ├── Pinjaman Karyawan (/payroll/loans)
+│   └── Slip Gaji Karyawan (/user/payslips)
+│
+├── ⏰ Lembur (/hr/overtimes & /user/overtimes)
+│   ├── Pengajuan Lembur Karyawan
+│   └── Persetujuan & Tarif Lembur
+│
+├── 🗂️ Master Data (/hr/masterdata/*) - khusus SuperAdmin
+│   ├── Divisi (/hr/masterdata/divisions)
+│   ├── Jabatan (/hr/masterdata/job-titles)
+│   ├── Pendidikan (/hr/masterdata/educations)
+│   ├── Shift Kerja (/hr/masterdata/shifts)
+│   ├── QR Code Barcode Lokasi (/hr/barcodes)
+│   ├── Leaderboard Kerajinan (/hr/masterdata/leaderboard)
+│   └── Ucapan Scan Feedback (/hr/masterdata/scan-feedback)
+│
+└── 📥 Import & Export (/hr/import-export/*)
+    ├── Import/Export Karyawan
+    ├── Import/Export Presensi
+    └── Import/Export Roster Jadwal Kerja (/hr/import-export/work-schedules)
 ```
 
 ---
 
-## 📦 Perintah yang Tersedia
+## 🧪 Pengujian Otomatis (Automated Testing)
 
-### NPM Scripts
-
-| Perintah | Deskripsi |
-|---|---|
-| `npm run dev` | Jalankan Vite dev server (hot-reload) |
-| `npm run build` | Build aset untuk produksi |
-
-### Artisan Commands
-
-| Perintah | Deskripsi |
-|---|---|
-| `php artisan serve` | Jalankan server pengembangan Laravel |
-| `php artisan migrate` | Jalankan semua migrasi database |
-| `php artisan migrate:fresh --seed` | Reset & migrasi ulang database + seed |
-| `php artisan db:seed DatabaseSeeder` | Seed data awal (admin & master data) |
-| `php artisan db:seed FakeDataSeeder` | Seed data dummy karyawan & absensi |
-| `php artisan key:generate` | Generate application key baru |
-| `php artisan storage:link` | Buat symlink storage ke public |
-| `php artisan queue:work` | Jalankan queue worker |
-
----
-
-## 🔐 Level Akses (Role)
-
-| Role | Akses |
-|---|---|
-| **Superadmin** | Semua fitur termasuk manajemen barcode QR Code & master data global (divisi, jabatan, pendidikan, shift) |
-| **Admin** | Dashboard, manajemen karyawan, rekap absensi, laporan, import/export, manajemen admin |
-| **Karyawan** | Scan absensi, pengajuan izin/cuti, riwayat absensi, manajemen profil |
-
----
-
-## 📖 Dokumentasi Tambahan
-
-Dokumentasi lebih lengkap tersedia di folder [`docs/`](./docs/):
-
-- [`LARAVEL_DEPLOYMENT.md`](./docs/LARAVEL_DEPLOYMENT.md) — Panduan deployment ke server produksi
-- [`MYSQL_CONFIG.md`](./docs/MYSQL_CONFIG.md) — Konfigurasi MySQL untuk produksi
-- [`IMPORT_SQL.md`](./docs/IMPORT_SQL.md) — Panduan import database via SQL
-- [`SETTING_ULANG_MYSQL.md`](./docs/SETTING_ULANG_MYSQL.md) — Troubleshooting & reset konfigurasi MySQL
-
----
-
-## 🧪 Testing
-
-Proyek ini menggunakan [Pest PHP](https://pestphp.com) sebagai framework testing.
+Proyek ini dilengkapi dengan suite pengujian otomatis berbasis **Pest 3 / PHPUnit**.
 
 ```bash
+# Jalankan seluruh pengujian otomatis
 php artisan test
+
+# Jalankan pengujian khusus Scan Feedback & Leaderboard
+php artisan test --filter=ScanFeedbackTest
 ```
 
 ---

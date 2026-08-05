@@ -71,6 +71,12 @@
                   <x-dropdown-link href="{{ route('hr.masters.education') }}" :active="request()->routeIs('hr.masters.education')">
                     {{ __('Education') }}
                   </x-dropdown-link>
+                  <x-dropdown-link href="{{ route('hr.masters.leaderboard') }}" :active="request()->routeIs('hr.masters.leaderboard')">
+                    Leaderboard Kerajinan
+                  </x-dropdown-link>
+                  <x-dropdown-link href="{{ route('hr.masters.scan-feedback') }}" :active="request()->routeIs('hr.masters.scan-feedback')">
+                    Scan Feedback Ucapan
+                  </x-dropdown-link>
                 @endif
                 @if (Auth::user()?->isAdmin)
                   <x-dropdown-link href="{{ route('hr.masters.shift') }}" :active="request()->routeIs('hr.masters.shift')">

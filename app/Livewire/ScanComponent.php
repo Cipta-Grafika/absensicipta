@@ -62,28 +62,24 @@ class ScanComponent extends Component
             $now = Carbon::now();
             $diffMinutes = $now->diffInMinutes($shiftTime, false);
             
-            $userName = explode(' ', trim(Auth::user()->name))[0]; // Get first name
-            if ($diffMinutes > 60) {
-                $this->motivationType = 'early';
-                $this->motivationTitle = 'Luar Biasa!';
-                $this->motivationMessage = "Gokill {$userName}! Kamu awal banget.";
-            } elseif ($diffMinutes >= 30) {
-                $this->motivationType = 'early';
-                $this->motivationTitle = 'Hebat!';
-                $this->motivationMessage = "Hebat {$userName}! Datang lebih awal nih.";
+            $userName = explode(' ', trim(Auth::user()->name))[0];
+
+            if ($diffMinutes > 30) {
+                $category = 'super_early';
             } elseif ($diffMinutes >= 15) {
-                $this->motivationType = 'early';
-                $this->motivationTitle = 'Mantap!';
-                $this->motivationMessage = "Siip {$userName}! Pertahankan waktu kamu.";
+                $category = 'early';
             } elseif ($diffMinutes >= 0) {
-                $this->motivationType = 'on-time';
-                $this->motivationTitle = 'Tepat Waktu!';
-                $this->motivationMessage = "Tepat waktu {$userName}! Semangat kerjanya.";
+                $category = 'on_time';
+            } elseif ($diffMinutes >= -15) {
+                $category = 'late_mild';
             } else {
-                $this->motivationType = 'late';
-                $this->motivationTitle = 'Perhatian!';
-                $this->motivationMessage = "Yaah {$userName}! Kamu telat nih!";
+                $category = 'late_severe';
             }
+
+            $feedback = \App\Models\ScanFeedback::getRandomFeedback($category, $userName);
+            $this->motivationType = $feedback['type'];
+            $this->motivationTitle = $feedback['title'];
+            $this->motivationMessage = $feedback['message'];
             $this->showMotivationModal = true;
         } else {
             $attendance = $existingAttendance;
@@ -93,9 +89,10 @@ class ScanComponent extends Component
             $this->successMsg = __('Attendance Out Successful');
 
             $userName = explode(' ', trim(Auth::user()->name))[0];
-            $this->motivationType = 'out';
-            $this->motivationTitle = 'Terima Kasih!';
-            $this->motivationMessage = "Terima kasih atas kerja kerasmu hari ini, {$userName}! Selamat beristirahat.";
+            $feedback = \App\Models\ScanFeedback::getRandomFeedback('out', $userName);
+            $this->motivationType = $feedback['type'];
+            $this->motivationTitle = $feedback['title'];
+            $this->motivationMessage = $feedback['message'];
             $this->showMotivationModal = true;
         }
 
@@ -188,8 +185,14 @@ class ScanComponent extends Component
         }
     }
 
+    private ?float $memoizedDeduction = null;
+
     public function getRealtimeDeduction(): float
     {
+        if ($this->memoizedDeduction !== null) {
+            return $this->memoizedDeduction;
+        }
+
         $user = Auth::user();
         if (!$user) return 0;
 
@@ -308,7 +311,7 @@ class ScanComponent extends Component
 
         $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction;
 
-        return round($total_deduction, 0);
+        return $this->memoizedDeduction = round($total_deduction, 0);
     }
 
     public function render()
