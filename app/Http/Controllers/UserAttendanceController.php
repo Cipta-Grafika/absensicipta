@@ -12,7 +12,7 @@ class UserAttendanceController extends Controller
     public function applyLeave()
     {
         $attendance = null;
-        $shifts = \App\Models\Shift::all();
+        $shifts = \App\Models\Shift::forUser(Auth::user())->get();
         return view('attendances.apply-leave', ['attendance' => $attendance, 'shifts' => $shifts]);
     }
 

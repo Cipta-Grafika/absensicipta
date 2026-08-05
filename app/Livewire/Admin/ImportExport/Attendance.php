@@ -51,6 +51,40 @@ class Attendance extends Component
         $this->year = date('Y');
     }
 
+    public function downloadTemplate()
+    {
+        $templateData = [
+            [
+                'user_id' => '01kw8mcvh3f1j22fp3zhpp5d8m',
+                'date' => date('Y-m-d'),
+                'time_in' => '08:00:00',
+                'time_out' => '17:00:00',
+                'shift' => 'Shift Pagi',
+                'barcode_id' => '',
+                'coordinates' => '-6.200000,106.816666',
+                'status' => 'hadir',
+                'note' => 'Hadir Tepat Waktu',
+            ],
+            [
+                'user_id' => '01kw8mcvh3f1j22fp3zhpp5d8n',
+                'date' => date('Y-m-d'),
+                'time_in' => '08:15:00',
+                'time_out' => '17:00:00',
+                'shift' => 'Shift Pagi',
+                'barcode_id' => '',
+                'coordinates' => '-6.200000,106.816666',
+                'status' => 'terlambat',
+                'note' => 'Macet di jalan',
+            ],
+        ];
+
+        return Excel::download(new class($templateData) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+            public function __construct(private array $data) {}
+            public function array(): array { return $this->data; }
+            public function headings(): array { return ['user_id', 'date', 'time_in', 'time_out', 'shift', 'barcode_id', 'coordinates', 'status', 'note']; }
+        }, 'template_import_absensi.xlsx');
+    }
+
     public function render()
     {
         $attendances = null;

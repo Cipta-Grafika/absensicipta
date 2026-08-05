@@ -193,15 +193,60 @@
           <x-input-error for="is_working_day" class="mt-1" />
         </div>
 
-        <div class="mt-4">
-          <x-label value="Pilih Karyawan (Multi-Select)" />
-          <div class="mt-2 max-h-48 overflow-y-auto rounded-md border border-gray-300 p-3 dark:border-gray-700 dark:bg-gray-900">
+        <div class="mt-4" x-data="{
+          userSearch: '',
+          toggleAll(event, userList) {
+            if (event.target.checked) {
+              let allFilteredIds = userList.map(u => String(u.id));
+              let current = ($wire.user_ids || []).map(id => String(id));
+              $wire.user_ids = Array.from(new Set([...current, ...allFilteredIds]));
+            } else {
+              let filteredSet = new Set(userList.map(u => String(u.id)));
+              $wire.user_ids = ($wire.user_ids || []).filter(id => !filteredSet.has(String(id)));
+            }
+          }
+        }">
+          <div class="flex items-center justify-between mb-1.5">
+            <x-label value="Pilih Karyawan (Multi-Select)" />
+            <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+              <span x-text="($wire.user_ids || []).length"></span> Karyawan Dipilih
+            </span>
+          </div>
+
+          <!-- Search Input Field -->
+          <div class="relative mb-2">
+            <input type="text" x-model="userSearch" placeholder="Cari nama karyawan / NIP..."
+              class="w-full rounded-md border border-gray-300 bg-gray-50 py-1.5 pl-8 pr-3 text-xs text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+            <svg class="pointer-events-none absolute inset-y-0 left-2.5 my-auto h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+
+          <!-- Select All Option Bar -->
+          <div class="mb-2 flex items-center justify-between rounded-md bg-gray-100 dark:bg-gray-800 px-3 py-1.5 border border-gray-200 dark:border-gray-700">
+            <label class="inline-flex items-center text-xs font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input type="checkbox"
+                @change="toggleAll($event, {{ json_encode($users->map(fn($u) => ['id' => (string)$u->id, 'name' => $u->name, 'nip' => $u->nip ?? ''])) }})"
+                class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900">
+              <span class="ml-2">Pilih Semua Karyawan</span>
+            </label>
+          </div>
+
+          <!-- Employee Checkbox List -->
+          <div class="max-h-48 overflow-y-auto rounded-md border border-gray-300 p-3 dark:border-gray-700 dark:bg-gray-900">
             @foreach ($users as $u)
-              <label class="mb-1.5 flex items-center">
+              <label class="mb-1.5 flex items-center cursor-pointer"
+                x-show="!userSearch || '{{ strtolower(addslashes($u->name . ' ' . ($u->nip ?? ''))) }}'.includes(userSearch.toLowerCase())">
                 <input type="checkbox" wire:model="user_ids" value="{{ $u->id }}" class="rounded text-indigo-600 focus:ring-indigo-500">
-                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ $u->name }} ({{ $u->division->name ?? 'Tanpa Divisi' }})</span>
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  {{ $u->name }} <span class="text-xs text-gray-400">({{ $u->division->name ?? 'Tanpa Divisi' }})</span>
+                </span>
               </label>
             @endforeach
+            <div x-show="userSearch && {{ json_encode($users->map(fn($u) => strtolower($u->name . ' ' . ($u->nip ?? '')))) }}.filter(str => str.includes(userSearch.toLowerCase())).length === 0"
+              class="py-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
+              Karyawan tidak ditemukan
+            </div>
           </div>
           <x-input-error for="user_ids" class="mt-1" />
         </div>

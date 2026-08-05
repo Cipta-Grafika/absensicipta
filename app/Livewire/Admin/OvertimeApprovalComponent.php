@@ -110,10 +110,14 @@ class OvertimeApprovalComponent extends Component
             abort(403, 'Unauthorized access.');
         }
 
+        $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee);
+
         $overtime->update([
             'status' => 'approved',
             'approved_by' => Auth::id(),
             'approval_date' => now(),
+            'applied_rate_amount' => $payData['applied_rate_amount'],
+            'total_pay' => $payData['total_pay'],
         ]);
 
         $this->banner('Pengajuan lembur berhasil disetujui.');

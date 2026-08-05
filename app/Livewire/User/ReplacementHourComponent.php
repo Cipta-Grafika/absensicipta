@@ -57,7 +57,7 @@ class ReplacementHourComponent extends Component
             $replacements = $query->paginate($this->perPage);
         }
             
-        $shifts = \App\Models\Shift::all();
+        $shifts = \App\Models\Shift::forUser(Auth::user())->get();
 
         return view('livewire.user.replacement-hour-component', [
             'replacements' => $replacements,

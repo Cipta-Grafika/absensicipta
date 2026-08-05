@@ -24,6 +24,7 @@ class EmployeeComponent extends Component
     public $showDetail = null;
 
     # filter
+    public ?string $status = null;
     public ?string $division = null;
     public ?string $jobTitle = null;
     public ?string $education = null;
@@ -98,7 +99,16 @@ class EmployeeComponent extends Component
         $resignCount = (clone $baseQuery)->where('status', 'resign')->count();
         $firedCount = (clone $baseQuery)->where('status', 'fired')->count();
 
-        $users = (clone $baseQuery)
+        $usersQuery = clone $baseQuery;
+
+        if (empty($this->status)) {
+            // Default filter: only show working employees (active & suspend)
+            $usersQuery->whereIn('status', ['active', 'suspend']);
+        } else {
+            $usersQuery->where('status', $this->status);
+        }
+
+        $users = $usersQuery
             ->when($this->search, function (Builder $q) {
                 return $q->where(function (Builder $query) {
                     $query->where('name', 'like', '%' . $this->search . '%')
@@ -109,7 +119,7 @@ class EmployeeComponent extends Component
             })
             ->when($this->division, function (Builder $q) {
                 if (auth()->user()->group === 'admin' && $this->division != auth()->user()->division_id) {
-                    return $q->whereRaw('1 = 0'); // Force empty result if admin tries to access other division
+                    return $q->whereRaw('1 = 0');
                 }
                 return $q->where('division_id', $this->division);
             })

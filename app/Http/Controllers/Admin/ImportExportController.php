@@ -15,4 +15,9 @@ class ImportExportController extends Controller
     {
         return view('admin.import-export.attendances');
     }
+
+    public function workSchedules()
+    {
+        return view('admin.import-export.work-schedules');
+    }
 }
