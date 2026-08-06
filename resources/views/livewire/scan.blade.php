@@ -163,7 +163,7 @@
         </div>
       </div>
 
-      <!-- 3. Navigation Buttons: Absensi & Slip Gaji -->
+      <!-- 3. Navigation Buttons: Absensi, Slip Gaji, Lembur & Ganti Jam -->
       <div class="grid grid-cols-2 gap-3">
         <a href="{{ route('attendance-history') }}" class="col-span-1 cursor-pointer">
           <div
@@ -179,13 +179,32 @@
             <span class="whitespace-nowrap">Slip Gaji</span>
           </div>
         </a>
+        <a href="{{ route('user.overtimes') }}" class="col-span-1 cursor-pointer">
+          <div
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-purple-600 dark:bg-purple-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-purple-700 dark:hover:bg-purple-500 md:gap-2">
+            <x-heroicon-o-fire class="h-5 w-5 text-white shrink-0" />
+            <span class="whitespace-nowrap">Lembur</span>
+          </div>
+        </a>
+        <a href="{{ route('user.replacement-hours') }}" class="col-span-1 cursor-pointer">
+          <div
+            class="flex flex-row items-center justify-center gap-2 rounded-md bg-amber-600 dark:bg-amber-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-amber-700 dark:hover:bg-amber-500 md:gap-2">
+            <x-heroicon-o-arrow-path class="h-5 w-5 text-white shrink-0" />
+            <span class="whitespace-nowrap">Ganti Jam</span>
+          </div>
+        </a>
       </div>
     </div>
   </div>
 
-  <hr class="my-6">
+  <hr class="my-6 border-gray-200 dark:border-gray-700">
 
   <!-- 4 Submission Action Buttons -->
+  <div class="mb-3 text-center">
+    <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+      PERIZINAN
+    </h3>
+  </div>
   <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4" wire:ignore>
     <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
       <div

@@ -106,6 +106,7 @@ class AttendanceHistoryComponent extends Component
             'sickCount' => $currentCounts['sick'],
             'leaveCount' => $currentCounts['leave'] + $currentCounts['special-leaves'],
             'absentCount' => $currentCounts['absent'],
+            'offDays' => \App\Services\AttendanceScheduleService::getUserOffDays($user),
         ]);
     }
 
