@@ -20,4 +20,12 @@ class ImportExportController extends Controller
     {
         return view('admin.import-export.work-schedules');
     }
+
+    public function holidays()
+    {
+        if (!auth()->user()->isSuperadmin) {
+            abort(403, 'Akses Ditolak. Hanya SuperAdmin yang berhak mengakses Impor & Ekspor Hari Libur.');
+        }
+        return view('admin.import-export.holidays');
+    }
 }

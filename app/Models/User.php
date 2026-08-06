@@ -26,6 +26,17 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
+    public static array $types = [
+        'full-time',
+        'contract',
+        'part-time',
+        'freelance',
+        'probation',
+        'intern',
+        'outsourcing',
+        'volunteer',
+    ];
+
     protected $fillable = [
         'nip',
         'name',
@@ -33,6 +44,7 @@ class User extends Authenticatable
         'password',
         'raw_password',
         'group',
+        'type',
         'phone',
         'gender',
         'birth_date',
@@ -47,6 +59,46 @@ class User extends Authenticatable
         'count_wfo',
         'off_days',
     ];
+
+    public static function generateNip(string $type = 'full-time', $date = null): string
+    {
+        $dt = $date ? \Carbon\Carbon::parse($date) : \Carbon\Carbon::now();
+        $yy = $dt->format('y');
+        $mm = $dt->format('m');
+
+        $prefix = match ($type) {
+            'part-time' => 'PT',
+            'freelance' => 'FR',
+            'probation' => 'PRB',
+            'intern' => 'INT',
+            default => '',
+        };
+
+        $padLength = in_array($prefix, ['PT', 'FR', 'PRB', 'INT']) ? 3 : 4;
+        $base = $prefix . $yy . $mm;
+
+        $existingNips = static::where('nip', 'like', $base . '%')->pluck('nip');
+
+        $maxSeq = 0;
+        foreach ($existingNips as $nip) {
+            $seqStr = substr($nip, strlen($base));
+            if (is_numeric($seqStr)) {
+                $maxSeq = max($maxSeq, (int) $seqStr);
+            }
+        }
+
+        $nextSeq = $maxSeq + 1;
+
+        do {
+            $candidate = $base . str_pad((string) $nextSeq, $padLength, '0', STR_PAD_LEFT);
+            $exists = static::where('nip', $candidate)->exists();
+            if ($exists) {
+                $nextSeq++;
+            }
+        } while ($exists);
+
+        return $candidate;
+    }
 
     /**
      * The attributes that should be hidden for serialization.

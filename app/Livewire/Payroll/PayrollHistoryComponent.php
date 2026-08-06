@@ -409,30 +409,16 @@ class PayrollHistoryComponent extends Component
 
                     $period_date = \Carbon\Carbon::parse($this->generate_period_month . '-01')->endOfMonth();
 
-                    // Save SavingTransaction
+                    // Save SavingTransaction via SavingTransactionService (prevents duplicates & recalculates true balances)
                     if ($syirkah_deduction > 0 && $savingProgram) {
-                        // Secure true balance calculation dynamically from SavingSummary
-                        $summary = \App\Models\SavingSummary::firstOrCreate(
-                            ['user_id' => $emp->id, 'savings_id' => $savingProgram->id],
-                            ['total_mandatory' => 0, 'total_secondary' => 0]
+                        \App\Services\SavingTransactionService::recordPayrollSyirkah(
+                            $emp->id,
+                            $savingProgram->id,
+                            $syirkah_mandatory,
+                            $syirkah_secondary,
+                            $this->generate_period_month,
+                            $payroll->id
                         );
-                        $balMandatory = $summary->total_mandatory;
-                        $balSecondary = $summary->total_secondary;
-                        
-                        $st = \App\Models\SavingTransaction::create([
-                            'user_id' => $emp->id,
-                            'savings_id' => $savingProgram->id,
-                            'transaction_type' => 'deposit',
-                            'mandatory_amount' => $syirkah_mandatory,
-                            'secondary_amount' => $syirkah_secondary,
-                            'balance_mandatory' => $balMandatory + $syirkah_mandatory,
-                            'balance_secondary' => $balSecondary + $syirkah_secondary,
-                            'reference_type' => 'payroll',
-                            'reference_id' => $payroll->id,
-                            'description' => 'Potongan Syirkah Payroll ' . $this->generate_period_month,
-                            'created_at' => $period_date,
-                            'updated_at' => $period_date,
-                        ]);
                     }
 
                     // Save LoanInstallments

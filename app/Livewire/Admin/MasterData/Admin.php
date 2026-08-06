@@ -28,6 +28,13 @@ class Admin extends Component
         $this->groups = User::$groups;
     }
 
+    public function mount()
+    {
+        if (!auth()->user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya SuperAdmin yang berhak mengelola Manajemen Admin.');
+        }
+    }
+
     public function show($id)
     {
         $this->form->setUser(User::find($id));
