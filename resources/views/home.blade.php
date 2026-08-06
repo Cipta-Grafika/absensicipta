@@ -14,9 +14,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Leaderboard Top 5 Widget -->
-      @livewire('leaderboard-widget')
     </div>
   </div>
 </x-app-layout>

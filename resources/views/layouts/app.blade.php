@@ -31,7 +31,7 @@
 </head>
 
 <body class="font-sans antialiased">
-  <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
+  <div class="flex min-h-screen flex-col justify-between bg-gray-100 dark:bg-gray-900">
     <x-banner />
     
     @livewire('navigation-menu')
@@ -46,9 +46,20 @@
     @endif
 
     <!-- Page Content -->
-    <main>
+    <main class="flex-grow">
       {{ $slot }}
     </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-gray-200/80 bg-white/80 py-4 dark:border-gray-800 dark:bg-gray-800/80 backdrop-blur-sm">
+      <div class="mx-auto flex max-w-7xl items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
+        <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />
+        <span>Crafted by</span>
+        <a href="https://zaenalalfian.cloud" target="_blank" rel="noopener noreferrer" class="font-semibold text-sky-500 underline transition-colors hover:text-sky-600 dark:text-sky-400 dark:hover:text-sky-300">
+          Zaenal Alfian
+        </a>
+      </div>
+    </footer>
   </div>
 
   @stack('modals')
