@@ -87,9 +87,11 @@
                   </x-dropdown-link>
                   <hr>
                 @endif
-                <x-dropdown-link href="{{ route('hr.masters.admin') }}" :active="request()->routeIs('hr.masters.admin')">
-                  {{ __('Admin') }}
-                </x-dropdown-link>
+                @if (Auth::user()?->isSuperadmin)
+                  <x-dropdown-link href="{{ route('hr.masters.admin') }}" :active="request()->routeIs('hr.masters.admin')">
+                    {{ __('Admin') }}
+                  </x-dropdown-link>
+                @endif
               </x-slot>
             </x-nav-dropdown>
             <x-nav-dropdown :active="request()->routeIs('hr.import-export.*')" triggerClasses="text-nowrap">
@@ -107,6 +109,11 @@
                 <x-dropdown-link href="{{ route('hr.import-export.work-schedules') }}" :active="request()->routeIs('hr.import-export.work-schedules')">
                   Jadwal Rolling
                 </x-dropdown-link>
+                @if (Auth::user()?->isSuperadmin)
+                  <x-dropdown-link href="{{ route('hr.import-export.holidays') }}" :active="request()->routeIs('hr.import-export.holidays')">
+                    Hari Libur
+                  </x-dropdown-link>
+                @endif
               </x-slot>
             </x-nav-dropdown>
           @endif
@@ -308,18 +315,25 @@
             Tarif Lembur
           </x-responsive-nav-link>
         @endif
-        <x-responsive-nav-link href="{{ route('hr.masters.admin') }}" :active="request()->routeIs('hr.masters.admin')">
-          {{ __('Admin Management') }}
-        </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('hr.import-export.users') }}" :active="request()->routeIs('hr.import-export')">
+        @if (Auth::user()?->isSuperadmin)
+          <x-responsive-nav-link href="{{ route('hr.masters.admin') }}" :active="request()->routeIs('hr.masters.admin')">
+            {{ __('Admin Management') }}
+          </x-responsive-nav-link>
+        @endif
+        <x-responsive-nav-link href="{{ route('hr.import-export.users') }}" :active="request()->routeIs('hr.import-export.users')">
           Import & Export Karyawan/Admin
         </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('hr.import-export.attendances') }}" :active="request()->routeIs('hr.import-export')">
+        <x-responsive-nav-link href="{{ route('hr.import-export.attendances') }}" :active="request()->routeIs('hr.import-export.attendances')">
           Import & Export Absensi
         </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('hr.import-export.work-schedules') }}" :active="request()->routeIs('hr.import-export')">
+        <x-responsive-nav-link href="{{ route('hr.import-export.work-schedules') }}" :active="request()->routeIs('hr.import-export.work-schedules')">
           Import & Export Jadwal Rolling
         </x-responsive-nav-link>
+        @if (Auth::user()?->isSuperadmin)
+          <x-responsive-nav-link href="{{ route('hr.import-export.holidays') }}" :active="request()->routeIs('hr.import-export.holidays')">
+            Import & Export Hari Libur
+          </x-responsive-nav-link>
+        @endif
       @endif
       @if (Auth::user()->isPayroll)
         <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
