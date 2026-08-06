@@ -20,6 +20,34 @@ class AttendanceScheduleService
     }
 
     /**
+     * Get the effective recurring off-days for a user.
+     * Priority: user's own off_days → division's off_days → ['sunday'] default.
+     * Returns array of lowercase day names e.g. ['sunday', 'saturday'].
+     */
+    public static function getUserOffDays(User $user): array
+    {
+        $userOffDays = is_array($user->off_days) ? array_map('strtolower', $user->off_days) : [];
+        if (!empty($userOffDays)) {
+            return $userOffDays;
+        }
+
+        $division = $user->relationLoaded('division')
+            ? $user->division
+            : ($user->division_id ? Division::find($user->division_id) : null);
+
+        $divisionOffDays = ($division && is_array($division->off_days))
+            ? array_map('strtolower', $division->off_days)
+            : [];
+
+        if (!empty($divisionOffDays)) {
+            return $divisionOffDays;
+        }
+
+        // System default
+        return ['sunday'];
+    }
+
+    /**
      * Get detailed schedule evaluation for a user on a given date.
      */
     public static function getScheduleDetails(User $user, Carbon|string $date): array

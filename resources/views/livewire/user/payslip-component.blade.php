@@ -61,7 +61,7 @@
             </div>
             
             <div class="mt-5 text-center">
-              <a href="{{ route('user.payslip.print', $pr->id) }}" target="_blank" class="block w-full rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-green-600 dark:text-white dark:hover:bg-green-500 transition-colors">
+              <a href="{{ route('user.payslip.print', $pr->id) }}" class="block w-full rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-green-600 dark:text-white dark:hover:bg-green-500 transition-colors">
                 <div class="flex items-center justify-center">
                   <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                   Unduh PDF
