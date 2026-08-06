@@ -17,6 +17,20 @@ class PaymentMethod extends Model
         'account_name',
     ];
 
+    public function setBankAccountAttribute($value)
+    {
+        $this->attributes['bank_account'] = is_string($value)
+            ? preg_replace('/[\x{200B}-\x{200D}\x{200E}\x{200F}\x{202A}-\x{202E}\x{FEFF}]/u', '', $value)
+            : $value;
+    }
+
+    public function getBankAccountAttribute($value)
+    {
+        return is_string($value)
+            ? preg_replace('/[\x{200B}-\x{200D}\x{200E}\x{200F}\x{202A}-\x{202E}\x{FEFF}]/u', '', $value)
+            : $value;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
