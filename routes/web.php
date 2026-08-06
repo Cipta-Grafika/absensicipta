@@ -158,6 +158,7 @@ Route::middleware([
         Route::get('/import-export/employee-salaries', [\App\Http\Controllers\Payroll\ImportExportController::class, 'employeeSalaries'])->name('import-export.employee-salaries');
         Route::get('/import-export/payment-methods', [\App\Http\Controllers\Payroll\ImportExportController::class, 'paymentMethods'])->name('import-export.payment-methods');
         Route::get('/import-export/savings', [\App\Http\Controllers\Payroll\ImportExportController::class, 'savings'])->name('import-export.savings');
+        Route::get('/import-export/saving-transactions', [\App\Http\Controllers\Payroll\ImportExportController::class, 'savingTransactions'])->name('import-export.saving-transactions');
     });
 
     // User Group (for Payslips)
