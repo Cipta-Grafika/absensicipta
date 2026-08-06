@@ -10,11 +10,21 @@
   </div>
   <h5 class="mt-3 text-sm dark:text-gray-200">Klik pada tanggal untuk melihat detail</h5>
   <div class="mt-4 flex w-full flex-col gap-3 lg:flex-row">
+    @php
+      /* Calendar is Sunday-first: M=Minggu(Sun) S=Senin(Mon) S=Selasa(Tue) R=Rabu(Wed) K=Kamis(Thu) J=Jumat(Fri) S=Sabtu(Sat) */
+      /* Carbon dayOfWeek: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat (matches this column order exactly) */
+      $calDayLabels = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
+      $calDayNames  = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      $calOffDays   = $offDays ?? ['sunday'];
+    @endphp
     <div class="grid w-full grid-cols-7 dark:text-white lg:w-[36rem]">
-      @foreach (['M', 'S', 'S', 'R', 'K', 'J', 'S'] as $day)
-        <div
-          class="{{ $day === 'M' ? 'text-red-500' : '' }} {{ $day === 'J' ? 'text-green-600 dark:text-green-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center dark:border-gray-600">
-          {{ $day }}
+      {{-- Use index-based loop — array_combine() silently drops duplicate keys ('S' × 3) leaving only 5 items --}}
+      @foreach ($calDayLabels as $idx => $dayAbbr)
+        @php
+          $isOffHeader = in_array($calDayNames[$idx], $calOffDays, true);
+        @endphp
+        <div class="{{ $isOffHeader ? 'text-red-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center dark:border-gray-600">
+          {{ $dayAbbr }}
         </div>
       @endforeach
       @if ($start->dayOfWeek !== 0)
@@ -75,11 +85,14 @@
                   break;
           }
         @endphp
+        @php
+          $dayIsOff = !$isWorkingDay && in_array(strtolower($date->format('l')), $calOffDays, true);
+          $dateNumClass = $dayIsOff ? 'text-red-500' : '';
+        @endphp
         @if ($attendance && isset($attendance['id']))
           <button class="{{ $bgColor }} h-14 w-full py-1 text-center" wire:click="show({{ $attendance['id'] }})"
             onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
-            <span
-              class="{{ $date->isSunday() ? 'text-red-500' : '' }} {{ $date->isFriday() ? 'text-green-600 dark:text-green-500' : '' }}">
+            <span class="{{ $dateNumClass }}">
               {{ $date->format('d') }}
             </span>
             <br>
@@ -87,8 +100,7 @@
           </button>
         @else
           <div class="{{ $bgColor }} h-14 py-1 text-center">
-            <span
-              class="{{ $date->isSunday() ? 'text-red-500' : '' }} {{ $date->isFriday() ? 'text-green-600 dark:text-green-500' : '' }}">
+            <span class="{{ $dateNumClass }}">
               {{ $date->format('d') }}
             </span>
             <br>

@@ -144,12 +144,18 @@
           @if (!$month)
             @foreach ($dates as $date)
               @php
-                if (!$isPerDayFilter && $date->isSunday()) {
-                    // Minggu merah
-                    $textClass = 'text-red-500 dark:text-red-300';
-                } elseif (!$isPerDayFilter && $date->isFriday()) {
-                    // Jumat hijau
-                    $textClass = 'text-green-500 dark:text-green-300';
+                // For week/daily table header: mark as red if it's a known off-day for ANY employee
+                // We use a general check here since this is the header row (across all employees)
+                // Individual cell coloring uses per-employee isWorkingDay
+                $isDefaultOff = $date->isSunday();
+                if (!$isPerDayFilter) {
+                    // Check the first employee's off_days to guide header (best-effort for mixed divisions)
+                    $headerEmployee = $employees->first();
+                    if ($headerEmployee) {
+                        $headerOffDays = \App\Services\AttendanceScheduleService::getUserOffDays($headerEmployee);
+                        $isDefaultOff = in_array(strtolower($date->format('l')), $headerOffDays, true);
+                    }
+                    $textClass = $isDefaultOff ? 'text-red-500 dark:text-red-300' : 'text-gray-500 dark:text-gray-300';
                 } else {
                     $textClass = 'text-gray-500 dark:text-gray-300';
                 }
@@ -535,9 +541,14 @@
         </div>
         <h5 class="mb-3 text-sm dark:text-gray-200">Klik pada tanggal untuk manipulasi absen</h5>
         <div class="grid w-full grid-cols-7 dark:text-white">
-          @foreach (['M', 'S', 'S', 'R', 'K', 'J', 'S'] as $day)
-            <div class="{{ $day === 'M' ? 'text-red-500' : '' }} {{ $day === 'J' ? 'text-green-600 dark:text-green-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center dark:border-gray-600">
-              {{ $day }}
+          @foreach (['M', 'S', 'S', 'R', 'K', 'J', 'S'] as $idx => $calDay)
+            @php
+              $calDayNamesIdx = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+              $detailOffDays = $detailUser ? \App\Services\AttendanceScheduleService::getUserOffDays($detailUser) : ['sunday'];
+              $isOffHeader = in_array($calDayNamesIdx[$idx] ?? '', $detailOffDays, true);
+            @endphp
+            <div class="{{ $isOffHeader ? 'text-red-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center dark:border-gray-600">
+              {{ $calDay }}
             </div>
           @endforeach
           
@@ -607,7 +618,11 @@
             @endphp
             <button type="button" class="{{ $bgColor }} h-14 w-full py-1 text-center" 
                     @if (Auth::user()->isAdmin) wire:click="editAttendance('{{ $detailUser->id }}', '{{ $date->format('Y-m-d') }}')" @endif>
-              <span class="{{ !$isWorkingDay ? 'text-red-500' : '' }} {{ $date->isFriday() ? 'text-green-600 dark:text-green-500' : '' }}">
+              @php
+                $detailOffDays = $detailOffDays ?? \App\Services\AttendanceScheduleService::getUserOffDays($detailUser);
+                $dateIsOff = !$isWorkingDay && in_array(strtolower($date->format('l')), $detailOffDays, true);
+              @endphp
+              <span class="{{ $dateIsOff ? 'text-red-500' : '' }}">
                 {{ $date->format('d') }}
               </span>
               <br>
