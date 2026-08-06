@@ -27,6 +27,7 @@ class EmployeeComponent extends Component
     public ?string $status = null;
     public ?string $division = null;
     public ?string $jobTitle = null;
+    public ?string $type = null;
     public ?string $education = null;
     public ?string $search = null;
 
@@ -43,6 +44,18 @@ class EmployeeComponent extends Component
         $this->form->reset();
         $this->creating = true;
         $this->form->password = 'password';
+        $this->form->type = 'full-time';
+        $this->form->nip = User::generateNip($this->form->type);
+    }
+
+    public function updatedFormType($value)
+    {
+        $this->form->nip = User::generateNip($value ?: 'full-time');
+    }
+
+    public function regenerateNip()
+    {
+        $this->form->nip = User::generateNip($this->form->type ?: 'full-time');
     }
 
     public function create()
@@ -124,6 +137,7 @@ class EmployeeComponent extends Component
                 return $q->where('division_id', $this->division);
             })
             ->when($this->jobTitle, fn (Builder $q) => $q->where('job_title_id', $this->jobTitle))
+            ->when($this->type, fn (Builder $q) => $q->where('type', $this->type))
             ->when($this->education, fn (Builder $q) => $q->where('education_id', $this->education))
             ->orderBy('name')
             ->paginate(20);
