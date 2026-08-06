@@ -20,4 +20,9 @@ class ImportExportController extends Controller
     {
         return view('payroll.import-export.savings');
     }
+
+    public function savingTransactions()
+    {
+        return view('payroll.import-export.saving-transactions');
+    }
 }
