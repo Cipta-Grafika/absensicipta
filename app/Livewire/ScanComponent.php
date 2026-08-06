@@ -143,7 +143,8 @@ class ScanComponent extends Component
     {
         $this->attendance = $attendance;
         $this->shift_id = $attendance->shift_id;
-        $this->isAbsence = $attendance->status !== 'present' && $attendance->status !== 'late';
+        // Only set isAbsence to true for full day leave / total absence statuses
+        $this->isAbsence = in_array($attendance->status, ['sick', 'leave', 'permit', 'absent', 'dayoff']);
     }
 
     public function getAttendance()
@@ -248,23 +249,26 @@ class ScanComponent extends Component
 
         $days_divisor = $salary->working_days_per_month ?? 25;
         $fixed_income = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
-        $daily_rate_approx = $days_divisor > 0 ? $fixed_income / $days_divisor : 0;
+        $daily_rate_approx = ($days_divisor > 0) ? ($fixed_income / $days_divisor) : 0;
 
-        $total_absent = $missing_absent_days + $attendances->where('status', 'absent')->count();
-        $total_excused = $attendances->where('status', 'excused')->count();
-        $total_sick = $attendances->where('status', 'sick')->count();
-        $total_wfh = $attendances->where('status', 'wfh')->count();
+        $total_absent = $missing_absent_days;
 
-        // Late Minutes
         $total_late_minutes = 0;
-        foreach ($attendances->where('status', 'late') as $att) {
-            if ($att->shift && $att->time_in) {
-                $timeIn = Carbon::parse($att->time_in);
-                $shiftStart = Carbon::parse($att->shift->start_time);
-                if ($timeIn->greaterThan($shiftStart)) {
-                    $total_late_minutes += $timeIn->diffInMinutes($shiftStart);
+        $total_sick = 0;
+        $total_excused = 0;
+        $total_wfh = 0;
+
+        foreach ($attendances as $att) {
+            if ($att->status == 'late' && $att->shift) {
+                $time_in = Carbon::parse($att->time_in);
+                $shift_start = Carbon::parse($att->date . ' ' . $att->shift->start_time);
+                if ($time_in->gt($shift_start)) {
+                    $total_late_minutes += $time_in->diffInMinutes($shift_start);
                 }
             }
+            if ($att->status == 'sick') $total_sick++;
+            if ($att->status == 'permit') $total_excused++;
+            if ($att->status == 'wfh') $total_wfh++;
         }
 
         // Unreplaced IMP Minutes
@@ -316,6 +320,17 @@ class ScanComponent extends Component
 
     public function render()
     {
-        return view('livewire.scan');
+        return view('livewire.scan', [
+            'attendance' => $this->attendance,
+            'shift_id' => $this->shift_id,
+            'shifts' => $this->shifts ?: Shift::forUser(Auth::user())->get(),
+            'currentLiveCoords' => $this->currentLiveCoords,
+            'successMsg' => $this->successMsg,
+            'isAbsence' => $this->isAbsence,
+            'showMotivationModal' => $this->showMotivationModal,
+            'showLocationMapModal' => $this->showLocationMapModal,
+            'realtimeDeduction' => $this->getRealtimeDeduction(),
+            'errors' => session('errors', new \Illuminate\Support\ViewErrorBag),
+        ]);
     }
 }

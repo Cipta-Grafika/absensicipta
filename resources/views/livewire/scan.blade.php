@@ -120,7 +120,7 @@
         <div>
           <h4 class="text-base font-semibold sm:text-lg md:text-xl">Potongan</h4>
           <div class="font-bold text-red-700 dark:text-red-200 text-xs sm:text-sm md:text-base">
-            Rp {{ number_format($this->getRealtimeDeduction(), 0, ',', '.') }}
+            Rp {{ number_format($realtimeDeduction ?? 0, 0, ',', '.') }}
           </div>
         </div>
       </div>

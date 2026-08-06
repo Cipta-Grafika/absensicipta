@@ -69,6 +69,18 @@ class ApplyLeaveModalComponent extends Component
         $this->modalMode = 'imp';
         $this->status = 'imp';
         $this->from = date('Y-m-d');
+
+        // Default shift: prioritize division shift first
+        $user = Auth::user();
+        if ($user) {
+            $shifts = Shift::forUser($user)
+                ->orderByRaw('CASE WHEN division_id = ? THEN 0 ELSE 1 END', [$user->division_id ?? 0])
+                ->orderBy('name', 'asc')
+                ->get();
+            $defaultShift = $shifts->where('division_id', $user->division_id)->first() ?? $shifts->first();
+            $this->shift_id = $defaultShift ? $defaultShift->id : '';
+        }
+
         $this->isModalOpen = true;
     }
 
@@ -216,8 +228,24 @@ class ApplyLeaveModalComponent extends Component
 
     public function render()
     {
+        $user = Auth::user();
+        $shifts = Shift::forUser($user)
+            ->orderByRaw('CASE WHEN division_id = ? THEN 0 ELSE 1 END', [$user->division_id ?? 0])
+            ->orderBy('name', 'asc')
+            ->get();
+
         return view('livewire.user.apply-leave-modal-component', [
-            'shifts' => Shift::forUser(Auth::user())->get()
+            'shifts' => $shifts,
+            'modalMode' => $this->modalMode,
+            'status' => $this->status,
+            'note' => $this->note,
+            'from' => $this->from,
+            'to' => $this->to,
+            'imp_duration_minutes' => $this->imp_duration_minutes,
+            'shift_id' => $this->shift_id,
+            'attachment' => $this->attachment,
+            'isModalOpen' => $this->isModalOpen,
+            'errors' => session('errors', new \Illuminate\Support\ViewErrorBag),
         ]);
     }
 }
