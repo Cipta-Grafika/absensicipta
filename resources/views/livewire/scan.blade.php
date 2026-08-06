@@ -214,8 +214,12 @@
         <x-heroicon-o-calendar class="h-5 w-5 text-white shrink-0" />
         <span class="whitespace-nowrap">Ajukan Cuti</span>
       </div>
-    </a>
   </div>
+
+  <!-- Separator & Integrated Dual Leaderboard Widget -->
+  <hr class="my-8 border-gray-200 dark:border-gray-700">
+
+  @livewire('leaderboard-widget')
 
   <!-- Motivational Modal -->
   <x-dialog-modal wire:model.live="showMotivationModal" maxWidth="sm">

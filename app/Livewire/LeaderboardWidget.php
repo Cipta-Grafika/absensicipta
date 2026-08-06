@@ -25,24 +25,42 @@ class LeaderboardWidget extends Component
             EmployeeMonthlyStat::recalculateForPeriod($this->period);
         }
 
-        $query = EmployeeMonthlyStat::with(['user', 'division'])
-            ->where('period', $this->period);
-
-        // Scope to user's division for regular users / admin
-        if ($user && !$user->isSuperadmin && $user->division_id) {
-            $divisionQuery = (clone $query)->where('division_id', $user->division_id);
-            if ($divisionQuery->exists()) {
-                $query = $divisionQuery;
-            }
-        }
-
-        $topEmployees = $query->orderByDesc('score')
+        // 1. Global Leaderboard (Seluruh Karyawan)
+        $globalTopEmployees = EmployeeMonthlyStat::with(['user', 'division'])
+            ->where('period', $this->period)
+            ->orderByDesc('score')
             ->orderByDesc('total_early_minutes')
             ->take(5)
             ->get();
 
+        // 2. Division Leaderboard (Per Divisi)
+        $divisionQuery = EmployeeMonthlyStat::with(['user', 'division'])
+            ->where('period', $this->period);
+
+        $divisionName = null;
+        if ($user && $user->division_id) {
+            $divisionQuery->where('division_id', $user->division_id);
+            $divisionName = $user->division?->name;
+        }
+
+        $divisionTopEmployees = $divisionQuery->orderByDesc('score')
+            ->orderByDesc('total_early_minutes')
+            ->take(5)
+            ->get();
+
+        $globalRankComments = [
+            0 => 'Terlalu Menyala🔥',
+            1 => 'Gokill',
+            2 => 'Mantappu',
+            3 => 'Well Done',
+            4 => 'Okelah. Not bad',
+        ];
+
         return view('livewire.leaderboard-widget', [
-            'topEmployees' => $topEmployees,
+            'globalTopEmployees' => $globalTopEmployees,
+            'divisionTopEmployees' => $divisionTopEmployees,
+            'divisionName' => $divisionName,
+            'globalRankComments' => $globalRankComments,
             'periodName' => Carbon::now()->translatedFormat('F Y'),
         ]);
     }
