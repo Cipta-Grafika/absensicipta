@@ -170,6 +170,9 @@
                 <x-dropdown-link href="{{ route('payroll.import-export.savings') }}" :active="request()->routeIs('payroll.import-export.savings')">
                   Syirkah
                 </x-dropdown-link>
+                <x-dropdown-link href="{{ route('payroll.import-export.saving-transactions') }}" :active="request()->routeIs('payroll.import-export.saving-transactions')">
+                  Mutasi Syirkah
+                </x-dropdown-link>
               </x-slot>
             </x-nav-dropdown>
           @endif
@@ -369,6 +372,9 @@
           </x-responsive-nav-link>
           <x-responsive-nav-link href="{{ route('payroll.import-export.savings') }}" :active="request()->routeIs('payroll.import-export.savings')">
             Syirkah
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.import-export.saving-transactions') }}" :active="request()->routeIs('payroll.import-export.saving-transactions')">
+            Mutasi Syirkah
           </x-responsive-nav-link>
         </div>
       @endif
