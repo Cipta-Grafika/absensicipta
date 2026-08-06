@@ -79,6 +79,8 @@ Route::middleware([
                 ->name('hr.masters.leaderboard');
             Route::get('/masterdata/scan-feedback', [MasterDataController::class, 'scanFeedback'])
                 ->name('hr.masters.scan-feedback');
+            Route::get('/masterdata/admin', [MasterDataController::class, 'admin'])
+                ->name('hr.masters.admin');
         });
 
         // User/Employee/Karyawan
@@ -91,8 +93,6 @@ Route::middleware([
             ->name('hr.masters.shift');
         Route::get('/masterdata/overtime-rate', [MasterDataController::class, 'overtimeRate'])
             ->name('hr.masters.overtime-rate');
-        Route::get('/masterdata/admin', [MasterDataController::class, 'admin'])
-            ->name('hr.masters.admin');
 
         // Presence/Absensi
         Route::get('/attendances', [AttendanceController::class, 'index'])
@@ -130,6 +130,8 @@ Route::middleware([
             ->name('hr.import-export.attendances');
         Route::get('/import-export/work-schedules', [ImportExportController::class, 'workSchedules'])
             ->name('hr.import-export.work-schedules');
+        Route::get('/import-export/holidays', [ImportExportController::class, 'holidays'])
+            ->name('hr.import-export.holidays');
 
         Route::post('/users/import', [ImportExportController::class, 'importUsers'])
             ->name('hr.users.import');
