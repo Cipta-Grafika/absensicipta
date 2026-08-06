@@ -68,14 +68,14 @@
           </div>
 
           <!-- Floating Location Badge (Bottom Center) -->
-          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-            <button type="button" x-show="hasLocation" wire:click="$set('showLocationMapModal', true)"
+          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center justify-center">
+            <button type="button" x-cloak x-show="hasLocation" wire:click="$set('showLocationMapModal', true)"
               class="inline-flex h-8 items-center gap-2 rounded-full bg-emerald-50/90 dark:bg-emerald-950/90 px-3.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200/90 dark:border-emerald-800/90 shadow-md backdrop-blur-sm transition hover:bg-emerald-100 dark:hover:bg-emerald-900/90">
               <x-heroicon-s-check-circle class="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span class="whitespace-nowrap">Lokasi Terdeteksi</span>
               <x-heroicon-o-map-pin class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-0.5" />
             </button>
-            <div x-show="!hasLocation"
+            <div x-cloak x-show="!hasLocation"
               class="inline-flex h-8 items-center gap-2 rounded-full bg-red-50/90 dark:bg-red-950/90 px-3.5 text-xs font-semibold text-red-700 dark:text-red-300 border border-red-200/90 dark:border-red-800/90 shadow-md backdrop-blur-sm">
               <x-heroicon-s-x-circle class="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
               <span class="whitespace-nowrap">Lokasi Belum Terdeteksi</span>
@@ -98,14 +98,14 @@
             <span>{{ now()->isoFormat('D MMMM YYYY') }}</span>
           </div>
 
-          <div>
-            <button type="button" x-show="hasLocation" wire:click="$set('showLocationMapModal', true)"
+          <div class="flex items-center justify-center">
+            <button type="button" x-cloak x-show="hasLocation" wire:click="$set('showLocationMapModal', true)"
               class="inline-flex h-8 items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-900/50 px-3.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 shadow-sm transition hover:bg-emerald-100 dark:hover:bg-emerald-900/80">
               <x-heroicon-s-check-circle class="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>Lokasi Terdeteksi</span>
               <x-heroicon-o-map-pin class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-0.5" />
             </button>
-            <div x-show="!hasLocation"
+            <div x-cloak x-show="!hasLocation"
               class="inline-flex h-8 items-center gap-2 rounded-full bg-red-50 dark:bg-red-900/50 px-3.5 text-xs font-semibold text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60 shadow-sm">
               <x-heroicon-s-x-circle class="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
               <span>Lokasi Belum Terdeteksi</span>
@@ -216,6 +216,11 @@
       </div>
     </a>
   </div>
+
+  <!-- Separator & Integrated Dual Leaderboard Widget -->
+  <hr class="my-8 border-gray-200 dark:border-gray-700">
+
+  @livewire('leaderboard-widget')
 
   <!-- Motivational Modal -->
   <x-dialog-modal wire:model.live="showMotivationModal" maxWidth="sm">
