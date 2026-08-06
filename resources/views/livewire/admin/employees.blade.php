@@ -36,7 +36,7 @@
   <x-filter-sidebar maxWidth="sm">
     <x-slot name="title">Karyawan Filters</x-slot>
     <x-slot name="actions">
-      <button type="button" wire:click="$set('status', ''); $set('division', ''); $set('jobTitle', ''); $set('education', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
+      <button type="button" wire:click="$set('status', ''); $set('division', ''); $set('jobTitle', ''); $set('type', ''); $set('education', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
         </svg>
@@ -78,6 +78,20 @@
                 {{ $_jobTitle->name }}
               </option>
             @endforeach
+          </x-select>
+        </div>
+        <div>
+          <x-label for="type_filter" value="Pilih Tipe Karyawan" class="mb-1"></x-label>
+          <x-select id="type_filter" class="w-full" wire:model.live="type">
+            <option value="">Semua Tipe Karyawan</option>
+            <option value="full-time">Full-time</option>
+            <option value="contract">Kontrak (Contract)</option>
+            <option value="part-time">Part-time (PT)</option>
+            <option value="freelance">Freelance (FR)</option>
+            <option value="probation">Probation (PRB)</option>
+            <option value="intern">Internship (INT)</option>
+            <option value="outsourcing">Outsourcing</option>
+            <option value="volunteer">Volunteer</option>
           </x-select>
         </div>
         <div>
@@ -266,17 +280,38 @@
           </div>
         @endif
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
-          <div class="w-full">
+          <div class="w-full sm:w-1/3">
             <x-label for="name">Nama Karyawan</x-label>
-            <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" />
+            <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" required />
             @error('form.name')
               <x-input-error for="form.name" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
-          <div class="w-full">
-            <x-label for="nip">NIP</x-label>
-            <x-input id="nip" class="mt-1 block w-full" type="text" wire:model="form.nip"
-              placeholder="12345678" required />
+          <div class="w-full sm:w-1/3">
+            <x-label for="type">Tipe Karyawan</x-label>
+            <x-select id="type" class="mt-1 block w-full" wire:model.live="form.type">
+              <option value="full-time">Full-time</option>
+              <option value="contract">Kontrak (Contract)</option>
+              <option value="part-time">Part-time (PT)</option>
+              <option value="freelance">Freelance (FR)</option>
+              <option value="probation">Probation (PRB)</option>
+              <option value="intern">Internship (INT)</option>
+              <option value="outsourcing">Outsourcing</option>
+              <option value="volunteer">Volunteer</option>
+            </x-select>
+            @error('form.type')
+              <x-input-error for="form.type" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full sm:w-1/3">
+            <div class="flex items-center justify-between">
+              <x-label for="nip">NIP (Auto / Manual)</x-label>
+              <button type="button" wire:click="regenerateNip" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                Generate
+              </button>
+            </div>
+            <x-input id="nip" class="mt-1 block w-full" type="text" wire:model.live="form.nip"
+              placeholder="Contoh: 26080001" required />
             @error('form.nip')
               <x-input-error for="form.nip" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -503,17 +538,38 @@
           </div>
         @endif
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
-          <div class="w-full">
+          <div class="w-full sm:w-1/3">
             <x-label for="name">Nama Karyawan</x-label>
             <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" />
             @error('form.name')
               <x-input-error for="form.name" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
-          <div class="w-full">
-            <x-label for="nip">NIP</x-label>
-            <x-input id="nip" class="mt-1 block w-full" type="text" wire:model="form.nip"
-              placeholder="12345678" required />
+          <div class="w-full sm:w-1/3">
+            <x-label for="type_edit">Tipe Karyawan</x-label>
+            <x-select id="type_edit" class="mt-1 block w-full" wire:model.live="form.type">
+              <option value="full-time">Full-time</option>
+              <option value="contract">Kontrak (Contract)</option>
+              <option value="part-time">Part-time (PT)</option>
+              <option value="freelance">Freelance (FR)</option>
+              <option value="probation">Probation (PRB)</option>
+              <option value="intern">Internship (INT)</option>
+              <option value="outsourcing">Outsourcing</option>
+              <option value="volunteer">Volunteer</option>
+            </x-select>
+            @error('form.type')
+              <x-input-error for="form.type" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full sm:w-1/3">
+            <div class="flex items-center justify-between">
+              <x-label for="nip_edit">NIP</x-label>
+              <button type="button" wire:click="regenerateNip" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                Auto Generate
+              </button>
+            </div>
+            <x-input id="nip_edit" class="mt-1 block w-full" type="text" wire:model.live="form.nip"
+              placeholder="Contoh: 26080001" required />
             @error('form.nip')
               <x-input-error for="form.nip" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -689,14 +745,14 @@
   <x-modal wire:model="showDetail">
     @if ($form->user)
       @php
-        $division = $form->user->division ? json_decode($form->user->division)->name : '-';
-        $jobTitle = $form->user->jobTitle ? json_decode($form->user->jobTitle)->name : '-';
-        $education = $form->user->education ? json_decode($form->user->education)->name : '-';
+        $division = $form->user->division?->name ?? '-';
+        $jobTitle = $form->user->jobTitle?->name ?? '-';
+        $education = $form->user->education?->name ?? '-';
       @endphp
       <div class="px-6 py-4">
         <div class="my-4 flex items-center justify-center">
-          <img class="h-32 w-32 rounded-full object-cover" src="{{ $user->profile_photo_url }}"
-            alt="{{ $user->name }}" />
+          <img class="h-32 w-32 rounded-full object-cover" src="{{ $form->user->profile_photo_url }}"
+            alt="{{ $form->user->name }}" />
         </div>
 
         <div class="text-center text-lg font-medium text-gray-900 dark:text-gray-100">

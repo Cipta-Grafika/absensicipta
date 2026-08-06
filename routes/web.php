@@ -79,6 +79,8 @@ Route::middleware([
                 ->name('hr.masters.leaderboard');
             Route::get('/masterdata/scan-feedback', [MasterDataController::class, 'scanFeedback'])
                 ->name('hr.masters.scan-feedback');
+            Route::get('/masterdata/admin', [MasterDataController::class, 'admin'])
+                ->name('hr.masters.admin');
         });
 
         // User/Employee/Karyawan
@@ -91,8 +93,6 @@ Route::middleware([
             ->name('hr.masters.shift');
         Route::get('/masterdata/overtime-rate', [MasterDataController::class, 'overtimeRate'])
             ->name('hr.masters.overtime-rate');
-        Route::get('/masterdata/admin', [MasterDataController::class, 'admin'])
-            ->name('hr.masters.admin');
 
         // Presence/Absensi
         Route::get('/attendances', [AttendanceController::class, 'index'])
@@ -130,6 +130,8 @@ Route::middleware([
             ->name('hr.import-export.attendances');
         Route::get('/import-export/work-schedules', [ImportExportController::class, 'workSchedules'])
             ->name('hr.import-export.work-schedules');
+        Route::get('/import-export/holidays', [ImportExportController::class, 'holidays'])
+            ->name('hr.import-export.holidays');
 
         Route::post('/users/import', [ImportExportController::class, 'importUsers'])
             ->name('hr.users.import');
@@ -156,6 +158,7 @@ Route::middleware([
         Route::get('/import-export/employee-salaries', [\App\Http\Controllers\Payroll\ImportExportController::class, 'employeeSalaries'])->name('import-export.employee-salaries');
         Route::get('/import-export/payment-methods', [\App\Http\Controllers\Payroll\ImportExportController::class, 'paymentMethods'])->name('import-export.payment-methods');
         Route::get('/import-export/savings', [\App\Http\Controllers\Payroll\ImportExportController::class, 'savings'])->name('import-export.savings');
+        Route::get('/import-export/saving-transactions', [\App\Http\Controllers\Payroll\ImportExportController::class, 'savingTransactions'])->name('import-export.saving-transactions');
     });
 
     // User Group (for Payslips)

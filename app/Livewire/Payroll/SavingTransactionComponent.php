@@ -124,6 +124,8 @@ class SavingTransactionComponent extends Component
                 'description' => $this->withdrawal_description ?: 'Pencairan Syirkah',
             ]);
 
+            \App\Services\SavingTransactionService::recalculateUserTransactions($this->withdrawal_user_id, $this->withdrawal_savings_id);
+
             DB::commit();
             $this->closeWithdrawalModal();
             $this->dispatch('notify', 'Pencairan berhasil dicatat.');
