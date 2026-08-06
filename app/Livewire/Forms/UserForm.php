@@ -21,6 +21,7 @@ class UserForm extends Form
     public $city = '';
     public $address = '';
     public $group = 'user';
+    public $type = 'full-time';
     public $birth_date = null;
     public $birth_place = '';
     public $status = 'active';
@@ -41,7 +42,12 @@ class UserForm extends Form
                 'max:255',
                 Rule::unique('users')->ignore($this->user)
             ],
-            'nip' => [$requiredOrNullable, 'string', 'max:255'],
+            'nip' => [
+                $requiredOrNullable,
+                'string',
+                'max:255',
+                Rule::unique('users')->ignore($this->user)
+            ],
             'email' => [
                 'required',
                 'email',
@@ -54,6 +60,7 @@ class UserForm extends Form
             'city' => [$requiredOrNullable, 'string', 'max:255'],
             'address' => [$requiredOrNullable, 'string', 'max:255'],
             'group' => ['nullable', 'string', 'max:255', Rule::in(User::$groups)],
+            'type' => ['required', 'string', Rule::in(User::$types)],
             'birth_date' => ['nullable', 'date'],
             'birth_place' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:active,inactive,resign,suspend,fired'],
@@ -81,6 +88,7 @@ class UserForm extends Form
         $this->city = $user->city;
         $this->address = $user->address;
         $this->group = $user->group;
+        $this->type = $user->type ?? 'full-time';
         $this->birth_date = $user->birth_date
             ? \Illuminate\Support\Carbon::parse($user->birth_date)->format('Y-m-d')
             : null;
