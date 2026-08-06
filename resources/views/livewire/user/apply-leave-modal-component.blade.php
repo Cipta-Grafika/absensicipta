@@ -36,11 +36,37 @@
                     @elseif($modalMode === 'imp')
                         <div class="sm:col-span-1">
                             <x-label for="shift_id" value="Pilih Shift" />
-                            <x-select id="shift_id" wire:model="shift_id" class="mt-1 block w-full" required>
+                            <x-select id="shift_id" wire:model="shift_id" class="mt-1 block w-full font-semibold" required>
                                 <option value="">-- Pilih Shift --</option>
-                                @foreach($shifts as $shift)
-                                    <option value="{{ $shift->id }}">{{ $shift->name }} (Target: {{ floor(\Carbon\Carbon::parse($shift->start_time)->diffInMinutes(\Carbon\Carbon::parse($shift->end_time)) / 60) }} jam)</option>
-                                @endforeach
+                                @php
+                                    $userDivId = auth()->user()->division_id;
+                                    $divisionShifts = $shifts->filter(fn($s) => $s->division_id == $userDivId && !is_null($s->division_id));
+                                    $globalShifts = $shifts->filter(fn($s) => is_null($s->division_id));
+                                @endphp
+
+                                @if($divisionShifts->count() > 0)
+                                    <optgroup label="Shift Divisi (Prioritas Utama)">
+                                        @foreach($divisionShifts as $shift)
+                                            @php
+                                                $duration = \Carbon\Carbon::parse($shift->start_time)->diffInMinutes(\Carbon\Carbon::parse($shift->end_time));
+                                                $hours = floor($duration / 60);
+                                            @endphp
+                                            <option value="{{ $shift->id }}">{{ $shift->name }} (Target: {{ $hours }} jam)</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+
+                                @if($globalShifts->count() > 0)
+                                    <optgroup label="Shift Global">
+                                        @foreach($globalShifts as $shift)
+                                            @php
+                                                $duration = \Carbon\Carbon::parse($shift->start_time)->diffInMinutes(\Carbon\Carbon::parse($shift->end_time));
+                                                $hours = floor($duration / 60);
+                                            @endphp
+                                            <option value="{{ $shift->id }}">{{ $shift->name }} (Target: {{ $hours }} jam)</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
                             </x-select>
                             <x-input-error for="shift_id" class="mt-2" />
                         </div>
@@ -67,10 +93,23 @@
                         </div>
                     @else
                         <div class="sm:col-span-1">
-                            <x-label for="imp_duration_minutes" value="Durasi IMP (HH:MM)" />
-                            <x-input type="text" id="imp_duration_minutes" wire:model="imp_duration_minutes"
-                                pattern="^[0-9]+:[0-5][0-9]$" class="mt-1 block w-full"
-                                placeholder="Contoh: 1:30" required />
+                            <x-label for="imp_duration_minutes" value="Durasi IMP (jam:menit)" />
+                            <x-input type="text"
+                                     id="imp_duration_minutes"
+                                     inputmode="numeric"
+                                     placeholder="Contoh: 2:30 atau 0:20"
+                                     maxlength="5"
+                                     x-data
+                                     x-on:input="
+                                       let v = $el.value.replace(/\D/g, '').slice(0, 4);
+                                       if (v.length >= 3) v = v.slice(0, v.length - 2) + ':' + v.slice(v.length - 2);
+                                       $el.value = v;
+                                       $wire.set('imp_duration_minutes', v);
+                                     "
+                                     value="{{ $imp_duration_minutes }}"
+                                     class="mt-1 block w-full font-semibold tracking-wider"
+                                     required />
+                            <span class="text-[11px] text-gray-400">Format: jam:menit (contoh: 2:30 atau 0:20)</span>
                             <x-input-error for="imp_duration_minutes" class="mt-2" />
                         </div>
                     @endif

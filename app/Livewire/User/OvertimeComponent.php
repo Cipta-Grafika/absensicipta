@@ -3,6 +3,8 @@
 namespace App\Livewire\User;
 
 use App\Models\Overtime;
+use App\Models\OvertimeRate;
+use App\Services\AttendanceScheduleService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -13,18 +15,40 @@ class OvertimeComponent extends Component
 {
     use WithPagination, InteractsWithBanner;
 
+    public ?string $month = null;
     public $overtime_date;
     public $start_time;
     public $end_time;
     public $reason;
     public $modalError;
+    public $selectedDateDisplay = '';
+    public $activeCalendarDate = null;
 
-    public $isModalOpen = false;
+    public $selectedOvertime = null;
+    public $isDateModalOpen = false;
+    public $isDetailModalOpen = false;
     public $perPage = 10;
+
+    public function mount()
+    {
+        $this->month = date('Y-m');
+    }
+
+    public function updatingMonth()
+    {
+        $this->resetPage();
+    }
 
     public function updatingPerPage()
     {
         $this->resetPage();
+    }
+
+    public function updatedOvertimeDate($val)
+    {
+        if ($val) {
+            $this->activeCalendarDate = Carbon::parse($val)->format('Y-m-d');
+        }
     }
 
     protected $rules = [
@@ -34,12 +58,35 @@ class OvertimeComponent extends Component
         'reason' => 'required|string|max:1000',
     ];
 
+    protected $messages = [
+        'overtime_date.required' => 'Tanggal lembur wajib dipilih.',
+        'start_time.required' => 'Jam mulai wajib diisi.',
+        'start_time.date_format' => 'Format jam mulai harus HH:MM (contoh: 10:30).',
+        'end_hour.required' => 'Jam selesai wajib diisi.',
+        'end_time.date_format' => 'Format jam selesai harus HH:MM (contoh: 17:30).',
+        'reason.required' => 'Alasan / kegiatan lembur wajib diisi.',
+    ];
+
     public function render()
     {
-        $now = Carbon::now();
-        $query = Overtime::where('employee_id', Auth::id())
-            ->whereMonth('overtime_date', $now->month)
-            ->whereYear('overtime_date', $now->year)
+        $user = Auth::user();
+        $selectedMonth = $this->month ?: date('Y-m');
+        $date = Carbon::parse($selectedMonth);
+
+        $start = Carbon::parse($selectedMonth)->startOfMonth();
+        $end = Carbon::parse($selectedMonth)->endOfMonth();
+        $dates = $start->range($end)->toArray();
+
+        // Fetch overtime records for calendar visualization
+        $monthOvertimes = Overtime::where('employee_id', $user->id)
+            ->whereBetween('overtime_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
+            ->get();
+
+        // Paginated table query for selected month
+        $query = Overtime::where('employee_id', $user->id)
+            ->whereMonth('overtime_date', $date->month)
+            ->whereYear('overtime_date', $date->year)
+            ->orderBy('overtime_date', 'desc')
             ->orderBy('created_at', 'desc');
 
         if ($this->perPage === 'all') {
@@ -48,21 +95,68 @@ class OvertimeComponent extends Component
             $overtimes = $query->paginate($this->perPage);
         }
 
+        $offDays = AttendanceScheduleService::getUserOffDays($user);
+
         return view('livewire.user.overtime-component', [
             'overtimes' => $overtimes,
+            'monthOvertimes' => $monthOvertimes,
+            'dates' => $dates,
+            'start' => $start,
+            'end' => $end,
+            'offDays' => $offDays,
+            'month' => $selectedMonth,
+            'activeCalendarDate' => $this->activeCalendarDate,
+            'isDateModalOpen' => $this->isDateModalOpen,
+            'isDetailModalOpen' => $this->isDetailModalOpen,
+            'overtime_date' => $this->overtime_date,
+            'selectedDateDisplay' => $this->selectedDateDisplay,
+            'modalError' => $this->modalError,
+            'start_time' => $this->start_time,
+            'end_time' => $this->end_time,
+            'reason' => $this->reason,
+            'selectedOvertime' => $this->selectedOvertime,
         ])->layout('layouts.app');
     }
 
-    public function openModal()
+    public function handleDateClick($dateString)
     {
-        $this->resetInputFields();
-        $this->isModalOpen = true;
+        $user = Auth::user();
+        $formattedDate = Carbon::parse($dateString)->format('Y-m-d');
+
+        $existing = Overtime::where('employee_id', $user->id)
+            ->where('overtime_date', $formattedDate)
+            ->first();
+
+        $this->activeCalendarDate = $formattedDate;
+        $this->selectedDateDisplay = Carbon::parse($formattedDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+
+        if ($existing) {
+            // Case 1: Existing Overtime -> Open Detail Modal
+            $this->selectedOvertime = $existing;
+            $this->isDetailModalOpen = true;
+        } else {
+            // Case 2: No Existing Overtime -> Open Submission Modal
+            $this->resetInputFields();
+            $this->overtime_date = $formattedDate;
+            $this->activeCalendarDate = $formattedDate;
+            $this->selectedDateDisplay = Carbon::parse($formattedDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+            $this->isDateModalOpen = true;
+        }
     }
 
-    public function closeModal()
+    public function closeDateModal()
     {
-        $this->isModalOpen = false;
+        $this->isDateModalOpen = false;
+        $this->activeCalendarDate = null;
         $this->resetInputFields();
+    }
+
+    public function closeDetailModal()
+    {
+        $this->isDetailModalOpen = false;
+        $this->selectedOvertime = null;
+        $this->activeCalendarDate = null;
+        $this->selectedDateDisplay = '';
     }
 
     private function resetInputFields()
@@ -72,12 +166,31 @@ class OvertimeComponent extends Component
         $this->end_time = '';
         $this->reason = '';
         $this->modalError = null;
+        $this->selectedDateDisplay = '';
     }
 
-    public function submit()
+    public function submitDateModal()
+    {
+        $this->saveOvertime();
+        if (!$this->modalError) {
+            $this->closeDateModal();
+        }
+    }
+
+    private function saveOvertime()
     {
         $this->modalError = null;
         $this->validate();
+
+        // Enforce 1 overtime request per date rule
+        $exists = Overtime::where('employee_id', Auth::id())
+            ->where('overtime_date', $this->overtime_date)
+            ->exists();
+
+        if ($exists) {
+            $this->modalError = 'Anda sudah memiliki pengajuan lembur pada tanggal ini (1 tanggal hanya 1 pengajuan lembur).';
+            return;
+        }
 
         // Instantiate Overtime to calculate duration before saving
         $overtime = new Overtime([
@@ -100,6 +213,5 @@ class OvertimeComponent extends Component
         $overtime->save();
 
         $this->banner('Pengajuan lembur berhasil dikirim dan sedang menunggu persetujuan.');
-        $this->closeModal();
     }
 }

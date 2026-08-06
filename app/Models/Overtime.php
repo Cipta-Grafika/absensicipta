@@ -49,6 +49,76 @@ class Overtime extends Model
     }
 
     /**
+     * Accessor for overtime_pay attribute
+     */
+    public function getOvertimePayAttribute()
+    {
+        return $this->total_pay ?? 0;
+    }
+
+    /**
+     * Accessor for formatted duration (e.g. 3 jam 30 menit)
+     */
+    public function getFormattedDurationAttribute()
+    {
+        $hours = $this->duration_hours ?? $this->calculateDuration();
+        if ($hours <= 0) return '0 jam';
+        
+        $h = floor($hours);
+        $m = round(($hours - $h) * 60);
+        
+        if ($h > 0 && $m > 0) {
+            return "{$h} jam {$m} menit";
+        } elseif ($h > 0) {
+            return "{$h} jam";
+        }
+        return "{$m} menit";
+    }
+
+    /**
+     * Calculate estimated pay for overtime request
+     */
+    public function calculateEstimatedPay()
+    {
+        if ($this->total_pay && $this->total_pay > 0) {
+            return $this->total_pay;
+        }
+
+        $user = $this->employee ?: User::find($this->employee_id);
+        $hours = $this->duration_hours ?? $this->calculateDuration();
+        if ($hours <= 0) return 0;
+
+        if (!$user || !$user->salary) {
+            // Default rate calculation from OvertimeRate table if salary not set
+            $defaultRate = OvertimeRate::first()?->rate_amount ?? 20000;
+            return round($hours * $defaultRate, 0);
+        }
+
+        $salary = $user->salary;
+        
+        // Hourly rate estimate: (Basic Salary + Allowances) / (working_days * 8)
+        $workingDays = $salary->working_days_per_month ?? 25;
+        $fixedIncome = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
+        $hourlyRate = ($workingDays > 0) ? ($fixedIncome / ($workingDays * 8)) : 0;
+        
+        // Match rate from OvertimeRate table if applicable
+        $matchedRate = OvertimeRate::where(function($q) use ($user) {
+            $q->where('division_id', $user->division_id)
+              ->orWhereNull('division_id');
+        })
+        ->where('min_hours', '<=', $hours)
+        ->where('max_hours', '>=', $hours)
+        ->first();
+
+        if ($matchedRate && $matchedRate->rate_amount > 0) {
+            return round($hours * $matchedRate->rate_amount, 0);
+        }
+        
+        $multiplier = 1.5;
+        return round($hours * $hourlyRate * $multiplier, 0);
+    }
+
+    /**
      * Calculate and return duration based on start and end time.
      */
     public function calculateDuration()
