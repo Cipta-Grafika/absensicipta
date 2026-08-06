@@ -172,7 +172,13 @@
         <table class="header-table">
             <tr>
                 <td style="width: 16%; text-align: left;">
-                    <img src="{{ asset('cipta_grafika.png') }}" onerror="this.src='{{ asset('logo.png') }}'; this.onerror=null;" alt="Cipta Grafika" style="max-height: 80px;">
+                    @if (isset($logoPath) && file_exists($logoPath))
+                        <img src="{{ $logoPath }}" alt="Cipta Grafika" style="max-height: 80px;">
+                    @elseif (isset($logoBase64) && $logoBase64)
+                        <img src="{{ $logoBase64 }}" alt="Cipta Grafika" style="max-height: 80px;">
+                    @else
+                        <img src="{{ asset('cipta_grafika.png') }}" onerror="this.src='{{ asset('logo.png') }}'; this.onerror=null;" alt="Cipta Grafika" style="max-height: 80px;">
+                    @endif
                 </td>
                 <td style="width: 64%; padding-left: 5px;">
                     <div style="font-weight: bold; color: #2A549B; font-size: 18pt;">Cipta Grafika</div>
@@ -356,7 +362,7 @@
                             <tr>
                                 <td style="width: 25%;">{{ $pm->payment_name }}</td>
                                 <td style="width: 5%;">:</td>
-                                <td style="font-weight: bold;">{{ $pm->bank_account ?? '-' }}</td>
+                                <td style="font-weight: bold;">{{ preg_replace('/[\x{200B}-\x{200D}\x{200E}\x{200F}\x{202A}-\x{202E}\x{FEFF}]/u', '', $pm->bank_account ?? '-') }}</td>
                             </tr>
                             <tr>
                                 <td>Atas Nama</td>
@@ -447,14 +453,18 @@
         <!-- Signature -->
         <div class="signature-section">
             <div style="font-weight: bold; margin-bottom: 5px;">Accounting</div>
-            @php
-                $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=PAYROLL-" . $payroll->id;
-            @endphp
-            <img src="{{ $qrUrl }}" class="signature-qr" alt="QR Code">
+            @if (isset($qrPath) && file_exists($qrPath))
+                <img src="{{ $qrPath }}" class="signature-qr" alt="QR Code">
+            @elseif (isset($qrDataUri) && $qrDataUri)
+                <img src="{{ $qrDataUri }}" class="signature-qr" alt="QR Code">
+            @else
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=PAYROLL-{{ $payroll->id }}" class="signature-qr" alt="QR Code">
+            @endif
             <div style="font-weight: bold; margin-top: 5px;">Anggi Amelia</div>
         </div>
     </div>
 
+    @if (!isset($isPdf) || !$isPdf)
     <!-- Auto Print Script -->
     <script type="text/javascript">
         const AUTO_CLOSE_DELAY = 2 * 60 * 1000;
@@ -481,5 +491,6 @@
             window.close();
         });
     </script>
+    @endif
 </body>
 </html>
