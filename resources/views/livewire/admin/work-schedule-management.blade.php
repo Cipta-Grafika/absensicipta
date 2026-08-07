@@ -20,28 +20,6 @@
   <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
     <div class="overflow-hidden bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg">
 
-      <!-- Search Field Bar -->
-      <div class="mb-4">
-        <div class="flex w-full flex-1 items-center gap-2">
-          <div class="relative w-full">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <x-input type="text" class="block w-full pl-10 pr-10" autocomplete="off" wire:model.live.debounce.300ms="search"
-              placeholder="{{ __('Search') }}" />
-            @if ($search)
-              <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            @endif
-          </div>
-        </div>
-      </div>
-
       <!-- Interactive Monthly Rolling Calendar Box -->
       <div class="mb-6 rounded-2xl bg-gray-50/80 dark:bg-gray-900/60 p-4 sm:p-5 border border-gray-200 dark:border-gray-700 shadow-xs">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center justify-between border-b border-gray-200/80 pb-4 dark:border-gray-700">
@@ -60,78 +38,109 @@
           </div>
         </div>
 
-        @php
-          $calDayLabels = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
-          $calDayNames  = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        @endphp
-
         <div class="mt-4 overflow-x-auto">
-          <div class="grid w-full min-w-[320px] grid-cols-7 dark:text-white gap-1">
-            @foreach ($calDayLabels as $idx => $dayAbbr)
-              @php
-                $isOffHeader = $calDayNames[$idx] === 'sunday';
-              @endphp
-              <div class="{{ $isOffHeader ? 'text-red-500 font-bold' : 'text-gray-700 dark:text-gray-300' }} flex h-8 items-center justify-center text-xs font-semibold uppercase tracking-wider text-center">
-                {{ $dayAbbr }}
-              </div>
-            @endforeach
+          <div class="min-w-[650px]">
+            <!-- Days Header -->
+            <div class="mb-2 grid grid-cols-7 text-center text-xs font-bold text-gray-600 dark:text-gray-300">
+              <div class="py-1">Sen</div>
+              <div class="py-1">Sel</div>
+              <div class="py-1">Rab</div>
+              <div class="py-1">Kam</div>
+              <div class="py-1">Jum</div>
+              <div class="py-1">Sab</div>
+              <div class="py-1 text-red-500">Min</div>
+            </div>
 
-            @if ($calStart->dayOfWeek !== 0)
-              @foreach (range(1, $calStart->dayOfWeek) as $i)
-                <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
+            <!-- Dates Grid -->
+            <div class="grid grid-cols-7 gap-1.5">
+              <!-- Leading Empty Cells -->
+              @if ($calStart->dayOfWeekIso > 1)
+                @foreach (range(1, $calStart->dayOfWeekIso - 1) as $i)
+                  <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
+                @endforeach
+              @endif
+
+              <!-- Date Cells -->
+              @foreach ($calDates as $dateObj)
+                @php
+                  $dateStr = $dateObj->format('Y-m-d');
+                  $isSunday = $dateObj->isSunday();
+                  $isToday = $dateObj->isToday();
+                  $dateSchedules = $monthSchedules->get($dateStr) ?? collect();
+                  $workCount = $dateSchedules->filter(fn($s) => $s->is_working_day)->count();
+                  $offCount = $dateSchedules->filter(fn($s) => !$s->is_working_day)->count();
+                  $totalCount = $dateSchedules->count();
+                @endphp
+
+                <button type="button"
+                  wire:click="handleCalendarDateClick('{{ $dateStr }}')"
+                  x-data x-on:click="$el.blur()"
+                  class="group relative flex h-16 flex-col justify-between rounded-xl border p-2 text-left transition-all duration-150
+                         {{ $totalCount > 0 
+                            ? 'border-sky-200 bg-sky-50/60 dark:border-sky-800/80 dark:bg-sky-950/40 hover:border-sky-400 hover:shadow-md' 
+                            : 'border-gray-200 bg-white dark:border-gray-700/80 dark:bg-gray-800/80 hover:border-sky-300 hover:bg-gray-50 dark:hover:bg-gray-700/60' }}">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-extrabold {{ $isSunday ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' }}">
+                      {{ $dateObj->format('d') }}
+                    </span>
+                    @if ($isToday)
+                      <span class="rounded bg-sky-500 px-1 py-0.2 text-[9px] font-bold text-white">Hari ini</span>
+                    @elseif ($totalCount > 0)
+                      <span class="h-2 w-2 rounded-full bg-sky-500"></span>
+                    @endif
+                  </div>
+
+                  <div class="mt-1 flex flex-wrap gap-1">
+                    @if($workCount > 0)
+                      <span class="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200" title="{{ $workCount }} Kerja">
+                        <span class="sm:hidden">{{ $workCount }}</span>
+                        <span class="hidden sm:inline">{{ $workCount }} Kerja</span>
+                      </span>
+                    @endif
+                    @if($offCount > 0)
+                      <span class="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/80 dark:text-amber-200" title="{{ $offCount }} Libur">
+                        <span class="sm:hidden">{{ $offCount }}</span>
+                        <span class="hidden sm:inline">{{ $offCount }} Libur</span>
+                      </span>
+                    @endif
+                    @if($totalCount === 0)
+                      <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                        <span class="sm:hidden">+</span>
+                        <span class="hidden sm:inline">+ Rolling</span>
+                      </span>
+                    @endif
+                  </div>
+                </button>
               @endforeach
-            @endif
 
-            @foreach ($calDates as $dateObj)
-              @php
-                $dateStr = $dateObj->format('Y-m-d');
-                $isSunday = $dateObj->dayOfWeek === 0;
-                $dateSchedules = $monthSchedules->get($dateStr) ?? collect();
-                $workCount = $dateSchedules->filter(fn($s) => $s->is_working_day)->count();
-                $offCount = $dateSchedules->filter(fn($s) => !$s->is_working_day)->count();
-                $totalCount = $dateSchedules->count();
-              @endphp
+              <!-- Trailing Empty Cells -->
+              @if ($calEnd->dayOfWeekIso < 7)
+                @foreach (range($calEnd->dayOfWeekIso + 1, 7) as $i)
+                  <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
+                @endforeach
+              @endif
+            </div>
+          </div>
+        </div>
+      </div>
 
-              <button type="button"
-                wire:click="handleCalendarDateClick('{{ $dateStr }}')"
-                x-data x-on:click="$el.blur()"
-                class="group relative flex h-16 flex-col justify-between rounded-xl border p-2 text-left transition-all duration-150
-                       {{ $totalCount > 0 
-                          ? 'border-sky-200 bg-sky-50/60 dark:border-sky-800/80 dark:bg-sky-950/40 hover:border-sky-400 hover:shadow-md' 
-                          : 'border-gray-200 bg-white dark:border-gray-700/80 dark:bg-gray-800/80 hover:border-sky-300 hover:bg-gray-50 dark:hover:bg-gray-700/60' }}">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-extrabold {{ $isSunday ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' }}">
-                    {{ $dateObj->format('d') }}
-                  </span>
-                  @if($totalCount > 0)
-                    <span class="h-2 w-2 rounded-full bg-sky-500"></span>
-                  @endif
-                </div>
-
-                <div class="mt-1 flex flex-wrap gap-1">
-                  @if($workCount > 0)
-                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200">
-                      {{ $workCount }} Kerja
-                    </span>
-                  @endif
-                  @if($offCount > 0)
-                    <span class="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/80 dark:text-amber-200">
-                      {{ $offCount }} Libur
-                    </span>
-                  @endif
-                  @if($totalCount === 0)
-                    <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                      + Rolling
-                    </span>
-                  @endif
-                </div>
+      <!-- Search Field Bar -->
+      <div class="mb-4">
+        <div class="flex w-full flex-1 items-center gap-2">
+          <div class="relative w-full">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <x-input type="text" class="block w-full pl-10 pr-10" autocomplete="off" wire:model.live.debounce.300ms="search"
+              placeholder="{{ __('Search') }}" />
+            @if ($search)
+              <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-            @endforeach
-
-            @if ($calEnd->dayOfWeek !== 6)
-              @foreach (range(5, $calEnd->dayOfWeek) as $i)
-                <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
-              @endforeach
             @endif
           </div>
         </div>
