@@ -1,442 +1,469 @@
-<div class="w-full" x-data="{ hasLocation: @js(!is_null($currentLiveCoords)) }" @location-acquired.window="hasLocation = true">
-  @php
-    use Illuminate\Support\Carbon;
-  @endphp
-  @pushOnce('styles')
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  @endpushOnce
-  @pushOnce('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script>
-      let currentMap = document.getElementById('currentMap');
-      let map = document.getElementById('map');
+<div>
+  <x-banner />
 
-      setTimeout(() => {
-        toggleMap();
-        toggleCurrentMap();
-      }, 1000);
+  @if($showMotivationModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+      <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800 text-center transform transition-all scale-100">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full 
+          {{ $motivationType === 'danger' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400' : '' }}
+          {{ $motivationType === 'warning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400' : '' }}
+          {{ $motivationType === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : '' }}
+          {{ $motivationType === 'super' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : '' }}
+          {{ $motivationType === 'info' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : '' }}">
+          @if($motivationType === 'super')
+            <x-heroicon-s-sparkles class="h-10 w-10 animate-bounce" />
+          @elseif($motivationType === 'success')
+            <x-heroicon-s-check-circle class="h-10 w-10" />
+          @elseif($motivationType === 'warning')
+            <x-heroicon-s-exclamation-triangle class="h-10 w-10" />
+          @elseif($motivationType === 'danger')
+            <x-heroicon-s-x-circle class="h-10 w-10" />
+          @else
+            <x-heroicon-s-heart class="h-10 w-10" />
+          @endif
+        </div>
 
-      function toggleCurrentMap() {
-        const mapIsVisible = currentMap.style.display === "none";
-        currentMap.style.display = mapIsVisible ? "block" : "none";
-        document.querySelector('#toggleCurrentMap').innerHTML = mapIsVisible ?
-          `<x-heroicon-s-chevron-up class="mr-2 h-5 w-5" />` :
-          `<x-heroicon-s-chevron-down class="mr-2 h-5 w-5" />`;
-      }
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          {{ $motivationTitle }}
+        </h3>
 
-      function toggleMap() {
-        const mapIsVisible = map.style.display === "none";
-        map.style.display = mapIsVisible ? "block" : "none";
-      }
-    </script>
-  @endpushOnce
+        <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 font-medium">
+          "{{ $motivationMessage }}"
+        </p>
 
-  @if (!$isAbsence)
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+        <button wire:click="closeMotivationModal" type="button" 
+          class="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600">
+          Siap, Lanjutkan!
+        </button>
+      </div>
+    </div>
   @endif
 
-  <div class="flex flex-col gap-4 md:flex-row">
-    @if (!$isAbsence)
-      <div class="flex flex-col gap-4">
-        <div>
-          <x-select id="shift" class="mt-1 block w-full" wire:model="shift_id" disabled="{{ !is_null($attendance) }}">
-            <option value="">{{ __('Select Shift') }}</option>
-            @foreach ($shifts as $shift)
-              <option value="{{ $shift->id }}" {{ $shift->id == $shift_id ? 'selected' : '' }}>
-                {{ $shift->name . ' | ' . $shift->start_time . ' - ' . $shift->end_time }}
-              </option>
-            @endforeach
-          </x-select>
-          @error('shift_id')
-            <x-input-error for="shift" class="mt-2" message={{ $message }} />
-          @enderror
+  @if($showLocationMapModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in" x-data x-init="$nextTick(() => { window.initModalMap && window.initModalMap(); })">
+      <div class="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800 text-left">
+        <div class="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-700">
+          <div class="flex items-center gap-2">
+            <x-heroicon-o-map-pin class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <h3 class="text-base font-bold text-gray-900 dark:text-white">Lokasi GPS Terdeteksi</h3>
+          </div>
+          <button wire:click="$set('showLocationMapModal', false)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <x-heroicon-o-x-mark class="h-5 w-5" />
+          </button>
         </div>
-        <div class="relative flex justify-center outline outline-gray-100 dark:outline-slate-700 overflow-hidden rounded-md">
-          <!-- Floating Date Badge (Top Center) -->
-          <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-            <div class="inline-flex h-8 items-center gap-2 rounded-full bg-blue-50/90 dark:bg-blue-950/90 px-3.5 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200/90 dark:border-blue-800/90 shadow-md backdrop-blur-sm">
-              <x-heroicon-o-calendar class="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
-              <span class="whitespace-nowrap">{{ now()->isoFormat('D MMMM YYYY') }}</span>
+
+        <div class="mt-4">
+          <div id="modal-map" class="h-64 w-full rounded-xl border border-gray-300 shadow-inner dark:border-gray-600 z-10"></div>
+          <div class="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>Koordinat: <strong class="text-gray-800 dark:text-gray-200" id="modal-coords-text">{{ $currentLiveCoords ? implode(', ', $currentLiveCoords) : '-' }}</strong></span>
+            <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+              <x-heroicon-s-check-circle class="h-3.5 w-3.5" /> Akurat
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-5 flex justify-end">
+          <button wire:click="$set('showLocationMapModal', false)" type="button" class="rounded-lg bg-gray-200 px-4 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  @endif
+
+  <div class="space-y-4">
+    <!-- 1. COMBINED SHIFT & COMPACT GPS LIVE DETECTOR CARD -->
+    @if (!$isAbsence)
+      @php
+        $hasTimeIn = !empty($attendance?->time_in);
+        $hasCoords = !empty($currentLiveCoords) && is_array($currentLiveCoords) && count($currentLiveCoords) >= 2;
+      @endphp
+
+      <div class="rounded-lg bg-gray-50 p-3.5 border border-gray-200 dark:bg-gray-750 dark:border-gray-700 space-y-3"
+           x-data="{ hasLoc: @json($hasCoords) }"
+           x-init="
+             $watch('$wire.currentLiveCoords', val => {
+               if (Array.isArray(val) && val.length >= 2) {
+                 hasLoc = true;
+               }
+             });
+             window.addEventListener('geo-updated', (e) => {
+               if (e.detail && Array.isArray(e.detail) && e.detail.length >= 2) {
+                 hasLoc = true;
+               } else if (Array.isArray($wire.currentLiveCoords) && $wire.currentLiveCoords.length >= 2) {
+                 hasLoc = true;
+               }
+             });
+             if (Array.isArray($wire.currentLiveCoords) && $wire.currentLiveCoords.length >= 2) {
+               hasLoc = true;
+             }
+           ">
+        <!-- DROPDOWN SHIFT -->
+        <div>
+          <x-label for="shift" value="{{ __('Pilih Shift Kerja') }}" class="font-bold text-gray-700 dark:text-gray-200 text-xs uppercase tracking-wider" />
+          <x-select name="shift" id="shift" 
+            class="mt-1.5 block w-full font-semibold text-sm {{ $hasTimeIn ? 'bg-gray-200 text-gray-500 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600 cursor-not-allowed opacity-75' : '' }}" 
+            wire:model.live="shift_id"
+            :disabled="$hasTimeIn">
+            <option value="">-- {{ __('Pilih Shift') }} --</option>
+            @php
+              $userDivId = auth()->user()?->division_id;
+              $divisionShifts = $shifts->filter(fn($s) => $s->division_id == $userDivId && !is_null($s->division_id));
+              $globalShifts = $shifts->filter(fn($s) => is_null($s->division_id));
+            @endphp
+
+            @if($divisionShifts->count() > 0)
+              <optgroup label="Shift Divisi (Prioritas Utama)">
+                @foreach ($divisionShifts as $shift)
+                  <option value="{{ $shift->id }}">
+                    {{ $shift->name }} ({{ $shift->start_time }} - {{ $shift->end_time }})
+                  </option>
+                @endforeach
+              </optgroup>
+            @endif
+
+            @if($globalShifts->count() > 0)
+              <optgroup label="Shift Global">
+                @foreach ($globalShifts as $shift)
+                  <option value="{{ $shift->id }}">
+                    {{ $shift->name }} ({{ $shift->start_time }} - {{ $shift->end_time }})
+                  </option>
+                @endforeach
+              </optgroup>
+            @endif
+          </x-select>
+        </div>
+
+        <!-- ROW BADGES LOKASI GPS (KIRI) & REFRESH GPS (KANAN) -->
+        <div class="flex items-center justify-between gap-3 pt-0.5">
+          <div class="flex items-center gap-2">
+            <x-heroicon-o-map-pin class="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span class="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 shrink-0">GPS:</span>
+
+            <div class="inline-flex items-center shrink-0">
+              <template x-if="hasLoc">
+                <button type="button" 
+                  wire:click="$set('showLocationMapModal', true)"
+                  class="inline-flex h-7 items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/50 px-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 shadow-xs transition hover:bg-emerald-100 dark:hover:bg-emerald-900/80">
+                  <x-heroicon-s-check-circle class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>Lokasi Terdeteksi</span>
+                  <x-heroicon-o-map-pin class="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                </button>
+              </template>
+
+              <template x-if="!hasLoc">
+                <div class="inline-flex h-7 items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-900/50 px-3 text-xs font-semibold text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60 shadow-xs">
+                  <x-heroicon-s-x-circle class="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0" />
+                  <span>Lokasi Belum Terdeteksi</span>
+                </div>
+              </template>
             </div>
           </div>
 
-          <!-- Camera Scanner Box -->
-          <div id="scanner" class="min-h-72 sm:min-h-96 w-72 rounded-sm outline-dashed outline-slate-500 sm:w-96" wire:ignore>
-          </div>
-
-          <!-- Floating Location Badge (Bottom Center) -->
-          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center justify-center">
-            <button type="button" x-cloak x-show="hasLocation" wire:click="$set('showLocationMapModal', true)"
-              class="inline-flex h-8 items-center gap-2 rounded-full bg-emerald-50/90 dark:bg-emerald-950/90 px-3.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200/90 dark:border-emerald-800/90 shadow-md backdrop-blur-sm transition hover:bg-emerald-100 dark:hover:bg-emerald-900/90">
-              <x-heroicon-s-check-circle class="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span class="whitespace-nowrap">Lokasi Terdeteksi</span>
-              <x-heroicon-o-map-pin class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-0.5" />
-            </button>
-            <div x-cloak x-show="!hasLocation"
-              class="inline-flex h-8 items-center gap-2 rounded-full bg-red-50/90 dark:bg-red-950/90 px-3.5 text-xs font-semibold text-red-700 dark:text-red-300 border border-red-200/90 dark:border-red-800/90 shadow-md backdrop-blur-sm">
-              <x-heroicon-s-x-circle class="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
-              <span class="whitespace-nowrap">Lokasi Belum Terdeteksi</span>
-            </div>
-          </div>
+          <button type="button" id="btn-refresh-location" class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 shrink-0">
+            <x-heroicon-o-arrow-path class="h-3.5 w-3.5" />
+            <span class="hidden sm:inline">Refresh GPS</span>
+          </button>
         </div>
       </div>
     @endif
-    <div class="w-full">
-      <h4 id="scanner-error" class="mb-3 text-lg font-semibold text-red-500 dark:text-red-400 sm:text-xl" wire:ignore>
-      </h4>
-      <h4 id="scanner-result" class="mb-3 hidden text-lg font-semibold text-green-500 dark:text-green-400 sm:text-xl">
-        {{ $successMsg }}
-      </h4>
 
-      @if ($isAbsence)
-        <div id="latlng" class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-700/60 pb-3">
-          <div class="inline-flex h-8 items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-900/50 px-3.5 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 shadow-sm">
-            <x-heroicon-o-calendar class="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" />
-            <span>{{ now()->isoFormat('D MMMM YYYY') }}</span>
-          </div>
-
-          <div class="flex items-center justify-center">
-            <button type="button" x-cloak x-show="hasLocation" wire:click="$set('showLocationMapModal', true)"
-              class="inline-flex h-8 items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-900/50 px-3.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 shadow-sm transition hover:bg-emerald-100 dark:hover:bg-emerald-900/80">
-              <x-heroicon-s-check-circle class="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Lokasi Terdeteksi</span>
-              <x-heroicon-o-map-pin class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-0.5" />
-            </button>
-            <div x-cloak x-show="!hasLocation"
-              class="inline-flex h-8 items-center gap-2 rounded-full bg-red-50 dark:bg-red-900/50 px-3.5 text-xs font-semibold text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60 shadow-sm">
-              <x-heroicon-s-x-circle class="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
-              <span>Lokasi Belum Terdeteksi</span>
-            </div>
-          </div>
-        </div>
-      @endif
-
-      <!-- 1. Card Potongan (Top Banner) -->
-      <div class="mb-3 flex items-center gap-3 rounded-md bg-red-200 px-4 py-2.5 text-gray-800 dark:bg-red-900 dark:text-white dark:shadow-gray-700">
-        <x-heroicon-o-exclamation-triangle class="h-6 w-6 shrink-0 text-red-600 dark:text-red-300 opacity-90" />
-        <div>
-          <h4 class="text-base font-semibold sm:text-lg md:text-xl">Potongan</h4>
-          <div class="font-bold text-red-700 dark:text-red-200 text-xs sm:text-sm md:text-base">
-            Rp {{ number_format($realtimeDeduction ?? 0, 0, ',', '.') }}
-          </div>
+    <!-- 3. CARD POTONGAN (TOP BANNER) -->
+    <div class="flex items-center gap-3 rounded-lg bg-red-200 px-4 py-3 text-gray-800 dark:bg-red-900 dark:text-white border border-red-300 dark:border-red-800 shadow-xs">
+      <x-heroicon-o-exclamation-triangle class="h-6 w-6 shrink-0 text-red-600 dark:text-red-300 opacity-90" />
+      <div>
+        <h4 class="text-base font-semibold sm:text-lg">Potongan</h4>
+        <div class="font-bold text-red-700 dark:text-red-200 text-xs sm:text-sm md:text-base">
+          Rp {{ number_format($realtimeDeduction ?? 0, 0, ',', '.') }}
         </div>
       </div>
+    </div>
 
-      <!-- 2. Cards Jam Masuk & Jam Keluar -->
-      <div class="grid grid-cols-2 gap-3 mb-3">
-        <div
-          class="col-span-1 {{ $attendance?->status == 'late' ? 'bg-orange-200 dark:bg-orange-900' : 'bg-green-200 dark:bg-green-900' }} flex items-center gap-3 rounded-md px-3 py-2 text-gray-800 dark:text-white dark:shadow-gray-700">
-          <x-heroicon-o-arrows-pointing-in class="h-6 w-6 shrink-0 opacity-75" />
-          <div>
-            <h4 class="text-base font-semibold sm:text-lg md:text-xl">Jam Masuk</h4>
-            <div class="flex flex-col text-xs sm:text-sm sm:flex-row">
-              <span>
-                @if ($isAbsence)
-                  {{ __($attendance?->status) ?? '-' }}
-                @else
-                  {{ $attendance?->time_in ? Carbon::parse($attendance?->time_in)->format('H:i:s') : 'Belum Absen' }}
-                @endif
-              </span>
-              @if ($attendance?->status == 'late')
-                <span class="mx-1 hidden sm:inline-block">|</span>
-              @endif
-              <span>{{ $attendance?->status == 'late' ? 'Terlambat: Ya' : '' }}</span>
+    <!-- 4. CARDS JAM MASUK & JAM KELUAR (BERSEBELAHAN DI MOBILE & DESKTOP) -->
+    @php
+      $canManualCheckIn = empty($attendance?->time_in) && !$isAbsence;
+      $canManualCheckOut = !empty($attendance?->time_in) && empty($attendance?->time_out) && !$isAbsence;
+    @endphp
+
+    <div class="grid grid-cols-2 gap-2.5 sm:gap-4">
+      <!-- CARD JAM MASUK -->
+      <div
+        @if($canManualCheckIn)
+          wire:click="manualCheckIn"
+          title="Klik untuk Absen Masuk (Verifikasi GPS Radius Barcode Kantor)"
+        @endif
+        class="col-span-1 relative flex flex-col justify-between rounded-xl p-2.5 sm:p-4 transition-all duration-200
+               {{ $canManualCheckIn 
+                  ? 'cursor-pointer bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 dark:from-emerald-950 dark:via-teal-950 dark:to-emerald-900 border-2 border-emerald-500 dark:border-emerald-500 shadow-md shadow-emerald-500/15 hover:shadow-lg hover:scale-[1.01] active:scale-95' 
+                  : ($attendance?->time_in 
+                      ? ($attendance?->status == 'late' 
+                          ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800' 
+                          : 'bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800') 
+                      : 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 opacity-80') }}">
+        
+        <div class="space-y-2">
+          <!-- HEADER: ICON & TITLE (JAM MASUK) -->
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <div class="rounded-lg p-1.5 sm:p-2 {{ $canManualCheckIn ? 'bg-emerald-600 text-white' : ($attendance?->time_in ? 'bg-emerald-600/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400') }} shrink-0">
+              <x-heroicon-o-arrows-pointing-in class="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
+            <h4 class="text-xs sm:text-base font-bold text-gray-900 dark:text-white leading-tight truncate">Jam Masuk</h4>
           </div>
-        </div>
-        <div
-          class="col-span-1 flex items-center gap-3 rounded-md bg-orange-200 px-3 py-2 text-gray-800 dark:bg-orange-900 dark:text-white dark:shadow-gray-700">
-          <x-heroicon-o-arrows-pointing-out class="h-6 w-6 shrink-0 opacity-75" />
-          <div>
-            <h4 class="text-base font-semibold sm:text-lg md:text-xl">Jam Keluar</h4>
-            <div class="text-xs sm:text-sm">
+
+          <!-- VALUE & BADGES (DI BAWAH JUDUL) -->
+          <div class="space-y-1 pt-0.5">
+            <div>
+              @if($canManualCheckIn)
+                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-white shadow-xs animate-pulse">
+                  <span>Klik Absen</span>
+                  <x-heroicon-s-hand-raised class="h-3 w-3" />
+                </span>
+              @elseif($attendance?->time_in)
+                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200">
+                  <x-heroicon-s-check-circle class="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                  Sudah Masuk
+                </span>
+              @endif
+            </div>
+
+            <div class="text-sm sm:text-xl font-extrabold font-mono tracking-tight {{ $attendance?->time_in ? 'text-emerald-700 dark:text-emerald-300' : ($canManualCheckIn ? 'text-emerald-900 dark:text-emerald-100' : 'text-gray-500 dark:text-gray-400') }}">
               @if ($isAbsence)
                 {{ __($attendance?->status) ?? '-' }}
               @else
-                {{ $attendance?->time_out ? Carbon::parse($attendance?->time_out)->format('H:i:s') : 'Belum Absen' }}
+                {{ $attendance?->time_in ? \Carbon\Carbon::parse($attendance?->time_in)->format('H:i:s') : 'Belum Absen' }}
+              @endif
+            </div>
+
+            @if ($attendance?->status == 'late')
+              <div class="text-[10px] sm:text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-0.5">
+                <x-heroicon-s-exclamation-triangle class="h-3 w-3" />
+                <span>Terlambat</span>
+              </div>
+            @endif
+          </div>
+        </div>
+
+        <p class="mt-2 text-[10px] sm:text-xs font-medium {{ $canManualCheckIn ? 'text-emerald-800 dark:text-emerald-200 font-semibold' : 'text-gray-500 dark:text-gray-400' }} line-clamp-2">
+          @if($canManualCheckIn)
+            Tap di sini untuk Absen Masuk (GPS)
+          @else
+            Waktu presensi masuk hari ini
+          @endif
+        </p>
+      </div>
+
+      <!-- CARD JAM KELUAR -->
+      <div
+        @if($canManualCheckOut)
+          wire:click="manualCheckOut"
+          title="Klik untuk Absen Keluar (Verifikasi GPS Radius Barcode Kantor)"
+        @endif
+        class="col-span-1 relative flex flex-col justify-between rounded-xl p-2.5 sm:p-4 transition-all duration-200
+               {{ $canManualCheckOut 
+                  ? 'cursor-pointer bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 dark:from-amber-950 dark:via-orange-950 dark:to-amber-900 border-2 border-amber-500 dark:border-amber-500 shadow-md shadow-amber-500/15 hover:shadow-lg hover:scale-[1.01] active:scale-95' 
+                  : ($attendance?->time_out 
+                      ? 'bg-amber-50/80 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800' 
+                      : 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 opacity-80') }}">
+        
+        <div class="space-y-2">
+          <!-- HEADER: ICON & TITLE (JAM KELUAR) -->
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <div class="rounded-lg p-1.5 sm:p-2 {{ $canManualCheckOut ? 'bg-amber-600 text-white' : ($attendance?->time_out ? 'bg-amber-600/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400') }} shrink-0">
+              <x-heroicon-o-arrows-pointing-out class="h-4 w-4 sm:h-5 sm:w-5" />
+            </div>
+            <h4 class="text-xs sm:text-base font-bold text-gray-900 dark:text-white leading-tight truncate">Jam Keluar</h4>
+          </div>
+
+          <!-- VALUE & BADGES (DI BAWAH JUDUL) -->
+          <div class="space-y-1 pt-0.5">
+            <div>
+              @if($canManualCheckOut)
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-600 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-white shadow-xs animate-pulse">
+                  <span>Klik Absen</span>
+                  <x-heroicon-s-hand-raised class="h-3 w-3" />
+                </span>
+              @elseif($attendance?->time_out)
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-amber-800 dark:bg-amber-900/80 dark:text-amber-200">
+                  <x-heroicon-s-check-circle class="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                  Sudah Keluar
+                </span>
+              @endif
+            </div>
+
+            <div class="text-sm sm:text-xl font-extrabold font-mono tracking-tight {{ $attendance?->time_out ? 'text-amber-700 dark:text-amber-300' : ($canManualCheckOut ? 'text-amber-900 dark:text-amber-100' : 'text-gray-500 dark:text-gray-400') }}">
+              @if ($isAbsence)
+                {{ __($attendance?->status) ?? '-' }}
+              @else
+                {{ $attendance?->time_out ? \Carbon\Carbon::parse($attendance?->time_out)->format('H:i:s') : 'Belum Absen' }}
               @endif
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 3. Navigation Buttons: Absensi, Slip Gaji, Lembur & Ganti Jam -->
-      <div class="grid grid-cols-2 gap-3">
-        <a href="{{ route('attendance-history') }}" class="col-span-1 cursor-pointer">
-          <div
-            class="flex flex-row items-center justify-center gap-2 rounded-md bg-blue-600 dark:bg-blue-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-blue-700 dark:hover:bg-blue-500 md:gap-2">
-            <x-heroicon-o-clock class="h-5 w-5 text-white shrink-0" />
-            <span class="whitespace-nowrap">Absensi</span>
-          </div>
-        </a>
-        <a href="{{ route('user.payslips') }}" class="col-span-1 cursor-pointer">
-          <div
-            class="flex flex-row items-center justify-center gap-2 rounded-md bg-green-600 dark:bg-green-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-green-700 dark:hover:bg-green-500 md:gap-2">
-            <x-heroicon-o-document-text class="h-5 w-5 text-white shrink-0" />
-            <span class="whitespace-nowrap">Slip Gaji</span>
-          </div>
-        </a>
-        <a href="{{ route('user.overtimes') }}" class="col-span-1 cursor-pointer">
-          <div
-            class="flex flex-row items-center justify-center gap-2 rounded-md bg-purple-600 dark:bg-purple-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-purple-700 dark:hover:bg-purple-500 md:gap-2">
-            <x-heroicon-o-fire class="h-5 w-5 text-white shrink-0" />
-            <span class="whitespace-nowrap">Lembur</span>
-          </div>
-        </a>
-        <a href="{{ route('user.replacement-hours') }}" class="col-span-1 cursor-pointer">
-          <div
-            class="flex flex-row items-center justify-center gap-2 rounded-md bg-amber-600 dark:bg-amber-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-amber-700 dark:hover:bg-amber-500 md:gap-2">
-            <x-heroicon-o-arrow-path class="h-5 w-5 text-white shrink-0" />
-            <span class="whitespace-nowrap">Ganti Jam</span>
-          </div>
-        </a>
+        <p class="mt-2 text-[10px] sm:text-xs font-medium {{ $canManualCheckOut ? 'text-amber-800 dark:text-amber-200 font-semibold' : 'text-gray-500 dark:text-gray-400' }} line-clamp-2">
+          @if($canManualCheckOut)
+            Tap di sini untuk Absen Keluar (GPS)
+          @else
+            Waktu presensi keluar hari ini
+          @endif
+        </p>
       </div>
     </div>
-  </div>
 
-  <hr class="my-6 border-gray-200 dark:border-gray-700">
-
-  <!-- 4 Submission Action Buttons -->
-  <div class="mb-3 text-center">
-    <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-      PERIZINAN
-    </h3>
-  </div>
-  <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4" wire:ignore>
-    <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
-      <div
-        class="flex flex-row items-center justify-center gap-2 rounded-md bg-sky-500 dark:bg-sky-500 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-sky-600 dark:hover:bg-sky-400 md:gap-2">
-        <x-heroicon-o-envelope-open class="h-5 w-5 text-white shrink-0" />
-        <span class="whitespace-nowrap">Ajukan Izin</span>
-      </div>
-    </a>
-    <a href="#" x-data @click.prevent="$dispatch('open-apply-imp-modal')" class="col-span-1 cursor-pointer">
-      <div
-        class="flex flex-row items-center justify-center gap-2 rounded-md bg-orange-500 dark:bg-orange-500 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-orange-600 dark:hover:bg-orange-400 md:gap-2">
-        <x-heroicon-o-arrow-right-on-rectangle class="h-5 w-5 text-white shrink-0" />
-        <span class="whitespace-nowrap">Ajukan IMP</span>
-      </div>
-    </a>
-    <a href="#" x-data @click.prevent="$dispatch('open-apply-sick-modal')" class="col-span-1 cursor-pointer">
-      <div
-        class="flex flex-row items-center justify-center gap-2 rounded-md bg-rose-500 dark:bg-rose-500 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-rose-600 dark:hover:bg-rose-400 md:gap-2">
-        <x-heroicon-o-heart class="h-5 w-5 text-white shrink-0" />
-        <span class="whitespace-nowrap">Ajukan Sakit</span>
-      </div>
-    </a>
-    <a href="#" x-data @click.prevent="$dispatch('open-apply-cuti-modal')" class="col-span-1 cursor-pointer">
-      <div
-        class="flex flex-row items-center justify-center gap-2 rounded-md bg-indigo-600 dark:bg-indigo-600 px-3 py-2.5 text-center font-medium text-white transition duration-100 hover:bg-indigo-700 dark:hover:bg-indigo-500 md:gap-2">
-        <x-heroicon-o-calendar class="h-5 w-5 text-white shrink-0" />
-        <span class="whitespace-nowrap">Ajukan Cuti</span>
-      </div>
-    </a>
-  </div>
-
-  <!-- Separator & Integrated Dual Leaderboard Widget -->
-  <hr class="my-8 border-gray-200 dark:border-gray-700">
-
-  @livewire('leaderboard-widget')
-
-  <!-- Motivational Modal -->
-  <x-dialog-modal wire:model.live="showMotivationModal" maxWidth="sm">
-    <x-slot name="title">
-      <div class="hidden" x-data="{ type: @entangle('motivationType'), open: @entangle('showMotivationModal') }" x-effect="if(open && type !== 'late') { confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#fbbf24', '#f87171', '#60a5fa', '#34d399', '#c084fc'] }); }"></div>
-    </x-slot>
-    <x-slot name="content">
-      <div class="flex flex-col items-center justify-center pt-6 pb-2 px-2 text-center">
-        @if ($motivationType === 'early')
-          <div class="relative w-32 h-32 mb-6 animate-bounce">
-            <!-- Ribbon / Medal Icon -->
-            <svg class="w-full h-full drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M25 90L35 60L15 45L40 45L50 20L60 45L85 45L65 60L75 90L50 75L25 90Z" fill="#FBBF24"/>
-              <circle cx="50" cy="45" r="20" fill="#FDE68A"/>
-              <path d="M50 35L53.5 41.5L60.5 42L55 47L56.5 54L50 50.5L43.5 54L45 47L39.5 42L46.5 41.5L50 35Z" fill="#F59E0B"/>
-              <path d="M30 65L30 100L50 85L50 65Z" fill="#9333EA" opacity="0.8"/>
-              <path d="M70 65L70 100L50 85L50 65Z" fill="#A855F7" opacity="0.8"/>
-            </svg>
-          </div>
-        @elseif ($motivationType === 'on-time')
-          <div class="relative w-32 h-32 mb-6 animate-pulse">
-            <!-- On Time Check Icon -->
-            <svg class="w-full h-full text-green-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2ZM12 20C7.6 20 4 16.4 4 12C4 7.6 7.6 4 12 4C16.4 4 20 7.6 20 12C20 16.4 16.4 20 12 20ZM16.2 14.8L13 11V6H11.5V11.5L15.2 15.8L16.2 14.8Z"/></svg>
-          </div>
-        @elseif ($motivationType === 'late')
-          <div class="relative w-32 h-32 mb-6 animate-bounce">
-            <!-- Warning / Late Icon -->
-            <svg class="w-full h-full text-red-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M1 21H23L12 2L1 21ZM13 18H11V16H13V18ZM13 14H11V10H13V14Z"/></svg>
-          </div>
-        @else
-          <div class="relative w-32 h-32 mb-6 animate-pulse">
-            <!-- Heart / Check-out Icon -->
-            <svg class="w-full h-full text-blue-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z"/></svg>
-          </div>
-        @endif
-        
-        <h2 class="text-3xl font-extrabold text-gray-900 dark:text-gray-100 mb-3">{{ $motivationTitle }}</h2>
-        <p class="text-lg text-gray-600 dark:text-gray-400 mb-2">{{ $motivationMessage }}</p>
-      </div>
-    </x-slot>
-    <x-slot name="footer">
-      <div class="flex w-full justify-center pb-4 pt-2">
-        <button type="button" x-on:click="show = false" class="px-10 py-3 bg-red-400 hover:bg-red-500 text-white font-bold text-lg rounded-full transition shadow-lg transform hover:scale-105 focus:outline-none">
-          Okay
-        </button>
-      </div>
-    </x-slot>
-  </x-dialog-modal>
-
-  <!-- Modal Detail Lokasi Anda -->
-  <x-dialog-modal wire:model.live="showLocationMapModal" maxWidth="lg">
-    <x-slot name="title">
-      <div class="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-        <x-heroicon-o-map-pin class="h-6 w-6 text-emerald-500 shrink-0" />
-        <span>Detail Lokasi Anda</span>
-      </div>
-    </x-slot>
-
-    <x-slot name="content">
-      <div class="flex flex-col gap-4" x-data x-effect="if($wire.showLocationMapModal) { setTimeout(() => window.initModalLiveMap && window.initModalLiveMap(), 250); }">
-        
-        <!-- Leaflet Map Container inside Modal -->
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 shadow-sm dark:border-gray-700">
-          <div id="currentMapModal" class="h-64 sm:h-80 w-full rounded-xl bg-gray-100 dark:bg-gray-900" wire:ignore></div>
+    <!-- 5. NAVIGATION BUTTONS: ABSENSI, SLIP GAJI, LEMBUR & GANTI JAM -->
+    <div class="grid grid-cols-2 gap-3 pt-2">
+      <a href="{{ route('attendance-history') }}" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-blue-600 dark:bg-blue-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-blue-700 dark:hover:bg-blue-500 md:gap-2 active:scale-95">
+          <x-heroicon-o-clock class="h-5 w-5 text-white shrink-0" />
+          <span class="whitespace-nowrap">Absensi</span>
         </div>
+      </a>
+      <a href="{{ route('user.payslips') }}" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-emerald-600 dark:bg-emerald-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-emerald-700 dark:hover:bg-emerald-500 md:gap-2 active:scale-95">
+          <x-heroicon-o-document-text class="h-5 w-5 text-white shrink-0" />
+          <span class="whitespace-nowrap">Slip Gaji</span>
+        </div>
+      </a>
+      <a href="{{ route('user.overtimes') }}" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-purple-600 dark:bg-purple-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-purple-700 dark:hover:bg-purple-500 md:gap-2 active:scale-95">
+          <x-heroicon-o-fire class="h-5 w-5 text-white shrink-0" />
+          <span class="whitespace-nowrap">Lembur</span>
+        </div>
+      </a>
+      <a href="{{ route('user.replacement-hours') }}" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-amber-600 dark:bg-amber-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-amber-700 dark:hover:bg-amber-500 md:gap-2 active:scale-95">
+          <x-heroicon-o-arrow-path class="h-5 w-5 text-white shrink-0" />
+          <span class="whitespace-nowrap">Ganti Jam</span>
+        </div>
+      </a>
+    </div>
 
-        <!-- User Friendly Location Info Box -->
-        @if (!is_null($currentLiveCoords))
-          <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700/60">
-            <div class="flex items-center justify-between pb-2 mb-2 border-b border-gray-200 dark:border-gray-600">
-              <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status GPS</span>
-              <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                <x-heroicon-s-check-circle class="h-4 w-4" /> Lokasi Akurat
-              </span>
-            </div>
+    <hr class="my-4 border-gray-200 dark:border-gray-700">
 
-            <div class="grid grid-cols-2 gap-3 text-xs text-gray-700 dark:text-gray-300">
-              <div>
-                <span class="text-gray-400 dark:text-gray-400 block text-[10px] uppercase font-semibold">Latitude</span>
-                <span class="font-mono font-medium text-sm">{{ number_format($currentLiveCoords[0], 6) }}</span>
-              </div>
-              <div>
-                <span class="text-gray-400 dark:text-gray-400 block text-[10px] uppercase font-semibold">Longitude</span>
-                <span class="font-mono font-medium text-sm">{{ number_format($currentLiveCoords[1], 6) }}</span>
-              </div>
-            </div>
+    <!-- 6. FORM MODALS BUTTONS: AJUKAN IZIN, SAKIT, CUTI, IMP -->
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2.5 text-center font-semibold text-gray-700 transition duration-100 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-750 dark:text-gray-200 dark:hover:bg-gray-700 md:gap-2 active:scale-95">
+          <x-heroicon-o-document-text class="h-5 w-5 shrink-0" />
+          <span class="whitespace-nowrap">Ajukan Izin</span>
+        </div>
+      </a>
+      <a href="#" x-data @click.prevent="$dispatch('open-apply-sick-modal')" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2.5 text-center font-semibold text-gray-700 transition duration-100 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-750 dark:text-gray-200 dark:hover:bg-gray-700 md:gap-2 active:scale-95">
+          <x-heroicon-o-heart class="h-5 w-5 shrink-0" />
+          <span class="whitespace-nowrap">Ajukan Sakit</span>
+        </div>
+      </a>
+      <a href="#" x-data @click.prevent="$dispatch('open-apply-cuti-modal')" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2.5 text-center font-semibold text-gray-700 transition duration-100 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-750 dark:text-gray-200 dark:hover:bg-gray-700 md:gap-2 active:scale-95">
+          <x-heroicon-o-calendar-days class="h-5 w-5 shrink-0" />
+          <span class="whitespace-nowrap">Ajukan Cuti</span>
+        </div>
+      </a>
+      <a href="#" x-data @click.prevent="$dispatch('open-apply-imp-modal')" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2.5 text-center font-semibold text-gray-700 transition duration-100 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-750 dark:text-gray-200 dark:hover:bg-gray-700 md:gap-2 active:scale-95">
+          <x-heroicon-o-user-minus class="h-5 w-5 shrink-0" />
+          <span class="whitespace-nowrap">Ajukan IMP</span>
+        </div>
+      </a>
+    </div>
 
-            <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600 flex justify-end">
-              <a href="{{ \App\Helpers::getGoogleMapsUrl($currentLiveCoords[0], $currentLiveCoords[1]) }}" target="_blank"
-                class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
-                <span>Buka di Google Maps</span>
-                <x-heroicon-o-arrow-top-right-on-square class="h-4 w-4" />
-              </a>
-            </div>
-          </div>
-        @else
-          <div class="rounded-lg bg-red-50 p-4 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-center">
-            <x-heroicon-o-exclamation-triangle class="mx-auto h-8 w-8 text-red-500 mb-1" />
-            <p class="text-xs font-semibold text-red-700 dark:text-red-300">Lokasi GPS belum terdeteksi.</p>
-            <p class="text-[11px] text-red-600 dark:text-red-400 mt-0.5">Pastikan izin lokasi (GPS) pada browser sudah diaktifkan.</p>
-          </div>
-        @endif
-      </div>
-    </x-slot>
+    @livewire('user.apply-leave-modal-component')
 
-    <x-slot name="footer">
-      <x-secondary-button wire:click="$set('showLocationMapModal', false)">
-        Tutup
-      </x-secondary-button>
-    </x-slot>
-  </x-dialog-modal>
+    <hr class="my-6 border-gray-200 dark:border-gray-700">
 
-  @livewire('user.apply-leave-modal-component')
-
+    <!-- 7. REAL-TIME LEADERBOARD KERAJINAN WIDGET (UNIFIED IN SINGLE CARD) -->
+    <div class="pt-2">
+      @livewire('leaderboard-widget')
+    </div>
+  </div>
 </div>
+
+@push('scripts')
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nXC0JK94hIgoutE9H7164irFS09E98isd0d6WTd0=" crossorigin=""></script>
+@endpush
 
 @script
   <script>
-    const errorMsg = document.querySelector('#scanner-error');
-    getLocation();
-
+    // Geo-Location Live Detector Script
+    window.hasLocation = false;
+    let liveLat = null;
+    let liveLng = null;
     let modalLiveMap = null;
     let modalMarker = null;
 
-    let lastLat = null;
-    let lastLng = null;
+    const btnRefreshGeo = document.querySelector('#btn-refresh-location');
 
-    async function getLocation() {
-      if (navigator.geolocation) {
-        const updateCoords = (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          
-          window.dispatchEvent(new CustomEvent('location-acquired', { detail: { lat, lng } }));
+    function requestLiveLocation() {
+      if (!navigator.geolocation) {
+        return;
+      }
 
-          if (lastLat === null || Math.abs(lat - lastLat) > 0.00005 || Math.abs(lng - lastLng) > 0.00005) {
-            lastLat = lat;
-            lastLng = lng;
-            $wire.set('currentLiveCoords', [lat, lng]);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          liveLat = position.coords.latitude;
+          liveLng = position.coords.longitude;
+          window.hasLocation = true;
+
+          $wire.set('currentLiveCoords', [liveLat, liveLng]);
+          window.dispatchEvent(new CustomEvent('geo-updated', { detail: [liveLat, liveLng] }));
+
+          const coordsText = document.querySelector('#modal-coords-text');
+          if (coordsText) {
+            coordsText.innerHTML = `${liveLat}, ${liveLng}`;
           }
 
-          if (modalLiveMap) {
-            modalLiveMap.setView([Number(lat), Number(lng)], 15);
-            if (modalMarker) {
-              modalMarker.setLatLng([lat, lng]);
-            } else {
-              modalMarker = L.marker([lat, lng]).addTo(modalLiveMap);
-            }
+          if (modalLiveMap && modalMarker) {
+            modalMarker.setLatLng([liveLat, liveLng]);
+            modalLiveMap.setView([liveLat, liveLng], 16);
           }
-        };
-
-        const handleErr = (err) => {
-          console.warn(`GPS HighAccuracy failed code ${err.code}: ${err.message}, trying standard accuracy...`);
-          navigator.geolocation.getCurrentPosition(updateCoords, (fallbackErr) => {
-            console.error(`Geolocation fallback error code ${fallbackErr.code}: ${fallbackErr.message}`);
-          }, {
-            enableHighAccuracy: false,
-            timeout: 15000,
-            maximumAge: 60000
-          });
-        };
-
-        // 1. Immediate position call
-        navigator.geolocation.getCurrentPosition(updateCoords, handleErr, {
-          enableHighAccuracy: true,
-          timeout: 8000,
-          maximumAge: 0
-        });
-
-        // 2. Continuous watch
-        navigator.geolocation.watchPosition(updateCoords, handleErr, {
+        },
+        (error) => {
+          console.warn('Geolocation error:', error);
+          window.hasLocation = false;
+        },
+        {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 5000
-        });
-      } else {
-        if (document.querySelector('#scanner-error')) {
-          document.querySelector('#scanner-error').innerHTML = "Gagal mendeteksi lokasi";
+          maximumAge: 0
         }
-      }
+      );
     }
 
-    window.initModalLiveMap = function() {
-      const container = document.querySelector('#currentMapModal');
-      if (!container) return;
+    requestLiveLocation();
+
+    if (btnRefreshGeo) {
+      btnRefreshGeo.addEventListener('click', () => {
+        requestLiveLocation();
+      });
+    }
+
+    window.initModalMap = function () {
+      const modalMapEl = document.querySelector('#modal-map');
+      if (!modalMapEl) return;
+
+      const lat = liveLat || Number({{ $attendance?->latitude ?? -6.200000 }});
+      const lng = liveLng || Number({{ $attendance?->longitude ?? 106.816666 }});
 
       if (!modalLiveMap) {
-        modalLiveMap = L.map('currentMapModal');
+        modalLiveMap = L.map('modal-map').setView([lat, lng], 16);
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 21,
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap'
         }).addTo(modalLiveMap);
-      }
 
-      if ($wire.currentLiveCoords) {
-        const lat = Number($wire.currentLiveCoords[0]);
-        const lng = Number($wire.currentLiveCoords[1]);
-        modalLiveMap.setView([lat, lng], 15);
+        modalMarker = L.marker([lat, lng]).addTo(modalLiveMap);
+      } else {
+        modalLiveMap.setView([lat, lng], 16);
         if (modalMarker) {
           modalMarker.setLatLng([lat, lng]);
         } else {
@@ -447,154 +474,5 @@
         modalLiveMap.invalidateSize();
       }, 200);
     };
-
-    if (!$wire.isAbsence) {
-      const scanner = new Html5Qrcode('scanner');
-
-      const config = {
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-        fps: 15,
-        aspectRatio: 1,
-        qrbox: {
-          width: 280,
-          height: 280
-        },
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-      };
-
-      async function startScanning() {
-        if (scanner.getState() === Html5QrcodeScannerState.PAUSED) {
-          return scanner.resume();
-        }
-        await scanner.start({
-            facingMode: "environment"
-          },
-          config,
-          onScanSuccess,
-        );
-      }
-
-      async function onScanSuccess(decodedText, decodedResult) {
-        console.log(`Code matched = ${decodedText}`, decodedResult);
-
-        if (scanner.getState() === Html5QrcodeScannerState.SCANNING) {
-          scanner.pause(true);
-        }
-
-        if (!(await checkTime())) {
-          await startScanning();
-          return;
-        }
-
-        const result = await $wire.scan(decodedText);
-
-        if (result === true) {
-          return onAttendanceSuccess();
-        } else if (typeof result === 'string') {
-          errorMsg.innerHTML = result;
-        }
-
-        setTimeout(async () => {
-          await startScanning();
-        }, 500);
-      }
-
-      async function checkTime() {
-        const attendance = await $wire.getAttendance();
-
-        if (attendance) {
-          const timeIn = new Date(attendance.time_in).valueOf();
-          const diff = (Date.now() - timeIn) / (1000 * 3600);
-          const minAttendanceTime = 1;
-          console.log(`Difference = ${diff}`);
-          if (diff <= minAttendanceTime) {
-            const timeIn = new Date(attendance.time_in).toLocaleTimeString([], {
-              hour: 'numeric',
-              minute: 'numeric',
-              second: 'numeric',
-              hour12: false,
-            });
-            const confirmation = confirm(
-              `Anda baru saja absen pada ${timeIn}, apakah ingin melanjutkan untuk absen keluar?`
-            );
-            return confirmation;
-          }
-        }
-        return true;
-      }
-
-      function onAttendanceSuccess() {
-        scanner.stop();
-        errorMsg.innerHTML = '';
-        document.querySelector('#scanner-result').classList.remove('hidden');
-      }
-
-      const observer = new MutationObserver((mutationList, observer) => {
-        const classes = ['text-white', 'bg-blue-500', 'dark:bg-blue-400', 'rounded-md', 'px-3', 'py-1'];
-        for (const mutation of mutationList) {
-          if (mutation.type === 'childList') {
-            const startBtn = document.querySelector('#html5-qrcode-button-camera-start');
-            const stopBtn = document.querySelector('#html5-qrcode-button-camera-stop');
-            const fileBtn = document.querySelector('#html5-qrcode-button-file-selection');
-            const permissionBtn = document.querySelector('#html5-qrcode-button-camera-permission');
-
-            if (startBtn) {
-              startBtn.classList.add(...classes);
-              stopBtn.classList.add(...classes, 'bg-red-500');
-              fileBtn.classList.add(...classes);
-            }
-
-            if (permissionBtn)
-              permissionBtn.classList.add(...classes);
-          }
-        }
-      });
-
-      observer.observe(document.querySelector('#scanner'), {
-        childList: true,
-        subtree: true,
-      });
-
-      const shift = document.querySelector('#shift');
-      const msg = 'Pilih shift terlebih dahulu';
-      let isRendered = false;
-      setTimeout(() => {
-        if (!shift.value) {
-          errorMsg.innerHTML = msg;
-        } else {
-          startScanning();
-          isRendered = true;
-        }
-      }, 1000);
-      shift.addEventListener('change', () => {
-        if (!isRendered) {
-          startScanning();
-          isRendered = true;
-          errorMsg.innerHTML = '';
-        }
-        if (!shift.value) {
-          scanner.pause(true);
-          errorMsg.innerHTML = msg;
-        } else if (scanner.getState() === Html5QrcodeScannerState.PAUSED) {
-          scanner.resume();
-          errorMsg.innerHTML = '';
-        }
-      });
-
-      const cardMapEl = document.querySelector('#map');
-      if (cardMapEl && {{ !is_null($attendance?->latitude) ? 'true' : 'false' }}) {
-        const map = L.map('map').setView([
-          Number({{ $attendance?->latitude ?? 0 }}),
-          Number({{ $attendance?->longitude ?? 0 }}),
-        ], 13);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 21,
-        }).addTo(map);
-        L.marker([
-          Number({{ $attendance?->latitude ?? 0 }}),
-          Number({{ $attendance?->longitude ?? 0 }}),
-        ]).addTo(map);
-      }
-    }
   </script>
 @endscript

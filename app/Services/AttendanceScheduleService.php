@@ -26,21 +26,21 @@ class AttendanceScheduleService
      */
     public static function getUserOffDays(User $user): array
     {
-        $userOffDays = is_array($user->off_days) ? array_map('strtolower', $user->off_days) : [];
+        $rawUserOffDays = is_array($user->off_days) ? $user->off_days : (is_string($user->off_days) ? json_decode($user->off_days, true) : []);
+        $userOffDays = is_array($rawUserOffDays) ? array_map('strtolower', array_filter($rawUserOffDays, 'is_string')) : [];
         if (!empty($userOffDays)) {
-            return $userOffDays;
+            return array_values($userOffDays);
         }
 
         $division = $user->relationLoaded('division')
             ? $user->division
             : ($user->division_id ? Division::find($user->division_id) : null);
 
-        $divisionOffDays = ($division && is_array($division->off_days))
-            ? array_map('strtolower', $division->off_days)
-            : [];
+        $rawDivOffDays = ($division && is_array($division->off_days)) ? $division->off_days : ($division && is_string($division->off_days) ? json_decode($division->off_days, true) : []);
+        $divisionOffDays = is_array($rawDivOffDays) ? array_map('strtolower', array_filter($rawDivOffDays, 'is_string')) : [];
 
         if (!empty($divisionOffDays)) {
-            return $divisionOffDays;
+            return array_values($divisionOffDays);
         }
 
         // System default
