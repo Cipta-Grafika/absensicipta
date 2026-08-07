@@ -299,7 +299,7 @@
                           $leaveCount++;
                           break;
                       default:
-                          $shortStatus = '-';
+                          $shortStatus = !$isWorkingDay ? 'OFF' : '-';
                           $bgColor =
                               'hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600';
                           break;
@@ -309,7 +309,17 @@
                   <td
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
-                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                      @if ($isPerDayFilter)
+                        @if ($status === '-' && !$isWorkingDay)
+                          <span class="text-xs font-bold text-red-500 dark:text-red-400">OFF</span>
+                        @else
+                          {{ __($status) }}
+                        @endif
+                      @elseif ($shortStatus === 'OFF')
+                        <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400">OFF</span>
+                      @else
+                        {{ $shortStatus }}
+                      @endif
                     </button>
                   </td>
                 @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
@@ -317,13 +327,37 @@
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="show({{ $attendance['id'] }})"
                       onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
-                      {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
+                      @if ($isPerDayFilter)
+                        @if ($status === 'imp')
+                          IMP
+                        @elseif ($status === '-' && !$isWorkingDay)
+                          <span class="text-xs font-bold text-red-500 dark:text-red-400">OFF</span>
+                        @else
+                          {{ __($status) }}
+                        @endif
+                      @elseif ($shortStatus === 'OFF')
+                        <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400">OFF</span>
+                      @else
+                        {{ $shortStatus }}
+                      @endif
                     </button>
                   </td>
                 @else
                   <td
                     class="{{ $bgColor }} text-nowrap cursor-pointer px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-                    {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
+                    @if ($isPerDayFilter)
+                      @if ($status === 'imp')
+                        IMP
+                      @elseif ($status === '-' && !$isWorkingDay)
+                        <span class="text-xs font-bold text-red-500 dark:text-red-400">OFF</span>
+                      @else
+                        {{ __($status) }}
+                      @endif
+                    @elseif ($shortStatus === 'OFF')
+                      <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400">OFF</span>
+                    @else
+                      {{ $shortStatus }}
+                    @endif
                   </td>
                 @endif
               @endforeach
@@ -610,7 +644,7 @@
                       $bgColor = 'bg-cyan-200 dark:bg-cyan-800 hover:bg-cyan-300 dark:hover:bg-cyan-700 border border-cyan-300 dark:border-cyan-600';
                       break;
                   default:
-                      $shortStatus = '-';
+                      $shortStatus = !$isWorkingDay ? 'OFF' : '-';
                       $bgColor = 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600';
                       break;
               }
@@ -624,7 +658,11 @@
                 {{ $date->format('d') }}
               </span>
               <br>
-              {{ $shortStatus }}
+              @if ($shortStatus === 'OFF')
+                <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400">OFF</span>
+              @else
+                {{ $shortStatus }}
+              @endif
             </button>
           @endforeach
           
