@@ -1,6 +1,6 @@
-<nav x-data="{ open: false }" class="sticky top-0 z-50 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
+<nav x-data="{ open: false }" class="fixed top-0 left-0 right-0 z-50 h-16 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
   <!-- Primary Navigation Menu -->
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div class="w-full px-4 sm:px-6 lg:px-8">
     <div class="flex h-16 justify-between">
       <div class="flex">
         <!-- Logo -->
@@ -12,7 +12,7 @@
 
         <!-- Navigation Links -->
         <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex sm:space-x-8">
-          @if (Auth::user()->isAdmin)
+          @if (Auth::user()->isAdmin && !request()->routeIs('hr.*'))
             <x-nav-link href="{{ route('hr.dashboard') }}" :active="request()->routeIs('hr.dashboard')">
               {{ __('Dashboard') }}
             </x-nav-link>

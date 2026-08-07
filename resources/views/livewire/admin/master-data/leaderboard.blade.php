@@ -15,7 +15,7 @@
          }
        }
      }">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+  <div class="w-full sm:px-6 lg:px-8">
     <div class="overflow-hidden bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg">
 
       <!-- Header Section inside Livewire DOM Boundary -->
