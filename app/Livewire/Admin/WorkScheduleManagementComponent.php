@@ -25,6 +25,14 @@ class WorkScheduleManagementComponent extends Component
     public int|bool $is_working_day = 1;
     public ?string $note = null;
 
+    // Calendar & Bulk Date Schedule State
+    public ?string $calendar_month = null;
+    public ?string $selected_calendar_date = null;
+    public string $selectedDateDisplay = '';
+    public bool $bulkDateModalOpen = false;
+    public array $bulk_employee_data = [];
+    public ?string $bulk_search = null;
+
     // Form inputs (Edit)
     public ?int $editing_id = null;
     public ?string $edit_user_id = null;
@@ -39,13 +47,29 @@ class WorkScheduleManagementComponent extends Component
     public ?int $selectedId = null;
 
     // Filters
+    public int|string $perPage = 10;
     public ?string $search = null;
     public ?string $filter_division_id = null;
     public ?string $filter_user_id = null;
     public ?string $filter_start_date = null;
     public ?string $filter_end_date = null;
 
+    public function mount(): void
+    {
+        $this->calendar_month = date('Y-m');
+    }
+
     public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingCalendarMonth(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage(): void
     {
         $this->resetPage();
     }
@@ -216,10 +240,110 @@ class WorkScheduleManagementComponent extends Component
         $this->selectedId = null;
     }
 
+    public function handleCalendarDateClick(string $dateString): void
+    {
+        $user = Auth::user();
+        if ($user->isNotAdmin) {
+            abort(403);
+        }
+
+        $formattedDate = Carbon::parse($dateString)->format('Y-m-d');
+        $this->selected_calendar_date = $formattedDate;
+        $this->selectedDateDisplay = Carbon::parse($formattedDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+
+        // Fetch existing schedules for this date
+        $existingSchedules = WorkSchedule::where('date', $formattedDate)
+            ->get()
+            ->keyBy('user_id');
+
+        $usersQuery = User::where('group', 'user')->whereIn('status', ['active', 'suspend']);
+        if (!$user->isSuperadmin) {
+            $usersQuery->where('division_id', $user->division_id);
+        }
+        $users = $usersQuery->orderBy('name')->get();
+
+        $this->bulk_employee_data = [];
+        foreach ($users as $u) {
+            $ex = $existingSchedules->get($u->id);
+            $this->bulk_employee_data[$u->id] = [
+                'selected' => $ex ? true : false,
+                'is_working_day' => $ex ? ($ex->is_working_day ? 1 : 0) : 1,
+                'note' => $ex ? ($ex->note ?? '') : '',
+            ];
+        }
+
+        $this->resetErrorBag();
+        $this->bulk_search = '';
+        $this->bulkDateModalOpen = true;
+    }
+
+    public function submitBulkDateSchedule(): void
+    {
+        $user = Auth::user();
+        if ($user->isNotAdmin) {
+            abort(403);
+        }
+
+        if (!$this->selected_calendar_date) {
+            return;
+        }
+
+        $selectedUserIds = [];
+        foreach ($this->bulk_employee_data as $userId => $data) {
+            if (!empty($data['selected'])) {
+                $selectedUserIds[] = $userId;
+            }
+        }
+
+        if (empty($selectedUserIds)) {
+            $this->addError('bulk_employee_data', 'Pilih minimal 1 karyawan untuk menyimpan jadwal rolling.');
+            return;
+        }
+
+        $dateStr = $this->selected_calendar_date;
+
+        DB::transaction(function () use ($selectedUserIds, $dateStr) {
+            foreach ($selectedUserIds as $userId) {
+                $data = $this->bulk_employee_data[$userId] ?? [];
+                WorkSchedule::updateOrCreate(
+                    [
+                        'date' => $dateStr,
+                        'user_id' => $userId,
+                    ],
+                    [
+                        'is_working_day' => isset($data['is_working_day']) ? (int)$data['is_working_day'] : 1,
+                        'note' => !empty($data['note']) && trim($data['note']) !== '' ? trim($data['note']) : null,
+                        'created_by' => Auth::id(),
+                    ]
+                );
+            }
+        });
+
+        $this->bulkDateModalOpen = false;
+        $this->banner('Jadwal rolling untuk ' . $this->selectedDateDisplay . ' berhasil disimpan.');
+    }
+
     public function render()
     {
         $user = Auth::user();
-        $query = WorkSchedule::with(['user.division', 'createdBy']);
+        $selectedMonth = $this->calendar_month ?: date('Y-m');
+
+        $calStart = Carbon::parse($selectedMonth)->startOfMonth();
+        $calEnd = Carbon::parse($selectedMonth)->endOfMonth();
+        $calDates = $calStart->range($calEnd)->toArray();
+
+        // Query monthly schedules for calendar grid visualization
+        $monthSchedulesQuery = WorkSchedule::with(['user.division'])
+            ->whereBetween('date', [$calStart->format('Y-m-d'), $calEnd->format('Y-m-d')]);
+
+        if (!$user->isSuperadmin) {
+            $monthSchedulesQuery->whereHas('user', fn ($u) => $u->where('division_id', $user->division_id));
+        }
+
+        $monthSchedules = $monthSchedulesQuery->get()->groupBy(fn($s) => $s->date->format('Y-m-d'));
+
+        $query = WorkSchedule::with(['user.division', 'createdBy'])
+            ->whereBetween('date', [$calStart->format('Y-m-d'), $calEnd->format('Y-m-d')]);
 
         // Non-superadmin is restricted to their own division's schedules
         if (!$user->isSuperadmin) {
@@ -240,7 +364,8 @@ class WorkScheduleManagementComponent extends Component
         ->when($this->filter_end_date, fn ($q) => $q->where('date', '<=', $this->filter_end_date))
         ->orderBy('date', 'desc');
 
-        $schedules = $query->paginate(20);
+        $perPageCount = $this->perPage === 'all' ? 10000 : (int) $this->perPage;
+        $schedules = $query->paginate($perPageCount);
 
         $divisions = $user->isSuperadmin ? Division::orderBy('name')->get() : collect();
 
@@ -255,6 +380,11 @@ class WorkScheduleManagementComponent extends Component
             'schedules' => $schedules,
             'divisions' => $divisions,
             'users' => $users,
+            'monthSchedules' => $monthSchedules,
+            'calDates' => $calDates,
+            'calStart' => $calStart,
+            'calEnd' => $calEnd,
+            'calendar_month' => $selectedMonth,
         ])->layout('layouts.app');
     }
 }

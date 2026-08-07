@@ -1,9 +1,9 @@
-<x-modal wire:model="showDetail" onclose="removeMap()">
-  <div class="px-6 py-4">
+<x-modal wire:model="showDetail">
+  <div class="px-6 py-4 overflow-y-auto max-h-[88vh]">
     @if ($currentAttendance)
       @php
         $isExcused = in_array($currentAttendance['status'], ['excused', 'sick', 'wfh', 'leave', 'special-leaves']);
-        $showMap = $currentAttendance['latitude'] && $currentAttendance['longitude'] && !$isExcused;
+        $showMap = !empty($currentAttendance['latitude']) && !empty($currentAttendance['longitude']) && !$isExcused;
       @endphp
       <h3 class="mb-3 text-xl font-semibold dark:text-white">{{ $currentAttendance['name'] }}</h3>
       <div class="mb-3 w-full">
@@ -53,11 +53,56 @@
           <x-textarea type="text" id="note" disabled value="{{ $currentAttendance['note'] }}" />
         @endif
         @if ($showMap)
-          <x-label for="map" value="Koordinat Lokasi Absen"></x-label>
-          <p class="dark:text-gray-300">
+          <x-label for="detail-modal-map" value="Koordinat Lokasi Absen"></x-label>
+          <p class="dark:text-gray-300 text-xs font-mono">
             {{ $currentAttendance['latitude'] }}, {{ $currentAttendance['longitude'] }}
           </p>
-          <div class="my-2 h-52 w-full md:h-64" id="map"></div>
+          <div class="my-2 h-56 w-full md:h-64 rounded-xl border border-gray-300 dark:border-gray-600 shadow-inner z-10"
+               id="detail-modal-map"
+               x-data
+               x-init="$nextTick(() => {
+                 function initDetailLeafletMap() {
+                   const lat = Number({{ $currentAttendance['latitude'] ?? 0 }});
+                   const lng = Number({{ $currentAttendance['longitude'] ?? 0 }});
+                   if (!lat || !lng) return;
+
+                   if (window.attendanceDetailMap) {
+                     try { window.attendanceDetailMap.remove(); } catch(e) {}
+                     window.attendanceDetailMap = null;
+                   }
+
+                   setTimeout(() => {
+                     const mapEl = document.getElementById('detail-modal-map');
+                     if (!mapEl) return;
+                     try {
+                       window.attendanceDetailMap = L.map('detail-modal-map').setView([lat, lng], 17);
+                       L.marker([lat, lng]).addTo(window.attendanceDetailMap);
+                       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                         maxZoom: 19,
+                         attribution: '&copy; OpenStreetMap'
+                       }).addTo(window.attendanceDetailMap);
+                       setTimeout(() => { if (window.attendanceDetailMap) window.attendanceDetailMap.invalidateSize(); }, 300);
+                     } catch(e) {
+                       console.warn('[Map Warning] Could not init map:', e);
+                     }
+                   }, 200);
+                 }
+
+                 if (!window.L) {
+                   const css = document.createElement('link');
+                   css.rel = 'stylesheet';
+                   css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                   document.head.appendChild(css);
+
+                   const js = document.createElement('script');
+                   js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                   js.onload = () => initDetailLeafletMap();
+                   document.head.appendChild(js);
+                 } else {
+                   initDetailLeafletMap();
+                 }
+               })">
+          </div>
         @endif
         @if ($currentAttendance['time_in'] || $currentAttendance['time_out'])
           <div class="grid grid-cols-2 gap-3">
@@ -90,27 +135,3 @@
     @endif
   </div>
 </x-modal>
-
-@push('attendance-detail-scripts')
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script>
-    let map = null;
-
-    function setLocation(lat, lng) {
-      removeMap();
-      setTimeout(() => {
-        map = L.map('map').setView([Number(lat), Number(lng)], 19);
-        L.marker([Number(lat), Number(lng)]).addTo(map);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 21,
-        }).addTo(map);
-      }, 500);
-    }
-
-    function removeMap() {
-      if (map !== null) map.remove();
-      map = null;
-    }
-  </script>
-@endpush

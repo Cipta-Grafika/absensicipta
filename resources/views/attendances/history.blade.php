@@ -13,10 +13,10 @@
     </div>
   </x-slot>
 
-  <div class="py-0 sm:py-12">
-    <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-      <div class="bg-white shadow-xl dark:bg-gray-800 sm:rounded-lg">
-        <div class="p-6 lg:p-8">
+  <div class="flex-grow flex flex-col py-0 sm:py-10">
+    <div class="mx-auto w-full max-w-7xl px-0 sm:px-6 lg:px-8 flex-grow flex flex-col">
+      <div class="overflow-hidden bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/80 dark:border-gray-800/80 shadow-2xl shadow-black/5 rounded-none sm:rounded-2xl flex-grow flex flex-col transition-all duration-300">
+        <div class="p-4 sm:p-6 lg:p-8 flex-grow flex flex-col justify-between">
           @livewire('attendance-history-component')
         </div>
       </div>

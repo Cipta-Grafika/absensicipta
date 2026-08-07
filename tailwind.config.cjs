@@ -12,7 +12,18 @@ module.exports = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: [
+                    'SF Pro Display',
+                    'SF Pro Text',
+                    'SF Pro',
+                    '-apple-system',
+                    'BlinkMacSystemFont',
+                    'San Francisco',
+                    'Helvetica Neue',
+                    'Helvetica',
+                    'Arial',
+                    ...defaultTheme.fontFamily.sans
+                ],
             },
         },
     },

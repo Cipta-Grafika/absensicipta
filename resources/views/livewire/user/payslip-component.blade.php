@@ -12,8 +12,8 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-12" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+<div class="flex-grow flex flex-col py-0 sm:py-10" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="mx-auto w-full max-w-7xl px-0 sm:px-6 lg:px-8 flex-grow flex flex-col">
     
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Data</x-slot>
@@ -35,50 +35,96 @@
       </x-slot>
     </x-filter-sidebar>
 
-    <div class="overflow-hidden bg-white shadow-xl sm:rounded-lg dark:bg-gray-800">
-      <div class="p-6 lg:p-8 text-gray-900 dark:text-gray-100">
+    <div class="overflow-hidden bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/80 dark:border-gray-800/80 shadow-2xl shadow-black/5 rounded-none sm:rounded-2xl flex-grow flex flex-col transition-all duration-300">
+      <div class="p-6 lg:p-8 text-gray-900 dark:text-gray-100 flex-grow flex flex-col justify-between">
 
-      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        @forelse ($payrolls as $pr)
-          <div class="flex flex-col rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-700">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {{ \Carbon\Carbon::parse($pr->period_month)->format('F Y') }}
-              </h3>
-              <span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">Telah Dibayar</span>
-            </div>
-            <div class="mt-4 flex-1">
-              <div class="text-sm text-gray-500 dark:text-gray-400">Total Pemasukan</div>
-              <div class="text-lg font-medium text-green-600 dark:text-green-400">Rp {{ number_format($pr->basic_salary_earned + $pr->total_allowance + $pr->total_overtime_pay, 0, ',', '.') }}</div>
-              
-              <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">Total Potongan</div>
-              <div class="text-lg font-medium text-red-600 dark:text-red-400">Rp {{ number_format($pr->total_deduction, 0, ',', '.') }}</div>
-              
-              <div class="mt-4 border-t border-gray-100 pt-3 dark:border-gray-700">
-                <div class="text-sm text-gray-500 dark:text-gray-400">Gaji Bersih (Take Home Pay)</div>
-                <div class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($pr->net_salary, 0, ',', '.') }}</div>
-              </div>
-            </div>
-            
-            <div class="mt-5 text-center">
-              <a href="{{ route('user.payslip.print', $pr->id) }}" class="block w-full rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-green-600 dark:text-white dark:hover:bg-green-500 transition-colors">
-                <div class="flex items-center justify-center">
-                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                  Unduh PDF
+        @if ($payrolls->isNotEmpty())
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($payrolls as $pr)
+              <div x-data="{ revealed: false }"
+                   class="relative group flex flex-col rounded-2xl border border-white/80 dark:border-gray-800/80 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md p-5 shadow-sm transition-all hover:shadow-md overflow-hidden">
+                
+                <!-- Card Header -->
+                <div class="flex items-center justify-between border-b border-gray-100/80 pb-3 dark:border-gray-700/80 relative z-10">
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {{ \Carbon\Carbon::parse($pr->period_month)->format('F Y') }}
+                    </h3>
+                    <span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 text-xs font-semibold leading-5 text-emerald-800 dark:text-emerald-400">Telah Dibayar</span>
+                  </div>
+
+                  <!-- Quick Eye Toggle Button -->
+                  <button type="button" 
+                          @click.stop="revealed = !revealed"
+                          :title="revealed ? 'Sembunyikan Rincian Gaji' : 'Tampilkan Rincian Gaji'"
+                          class="p-1.5 rounded-xl border border-white/80 dark:border-gray-700/80 bg-white/80 dark:bg-gray-800/80 text-gray-400 hover:text-sky-500 dark:hover:text-sky-400 backdrop-blur-md transition-all cursor-pointer">
+                    <span x-show="revealed">
+                      <x-heroicon-o-eye class="h-4 w-4 shrink-0" />
+                    </span>
+                    <span x-show="!revealed">
+                      <x-heroicon-o-eye-slash class="h-4 w-4 shrink-0" />
+                    </span>
+                  </button>
                 </div>
-              </a>
-            </div>
-          </div>
-        @empty
-          <div class="col-span-1 text-center text-gray-500 sm:col-span-2 lg:col-span-3">
-            Belum ada data slip gaji yang dibayarkan.
-          </div>
-        @endforelse
-      </div>
+                
+                <!-- Payslip Details Body (Blurred when not revealed) -->
+                <div class="mt-4 flex-1 relative transition-all duration-300"
+                     :class="revealed ? '' : 'filter blur-md select-none pointer-events-none'">
+                  <div class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Pemasukan</div>
+                  <div class="text-lg font-semibold text-emerald-600 dark:text-emerald-400">Rp {{ number_format($pr->basic_salary_earned + $pr->total_allowance + $pr->total_overtime_pay, 0, ',', '.') }}</div>
+                  
+                  <div class="mt-2 text-xs font-medium text-gray-500 dark:text-gray-400">Total Potongan</div>
+                  <div class="text-lg font-semibold text-rose-600 dark:text-rose-400">Rp {{ number_format($pr->total_deduction, 0, ',', '.') }}</div>
+                  
+                  <div class="mt-4 border-t border-gray-100/80 pt-3 dark:border-gray-700/80">
+                    <div class="text-xs font-medium text-gray-500 dark:text-gray-400">Gaji Bersih (Take Home Pay)</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($pr->net_salary, 0, ',', '.') }}</div>
+                  </div>
+                  
+                  <div class="mt-5 text-center">
+                    <a href="{{ route('user.payslip.print', $pr->id) }}" class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500 transition-all">
+                      <x-heroicon-o-arrow-down-tray class="mr-2 h-4 w-4 shrink-0" />
+                      Unduh PDF
+                    </a>
+                  </div>
+                </div>
 
-      <div class="mt-6">
-        {{ $payrolls->links() }}
-      </div>
+                <!-- SENSITIVE CONTENT GLASS OVERLAY -->
+                <div x-show="!revealed"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     @click="revealed = true"
+                     class="absolute inset-x-0 bottom-0 top-14 z-20 flex flex-col items-center justify-center bg-white/40 dark:bg-gray-900/40 backdrop-blur-md cursor-pointer p-4 text-center select-none group-hover:bg-white/30 dark:group-hover:bg-gray-900/30 transition-all">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/90 dark:bg-gray-800/90 text-sky-500 dark:text-sky-400 shadow-md backdrop-blur-md mb-2.5 group-hover:scale-110 transition-transform">
+                    <x-heroicon-o-eye-slash class="h-6 w-6 shrink-0" />
+                  </div>
+                  <span class="text-sm font-bold text-gray-900 dark:text-white tracking-wide">Konten Sensitif</span>
+                  <span class="mt-1 text-xs font-medium text-gray-600 dark:text-gray-300">Klik kartu untuk memperlihatkan rincian gaji</span>
+                </div>
+              </div>
+            @endforeach
+          </div>
+
+          <div class="mt-6">
+            {{ $payrolls->links() }}
+          </div>
+        @else
+          <div class="flex flex-1 flex-col items-center justify-center text-center py-12 px-4">
+            <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-500 dark:text-blue-400">
+              <x-heroicon-o-banknotes class="h-8 w-8 stroke-1.5" />
+            </div>
+            <h3 class="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-200">
+              Belum ada data slip gaji yang dibayarkan.
+            </h3>
+            <p class="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+              Slip gaji Anda akan otomatis tampil di sini setelah diproses dan disetujui oleh tim HR/Payroll.
+            </p>
+          </div>
+        @endif
 
       </div>
     </div>

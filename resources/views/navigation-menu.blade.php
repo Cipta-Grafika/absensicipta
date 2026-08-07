@@ -1,6 +1,6 @@
-<nav x-data="{ open: false }" class="sticky top-0 z-50 border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
+<nav x-data="{ open: false }" class="fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/80 dark:border-gray-800/80 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl shadow-xs transition-colors">
   <!-- Primary Navigation Menu -->
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div class="w-full px-4 sm:px-6 lg:px-8">
     <div class="flex h-16 justify-between">
       <div class="flex">
         <!-- Logo -->
@@ -12,7 +12,7 @@
 
         <!-- Navigation Links -->
         <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex sm:space-x-8">
-          @if (Auth::user()->isAdmin)
+          @if (Auth::user()->isAdmin && !request()->routeIs('hr.*'))
             <x-nav-link href="{{ route('hr.dashboard') }}" :active="request()->routeIs('hr.dashboard')">
               {{ __('Dashboard') }}
             </x-nav-link>
@@ -197,11 +197,11 @@
         </div>
       </div>
 
-      <div class="flex gap-2">
+      <div class="flex items-center gap-1.5 sm:gap-2">
         <div class="hidden sm:ms-6 sm:flex sm:items-center">
           <x-theme-toggle />
 
-          <!-- Settings Dropdown -->
+          <!-- Settings Dropdown (Desktop) -->
           <div class="relative ms-3">
             <x-dropdown align="right" width="48">
               <x-slot name="trigger">
@@ -259,8 +259,8 @@
 
         <x-theme-toggle class="sm:hidden" />
 
-        <!-- Hamburger -->
-        <div class="-me-2 flex items-center sm:hidden">
+        <!-- Hamburger (Mobile) -->
+        <div class="flex items-center sm:hidden">
           <button @click="open = ! open"
             class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400">
             <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
@@ -270,6 +270,52 @@
                 stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+
+        <!-- Mobile Profile Dropdown (Far Right) -->
+        <div class="relative flex items-center sm:hidden">
+          <x-dropdown align="right" width="48">
+            <x-slot name="trigger">
+              @if (Laravel\Jetstream\Jetstream::managesProfilePhotos())
+                <button type="button" class="flex rounded-full border-2 border-transparent text-sm transition focus:border-gray-300 focus:outline-none">
+                  <img class="h-8 w-8 rounded-full object-cover" src="{{ Auth::user()->profile_photo_url }}" alt="{{ Auth::user()->name }}" />
+                </button>
+              @else
+                <button type="button" class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/60 text-xs font-bold text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 focus:outline-none">
+                  {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
+                </button>
+              @endif
+            </x-slot>
+
+            <x-slot name="content">
+              <!-- Account Info Header -->
+              <div class="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
+                <div class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ Auth::user()->name }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ Auth::user()->email }}</div>
+              </div>
+
+              <!-- Account Management -->
+              <x-dropdown-link href="{{ route('profile.show') }}">
+                {{ __('Profil') }}
+              </x-dropdown-link>
+
+              @if (Laravel\Jetstream\Jetstream::hasApiFeatures())
+                <x-dropdown-link href="{{ route('api-tokens.index') }}">
+                  {{ __('API Tokens') }}
+                </x-dropdown-link>
+              @endif
+
+              <div class="border-t border-gray-100 dark:border-gray-700"></div>
+
+              <!-- Authentication -->
+              <form method="POST" action="{{ route('logout') }}" x-data>
+                @csrf
+                <x-dropdown-link href="{{ route('logout') }}" @click.prevent="$root.submit();" class="!text-red-600 hover:!bg-red-50 dark:!text-red-500 dark:hover:!bg-red-900/50">
+                  {{ __('Keluar') }}
+                </x-dropdown-link>
+              </form>
+            </x-slot>
+          </x-dropdown>
         </div>
       </div>
     </div>
@@ -396,45 +442,6 @@
           Slip Gaji
         </x-responsive-nav-link>
       @endif
-    </div>
-
-    <!-- Responsive Settings Options -->
-    <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
-      <div class="flex items-center px-4">
-        @if (Laravel\Jetstream\Jetstream::managesProfilePhotos())
-          <div class="me-3 shrink-0">
-            <img class="h-10 w-10 rounded-full object-cover" src="{{ Auth::user()->profile_photo_url }}"
-              alt="{{ Auth::user()->name }}" />
-          </div>
-        @endif
-
-        <div>
-          <div class="text-base font-medium text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
-          <div class="text-sm font-medium text-gray-500">{{ Auth::user()->email }}</div>
-        </div>
-      </div>
-
-      <div class="mt-3 space-y-1">
-        <!-- Account Management -->
-        <x-responsive-nav-link href="{{ route('profile.show') }}" :active="request()->routeIs('profile.show')">
-          {{ __('Profile') }}
-        </x-responsive-nav-link>
-
-        @if (Laravel\Jetstream\Jetstream::hasApiFeatures())
-          <x-responsive-nav-link href="{{ route('api-tokens.index') }}" :active="request()->routeIs('api-tokens.index')">
-            {{ __('API Tokens') }}
-          </x-responsive-nav-link>
-        @endif
-
-        <!-- Authentication -->
-        <form method="POST" action="{{ route('logout') }}" x-data>
-          @csrf
-
-          <x-responsive-nav-link href="{{ route('logout') }}" @click.prevent="$root.submit();" class="!text-red-600 hover:!bg-red-50 dark:!text-red-500 dark:hover:!bg-red-900/50">
-            {{ __('Log Out') }}
-          </x-responsive-nav-link>
-        </form>
-      </div>
     </div>
   </div>
 </nav>

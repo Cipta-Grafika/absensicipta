@@ -1,20 +1,4 @@
-<div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-8"
-     x-data="{
-       eventSource: null,
-       init() {
-         if (!window.EventSource) return;
-         const period = '{{ $period }}';
-         this.eventSource = new EventSource('/api/leaderboard/stream?period=' + period);
-         this.eventSource.addEventListener('leaderboard_updated', (e) => {
-           @this.call('$refresh');
-         });
-       },
-       destroy() {
-         if (this.eventSource) {
-           this.eventSource.close();
-         }
-       }
-     }">
+<div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-8">
 
   <!-- SECTION 1: LEADERBOARD SELURUH KARYAWAN (GLOBAL TOP 5) -->
   <div class="flex flex-col justify-between p-0 border-0 bg-transparent sm:rounded-2xl sm:border sm:border-gray-100 sm:bg-gray-50/50 sm:p-5 dark:sm:border-gray-700/60 dark:sm:bg-gray-800/40">

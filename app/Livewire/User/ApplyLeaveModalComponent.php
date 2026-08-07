@@ -228,11 +228,18 @@ class ApplyLeaveModalComponent extends Component
 
     public function render()
     {
-        $user = Auth::user();
-        $shifts = Shift::forUser($user)
-            ->orderByRaw('CASE WHEN division_id = ? THEN 0 ELSE 1 END', [$user->division_id ?? 0])
-            ->orderBy('name', 'asc')
-            ->get();
+        $shifts = collect();
+
+        // Only query shifts from DB when modal is actually open and in IMP mode
+        if ($this->isModalOpen && $this->modalMode === 'imp') {
+            $user = Auth::user();
+            if ($user) {
+                $shifts = Shift::forUser($user)
+                    ->orderByRaw('CASE WHEN division_id = ? THEN 0 ELSE 1 END', [$user->division_id ?? 0])
+                    ->orderBy('name', 'asc')
+                    ->get();
+            }
+        }
 
         return view('livewire.user.apply-leave-modal-component', [
             'shifts' => $shifts,
