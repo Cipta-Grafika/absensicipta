@@ -89,20 +89,20 @@
         </div>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-900">
+      <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+        <table class="w-full min-w-[1000px] divide-y divide-gray-200 text-left text-xs text-gray-700 dark:divide-gray-700 dark:text-gray-200">
+          <thead class="bg-gray-50 uppercase text-gray-700 dark:bg-gray-900 dark:text-gray-300">
             <tr>
-              <th scope="col" class="min-w-[15rem] whitespace-nowrap px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Periode & Karyawan</th>
+              <th scope="col" class="min-w-[15rem] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Periode & Karyawan</th>
               @foreach (['H', 'A', 'T', 'L', 'IMP', 'S', 'I', 'C', 'W'] as $_st)
-                <th scope="col" class="w-12 min-w-[3rem] border border-gray-300 p-0 text-center text-xs font-medium text-gray-500 dark:border-gray-600 dark:text-gray-300" title="{{ $_st }}">
+                <th scope="col" class="w-12 min-w-[3rem] border border-gray-300 p-0 text-center text-xs font-bold text-gray-500 dark:border-gray-600 dark:text-gray-300" title="{{ $_st }}">
                   <div class="flex h-12 w-12 items-center justify-center">{{ $_st }}</div>
                 </th>
               @endforeach
-              <th scope="col" class="whitespace-nowrap px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Pemasukan</th>
-              <th scope="col" class="whitespace-nowrap px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Potongan</th>
-              <th scope="col" class="whitespace-nowrap px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Net Salary</th>
-              <th scope="col" class="whitespace-nowrap px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status & Aksi</th>
+              <th scope="col" class="whitespace-nowrap px-4 py-3 min-w-[150px] text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Pemasukan</th>
+              <th scope="col" class="whitespace-nowrap px-4 py-3 min-w-[150px] text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Potongan</th>
+              <th scope="col" class="whitespace-nowrap px-4 py-3 min-w-[150px] text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Net Salary</th>
+              <th scope="col" class="whitespace-nowrap px-4 py-3 min-w-[140px] text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status & Aksi</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
