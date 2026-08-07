@@ -11,7 +11,7 @@
 @endphp
 
 <div x-show="filterOpen" id="{{ $id }}"
-  class="relative z-50" aria-labelledby="slide-over-title" role="dialog" aria-modal="true" style="display: none;">
+  class="relative z-[100]" aria-labelledby="slide-over-title" role="dialog" aria-modal="true" style="display: none;">
   
   <!-- Backdrop -->
   <div x-show="filterOpen" class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75 transition-opacity" x-on:click="filterOpen = false"

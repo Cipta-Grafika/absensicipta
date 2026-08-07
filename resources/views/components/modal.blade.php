@@ -9,12 +9,14 @@
       'lg' => 'sm:max-w-lg',
       'xl' => 'sm:max-w-xl',
       '2xl' => 'sm:max-w-2xl',
+      '3xl' => 'sm:max-w-3xl',
+      '4xl' => 'sm:max-w-4xl',
   ][$maxWidth ?? '2xl'];
 @endphp
 
 <div x-data="{ show: @entangle($attributes->wire('model')).live }" x-on:close.stop="show = false; {{ $onclose }}"
   x-on:keydown.escape.window="show = false; {{ $onclose }}" x-show="show" id="{{ $id }}"
-  class="jetstream-modal fixed inset-0 z-50 flex min-h-full items-center justify-center overflow-y-auto px-4 py-6 sm:px-0" style="display: none;"
+  class="jetstream-modal fixed inset-0 z-[100] flex min-h-full items-center justify-center overflow-y-auto p-3 sm:p-4 my-auto" style="display: none;"
   x-init="$watch('show', value => {
       if (value) {
           document.body.classList.add('overflow-y-hidden');
@@ -36,11 +38,11 @@
   <div x-show="show" class="fixed inset-0 transform transition-all" x-on:click="show = false; {{ $onclose }}"
     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-    <div class="absolute inset-0 bg-gray-500 opacity-75 dark:bg-gray-900"></div>
+    <div class="absolute inset-0 bg-gray-500/75 dark:bg-gray-900/80 backdrop-blur-xs"></div>
   </div>
 
   <div x-show="show"
-    class="w-full {{ $maxWidth }} transform overflow-hidden rounded-xl bg-white shadow-2xl transition-all dark:bg-gray-800 sm:mx-auto max-h-[88vh] flex flex-col my-auto"
+    class="w-full {{ $maxWidth }} transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all dark:bg-gray-800 sm:mx-auto max-h-[82vh] sm:max-h-[88vh] flex flex-col my-auto"
     x-trap.inert="show" x-transition:enter="ease-out duration-300"
     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200"
