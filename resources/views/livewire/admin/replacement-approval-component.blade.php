@@ -19,7 +19,7 @@
 <div x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
   <div class="py-0 sm:py-6">
     <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-      <div class="bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
+      <div class="bg-white p-6 shadow-none sm:shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
 
         <!-- Monthly Calendar Section -->
         <div class="mb-6 rounded-2xl bg-gray-50/80 p-4 sm:p-5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900/60 shadow-xs">

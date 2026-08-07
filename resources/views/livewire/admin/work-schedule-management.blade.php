@@ -18,7 +18,7 @@
 
 <div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
   <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-    <div class="overflow-hidden bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg">
+    <div class="overflow-hidden bg-white p-6 shadow-none sm:shadow-xl dark:bg-gray-800 sm:rounded-lg">
 
       <!-- Interactive Monthly Rolling Calendar Box -->
       <div class="mb-6 rounded-2xl bg-gray-50/80 dark:bg-gray-900/60 p-4 sm:p-5 border border-gray-200 dark:border-gray-700 shadow-xs">
