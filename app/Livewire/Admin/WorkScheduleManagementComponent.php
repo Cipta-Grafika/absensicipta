@@ -47,6 +47,7 @@ class WorkScheduleManagementComponent extends Component
     public ?int $selectedId = null;
 
     // Filters
+    public int|string $perPage = 10;
     public ?string $search = null;
     public ?string $filter_division_id = null;
     public ?string $filter_user_id = null;
@@ -64,6 +65,11 @@ class WorkScheduleManagementComponent extends Component
     }
 
     public function updatingCalendarMonth(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage(): void
     {
         $this->resetPage();
     }
@@ -336,7 +342,8 @@ class WorkScheduleManagementComponent extends Component
 
         $monthSchedules = $monthSchedulesQuery->get()->groupBy(fn($s) => $s->date->format('Y-m-d'));
 
-        $query = WorkSchedule::with(['user.division', 'createdBy']);
+        $query = WorkSchedule::with(['user.division', 'createdBy'])
+            ->whereBetween('date', [$calStart->format('Y-m-d'), $calEnd->format('Y-m-d')]);
 
         // Non-superadmin is restricted to their own division's schedules
         if (!$user->isSuperadmin) {
@@ -357,7 +364,8 @@ class WorkScheduleManagementComponent extends Component
         ->when($this->filter_end_date, fn ($q) => $q->where('date', '<=', $this->filter_end_date))
         ->orderBy('date', 'desc');
 
-        $schedules = $query->paginate(20);
+        $perPageCount = $this->perPage === 'all' ? 10000 : (int) $this->perPage;
+        $schedules = $query->paginate($perPageCount);
 
         $divisions = $user->isSuperadmin ? Division::orderBy('name')->get() : collect();
 

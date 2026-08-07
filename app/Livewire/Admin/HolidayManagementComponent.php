@@ -38,6 +38,7 @@ class HolidayManagementComponent extends Component
     public ?int $selectedId = null;
 
     // Filters
+    public int|string $perPage = 10;
     public ?string $search = null;
     public ?string $filter_type = null;
     public ?string $filter_year = null;
@@ -56,6 +57,11 @@ class HolidayManagementComponent extends Component
     }
 
     public function updatingCalendarMonth(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage(): void
     {
         $this->resetPage();
     }
@@ -233,6 +239,7 @@ class HolidayManagementComponent extends Component
             ->groupBy(fn($h) => $h->date->format('Y-m-d'));
 
         $query = Holiday::with(['division', 'users', 'createdBy'])
+            ->whereBetween('date', [$calStart->format('Y-m-d'), $calEnd->format('Y-m-d')])
             ->when($this->search, function ($q) {
                 $q->where(function ($sub) {
                     $sub->where('name', 'like', '%' . $this->search . '%')
@@ -245,7 +252,8 @@ class HolidayManagementComponent extends Component
             ->when($this->filter_year, fn ($q) => $q->whereYear('date', $this->filter_year))
             ->orderBy('date', 'desc');
 
-        $holidays = $query->paginate(20);
+        $perPageCount = $this->perPage === 'all' ? 10000 : (int) $this->perPage;
+        $holidays = $query->paginate($perPageCount);
 
         $divisions = Division::orderBy('name')->get();
         $users = User::where('group', 'user')->where('status', 'active')->orderBy('name')->get();

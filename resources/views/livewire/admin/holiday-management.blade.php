@@ -175,6 +175,28 @@
         </x-slot>
       </x-filter-sidebar>
 
+      <!-- Table Header Bar: Title & Per Page Selector -->
+      <div class="mb-4 flex flex-col items-center justify-between gap-4 sm:flex-row border-t border-gray-200/80 pt-5 dark:border-gray-700">
+        <div>
+          <h4 class="text-base font-bold text-gray-900 dark:text-white">
+            Riwayat Hari Libur {{ \Carbon\Carbon::parse($calendar_month)->isoFormat('MMMM YYYY') }}
+          </h4>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Menampilkan data hari libur untuk bulan terpilih.
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="perPage_hol" class="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tampilkan:</label>
+          <select wire:model.live="perPage" id="perPage_hol" class="w-24 truncate rounded-md border border-gray-300 bg-gray-50 py-1 pl-2 pr-7 text-xs text-gray-900 focus:border-sky-500 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="all">Semua</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Holiday Table -->
       <div class="overflow-x-auto">
         <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
