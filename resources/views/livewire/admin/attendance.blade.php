@@ -118,7 +118,7 @@
       Tidak ada data (Silakan pilih filter tanggal)
     </div>
   @else
-    <div class="overflow-x-scroll">
+    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
     <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
@@ -149,13 +149,12 @@
                 // Individual cell coloring uses per-employee isWorkingDay
                 $isDefaultOff = $date->isSunday();
                 if (!$isPerDayFilter) {
-                    // Check the first employee's off_days to guide header (best-effort for mixed divisions)
+                    // Check the first employee's schedule to guide header (best-effort for mixed divisions)
                     $headerEmployee = $employees->first();
                     if ($headerEmployee) {
-                        $headerOffDays = \App\Services\AttendanceScheduleService::getUserOffDays($headerEmployee);
-                        $isDefaultOff = in_array(strtolower($date->format('l')), $headerOffDays, true);
+                        $isDefaultOff = !\App\Services\AttendanceScheduleService::isWorkingDay($headerEmployee, $date);
                     }
-                    $textClass = $isDefaultOff ? 'text-red-500 dark:text-red-300' : 'text-gray-500 dark:text-gray-300';
+                    $textClass = $isDefaultOff ? 'text-red-500 font-bold dark:text-red-400' : 'text-gray-500 dark:text-gray-300';
                 } else {
                     $textClass = 'text-gray-500 dark:text-gray-300';
                 }
@@ -300,7 +299,7 @@
                           $leaveCount++;
                           break;
                       default:
-                          $shortStatus = '-';
+                          $shortStatus = !$isWorkingDay ? 'OFF' : '-';
                           $bgColor =
                               'hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600';
                           break;
@@ -310,7 +309,17 @@
                   <td
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="editAttendance('{{ $employee->id }}', '{{ $date->format('Y-m-d') }}')">
-                      {{ $isPerDayFilter ? __($status) : $shortStatus }}
+                      @if ($isPerDayFilter)
+                        @if ($status === '-' && !$isWorkingDay)
+                          <span class="text-xs font-bold text-red-500 dark:text-red-400">OFF</span>
+                        @else
+                          {{ __($status) }}
+                        @endif
+                      @elseif ($shortStatus === 'OFF')
+                        <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400">OFF</span>
+                      @else
+                        {{ $shortStatus }}
+                      @endif
                     </button>
                   </td>
                 @elseif (!$isPerDayFilter && $attendance && ($attendance['attachment'] || $attendance['note'] || $attendance['coordinates']))
@@ -318,13 +327,37 @@
                     class="{{ $bgColor }} cursor-pointer text-center text-sm font-medium text-gray-900 dark:text-white">
                     <button class="w-full px-1 py-3" wire:click="show({{ $attendance['id'] }})"
                       onclick="setLocation({{ $attendance['lat'] ?? 0 }}, {{ $attendance['lng'] ?? 0 }})">
-                      {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
+                      @if ($isPerDayFilter)
+                        @if ($status === 'imp')
+                          IMP
+                        @elseif ($status === '-' && !$isWorkingDay)
+                          <span class="text-xs font-bold text-red-500 dark:text-red-400">OFF</span>
+                        @else
+                          {{ __($status) }}
+                        @endif
+                      @elseif ($shortStatus === 'OFF')
+                        <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400">OFF</span>
+                      @else
+                        {{ $shortStatus }}
+                      @endif
                     </button>
                   </td>
                 @else
                   <td
                     class="{{ $bgColor }} text-nowrap cursor-pointer px-1 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
-                    {{ $isPerDayFilter ? ($status === 'imp' ? 'IMP' : __($status)) : $shortStatus }}
+                    @if ($isPerDayFilter)
+                      @if ($status === 'imp')
+                        IMP
+                      @elseif ($status === '-' && !$isWorkingDay)
+                        <span class="text-xs font-bold text-red-500 dark:text-red-400">OFF</span>
+                      @else
+                        {{ __($status) }}
+                      @endif
+                    @elseif ($shortStatus === 'OFF')
+                      <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400">OFF</span>
+                    @else
+                      {{ $shortStatus }}
+                    @endif
                   </td>
                 @endif
               @endforeach
@@ -611,7 +644,7 @@
                       $bgColor = 'bg-cyan-200 dark:bg-cyan-800 hover:bg-cyan-300 dark:hover:bg-cyan-700 border border-cyan-300 dark:border-cyan-600';
                       break;
                   default:
-                      $shortStatus = '-';
+                      $shortStatus = !$isWorkingDay ? 'OFF' : '-';
                       $bgColor = 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600';
                       break;
               }
@@ -619,14 +652,17 @@
             <button type="button" class="{{ $bgColor }} h-14 w-full py-1 text-center" 
                     @if (Auth::user()->isAdmin) wire:click="editAttendance('{{ $detailUser->id }}', '{{ $date->format('Y-m-d') }}')" @endif>
               @php
-                $detailOffDays = $detailOffDays ?? \App\Services\AttendanceScheduleService::getUserOffDays($detailUser);
-                $dateIsOff = !$isWorkingDay && in_array(strtolower($date->format('l')), $detailOffDays, true);
+                $dateIsOff = !$isWorkingDay;
               @endphp
-              <span class="{{ $dateIsOff ? 'text-red-500' : '' }}">
+              <span class="{{ $dateIsOff ? 'text-red-500 font-bold' : '' }}">
                 {{ $date->format('d') }}
               </span>
               <br>
-              {{ $shortStatus }}
+              @if ($shortStatus === 'OFF')
+                <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400">OFF</span>
+              @else
+                {{ $shortStatus }}
+              @endif
             </button>
           @endforeach
           

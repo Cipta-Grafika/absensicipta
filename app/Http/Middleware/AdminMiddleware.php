@@ -16,12 +16,15 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if the user is authenticated and belongs to the 'admin' or 'superadmin' group
-        if (Auth::check() && Auth::user()?->isAdmin) {
-            return $next($request);
+        if (Auth::check()) {
+            if (Auth::user()?->isAdmin) {
+                return $next($request);
+            }
+            if (Auth::user()?->isUser) {
+                return redirect()->route('home');
+            }
         }
 
-        // If the user is not an admin, return a 403 Forbidden response
         abort(403);
     }
 }

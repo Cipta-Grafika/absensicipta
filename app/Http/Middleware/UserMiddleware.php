@@ -16,12 +16,15 @@ class UserMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if the user is authenticated and belongs to the 'user' group
-        if (Auth::check() && Auth::user()->isUser) {
-            return $next($request);
+        if (Auth::check()) {
+            if (Auth::user()->isUser) {
+                return $next($request);
+            }
+            if (Auth::user()->isAdmin) {
+                return redirect()->route('hr.dashboard');
+            }
         }
 
-        // If the user is not an user, return a 403 Forbidden response
         abort(403);
     }
 }
