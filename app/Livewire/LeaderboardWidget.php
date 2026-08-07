@@ -20,33 +20,36 @@ class LeaderboardWidget extends Component
     {
         $user = Auth::user();
 
-        // Ensure current month stats are computed if empty
-        if (!EmployeeMonthlyStat::where('period', $this->period)->exists()) {
-            EmployeeMonthlyStat::recalculateForPeriod($this->period);
-        }
+        // 1. Global Leaderboard (Seluruh Karyawan) - Cached for 5 minutes
+        $globalTopEmployees = \Illuminate\Support\Facades\Cache::remember('leaderboard_global_' . $this->period, 300, function () {
+            if (!EmployeeMonthlyStat::where('period', $this->period)->exists()) {
+                EmployeeMonthlyStat::recalculateForPeriod($this->period);
+            }
+            return EmployeeMonthlyStat::with(['user', 'division'])
+                ->where('period', $this->period)
+                ->orderByDesc('score')
+                ->orderByDesc('total_early_minutes')
+                ->take(5)
+                ->get();
+        });
 
-        // 1. Global Leaderboard (Seluruh Karyawan)
-        $globalTopEmployees = EmployeeMonthlyStat::with(['user', 'division'])
-            ->where('period', $this->period)
-            ->orderByDesc('score')
-            ->orderByDesc('total_early_minutes')
-            ->take(5)
-            ->get();
+        // 2. Division Leaderboard (Per Divisi) - Cached for 5 minutes
+        $divisionName = $user?->division?->name;
+        $userDivId = $user?->division_id;
 
-        // 2. Division Leaderboard (Per Divisi)
-        $divisionQuery = EmployeeMonthlyStat::with(['user', 'division'])
-            ->where('period', $this->period);
+        $divisionTopEmployees = \Illuminate\Support\Facades\Cache::remember('leaderboard_div_' . ($userDivId ?? 'all') . '_' . $this->period, 300, function () use ($userDivId) {
+            $divisionQuery = EmployeeMonthlyStat::with(['user', 'division'])
+                ->where('period', $this->period);
 
-        $divisionName = null;
-        if ($user && $user->division_id) {
-            $divisionQuery->where('division_id', $user->division_id);
-            $divisionName = $user->division?->name;
-        }
+            if ($userDivId) {
+                $divisionQuery->where('division_id', $userDivId);
+            }
 
-        $divisionTopEmployees = $divisionQuery->orderByDesc('score')
-            ->orderByDesc('total_early_minutes')
-            ->take(5)
-            ->get();
+            return $divisionQuery->orderByDesc('score')
+                ->orderByDesc('total_early_minutes')
+                ->take(5)
+                ->get();
+        });
 
         $globalRankComments = [
             0 => 'Terlalu Menyala🔥',
