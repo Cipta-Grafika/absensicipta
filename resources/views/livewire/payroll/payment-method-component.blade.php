@@ -18,7 +18,7 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-12" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-payment-modal.window="$wire.openModal()">
+<div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-payment-modal.window="$wire.openModal()">
   <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Karyawan</x-slot>
