@@ -1,4 +1,4 @@
-<div class="py-0 sm:py-12"
+<div class="py-0 sm:py-6"
      x-data="{
        eventSource: null,
        init() {
