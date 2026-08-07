@@ -1,9 +1,9 @@
 <x-slot name="header">
-  <div class="relative flex items-center justify-between">
+  <div class="relative flex items-center">
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
       {{ __('Ganti Jam') }}
     </h2>
-    <div class="flex items-center gap-2">
+    <div class="absolute right-0 flex items-center gap-2">
       <x-secondary-button href="{{ route('home') }}">
         <x-heroicon-o-chevron-left class="mr-1.5 h-4 w-4" />
         Kembali
@@ -16,7 +16,7 @@
     <div class="mx-auto w-full max-w-7xl px-0 sm:px-6 lg:px-8 flex-grow flex flex-col">
 
         <!-- UNIFIED CARD CONTAINER: CALENDAR & REPLACEMENT HOURS HISTORY TABLE -->
-        <div class="overflow-hidden bg-white p-4 sm:p-6 lg:p-8 shadow-none sm:shadow-xl rounded-none sm:rounded-xl dark:bg-gray-800 text-gray-900 dark:text-gray-100 space-y-8 flex-grow flex flex-col border-b sm:border-0 border-gray-200 dark:border-gray-700/60">
+        <div class="overflow-hidden bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/80 dark:border-gray-800/80 shadow-2xl shadow-black/5 rounded-none sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-gray-900 dark:text-gray-100 space-y-8 flex-grow flex flex-col transition-all duration-300">
             
             <!-- SECTION 1: INTERACTIVE MONTHLY REPLACEMENT HOURS CALENDAR -->
             <div>

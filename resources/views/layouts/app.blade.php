@@ -44,8 +44,15 @@
   @stack('styles')
 </head>
 
-<body class="font-sans antialiased">
-  <div class="flex min-h-screen flex-col justify-between bg-gray-100 dark:bg-gray-900 pt-16">
+<body class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-slate-200/70 dark:bg-gray-950 relative selection:bg-sky-500 selection:text-white">
+  <!-- AMBIENT GLASSMORPHISM BACKGROUND MESH GLOWS -->
+  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
+    <div class="absolute -top-32 -left-32 w-[32rem] h-[32rem] rounded-full bg-sky-400/40 dark:bg-sky-600/20 blur-3xl"></div>
+    <div class="absolute top-1/3 -right-32 w-[36rem] h-[36rem] rounded-full bg-amber-300/45 dark:bg-amber-600/20 blur-3xl"></div>
+    <div class="absolute -bottom-32 left-1/3 w-[32rem] h-[32rem] rounded-full bg-indigo-400/35 dark:bg-indigo-600/20 blur-3xl"></div>
+  </div>
+
+  <div class="relative z-10 flex min-h-screen flex-col justify-between pt-16">
     <x-banner />
     
     @livewire('navigation-menu')
@@ -67,14 +74,14 @@
            }">
 
         @if (isset($header))
-          <!-- Full-Width Fixed Header Banner (Directly Below Fixed Top Navbar) -->
-          <header class="fixed top-16 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200/80 dark:border-gray-700">
+          <!-- Full-Width Fixed Header Banner Glassmorphism -->
+          <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-white/80 dark:border-gray-800/80 shadow-xs transition-colors">
             <div class="w-full px-4 py-3.5 sm:px-6 lg:px-8 flex items-center gap-3">
               <!-- Sidebar Toggle Button (Sky Blue Theme Icon) -->
               <button type="button"
                       @click="toggleSidebar()"
                       title="Toggle Sidebar"
-                      class="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-gray-200/80 bg-white text-sky-600 shadow-sm transition-all duration-200 hover:bg-sky-50 hover:border-sky-200 dark:border-gray-700 dark:bg-gray-800 dark:text-sky-400 dark:hover:bg-gray-700 cursor-pointer">
+                      class="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/80 dark:border-gray-700/80 bg-white/90 dark:bg-gray-800/90 text-sky-600 dark:text-sky-400 shadow-xs backdrop-blur-md transition-all duration-200 hover:bg-sky-50 dark:hover:bg-gray-700 cursor-pointer">
                 <x-heroicon-o-view-columns class="h-4 w-4 text-sky-600 dark:text-sky-400" />
               </button>
 
@@ -96,8 +103,8 @@
             {{ $slot }}
           </main>
 
-          <!-- Footer -->
-          <footer class="mt-auto border-t border-gray-200/80 bg-white/80 py-4 dark:border-gray-800 dark:bg-gray-800/80 backdrop-blur-sm mb-16 md:mb-0">
+          <!-- Footer Glassmorphism -->
+          <footer class="mt-auto border-t border-white/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
             <div class="w-full flex items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
               <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />
               <span>Crafted by</span>
@@ -111,15 +118,15 @@
     @else
       <!-- STANDARD LAYOUT FOR NON-HR PAGES -->
       @if (isset($header))
-        <header class="sticky top-16 z-40 bg-white shadow dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-white/80 dark:border-gray-800/80 shadow-xs transition-colors">
+          <div class="mx-auto max-w-7xl px-4 py-3.5 sm:px-6 lg:px-8">
             {{ $header }}
           </div>
         </header>
       @endif
 
       <!-- Page Content -->
-      <main class="flex-grow flex flex-col pb-16 md:pb-0">
+      <main class="flex-grow flex flex-col {{ isset($header) ? 'pt-14' : '' }} pb-16 md:pb-0">
         {{ $slot }}
       </main>
     @endif
@@ -129,7 +136,7 @@
 
     <!-- Footer for Non-HR pages -->
     @unless (request()->routeIs('hr.*'))
-      <footer class="mt-auto border-t border-gray-200/80 bg-white/80 py-4 dark:border-gray-800 dark:bg-gray-800/80 backdrop-blur-sm mb-16 md:mb-0">
+      <footer class="mt-auto border-t border-white/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
         <div class="mx-auto flex max-w-7xl items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
           <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />
           <span>Crafted by</span>

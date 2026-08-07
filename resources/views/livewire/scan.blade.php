@@ -1,73 +1,81 @@
 <div>
-  <x-banner />
-
   @if($showMotivationModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
-      <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800 text-center transform transition-all scale-100 max-h-[88vh] overflow-y-auto my-auto">
-        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shrink-0
-          {{ $motivationType === 'danger' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400' : '' }}
-          {{ $motivationType === 'warning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400' : '' }}
-          {{ $motivationType === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : '' }}
-          {{ $motivationType === 'super' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : '' }}
-          {{ $motivationType === 'info' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : '' }}">
-          @if($motivationType === 'super')
-            <x-heroicon-s-sparkles class="h-10 w-10 animate-bounce" />
-          @elseif($motivationType === 'success')
-            <x-heroicon-s-check-circle class="h-10 w-10" />
-          @elseif($motivationType === 'warning')
-            <x-heroicon-s-exclamation-triangle class="h-10 w-10" />
-          @elseif($motivationType === 'danger')
-            <x-heroicon-s-x-circle class="h-10 w-10" />
-          @else
-            <x-heroicon-s-heart class="h-10 w-10" />
-          @endif
+    <div x-data>
+      <template x-teleport="body">
+        <div class="fixed inset-0 z-[250] flex items-center justify-center p-4 overflow-y-auto">
+          <div class="fixed inset-0 z-[251] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-md transition-opacity" wire:click="closeMotivationModal"></div>
+          <div class="relative w-full max-w-md rounded-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-white/60 dark:border-gray-700/60 p-6 shadow-2xl text-center transform transition-all scale-100 max-h-[88vh] overflow-y-auto my-auto z-[255]">
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shrink-0
+              {{ $motivationType === 'danger' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400' : '' }}
+              {{ $motivationType === 'warning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400' : '' }}
+              {{ $motivationType === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : '' }}
+              {{ $motivationType === 'super' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : '' }}
+              {{ $motivationType === 'info' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : '' }}">
+              @if($motivationType === 'super')
+                <x-heroicon-s-sparkles class="h-10 w-10 animate-bounce" />
+              @elseif($motivationType === 'success')
+                <x-heroicon-s-check-circle class="h-10 w-10" />
+              @elseif($motivationType === 'warning')
+                <x-heroicon-s-exclamation-triangle class="h-10 w-10" />
+              @elseif($motivationType === 'danger')
+                <x-heroicon-s-x-circle class="h-10 w-10" />
+              @else
+                <x-heroicon-s-heart class="h-10 w-10" />
+              @endif
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              {{ $motivationTitle }}
+            </h3>
+
+            <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 font-medium">
+              "{{ $motivationMessage }}"
+            </p>
+
+            <button wire:click="closeMotivationModal" type="button" 
+              class="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600">
+              Siap, Lanjutkan!
+            </button>
+          </div>
         </div>
-
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          {{ $motivationTitle }}
-        </h3>
-
-        <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 font-medium">
-          "{{ $motivationMessage }}"
-        </p>
-
-        <button wire:click="closeMotivationModal" type="button" 
-          class="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600">
-          Siap, Lanjutkan!
-        </button>
-      </div>
+      </template>
     </div>
   @endif
 
   @if($showLocationMapModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto" x-data x-init="$nextTick(() => { window.initModalMap && window.initModalMap(); })">
-      <div class="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800 text-left flex flex-col max-h-[88vh] my-auto">
-        <div class="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-700 shrink-0">
-          <div class="flex items-center gap-2">
-            <x-heroicon-o-map-pin class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            <h3 class="text-base font-bold text-gray-900 dark:text-white">Lokasi GPS Terdeteksi</h3>
-          </div>
-          <button wire:click="$set('showLocationMapModal', false)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-            <x-heroicon-o-x-mark class="h-5 w-5" />
-          </button>
-        </div>
+    <div x-data x-init="$nextTick(() => { window.initModalMap && window.initModalMap(); })">
+      <template x-teleport="body">
+        <div class="fixed inset-0 z-[250] flex items-center justify-center p-4 overflow-y-auto">
+          <div class="fixed inset-0 z-[251] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-md transition-opacity" wire:click="$set('showLocationMapModal', false)"></div>
+          <div class="relative w-full max-w-lg rounded-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-white/60 dark:border-gray-700/60 p-5 shadow-2xl text-left flex flex-col max-h-[88vh] my-auto z-[255]">
+            <div class="flex items-center justify-between border-b border-gray-200/80 pb-3 dark:border-gray-700 shrink-0">
+              <div class="flex items-center gap-2">
+                <x-heroicon-o-map-pin class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">Lokasi GPS Terdeteksi</h3>
+              </div>
+              <button wire:click="$set('showLocationMapModal', false)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <x-heroicon-o-x-mark class="h-5 w-5" />
+              </button>
+            </div>
 
-        <div class="mt-4 overflow-y-auto flex-1 min-h-0">
-          <div id="modal-map" class="h-56 sm:h-64 w-full rounded-xl border border-gray-300 shadow-inner dark:border-gray-600 z-10"></div>
-          <div class="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>Koordinat: <strong class="text-gray-800 dark:text-gray-200" id="modal-coords-text">{{ $currentLiveCoords ? implode(', ', $currentLiveCoords) : '-' }}</strong></span>
-            <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <x-heroicon-s-check-circle class="h-3.5 w-3.5" /> Akurat
-            </span>
+            <div class="mt-4 overflow-y-auto flex-1 min-h-0">
+              <div id="modal-map" class="h-56 sm:h-64 w-full rounded-xl border border-gray-300 shadow-inner dark:border-gray-600 z-10"></div>
+              <div class="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Koordinat: <strong class="text-gray-800 dark:text-gray-200" id="modal-coords-text">{{ $currentLiveCoords ? implode(', ', $currentLiveCoords) : '-' }}</strong></span>
+                <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <x-heroicon-s-check-circle class="h-3.5 w-3.5" /> Akurat
+                </span>
+              </div>
+            </div>
+
+            <div class="mt-4 flex justify-end shrink-0 border-t border-gray-200 dark:border-gray-700 pt-3">
+              <button wire:click="$set('showLocationMapModal', false)" type="button" class="rounded-lg bg-gray-200/80 px-4 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-300 dark:bg-gray-700/80 dark:text-gray-200 dark:hover:bg-gray-600">
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
-
-        <div class="mt-4 flex justify-end shrink-0 border-t border-gray-200 dark:border-gray-700 pt-3">
-          <button wire:click="$set('showLocationMapModal', false)" type="button" class="rounded-lg bg-gray-200 px-4 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
-            Tutup
-          </button>
-        </div>
-      </div>
+      </template>
     </div>
   @endif
 
