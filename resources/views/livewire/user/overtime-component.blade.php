@@ -66,7 +66,7 @@
                                     return \Carbon\Carbon::parse($item->overtime_date)->format('Y-m-d') === $dateStr;
                                 });
                                 $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay(auth()->user(), $date);
-                                $dayIsOff = !$isWorkingDay && in_array(strtolower($date->format('l')), $calOffDays, true);
+                                $dayIsOff = !$isWorkingDay;
                                 
                                 $isModalActive = (($isDateModalOpen ?? false) || ($isDetailModalOpen ?? false));
                                 $isActiveSubmittedDate = ($isModalActive && (($activeCalendarDate ?? null) === $dateStr || ($overtime_date ?? null) === $dateStr));
@@ -133,6 +133,13 @@
                                 @elseif ($isActiveSubmittedDate)
                                     <span class="text-[10px] text-white font-bold leading-none">
                                         + Form Lembur
+                                    </span>
+                                @elseif ($dayIsOff)
+                                    <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400 group-hover:hidden leading-none">
+                                        OFF
+                                    </span>
+                                    <span class="text-[10px] text-sky-600 dark:text-sky-400 font-semibold hidden group-hover:inline leading-none">
+                                        + Ajukan
                                     </span>
                                 @else
                                     <span class="text-[10px] text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity leading-none">

@@ -68,7 +68,7 @@
                                 $hasImpAttendance = in_array($dateStr, $monthImpDates ?? [], true);
 
                                 $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay(auth()->user(), $date);
-                                $dayIsOff = !$isWorkingDay && in_array(strtolower($date->format('l')), $calOffDays, true);
+                                $dayIsOff = !$isWorkingDay;
                                 
                                 $isModalActive = (($isDateModalOpen ?? false) || ($isDetailModalOpen ?? false));
                                 $isActiveSubmittedDate = ($isModalActive && (($activeCalendarDate ?? null) === $dateStr || ($replaced_date ?? null) === $dateStr));
@@ -142,6 +142,13 @@
                                     </span>
                                 @elseif ($hasImpAttendance)
                                     <span class="text-[10px] font-semibold text-sky-600 dark:text-sky-400 leading-none">
+                                        + Ganti Jam
+                                    </span>
+                                @elseif ($dayIsOff)
+                                    <span class="text-[10px] font-extrabold text-red-500 dark:text-red-400 group-hover:hidden leading-none">
+                                        OFF
+                                    </span>
+                                    <span class="text-[10px] text-sky-600 dark:text-sky-400 font-semibold hidden group-hover:inline leading-none">
                                         + Ganti Jam
                                     </span>
                                 @else

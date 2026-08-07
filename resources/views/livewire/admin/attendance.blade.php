@@ -149,13 +149,12 @@
                 // Individual cell coloring uses per-employee isWorkingDay
                 $isDefaultOff = $date->isSunday();
                 if (!$isPerDayFilter) {
-                    // Check the first employee's off_days to guide header (best-effort for mixed divisions)
+                    // Check the first employee's schedule to guide header (best-effort for mixed divisions)
                     $headerEmployee = $employees->first();
                     if ($headerEmployee) {
-                        $headerOffDays = \App\Services\AttendanceScheduleService::getUserOffDays($headerEmployee);
-                        $isDefaultOff = in_array(strtolower($date->format('l')), $headerOffDays, true);
+                        $isDefaultOff = !\App\Services\AttendanceScheduleService::isWorkingDay($headerEmployee, $date);
                     }
-                    $textClass = $isDefaultOff ? 'text-red-500 dark:text-red-300' : 'text-gray-500 dark:text-gray-300';
+                    $textClass = $isDefaultOff ? 'text-red-500 font-bold dark:text-red-400' : 'text-gray-500 dark:text-gray-300';
                 } else {
                     $textClass = 'text-gray-500 dark:text-gray-300';
                 }
@@ -619,10 +618,9 @@
             <button type="button" class="{{ $bgColor }} h-14 w-full py-1 text-center" 
                     @if (Auth::user()->isAdmin) wire:click="editAttendance('{{ $detailUser->id }}', '{{ $date->format('Y-m-d') }}')" @endif>
               @php
-                $detailOffDays = $detailOffDays ?? \App\Services\AttendanceScheduleService::getUserOffDays($detailUser);
-                $dateIsOff = !$isWorkingDay && in_array(strtolower($date->format('l')), $detailOffDays, true);
+                $dateIsOff = !$isWorkingDay;
               @endphp
-              <span class="{{ $dateIsOff ? 'text-red-500' : '' }}">
+              <span class="{{ $dateIsOff ? 'text-red-500 font-bold' : '' }}">
                 {{ $date->format('d') }}
               </span>
               <br>
