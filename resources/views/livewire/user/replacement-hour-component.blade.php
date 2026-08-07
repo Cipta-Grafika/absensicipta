@@ -48,7 +48,7 @@
                             @php
                                 $isOffHeader = in_array($calDayNames[$idx], $calOffDays, true);
                             @endphp
-                            <div class="{{ $isOffHeader ? 'text-red-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center font-bold text-sm dark:border-gray-600 bg-gray-50 dark:bg-gray-750">
+                            <div class="{{ $isOffHeader ? 'text-red-500' : '' }} flex h-10 items-center justify-center border border-gray-300 text-center font-bold text-sm dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
                                 {{ $dayAbbr }}
                             </div>
                         @endforeach
