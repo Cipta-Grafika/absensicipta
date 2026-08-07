@@ -17,6 +17,9 @@ class LeaderboardStreamController extends Controller
         $period = $request->query('period', date('Y-m'));
 
         return response()->stream(function () use ($period) {
+            $startTime = time();
+            $lastSeen = 0;
+
             // Release session lock immediately so concurrent web requests and Livewire updates do not block
             if (session()->isStarted()) {
                 session()->save();

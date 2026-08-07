@@ -389,17 +389,77 @@
 
 @push('scripts')
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nXC0JK94hIgoutE9H7164irFS09E98isd0d6WTd0=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 @endpush
 
 @script
   <script>
-    // Geo-Location Live Detector Script
+    // Anti-Fake GPS & DOM Integrity Hardening Engine
     window.hasLocation = false;
     let liveLat = null;
     let liveLng = null;
     let modalLiveMap = null;
     let modalMarker = null;
+
+    let lastPositionTimestamp = null;
+    let lastPositionLat = null;
+    let lastPositionLng = null;
+
+    function isGeolocationTampered() {
+      try {
+        if (!navigator.geolocation || !navigator.geolocation.getCurrentPosition) {
+          return true;
+        }
+        const fnStr = Function.prototype.toString.call(navigator.geolocation.getCurrentPosition);
+        if (!fnStr.includes('[native code]')) {
+          console.warn('[Security Hardening] Geolocation API proxy override detected.');
+          return true;
+        }
+      } catch (e) {
+        return true;
+      }
+      return false;
+    }
+
+    function validateLocationIntegrity(position) {
+      if (isGeolocationTampered()) {
+        alert('Presensi Ditolak: Terdeteksi penggunaan ekstensi/plugin Fake GPS pada browser.');
+        return false;
+      }
+
+      const coords = position ? position.coords : null;
+      if (!coords) return false;
+
+      // 1. Accuracy Check: Fake GPS tools often report zero/unnatural accuracy
+      if (coords.accuracy !== undefined && coords.accuracy === 0) {
+        console.warn('[Security Hardening] Suspicious 0m GPS accuracy detected.');
+        alert('Presensi Ditolak: Akurasi sinyal GPS terdeteksi tidak wajar (Indikasi Fake GPS).');
+        return false;
+      }
+
+      // 2. High Speed / Instantaneous Position Teleportation Check
+      const now = Date.now();
+      if (lastPositionTimestamp && lastPositionLat !== null && lastPositionLng !== null) {
+        const timeDiffSec = (now - lastPositionTimestamp) / 1000;
+        if (timeDiffSec > 0 && timeDiffSec < 3) {
+          const dLat = (coords.latitude - lastPositionLat) * 111000;
+          const dLng = (coords.longitude - lastPositionLng) * 111000 * Math.cos(coords.latitude * Math.PI / 180);
+          const distMeters = Math.sqrt(dLat * dLat + dLng * dLng);
+
+          if (distMeters > 300) {
+            console.warn('[Security Hardening] Instantaneous position teleportation detected.');
+            alert('Presensi Ditolak: Terdeteksi loncatan posisi lokasi mendadak (Potensi Fake GPS).');
+            return false;
+          }
+        }
+      }
+
+      lastPositionTimestamp = now;
+      lastPositionLat = coords.latitude;
+      lastPositionLng = coords.longitude;
+
+      return true;
+    }
 
     const btnRefreshGeo = document.querySelector('#btn-refresh-location');
 
@@ -410,6 +470,11 @@
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          if (!validateLocationIntegrity(position)) {
+            window.hasLocation = false;
+            return;
+          }
+
           liveLat = position.coords.latitude;
           liveLng = position.coords.longitude;
           window.hasLocation = true;
