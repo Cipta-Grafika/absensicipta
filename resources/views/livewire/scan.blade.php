@@ -462,10 +462,17 @@
 
     const btnRefreshGeo = document.querySelector('#btn-refresh-location');
 
-    function requestLiveLocation() {
+    function requestLiveLocation(isManualRefresh = false) {
       if (!navigator.geolocation) {
+        window.hasLocation = false;
         return;
       }
+
+      const options = {
+        enableHighAccuracy: isManualRefresh ? true : false,
+        timeout: isManualRefresh ? 8000 : 10000,
+        maximumAge: isManualRefresh ? 0 : 30000
+      };
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -492,22 +499,42 @@
           }
         },
         (error) => {
-          console.warn('Geolocation error:', error);
+          // Quietly handle location errors without clogging developer console
           window.hasLocation = false;
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
+        options
       );
     }
 
-    requestLiveLocation();
+    async function initGeolocationEngine() {
+      if (!navigator.geolocation) {
+        window.hasLocation = false;
+        return;
+      }
+
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const perm = await navigator.permissions.query({ name: 'geolocation' });
+          if (perm.state === 'denied') {
+            window.hasLocation = false;
+            return;
+          }
+          perm.onchange = () => {
+            if (perm.state === 'granted') {
+              requestLiveLocation(true);
+            }
+          };
+        } catch (e) {}
+      }
+
+      requestLiveLocation(false);
+    }
+
+    initGeolocationEngine();
 
     if (btnRefreshGeo) {
       btnRefreshGeo.addEventListener('click', () => {
-        requestLiveLocation();
+        requestLiveLocation(true);
       });
     }
 
