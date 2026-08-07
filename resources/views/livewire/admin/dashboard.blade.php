@@ -47,7 +47,7 @@
     :sparklines="$sparklines"
   />
 
-  <div class="mb-4 overflow-x-scroll">
+  <div class="mb-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
     <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
