@@ -1,22 +1,6 @@
-<div class="py-0 sm:py-12"
-     x-data="{
-       eventSource: null,
-       init() {
-         if (!window.EventSource) return;
-         const period = '{{ $period }}';
-         this.eventSource = new EventSource('/api/leaderboard/stream?period=' + period);
-         this.eventSource.addEventListener('leaderboard_updated', (e) => {
-           @this.call('$refresh');
-         });
-       },
-       destroy() {
-         if (this.eventSource) {
-           this.eventSource.close();
-         }
-       }
-     }">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-    <div class="overflow-hidden bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg">
+<div class="py-0" wire:poll.60s>
+  <div class="w-full">
+    <div class="overflow-hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/90 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl shadow-slate-900/10 dark:shadow-black/50 sm:rounded-2xl p-6">
 
       <!-- Header Section inside Livewire DOM Boundary -->
       <div class="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5 dark:border-gray-700">
@@ -63,7 +47,7 @@
       </div>
 
       <!-- Leaderboard Data Table -->
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
         <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>

@@ -3,6 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    html, body {
+        font-family: "SF Pro Display", "SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, "San Francisco", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+}
+
 @layer components {
     .ts-control, .ts-control input, .ts-dropdown {
         @apply text-base text-gray-900 dark:text-gray-100;

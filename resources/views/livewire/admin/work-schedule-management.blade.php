@@ -16,9 +16,113 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-12" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-    <div class="overflow-hidden bg-white p-6 shadow-xl dark:bg-gray-800 sm:rounded-lg">
+<div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="w-full sm:px-6 lg:px-8">
+    <div class="overflow-hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/90 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl shadow-slate-900/10 dark:shadow-black/50 sm:rounded-2xl p-6">
+
+      <!-- Interactive Monthly Rolling Calendar Box -->
+      <div class="mb-6 rounded-2xl bg-gray-50/80 dark:bg-gray-900/60 p-4 sm:p-5 border border-gray-200 dark:border-gray-700 shadow-xs">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center justify-between border-b border-gray-200/80 pb-4 dark:border-gray-700">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <x-heroicon-o-calendar-days class="h-5 w-5 text-sky-600 dark:text-sky-400" />
+              Kalender Jadwal Rolling {{ \Carbon\Carbon::parse($calendar_month)->isoFormat('MMMM YYYY') }}
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Klik pada tanggal di bawah untuk menginput bulk jadwal rolling karyawan per hari
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <x-label for="calendar_month_filter" value="Pilih Bulan" class="whitespace-nowrap text-xs font-semibold"></x-label>
+            <x-input type="month" name="calendar_month_filter" id="calendar_month_filter" wire:model.live="calendar_month" class="text-xs py-1.5" />
+          </div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <div class="min-w-[650px]">
+            <!-- Days Header -->
+            <div class="mb-2 grid grid-cols-7 text-center text-xs font-bold text-gray-600 dark:text-gray-300">
+              <div class="py-1">Sen</div>
+              <div class="py-1">Sel</div>
+              <div class="py-1">Rab</div>
+              <div class="py-1">Kam</div>
+              <div class="py-1">Jum</div>
+              <div class="py-1">Sab</div>
+              <div class="py-1 text-red-500">Min</div>
+            </div>
+
+            <!-- Dates Grid -->
+            <div class="grid grid-cols-7 gap-1.5">
+              <!-- Leading Empty Cells -->
+              @if ($calStart->dayOfWeekIso > 1)
+                @foreach (range(1, $calStart->dayOfWeekIso - 1) as $i)
+                  <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
+                @endforeach
+              @endif
+
+              <!-- Date Cells -->
+              @foreach ($calDates as $dateObj)
+                @php
+                  $dateStr = $dateObj->format('Y-m-d');
+                  $isSunday = $dateObj->isSunday();
+                  $isToday = $dateObj->isToday();
+                  $dateSchedules = $monthSchedules->get($dateStr) ?? collect();
+                  $workCount = $dateSchedules->filter(fn($s) => $s->is_working_day)->count();
+                  $offCount = $dateSchedules->filter(fn($s) => !$s->is_working_day)->count();
+                  $totalCount = $dateSchedules->count();
+                @endphp
+
+                <button type="button"
+                  wire:click="handleCalendarDateClick('{{ $dateStr }}')"
+                  x-data x-on:click="$el.blur()"
+                  class="group relative flex h-16 flex-col justify-between rounded-xl border p-2 text-left transition-all duration-150
+                         {{ $totalCount > 0 
+                            ? 'border-sky-200 bg-sky-50/60 dark:border-sky-800/80 dark:bg-sky-950/40 hover:border-sky-400 hover:shadow-md' 
+                            : 'border-gray-200 bg-white dark:border-gray-700/80 dark:bg-gray-800/80 hover:border-sky-300 hover:bg-gray-50 dark:hover:bg-gray-700/60' }}">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-extrabold {{ $isSunday ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' }}">
+                      {{ $dateObj->format('d') }}
+                    </span>
+                    @if ($isToday)
+                      <span class="rounded bg-sky-500 px-1 py-0.2 text-[9px] font-bold text-white">Hari ini</span>
+                    @elseif ($totalCount > 0)
+                      <span class="h-2 w-2 rounded-full bg-sky-500"></span>
+                    @endif
+                  </div>
+
+                  <div class="mt-1 flex flex-wrap gap-1">
+                    @if($workCount > 0)
+                      <span class="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200" title="{{ $workCount }} Kerja">
+                        <span class="sm:hidden">{{ $workCount }}</span>
+                        <span class="hidden sm:inline">{{ $workCount }} Kerja</span>
+                      </span>
+                    @endif
+                    @if($offCount > 0)
+                      <span class="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/80 dark:text-amber-200" title="{{ $offCount }} Libur">
+                        <span class="sm:hidden">{{ $offCount }}</span>
+                        <span class="hidden sm:inline">{{ $offCount }} Libur</span>
+                      </span>
+                    @endif
+                    @if($totalCount === 0)
+                      <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                        <span class="sm:hidden">+</span>
+                        <span class="hidden sm:inline">+ Rolling</span>
+                      </span>
+                    @endif
+                  </div>
+                </button>
+              @endforeach
+
+              <!-- Trailing Empty Cells -->
+              @if ($calEnd->dayOfWeekIso < 7)
+                @foreach (range($calEnd->dayOfWeekIso + 1, 7) as $i)
+                  <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
+                @endforeach
+              @endif
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Search Field Bar -->
       <div class="mb-4">
@@ -208,7 +312,7 @@
       </div>
 
       <!-- Schedule Table -->
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
         <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>
