@@ -2,9 +2,9 @@
   <x-banner />
 
   @if($showMotivationModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-      <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800 text-center transform transition-all scale-100">
-        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full 
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
+      <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800 text-center transform transition-all scale-100 max-h-[88vh] overflow-y-auto my-auto">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shrink-0
           {{ $motivationType === 'danger' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400' : '' }}
           {{ $motivationType === 'warning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400' : '' }}
           {{ $motivationType === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : '' }}
@@ -40,9 +40,9 @@
   @endif
 
   @if($showLocationMapModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in" x-data x-init="$nextTick(() => { window.initModalMap && window.initModalMap(); })">
-      <div class="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800 text-left">
-        <div class="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-700">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto" x-data x-init="$nextTick(() => { window.initModalMap && window.initModalMap(); })">
+      <div class="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800 text-left flex flex-col max-h-[88vh] my-auto">
+        <div class="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-700 shrink-0">
           <div class="flex items-center gap-2">
             <x-heroicon-o-map-pin class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             <h3 class="text-base font-bold text-gray-900 dark:text-white">Lokasi GPS Terdeteksi</h3>
@@ -52,8 +52,8 @@
           </button>
         </div>
 
-        <div class="mt-4">
-          <div id="modal-map" class="h-64 w-full rounded-xl border border-gray-300 shadow-inner dark:border-gray-600 z-10"></div>
+        <div class="mt-4 overflow-y-auto flex-1 min-h-0">
+          <div id="modal-map" class="h-56 sm:h-64 w-full rounded-xl border border-gray-300 shadow-inner dark:border-gray-600 z-10"></div>
           <div class="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
             <span>Koordinat: <strong class="text-gray-800 dark:text-gray-200" id="modal-coords-text">{{ $currentLiveCoords ? implode(', ', $currentLiveCoords) : '-' }}</strong></span>
             <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
@@ -62,7 +62,7 @@
           </div>
         </div>
 
-        <div class="mt-5 flex justify-end">
+        <div class="mt-4 flex justify-end shrink-0 border-t border-gray-200 dark:border-gray-700 pt-3">
           <button wire:click="$set('showLocationMapModal', false)" type="button" class="rounded-lg bg-gray-200 px-4 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
             Tutup
           </button>
@@ -79,7 +79,7 @@
         $hasCoords = !empty($currentLiveCoords) && is_array($currentLiveCoords) && count($currentLiveCoords) >= 2;
       @endphp
 
-      <div class="rounded-lg bg-gray-50 p-3.5 border border-gray-200 dark:bg-gray-750 dark:border-gray-700 space-y-3"
+      <div class="rounded-xl bg-gray-50 dark:bg-gray-800/90 p-3.5 border border-gray-200 dark:border-gray-700 space-y-3 shadow-xs"
            x-data="{ hasLoc: @json($hasCoords) }"
            x-init="
              $watch('$wire.currentLiveCoords', val => {
@@ -310,8 +310,8 @@
       </div>
     </div>
 
-    <!-- 5. NAVIGATION BUTTONS: ABSENSI, SLIP GAJI, LEMBUR & GANTI JAM -->
-    <div class="grid grid-cols-2 gap-3 pt-2">
+    <!-- 5. NAVIGATION BUTTONS: ABSENSI, SLIP GAJI, LEMBUR & GANTI JAM (Hidden on mobile - available in bottom nav bar) -->
+    <div class="hidden md:grid grid-cols-2 gap-3 pt-2">
       <a href="{{ route('attendance-history') }}" class="col-span-1 cursor-pointer">
         <div
           class="flex flex-row items-center justify-center gap-2 rounded-xl bg-blue-600 dark:bg-blue-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-blue-700 dark:hover:bg-blue-500 md:gap-2 active:scale-95">
@@ -348,29 +348,29 @@
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
         <div
-          class="flex flex-row items-center justify-center gap-2 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2.5 text-center font-semibold text-gray-700 transition duration-100 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-750 dark:text-gray-200 dark:hover:bg-gray-700 md:gap-2 active:scale-95">
-          <x-heroicon-o-document-text class="h-5 w-5 shrink-0" />
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 px-3 py-2.5 text-center font-bold text-gray-700 dark:text-gray-200 transition duration-150 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600 md:gap-2 active:scale-95 shadow-xs">
+          <x-heroicon-o-document-text class="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
           <span class="whitespace-nowrap">Ajukan Izin</span>
         </div>
       </a>
       <a href="#" x-data @click.prevent="$dispatch('open-apply-sick-modal')" class="col-span-1 cursor-pointer">
         <div
-          class="flex flex-row items-center justify-center gap-2 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2.5 text-center font-semibold text-gray-700 transition duration-100 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-750 dark:text-gray-200 dark:hover:bg-gray-700 md:gap-2 active:scale-95">
-          <x-heroicon-o-heart class="h-5 w-5 shrink-0" />
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 px-3 py-2.5 text-center font-bold text-gray-700 dark:text-gray-200 transition duration-150 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600 md:gap-2 active:scale-95 shadow-xs">
+          <x-heroicon-o-heart class="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
           <span class="whitespace-nowrap">Ajukan Sakit</span>
         </div>
       </a>
       <a href="#" x-data @click.prevent="$dispatch('open-apply-cuti-modal')" class="col-span-1 cursor-pointer">
         <div
-          class="flex flex-row items-center justify-center gap-2 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2.5 text-center font-semibold text-gray-700 transition duration-100 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-750 dark:text-gray-200 dark:hover:bg-gray-700 md:gap-2 active:scale-95">
-          <x-heroicon-o-calendar-days class="h-5 w-5 shrink-0" />
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 px-3 py-2.5 text-center font-bold text-gray-700 dark:text-gray-200 transition duration-150 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600 md:gap-2 active:scale-95 shadow-xs">
+          <x-heroicon-o-calendar-days class="h-5 w-5 shrink-0 text-purple-600 dark:text-purple-400" />
           <span class="whitespace-nowrap">Ajukan Cuti</span>
         </div>
       </a>
       <a href="#" x-data @click.prevent="$dispatch('open-apply-imp-modal')" class="col-span-1 cursor-pointer">
         <div
-          class="flex flex-row items-center justify-center gap-2 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2.5 text-center font-semibold text-gray-700 transition duration-100 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-750 dark:text-gray-200 dark:hover:bg-gray-700 md:gap-2 active:scale-95">
-          <x-heroicon-o-user-minus class="h-5 w-5 shrink-0" />
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 px-3 py-2.5 text-center font-bold text-gray-700 dark:text-gray-200 transition duration-150 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600 md:gap-2 active:scale-95 shadow-xs">
+          <x-heroicon-o-user-minus class="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span class="whitespace-nowrap">Ajukan IMP</span>
         </div>
       </a>
@@ -388,8 +388,7 @@
 </div>
 
 @push('scripts')
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  {{-- Leaflet is lazy-loaded only when the map modal opens - see initModalMap() --}}
 @endpush
 
 @script
@@ -512,9 +511,28 @@
       });
     }
 
-    window.initModalMap = function () {
+    let leafletLoaded = false;
+    function loadLeaflet() {
+      return new Promise((resolve) => {
+        if (leafletLoaded && window.L) { resolve(); return; }
+
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(css);
+
+        const js = document.createElement('script');
+        js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        js.onload = () => { leafletLoaded = true; resolve(); };
+        document.head.appendChild(js);
+      });
+    }
+
+    window.initModalMap = async function () {
       const modalMapEl = document.querySelector('#modal-map');
       if (!modalMapEl) return;
+
+      await loadLeaflet();
 
       const lat = liveLat || Number({{ $attendance?->latitude ?? -6.200000 }});
       const lng = liveLng || Number({{ $attendance?->longitude ?? 106.816666 }});

@@ -46,12 +46,15 @@
     @endif
 
     <!-- Page Content -->
-    <main class="flex-grow">
+    <main class="flex-grow flex flex-col pb-16 md:pb-0">
       {{ $slot }}
     </main>
 
+    <!-- Mobile Bottom Navigation Bar -->
+    <x-bottom-navigation-bar />
+
     <!-- Footer -->
-    <footer class="mt-auto border-t border-gray-200/80 bg-white/80 py-4 dark:border-gray-800 dark:bg-gray-800/80 backdrop-blur-sm">
+    <footer class="mt-auto border-t border-gray-200/80 bg-white/80 py-4 dark:border-gray-800 dark:bg-gray-800/80 backdrop-blur-sm mb-16 md:mb-0">
       <div class="mx-auto flex max-w-7xl items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
         <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />
         <span>Crafted by</span>

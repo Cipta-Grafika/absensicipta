@@ -40,7 +40,7 @@
   </div>
 
   <div x-show="show"
-    class="w-full {{ $maxWidth }} transform overflow-hidden rounded-lg bg-white shadow-xl transition-all dark:bg-gray-800 sm:mx-auto"
+    class="w-full {{ $maxWidth }} transform overflow-hidden rounded-xl bg-white shadow-2xl transition-all dark:bg-gray-800 sm:mx-auto max-h-[88vh] flex flex-col my-auto"
     x-trap.inert="show" x-transition:enter="ease-out duration-300"
     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200"
