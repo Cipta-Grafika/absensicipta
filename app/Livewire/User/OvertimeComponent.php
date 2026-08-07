@@ -82,10 +82,9 @@ class OvertimeComponent extends Component
             ->whereBetween('overtime_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
             ->get();
 
-        // Paginated table query for selected month
+        // Paginated table query strictly for selected month
         $query = Overtime::where('employee_id', $user->id)
-            ->whereMonth('overtime_date', $date->month)
-            ->whereYear('overtime_date', $date->year)
+            ->whereBetween('overtime_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
             ->orderBy('overtime_date', 'desc')
             ->orderBy('created_at', 'desc');
 

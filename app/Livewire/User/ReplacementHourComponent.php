@@ -104,17 +104,11 @@ class ReplacementHourComponent extends Component
             ->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))
             ->toArray();
 
-        // Query history table for selected month
+        // Query history table strictly for selected month by replaced_date
         $query = ReplacementHour::with(['shift', 'approver'])
             ->where('user_id', $user->id)
-            ->where(function ($q) use ($date) {
-                $q->whereMonth('replaced_date', $date->month)
-                  ->whereYear('replaced_date', $date->year)
-                  ->orWhere(function ($q2) use ($date) {
-                      $q2->whereMonth('replacement_date', $date->month)
-                         ->whereYear('replacement_date', $date->year);
-                  });
-            })
+            ->whereBetween('replaced_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
+            ->orderBy('replaced_date', 'desc')
             ->orderBy('created_at', 'desc');
 
         if ($this->perPage === 'all') {
