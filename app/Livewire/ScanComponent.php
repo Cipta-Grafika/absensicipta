@@ -128,10 +128,61 @@ class ScanComponent extends Component
         }
     }
 
+    /**
+     * Validate GPS coordinates for anti-spoofing / anti-fake-gps hardening.
+     */
+    protected function validateGpsHardening(float $lat, float $lng): ?string
+    {
+        // 1. Sanity check for valid latitude/longitude bounds
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+            return __('Absen Gagal: Format koordinat GPS tidak valid.');
+        }
+
+        // 2. Block Null Island (0,0) coordinate spoofing
+        if (abs($lat) < 0.0001 && abs($lng) < 0.0001) {
+            return __('Absen Gagal: Lokasi GPS terdeteksi tidak valid (Null Island).');
+        }
+
+        // 3. Teleportation / Impossible Speed Check against user's last attendance
+        $user = Auth::user();
+        if ($user) {
+            $lastAttendance = Attendance::where('user_id', $user->id)
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->where('created_at', '>=', Carbon::now()->subHours(2))
+                ->orderByDesc('updated_at')
+                ->first();
+
+            if ($lastAttendance && !empty($lastAttendance->latitude) && !empty($lastAttendance->longitude)) {
+                $prevLocation = new LatLong(doubleval($lastAttendance->latitude), doubleval($lastAttendance->longitude));
+                $currentLocation = new LatLong($lat, $lng);
+                $distanceMeters = $this->calculateDistance($currentLocation, $prevLocation);
+                $elapsedSeconds = Carbon::now()->diffInSeconds(Carbon::parse($lastAttendance->updated_at));
+
+                if ($elapsedSeconds > 0 && $elapsedSeconds < 1800) { // Within 30 minutes
+                    $speedKmh = ($distanceMeters / 1000) / ($elapsedSeconds / 3600);
+                    if ($speedKmh > 250) { // Speed faster than 250 km/h
+                        return __('Absen Gagal: Terdeteksi perpindahan posisi lokasi yang tidak wajar / terlalu cepat (Indikasi Fake GPS).');
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     public function manualCheckIn()
     {
         if (is_null($this->currentLiveCoords) || count($this->currentLiveCoords) < 2) {
             $this->dangerBanner(__('Lokasi GPS belum terdeteksi. Harap izinkan akses lokasi (GPS) pada browser Anda terlebih dahulu.'));
+            return;
+        }
+
+        $userLat = doubleval($this->currentLiveCoords[0]);
+        $userLng = doubleval($this->currentLiveCoords[1]);
+
+        if ($gpsError = $this->validateGpsHardening($userLat, $userLng)) {
+            $this->dangerBanner($gpsError);
             return;
         }
 
@@ -140,7 +191,7 @@ class ScanComponent extends Component
             return;
         }
 
-        $userLocation = new LatLong($this->currentLiveCoords[0], $this->currentLiveCoords[1]);
+        $userLocation = new LatLong($userLat, $userLng);
         $barcodes = Barcode::all();
 
         if ($barcodes->isEmpty()) {
@@ -193,12 +244,20 @@ class ScanComponent extends Component
             return;
         }
 
+        $userLat = doubleval($this->currentLiveCoords[0]);
+        $userLng = doubleval($this->currentLiveCoords[1]);
+
+        if ($gpsError = $this->validateGpsHardening($userLat, $userLng)) {
+            $this->dangerBanner($gpsError);
+            return;
+        }
+
         if (is_null($this->shift_id)) {
             $this->dangerBanner(__('Pilih shift terlebih dahulu sebelum melakukan absen.'));
             return;
         }
 
-        $userLocation = new LatLong($this->currentLiveCoords[0], $this->currentLiveCoords[1]);
+        $userLocation = new LatLong($userLat, $userLng);
         $barcodes = Barcode::all();
 
         if ($barcodes->isEmpty()) {
