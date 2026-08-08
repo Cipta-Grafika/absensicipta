@@ -6,11 +6,11 @@
       <div x-show="show" class="fixed inset-0 z-[300] flex items-center justify-center overflow-y-auto overflow-x-hidden p-4">
         <!-- Backdrop -->
         <div x-show="show"
-          class="fixed inset-0 z-[301] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-md transition-opacity"
-          x-transition:enter="ease-in-out duration-300"
+          class="fixed inset-0 z-[301] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-xs sm:backdrop-blur-sm transition-opacity"
+          x-transition:enter="ease-out duration-150"
           x-transition:enter-start="opacity-0"
           x-transition:enter-end="opacity-100"
-          x-transition:leave="ease-in-out duration-300"
+          x-transition:leave="ease-in duration-150"
           x-transition:leave-start="opacity-100"
           x-transition:leave-end="opacity-0"
           wire:click="{{ $cancelAction }}">
@@ -18,13 +18,13 @@
 
         <!-- Dialog Box -->
         <div x-show="show"
-          class="relative w-full max-w-sm p-4 z-[305] transform transition-all"
-          x-transition:enter="ease-out duration-300"
-          x-transition:enter-start="opacity-0 scale-95"
-          x-transition:enter-end="opacity-100 scale-100"
-          x-transition:leave="ease-in duration-200"
-          x-transition:leave-start="opacity-100 scale-100"
-          x-transition:leave-end="opacity-0 scale-95">
+          class="relative w-full max-w-sm p-4 z-[305] transform transition-all will-change-transform"
+          x-transition:enter="ease-out duration-150"
+          x-transition:enter-start="opacity-0 scale-[0.98] translate-y-2"
+          x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+          x-transition:leave="ease-in duration-150"
+          x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+          x-transition:leave-end="opacity-0 scale-[0.98] translate-y-2">
           <div class="relative rounded-2xl bg-white/95 shadow-2xl dark:bg-gray-900/95 backdrop-blur-xl border border-white/60 dark:border-gray-700/60">
             <div class="p-6 text-center">
               <svg class="mx-auto mb-4 h-12 w-12 text-gray-400 dark:text-gray-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
