@@ -1,8 +1,13 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
-    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Syirkah') }}
-    </h2>
+    <div>
+      <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
+        Syirkah
+      </h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        Akun Tabungan & Saldo Syirkah Karyawan
+      </p>
+    </div>
     <x-button x-data @click="$dispatch('open-saving-modal')" class="bg-sky-500 hover:bg-sky-600 focus:bg-sky-600 active:bg-sky-700">
       <svg class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -12,9 +17,9 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-6" x-data @open-saving-modal.window="$wire.openModal()">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-    <div class="bg-white p-6 shadow-none sm:shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
+<div class="py-6" x-data @open-saving-modal.window="$wire.openModal()">
+  <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
+    <div class="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-sky-200/80 dark:border-gray-800/80 shadow-2xl shadow-black/5 rounded-2xl p-6 lg:p-8">
       
       <div class="mb-4">
         <div class="flex w-full flex-1 items-center gap-2">

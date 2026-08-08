@@ -1,8 +1,13 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
-    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Metode Pembayaran') }}
-    </h2>
+    <div>
+      <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
+        Metode Pembayaran
+      </h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        Kelola Rekening Bank & Metode Pembayaran Gaji Karyawan
+      </p>
+    </div>
     <div class="flex items-center gap-2">
       <x-button x-data @click="$dispatch('open-payment-modal')" class="bg-sky-500 hover:bg-sky-600 focus:bg-sky-600 active:bg-sky-700">
         <svg class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -18,8 +23,8 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-payment-modal.window="$wire.openModal()">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+<div class="py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-payment-modal.window="$wire.openModal()">
+  <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Karyawan</x-slot>
       <x-slot name="actions">

@@ -1,10 +1,15 @@
 <x-slot name="header">
-  <div class="relative flex items-center">
-    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Payroll') }}
-    </h2>
-    <div class="absolute right-0 flex items-center gap-2">
-      <button type="button" x-data @click.prevent="if(confirm('Anda yakin ingin mengubah semua status Draft bulan ini menjadi Paid?')) { Livewire.dispatch('mark-all-as-paid') }" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 transition ease-in-out duration-150">
+  <div class="relative flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
+        Riwayat Gaji
+      </h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        Kelola & Process Slip Gaji Karyawan Cipta Grafika
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="button" x-data @click.prevent="if(confirm('Anda yakin ingin mengubah semua status Draft bulan ini menjadi Paid?')) { Livewire.dispatch('mark-all-as-paid') }" class="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-semibold text-xs shadow-md shadow-emerald-500/20 transition-all duration-150">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="sm:mr-1.5 h-4 w-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
         </svg>
@@ -25,8 +30,8 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+<div class="py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
 
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Payroll</x-slot>

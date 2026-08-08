@@ -57,8 +57,8 @@
     
     @livewire('navigation-menu')
 
-    @if (request()->routeIs('hr.*'))
-      <!-- HR PORTAL FIXED LAYOUT: FULL-WIDTH NAVBAR -> FULL-WIDTH HEADER BANNER -> FIXED SIDEBAR BELOW -->
+    @if (request()->routeIs('hr.*') || request()->routeIs('payroll.*'))
+      <!-- PORTAL FIXED LAYOUT: FULL-WIDTH NAVBAR -> FULL-WIDTH HEADER BANNER -> FIXED SIDEBAR BELOW -->
       <div class="relative flex-grow flex w-full"
            x-data="{
              sidebarCollapsed: localStorage.getItem('hr_sidebar_collapsed') === 'true',
@@ -93,7 +93,11 @@
         @endif
 
         <!-- Reusable Fixed Left Sidebar Component (Positioned Below Banner Component) -->
-        <x-hr-sidebar />
+        @if (request()->routeIs('payroll.*'))
+          <x-payroll-sidebar />
+        @else
+          <x-hr-sidebar />
+        @endif
 
         <!-- Right Main Content Area (Slot & Footer) -->
         <div class="hr-main-content flex-1 min-w-0 flex flex-col min-h-[calc(100vh-4rem)] lg:pl-64 transition-[padding] duration-300 ease-in-out"
@@ -116,7 +120,7 @@
         </div>
       </div>
     @else
-      <!-- STANDARD LAYOUT FOR NON-HR PAGES -->
+      <!-- STANDARD LAYOUT FOR NON-PORTAL PAGES -->
       @if (isset($header))
         <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-sky-200/80 dark:border-gray-800/80 shadow-xs transition-colors">
           <div class="mx-auto max-w-7xl px-4 py-3.5 sm:px-6 lg:px-8">
@@ -134,8 +138,8 @@
     <!-- Mobile Bottom Navigation Bar -->
     <x-bottom-navigation-bar />
 
-    <!-- Footer for Non-HR pages -->
-    @unless (request()->routeIs('hr.*'))
+    <!-- Footer for Non-Portal pages -->
+    @unless (request()->routeIs('hr.*') || request()->routeIs('payroll.*'))
       <footer class="mt-auto border-t border-sky-200/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
         <div class="mx-auto flex max-w-7xl items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
           <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />

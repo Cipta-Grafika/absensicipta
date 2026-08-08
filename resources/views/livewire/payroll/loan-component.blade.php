@@ -1,9 +1,14 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
-    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Pinjaman Karyawan') }}
-    </h2>
-    <div class="absolute right-0 flex items-center gap-2">
+    <div>
+      <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
+        Pinjaman Karyawan
+      </h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        Kelola Pengajuan Pinjaman & Angsuran Kasbon Karyawan
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
       <x-button type="button" x-data @click.prevent="$dispatch('open-create-modal')">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="sm:mr-1.5 h-4 w-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -18,8 +23,8 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+<div class="py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
 
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Pinjaman</x-slot>

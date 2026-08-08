@@ -1,9 +1,14 @@
 <x-slot name="header">
-  <div class="relative flex items-center">
-    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Master Gaji') }}
-    </h2>
-    <div class="absolute right-0 flex items-center gap-2">
+  <div class="relative flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
+        Master Gaji
+      </h2>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        Konfigurasi Gaji Pokok, Tunjangan & Potongan Gaji Karyawan
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
       <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
         <x-heroicon-o-funnel class="sm:mr-1.5 h-4 w-4 text-sky-500" />
         <span class="hidden sm:inline">Filter</span>
@@ -12,8 +17,8 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+<div class="py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Karyawan</x-slot>
       <x-slot name="actions">
