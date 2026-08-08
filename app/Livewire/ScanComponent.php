@@ -30,8 +30,22 @@ class ScanComponent extends Component
     public string $motivationMessage = '';
     public string $motivationType = '';
 
+    public static array $lockedStatuses = [
+        'excused', 'permit', 'izin',
+        'wfh',
+        'sick', 'sakit',
+        'leave', 'cuti',
+        'special-leaves', 'special_leave', 'special-leave', 'cuti_khusus',
+        'imp',
+        'dayoff', 'off', 'libur'
+    ];
+
     public function scan(string $barcode)
     {
+        if ($this->isAbsence || ($this->attendance && in_array(strtolower(trim((string)$this->attendance->status)), self::$lockedStatuses))) {
+            return __('Absen Gagal: Presensi terkunci karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.');
+        }
+
         if (is_null($this->currentLiveCoords) || count($this->currentLiveCoords) < 2) {
             return __('Invalid location');
         } else if (is_null($this->shift_id)) {
@@ -173,6 +187,11 @@ class ScanComponent extends Component
 
     public function manualCheckIn()
     {
+        if ($this->isAbsence) {
+            $this->dangerBanner(__('Absen Masuk gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
+            return;
+        }
+
         if (is_null($this->currentLiveCoords) || count($this->currentLiveCoords) < 2) {
             $this->dangerBanner(__('Lokasi GPS belum terdeteksi. Harap izinkan akses lokasi (GPS) pada browser Anda terlebih dahulu.'));
             return;
@@ -239,6 +258,11 @@ class ScanComponent extends Component
 
     public function manualCheckOut()
     {
+        if ($this->isAbsence) {
+            $this->dangerBanner(__('Absen Keluar gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
+            return;
+        }
+
         if (is_null($this->currentLiveCoords) || count($this->currentLiveCoords) < 2) {
             $this->dangerBanner(__('Lokasi GPS belum terdeteksi. Harap izinkan akses lokasi (GPS) pada browser Anda terlebih dahulu.'));
             return;
@@ -344,9 +368,9 @@ class ScanComponent extends Component
     {
         $this->attendance = $attendance;
         $this->shift_id = $attendance->shift_id;
-        // Only set isAbsence to true for formal approved full day leave / permits (sick, leave, permit, cuti, dayoff).
-        // Note: 'absent' (Tidak Hadir) is NOT an approved leave and MUST allow employees to Check In / Check Out!
-        $this->isAbsence = in_array($attendance->status, ['sick', 'leave', 'permit', 'cuti', 'dayoff']);
+        $statusLower = strtolower(trim((string)$attendance->status));
+        $this->isAbsence = in_array($statusLower, self::$lockedStatuses);
+
         if (is_null($this->currentLiveCoords) && !empty($attendance->latitude) && !empty($attendance->longitude)) {
             $this->currentLiveCoords = [doubleval($attendance->latitude), doubleval($attendance->longitude)];
         }
@@ -365,6 +389,12 @@ class ScanComponent extends Component
 
     public function updatedShiftId($value)
     {
+        if ($this->isAbsence) {
+            $this->shift_id = $this->attendance?->shift_id;
+            $this->dangerBanner(__('Shift kerja terkunci karena Anda tercatat berstatus ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . ' pada hari ini.'));
+            return;
+        }
+
         if (!empty($this->attendance?->time_in)) {
             $this->shift_id = $this->attendance->shift_id;
             $this->dangerBanner(__('Shift kerja tidak dapat diubah karena Anda sudah melakukan absen masuk hari ini.'));

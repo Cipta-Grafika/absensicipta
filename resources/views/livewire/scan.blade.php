@@ -80,40 +80,56 @@
   @endif
 
   <div class="space-y-4">
-    <!-- 1. COMBINED SHIFT & COMPACT GPS LIVE DETECTOR CARD -->
-    @if (!$isAbsence)
-      @php
-        $hasTimeIn = !empty($attendance?->time_in);
-        $hasCoords = !empty($currentLiveCoords) && is_array($currentLiveCoords) && count($currentLiveCoords) >= 2;
-      @endphp
+    <!-- LOCKED STATUS ALERT BANNER FOR IZIN/WFH/SAKIT/CUTI/CUTI KHUSUS/IMP -->
+    @if ($isAbsence)
+      <div class="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 p-4 border border-amber-200/90 dark:border-amber-800/90 shadow-xs">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400">
+          <x-heroicon-o-lock-closed class="h-5 w-5" />
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-amber-900 dark:text-amber-200">
+            Presensi Hari Ini Terkunci (Status: {{ strtoupper($attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') }})
+          </h4>
+          <p class="text-xs text-amber-700 dark:text-amber-300 mt-0.5 font-medium">
+            Input shift kerja serta operasi Check-In & Check-Out diproteksi dan dinonaktifkan untuk mencegah tumpang tindih status di hari ini.
+          </p>
+        </div>
+      </div>
+    @endif
 
-      <div class="rounded-xl bg-gray-50 dark:bg-gray-800/90 p-3.5 border border-gray-200 dark:border-gray-700 space-y-3 shadow-xs"
-           x-data="{ hasLoc: @json($hasCoords) }"
-           x-init="
-             $watch('$wire.currentLiveCoords', val => {
-               if (Array.isArray(val) && val.length >= 2) {
-                 hasLoc = true;
-               }
-             });
-             window.addEventListener('geo-updated', (e) => {
-               if (e.detail && Array.isArray(e.detail) && e.detail.length >= 2) {
-                 hasLoc = true;
-               } else if (Array.isArray($wire.currentLiveCoords) && $wire.currentLiveCoords.length >= 2) {
-                 hasLoc = true;
-               }
-             });
-             if (Array.isArray($wire.currentLiveCoords) && $wire.currentLiveCoords.length >= 2) {
+    <!-- 1. COMBINED SHIFT & COMPACT GPS LIVE DETECTOR CARD -->
+    @php
+      $hasTimeIn = !empty($attendance?->time_in);
+      $hasCoords = !empty($currentLiveCoords) && is_array($currentLiveCoords) && count($currentLiveCoords) >= 2;
+    @endphp
+
+    <div class="rounded-xl bg-gray-50 dark:bg-gray-800/90 p-3.5 border border-gray-200 dark:border-gray-700 space-y-3 shadow-xs"
+         x-data="{ hasLoc: @json($hasCoords) }"
+         x-init="
+           $watch('$wire.currentLiveCoords', val => {
+             if (Array.isArray(val) && val.length >= 2) {
                hasLoc = true;
              }
-           ">
-        <!-- DROPDOWN SHIFT -->
-        <div>
-          <x-label for="shift" value="{{ __('Pilih Shift Kerja') }}" class="font-bold text-gray-700 dark:text-gray-200 text-xs uppercase tracking-wider" />
-          <x-select name="shift" id="shift" 
-            class="mt-1.5 block w-full font-semibold text-sm {{ $hasTimeIn ? 'bg-gray-200 text-gray-500 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600 cursor-not-allowed opacity-75' : '' }}" 
-            wire:model.live="shift_id"
-            :disabled="$hasTimeIn">
-            <option value="">-- {{ __('Pilih Shift') }} --</option>
+           });
+           window.addEventListener('geo-updated', (e) => {
+             if (e.detail && Array.isArray(e.detail) && e.detail.length >= 2) {
+               hasLoc = true;
+             } else if (Array.isArray($wire.currentLiveCoords) && $wire.currentLiveCoords.length >= 2) {
+               hasLoc = true;
+             }
+           });
+           if (Array.isArray($wire.currentLiveCoords) && $wire.currentLiveCoords.length >= 2) {
+             hasLoc = true;
+           }
+         ">
+      <!-- DROPDOWN SHIFT -->
+      <div>
+        <x-label for="shift" value="{{ __('Pilih Shift Kerja') }}" class="font-bold text-gray-700 dark:text-gray-200 text-xs uppercase tracking-wider" />
+        <x-select name="shift" id="shift" 
+          class="mt-1.5 block w-full font-semibold text-sm {{ ($hasTimeIn || $isAbsence) ? 'bg-gray-200 text-gray-500 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600 cursor-not-allowed opacity-75' : '' }}" 
+          wire:model.live="shift_id"
+          :disabled="$hasTimeIn || $isAbsence">
+          <option value="">-- {{ __('Pilih Shift') }} --</option>
             @php
               $userDivId = auth()->user()?->division_id;
               $divisionShifts = $shifts->filter(fn($s) => $s->division_id == $userDivId && !is_null($s->division_id));
@@ -174,7 +190,6 @@
           </button>
         </div>
       </div>
-    @endif
 
     <!-- 3. CARD POTONGAN (TOP BANNER) -->
     <div class="flex items-center gap-3 rounded-lg bg-red-200 px-4 py-3 text-gray-800 dark:bg-red-900 dark:text-white border border-red-300 dark:border-red-800 shadow-xs">
