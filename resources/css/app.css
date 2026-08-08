@@ -112,6 +112,43 @@
     .dark .custom-scrollbar-x::-webkit-scrollbar-thumb:hover {
         background-color: rgba(56, 189, 248, 0.75);
     }
+
+    /* Dedicated Custom Vertical Scrollbar Utility */
+    .custom-scrollbar-y {
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(56, 189, 248, 0.5) transparent;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .custom-scrollbar-y::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .custom-scrollbar-y::-webkit-scrollbar-track {
+        background: transparent !important;
+    }
+
+    .custom-scrollbar-y::-webkit-scrollbar-thumb {
+        background-color: rgba(56, 189, 248, 0.5);
+        border-radius: 9999px;
+    }
+
+    .custom-scrollbar-y::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(14, 165, 233, 0.85);
+    }
+
+    .dark .custom-scrollbar-y {
+        scrollbar-color: rgba(56, 189, 248, 0.4) transparent;
+    }
+
+    .dark .custom-scrollbar-y::-webkit-scrollbar-thumb {
+        background-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .dark .custom-scrollbar-y::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(56, 189, 248, 0.75);
+    }
 }
 
 [x-cloak] {
