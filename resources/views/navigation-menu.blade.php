@@ -117,7 +117,7 @@
               </x-slot>
             </x-nav-dropdown>
           @endif
-          @if (Auth::user()->isPayroll)
+          @if (Auth::user()->isPayroll && !request()->routeIs('payroll.*'))
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
               Dashboard
             </x-nav-link>
@@ -384,7 +384,7 @@
           </x-responsive-nav-link>
         @endif
       @endif
-      @if (Auth::user()->isPayroll)
+      @if (Auth::user()->isPayroll && !request()->routeIs('payroll.*'))
         <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
           <div class="px-4 text-xs text-gray-400">Payroll</div>
           <x-responsive-nav-link href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
