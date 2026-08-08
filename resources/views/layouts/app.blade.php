@@ -75,13 +75,13 @@
 
         @if (isset($header))
           <!-- Full-Width Fixed Header Banner Glassmorphism -->
-          <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-white/80 dark:border-gray-800/80 shadow-xs transition-colors">
+          <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-sky-200/80 dark:border-gray-800/80 shadow-xs transition-colors">
             <div class="w-full px-4 py-3.5 sm:px-6 lg:px-8 flex items-center gap-3">
               <!-- Sidebar Toggle Button (Sky Blue Theme Icon) -->
               <button type="button"
                       @click="toggleSidebar()"
                       title="Toggle Sidebar"
-                      class="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/80 dark:border-gray-700/80 bg-white/90 dark:bg-gray-800/90 text-sky-600 dark:text-sky-400 shadow-xs backdrop-blur-md transition-all duration-200 hover:bg-sky-50 dark:hover:bg-gray-700 cursor-pointer">
+                      class="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sky-200/80 dark:border-gray-700/80 bg-white/90 dark:bg-gray-800/90 text-sky-600 dark:text-sky-400 shadow-xs backdrop-blur-md transition-all duration-200 hover:bg-sky-50 dark:hover:bg-gray-700 cursor-pointer">
                 <x-heroicon-o-view-columns class="h-4 w-4 text-sky-600 dark:text-sky-400" />
               </button>
 
@@ -104,7 +104,7 @@
           </main>
 
           <!-- Footer Glassmorphism -->
-          <footer class="mt-auto border-t border-white/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
+          <footer class="mt-auto border-t border-sky-200/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
             <div class="w-full flex items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
               <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />
               <span>Crafted by</span>
@@ -118,7 +118,7 @@
     @else
       <!-- STANDARD LAYOUT FOR NON-HR PAGES -->
       @if (isset($header))
-        <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-white/80 dark:border-gray-800/80 shadow-xs transition-colors">
+        <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-sky-200/80 dark:border-gray-800/80 shadow-xs transition-colors">
           <div class="mx-auto max-w-7xl px-4 py-3.5 sm:px-6 lg:px-8">
             {{ $header }}
           </div>
@@ -136,7 +136,7 @@
 
     <!-- Footer for Non-HR pages -->
     @unless (request()->routeIs('hr.*'))
-      <footer class="mt-auto border-t border-white/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
+      <footer class="mt-auto border-t border-sky-200/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
         <div class="mx-auto flex max-w-7xl items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
           <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />
           <span>Crafted by</span>
