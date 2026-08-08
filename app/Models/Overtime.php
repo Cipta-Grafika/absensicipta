@@ -15,6 +15,7 @@ class Overtime extends Model
         'overtime_date',
         'start_time',
         'end_time',
+        'break',
         'duration_hours',
         'applied_rate_amount',
         'total_pay',
@@ -62,7 +63,29 @@ class Overtime extends Model
     }
 
     /**
-     * Accessor for formatted duration (e.g. 3 jam 30 menit)
+     * Convert break duration string (HH:MM or minutes string) to integer minutes
+     */
+    public static function convertBreakToMinutes(?string $breakStr): int
+    {
+        if (empty($breakStr)) return 0;
+        $breakStr = trim($breakStr);
+
+        if (str_contains($breakStr, ':')) {
+            $parts = explode(':', $breakStr);
+            $hours = (int) ($parts[0] ?? 0);
+            $minutes = (int) ($parts[1] ?? 0);
+            return ($hours * 60) + $minutes;
+        }
+
+        if (is_numeric($breakStr)) {
+            return (int) $breakStr;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Accessor for formatted duration (e.g. 3 jam 30 menit (Istirahat 30 mnt))
      */
     public function getFormattedDurationAttribute()
     {
@@ -72,12 +95,28 @@ class Overtime extends Model
         $h = floor($hours);
         $m = round(($hours - $h) * 60);
         
-        if ($h > 0 && $m > 0) {
-            return "{$h} jam {$m} menit";
-        } elseif ($h > 0) {
-            return "{$h} jam";
+        $breakText = '';
+        if (!empty($this->break)) {
+            $bMins = self::convertBreakToMinutes($this->break);
+            if ($bMins > 0) {
+                $bH = floor($bMins / 60);
+                $bM = $bMins % 60;
+                if ($bH > 0 && $bM > 0) {
+                    $breakText = " (Istirahat {$bH}j {$bM}m)";
+                } elseif ($bH > 0) {
+                    $breakText = " (Istirahat {$bH} jam)";
+                } else {
+                    $breakText = " (Istirahat {$bM} mnt)";
+                }
+            }
         }
-        return "{$m} menit";
+
+        if ($h > 0 && $m > 0) {
+            return "{$h} jam {$m} menit" . $breakText;
+        } elseif ($h > 0) {
+            return "{$h} jam" . $breakText;
+        }
+        return "{$m} menit" . $breakText;
     }
 
     /**
@@ -112,7 +151,7 @@ class Overtime extends Model
     }
 
     /**
-     * Calculate and return duration based on start and end time.
+     * Calculate and return duration based on start and end time minus break.
      */
     public function calculateDuration()
     {
@@ -126,6 +165,12 @@ class Overtime extends Model
             }
 
             $diffInMinutes = $start->diffInMinutes($end);
+
+            if (!empty($this->break)) {
+                $breakMinutes = self::convertBreakToMinutes($this->break);
+                $diffInMinutes = max(0, $diffInMinutes - $breakMinutes);
+            }
+
             return round($diffInMinutes / 60, 2);
         }
         return 0;
