@@ -90,6 +90,7 @@
             <option value="freelance">Freelance (FR)</option>
             <option value="probation">Probation (PRB)</option>
             <option value="intern">Internship (INT)</option>
+            <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
             <option value="outsourcing">Outsourcing</option>
             <option value="volunteer">Volunteer</option>
           </x-select>
@@ -296,6 +297,7 @@
               <option value="freelance">Freelance (FR)</option>
               <option value="probation">Probation (PRB)</option>
               <option value="intern">Internship (INT)</option>
+              <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
               <option value="outsourcing">Outsourcing</option>
               <option value="volunteer">Volunteer</option>
             </x-select>
@@ -554,6 +556,7 @@
               <option value="freelance">Freelance (FR)</option>
               <option value="probation">Probation (PRB)</option>
               <option value="intern">Internship (INT)</option>
+              <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
               <option value="outsourcing">Outsourcing</option>
               <option value="volunteer">Volunteer</option>
             </x-select>

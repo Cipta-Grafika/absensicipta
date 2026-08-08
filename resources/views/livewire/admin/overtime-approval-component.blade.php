@@ -273,13 +273,15 @@
               {{ Str::limit($approval->reason, 100) }}
             </td>
             <td class="px-2 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400 min-w-[140px]">
-              @if(!is_null($approval->total_pay))
-                Rp {{ number_format($approval->total_pay, 0, ',', '.') }}
-              @else
-                @php
-                  $est = \App\Models\OvertimeRate::calculatePayForDuration((float) $approval->duration_hours, $approval->employee);
-                @endphp
-                <span class="text-gray-500 dark:text-gray-400 font-medium text-xs">(Est: Rp {{ number_format($est['total_pay'], 0, ',', '.') }})</span>
+              @php
+                $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $approval->duration_hours, $approval->employee);
+                $finalPay = $payData['total_pay'] > 0 ? $payData['total_pay'] : ($approval->total_pay ?? 0);
+              @endphp
+              <div>Rp {{ number_format($finalPay, 0, ',', '.') }}</div>
+              @if(($payData['meal_allowance'] ?? 0) > 0)
+                <div class="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                  (+ Uang Makan Rp {{ number_format($payData['meal_allowance'], 0, ',', '.') }})
+                </div>
               @endif
             </td>
             <td class="whitespace-nowrap px-2 py-4 text-sm">
