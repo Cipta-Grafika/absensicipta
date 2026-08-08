@@ -87,8 +87,10 @@ class OvertimeRate extends Model
     }
 
     /**
-     * Calculate payment based on duration_hours and defined rate tiers.
-     * Prioritizes division-specific and employee-type specific rates first.
+     * Calculate payment based on duration_hours and defined rate tiers using Progressive Tiering.
+     * - Tiers are sorted by min_hours ASC.
+     * - Hours within each tier step (e.g. 0-3 jam, 3-24 jam) are multiplied by that tier's rate.
+     * - Meal allowance is added flat (1x) from the highest reached tier that defines a meal_allowance.
      */
     public static function calculatePayForDuration(float $durationHours, ?User $user = null): array
     {
@@ -105,7 +107,7 @@ class OvertimeRate extends Model
 
         // Query candidate rates matching division (User's division or global null)
         // and matching employee_type (User's type or 'all' or null)
-        $candidateRates = self::where(function ($q) use ($userDivisionId) {
+        $allRates = self::where(function ($q) use ($userDivisionId) {
             if ($userDivisionId) {
                 $q->where('division_id', $userDivisionId)
                   ->orWhereNull('division_id');
@@ -120,51 +122,79 @@ class OvertimeRate extends Model
         })
         ->get();
 
-        if ($candidateRates->isNotEmpty()) {
-            // Find exact duration range match first
-            $matched = $candidateRates->filter(fn($r) => $r->min_hours <= $durationHours && $r->max_hours >= $durationHours);
-
-            if ($matched->isEmpty()) {
-                // Nearest lower tier
-                $matched = $candidateRates->filter(fn($r) => $r->min_hours <= $durationHours);
-            }
-
-            if ($matched->isEmpty()) {
-                $matched = $candidateRates;
-            }
-
-            // Score specificity: Exact division (+10), Exact employee_type (+5), All/null type (+1)
-            $rate = $matched->sortByDesc(function ($r) use ($userDivisionId, $userType) {
+        if ($allRates->isNotEmpty()) {
+            // Group rates by specificity score
+            $groupedBySpecificity = $allRates->groupBy(function ($r) use ($userDivisionId, $userType) {
                 $score = 0;
-                if ($userDivisionId && $r->division_id == $userDivisionId) {
-                    $score += 10;
-                }
-                if ($r->employee_type === $userType) {
-                    $score += 5;
-                } elseif ($r->employee_type === 'all' || is_null($r->employee_type)) {
-                    $score += 1;
-                }
+                if ($userDivisionId && $r->division_id == $userDivisionId) $score += 100;
+                if ($r->employee_type === $userType) $score += 20;
+                elseif ($r->employee_type === 'all' || is_null($r->employee_type)) $score += 5;
                 return $score;
-            })->first();
+            });
 
-            if ($rate) {
-                $appliedRate = (float) $rate->rate_amount;
-                $mealAllowance = (float) ($rate->meal_allowance ?? 0.0);
-                $hourlyOrFlatPay = ($rate->rate_type === 'flat_package')
-                    ? $appliedRate
-                    : round($durationHours * $appliedRate, 2);
+            // Select highest specificity score group
+            $bestScore = $groupedBySpecificity->keys()->max();
+            $candidateRates = $groupedBySpecificity->get($bestScore)->sortBy('min_hours')->values();
 
-                $totalPay = round($hourlyOrFlatPay + $mealAllowance, 2);
+            // Progressive tiering calculation
+            $totalHourlyOrFlatPay = 0.0;
+            $appliedMealAllowance = 0.0;
+            $primaryRateAmount = 0.0;
+            $previousMaxHours = 0.0;
 
-                return [
-                    'applied_rate_amount' => $appliedRate,
-                    'meal_allowance' => $mealAllowance,
-                    'total_pay' => $totalPay,
-                ];
+            foreach ($candidateRates as $index => $rate) {
+                $minH = (float) $rate->min_hours;
+                $maxH = (float) $rate->max_hours;
+
+                // Step start bound (for the first tier starting at > 0, begin from 0)
+                $stepStart = ($index === 0 && $minH > 0) ? 0.0 : max($minH, $previousMaxHours);
+                $stepEnd = $maxH;
+
+                if ($durationHours > $stepStart) {
+                    $hoursInThisStep = min($durationHours, $stepEnd) - $stepStart;
+
+                    if ($hoursInThisStep > 0) {
+                        $rateAmount = (float) $rate->rate_amount;
+                        if ($primaryRateAmount == 0.0) {
+                            $primaryRateAmount = $rateAmount;
+                        }
+
+                        if ($rate->rate_type === 'flat_package') {
+                            $totalHourlyOrFlatPay += $rateAmount;
+                        } else {
+                            $totalHourlyOrFlatPay += ($hoursInThisStep * $rateAmount);
+                        }
+
+                        // Highest reached tier with meal allowance
+                        if ((float)($rate->meal_allowance ?? 0.0) > 0) {
+                            $appliedMealAllowance = (float) $rate->meal_allowance;
+                        }
+                    }
+                }
+
+                $previousMaxHours = max($previousMaxHours, $maxH);
             }
+
+            // If duration exceeds highest tier max_hours, calculate extra hours at highest tier's rate
+            $highestRate = $candidateRates->last();
+            if ($highestRate && $durationHours > $previousMaxHours) {
+                $overflowHours = $durationHours - $previousMaxHours;
+                $highestRateAmount = (float) $highestRate->rate_amount;
+                if ($highestRate->rate_type !== 'flat_package') {
+                    $totalHourlyOrFlatPay += ($overflowHours * $highestRateAmount);
+                }
+            }
+
+            $totalPay = round($totalHourlyOrFlatPay + $appliedMealAllowance, 2);
+
+            return [
+                'applied_rate_amount' => $primaryRateAmount > 0 ? $primaryRateAmount : (float) ($highestRate->rate_amount ?? 0),
+                'meal_allowance' => $appliedMealAllowance,
+                'total_pay' => $totalPay,
+            ];
         }
 
-        // Priority 3: Fallback to User's salary default overtime_rate if set
+        // Fallback to User's salary default overtime_rate if set
         $fallbackRate = 0.0;
         if ($user && $user->salary && $user->salary->overtime_rate) {
             $fallbackRate = (float) $user->salary->overtime_rate;

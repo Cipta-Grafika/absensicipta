@@ -176,6 +176,10 @@
             @enderror
           </div>
         </div>
+        <p class="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+          <span class="font-bold text-sky-600 dark:text-sky-400">💡 Best-Practice Tier Range:</span>
+          Untuk tier berjenjang (misal Tier 1: 1 - 3 Jam & Tier 2: > 3 Jam s/d 24 Jam), sistem secara presisi memprioritaskan batas eksak (misal 3.0 jam masuk Tier 1, dan > 3.0 jam masuk Tier 2). Uang makan lembur (jika ada) ditambahkan <strong>flat (1x)</strong> per pengajuan lembur.
+        </p>
 
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
