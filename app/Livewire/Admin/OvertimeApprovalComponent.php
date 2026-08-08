@@ -31,6 +31,7 @@ class OvertimeApprovalComponent extends Component
     public array $bulk_overtime_data = []; // Map of [overtime_id => status]
     public ?string $bulk_search = null;
 
+    public string $perPage = '10';
     public $isDeleteModalOpen = false;
     public $overtimeToDelete = null;
 
@@ -47,6 +48,11 @@ class OvertimeApprovalComponent extends Component
     }
 
     public function updatingCalendarMonth()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage()
     {
         $this->resetPage();
     }
@@ -270,7 +276,8 @@ class OvertimeApprovalComponent extends Component
             });
         }
 
-        $approvals = $query->paginate(15);
+        $perPageVal = $this->perPage === 'all' ? 999999 : (int) $this->perPage;
+        $approvals = $query->paginate($perPageVal);
 
         return view('livewire.admin.overtime-approval-component', [
             'approvals' => $approvals,
