@@ -3,10 +3,10 @@
 @if($isOpen)
   <div x-data="{ show: true }">
     <template x-teleport="body">
-      <div x-show="show" class="fixed inset-0 z-[250] flex items-center justify-center overflow-y-auto overflow-x-hidden p-4">
+      <div x-show="show" class="fixed inset-0 z-[300] flex items-center justify-center overflow-y-auto overflow-x-hidden p-4">
         <!-- Backdrop -->
         <div x-show="show"
-          class="fixed inset-0 z-[251] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-md transition-opacity"
+          class="fixed inset-0 z-[301] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-md transition-opacity"
           x-transition:enter="ease-in-out duration-300"
           x-transition:enter-start="opacity-0"
           x-transition:enter-end="opacity-100"
@@ -18,7 +18,7 @@
 
         <!-- Dialog Box -->
         <div x-show="show"
-          class="relative w-full max-w-sm p-4 z-[255] transform transition-all"
+          class="relative w-full max-w-sm p-4 z-[305] transform transition-all"
           x-transition:enter="ease-out duration-300"
           x-transition:enter-start="opacity-0 scale-95"
           x-transition:enter-end="opacity-100 scale-100"
