@@ -44,7 +44,7 @@
   @stack('styles')
 </head>
 
-<body class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-slate-200/70 dark:bg-gray-950 relative selection:bg-sky-500 selection:text-white">
+<body class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-slate-200/70 dark:bg-gray-950 relative selection:bg-sky-500 selection:text-white max-w-full overflow-x-hidden">
   <!-- AMBIENT GLASSMORPHISM BACKGROUND MESH GLOWS -->
   <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
     <div class="absolute -top-32 -left-32 w-[32rem] h-[32rem] rounded-full bg-sky-400/40 dark:bg-sky-600/20 blur-3xl"></div>
@@ -52,14 +52,14 @@
     <div class="absolute -bottom-32 left-1/3 w-[32rem] h-[32rem] rounded-full bg-indigo-400/35 dark:bg-indigo-600/20 blur-3xl"></div>
   </div>
 
-  <div class="relative z-10 flex min-h-screen flex-col justify-between pt-16">
+  <div class="relative z-10 flex min-h-screen flex-col justify-between pt-16 max-w-full overflow-x-hidden">
     <x-banner />
     
     @livewire('navigation-menu')
 
     @if (request()->routeIs('hr.*') || request()->routeIs('payroll.*'))
       <!-- PORTAL FIXED LAYOUT: FULL-WIDTH NAVBAR -> FULL-WIDTH HEADER BANNER -> FIXED SIDEBAR BELOW -->
-      <div class="relative flex-grow flex w-full"
+      <div class="relative flex-grow flex w-full max-w-full overflow-x-hidden"
            x-data="{
              sidebarCollapsed: localStorage.getItem('hr_sidebar_collapsed') === 'true',
              toggleSidebar() {
@@ -100,7 +100,7 @@
         @endif
 
         <!-- Right Main Content Area (Slot & Footer) -->
-        <div class="hr-main-content flex-1 min-w-0 flex flex-col min-h-[calc(100vh-4rem)] lg:pl-64 transition-[padding] duration-300 ease-in-out"
+        <div class="hr-main-content flex-1 min-w-0 max-w-full flex flex-col min-h-[calc(100vh-4rem)] lg:pl-64 transition-[padding] duration-300 ease-in-out"
              :class="sidebarCollapsed ? '!pl-0' : 'lg:pl-64'">
 
           <main class="flex-grow flex flex-col {{ isset($header) ? 'pt-14' : '' }} pb-16 md:pb-0">
