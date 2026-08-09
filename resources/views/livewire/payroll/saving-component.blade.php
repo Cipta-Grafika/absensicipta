@@ -1,13 +1,8 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
-    <div>
-      <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
-        Syirkah
-      </h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-        Akun Tabungan & Saldo Syirkah Karyawan
-      </p>
-    </div>
+    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+      Syirkah
+    </h2>
     <x-button x-data @click="$dispatch('open-saving-modal')" class="bg-sky-500 hover:bg-sky-600 focus:bg-sky-600 active:bg-sky-700">
       <svg class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -17,9 +12,9 @@
   </div>
 </x-slot>
 
-<div class="py-6" x-data @open-saving-modal.window="$wire.openModal()">
-  <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
-    <div class="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-sky-200/80 dark:border-gray-800/80 shadow-2xl shadow-black/5 rounded-2xl p-6 lg:p-8">
+<div class="pt-3.5 pb-6 sm:py-6" x-data @open-saving-modal.window="$wire.openModal()">
+  <div class="w-full sm:px-6 lg:px-8">
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-t border-b sm:border border-white/90 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl shadow-slate-900/10 dark:shadow-black/50 rounded-none sm:rounded-2xl overflow-hidden p-4 sm:p-6 lg:p-8">
       
       <div class="mb-4">
         <div class="flex w-full flex-1 items-center gap-2">

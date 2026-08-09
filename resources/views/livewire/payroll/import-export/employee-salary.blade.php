@@ -67,7 +67,7 @@
         $thClass = 'px-4 py-3 text-left font-semibold dark:text-white whitespace-nowrap';
         $tdClass = 'px-4 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap';
       @endphp
-      <table class="w-full divide-y divide-gray-200 border dark:divide-gray-700 dark:border-gray-700">
+      <table class="w-full min-w-[900px] divide-y divide-gray-200 border dark:divide-gray-700 dark:border-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-900">
           <tr class="{{ $trClass }}">
             <th scope="col" class="px-2 py-3 text-left font-semibold dark:text-white">No</th>

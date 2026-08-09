@@ -5,7 +5,7 @@
   $isImportActive = request()->routeIs('payroll.import-export.*');
 @endphp
 
-<aside class="hr-sidebar-container fixed top-[8.25rem] left-0 bottom-0 z-30 w-64 hidden lg:flex flex-col bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-r border-sky-200/80 dark:border-gray-800/80 select-none transition-all duration-300 ease-in-out"
+<aside class="hr-sidebar-container fixed top-[7.25rem] left-0 bottom-0 z-30 w-64 hidden lg:flex flex-col bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-r border-sky-200/80 dark:border-gray-800/80 select-none transition-all duration-300 ease-in-out"
        :class="sidebarCollapsed ? '-translate-x-64 opacity-0 pointer-events-none' : 'translate-x-0 opacity-100 pointer-events-auto'"
        x-data="{
          openSyirkah: {{ $isSyirkahActive ? 'true' : 'false' }},

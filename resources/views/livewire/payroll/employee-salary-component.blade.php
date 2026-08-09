@@ -1,24 +1,19 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
-    <div>
-      <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
-        Master Gaji
-      </h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-        Konfigurasi Gaji Pokok, Tunjangan & Potongan Gaji Karyawan
-      </p>
-    </div>
+    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+      Master Gaji
+    </h2>
     <div class="flex items-center gap-2">
       <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
-        <x-heroicon-o-funnel class="sm:mr-1.5 h-4 w-4 text-sky-500" />
-        <span class="hidden sm:inline">Filter</span>
+        <x-heroicon-o-funnel class="mr-1.5 h-4 w-4 text-sky-500" />
+        Filter
       </x-secondary-button>
     </div>
   </div>
 </x-slot>
 
-<div class="py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
-  <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
+<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="w-full sm:px-6 lg:px-8">
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Karyawan</x-slot>
       <x-slot name="actions">
@@ -44,7 +39,7 @@
       </x-slot>
     </x-filter-sidebar>
 
-    <div class="bg-white p-6 shadow-none sm:shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-t border-b sm:border border-white/90 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl shadow-slate-900/10 dark:shadow-black/50 rounded-none sm:rounded-2xl overflow-hidden p-4 sm:p-6 lg:p-8">
       
       <div class="mb-4">
         <div class="flex w-full flex-1 items-center gap-2">

@@ -76,7 +76,7 @@
         @if (isset($header))
           <!-- Full-Width Fixed Header Banner Glassmorphism -->
           <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-sky-200/80 dark:border-gray-800/80 shadow-xs transition-colors">
-            <div class="w-full px-4 py-3.5 sm:px-6 lg:px-8 flex items-center gap-3">
+            <div class="w-full px-4 py-3 sm:px-6 lg:px-8 flex items-center gap-3">
               <!-- Sidebar Toggle Button (Sky Blue Theme Icon) -->
               <button type="button"
                       @click="toggleSidebar()"
