@@ -62,16 +62,24 @@
       <div class="relative flex-grow flex w-full max-w-full overflow-x-hidden"
            x-data="{
              sidebarCollapsed: localStorage.getItem('hr_sidebar_collapsed') === 'true',
+             mobileSidebarOpen: false,
              toggleSidebar() {
-               this.sidebarCollapsed = !this.sidebarCollapsed;
-               localStorage.setItem('hr_sidebar_collapsed', this.sidebarCollapsed);
-               if (this.sidebarCollapsed) {
-                 document.documentElement.classList.add('hr-sidebar-collapsed');
+               if (window.innerWidth < 1024) {
+                 this.mobileSidebarOpen = !this.mobileSidebarOpen;
                } else {
-                 document.documentElement.classList.remove('hr-sidebar-collapsed');
+                 this.sidebarCollapsed = !this.sidebarCollapsed;
+                 localStorage.setItem('hr_sidebar_collapsed', this.sidebarCollapsed);
+                 if (this.sidebarCollapsed) {
+                   document.documentElement.classList.add('hr-sidebar-collapsed');
+                 } else {
+                   document.documentElement.classList.remove('hr-sidebar-collapsed');
+                 }
                }
              }
-           }">
+           }"
+           @toggle-portal-sidebar.window="toggleSidebar()"
+           @open-portal-sidebar.window="mobileSidebarOpen = true"
+           @close-portal-sidebar.window="mobileSidebarOpen = false">
 
         @if (isset($header))
           <!-- Full-Width Fixed Header Banner Glassmorphism -->
@@ -81,7 +89,7 @@
               <button type="button"
                       @click="toggleSidebar()"
                       title="Toggle Sidebar"
-                      class="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sky-200/80 dark:border-gray-700/80 bg-white/90 dark:bg-gray-800/90 text-sky-600 dark:text-sky-400 shadow-xs backdrop-blur-md transition-all duration-200 hover:bg-sky-50 dark:hover:bg-gray-700 cursor-pointer">
+                      class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sky-200/80 dark:border-gray-700/80 bg-white/90 dark:bg-gray-800/90 text-sky-600 dark:text-sky-400 shadow-xs backdrop-blur-md transition-all duration-200 hover:bg-sky-50 dark:hover:bg-gray-700 cursor-pointer">
                 <x-heroicon-o-view-columns class="h-4 w-4 text-sky-600 dark:text-sky-400" />
               </button>
 

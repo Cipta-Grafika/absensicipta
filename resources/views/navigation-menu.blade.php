@@ -259,17 +259,28 @@
 
         <x-theme-toggle class="sm:hidden" />
 
-        <!-- Hamburger (Mobile) -->
-        <div class="flex items-center sm:hidden">
-          <button @click="open = ! open"
-            class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400">
-            <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-              <path :class="{ 'hidden': open, 'inline-flex': !open }" class="inline-flex" stroke-linecap="round"
-                stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              <path :class="{ 'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round"
-                stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+        <!-- Hamburger (Mobile & Tablet) -->
+        <div class="flex items-center {{ (request()->routeIs('hr.*') || request()->routeIs('payroll.*')) ? 'lg:hidden' : 'sm:hidden' }}">
+          @if (request()->routeIs('hr.*') || request()->routeIs('payroll.*'))
+            <button type="button"
+              @click="$dispatch('toggle-portal-sidebar')"
+              title="Buka Navigasi Sidebar"
+              class="inline-flex items-center justify-center rounded-lg p-2 text-sky-600 hover:bg-sky-50 focus:bg-sky-50 focus:outline-none dark:text-sky-400 dark:hover:bg-gray-800 dark:focus:bg-gray-800 transition duration-150 cursor-pointer">
+              <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          @else
+            <button @click="open = ! open"
+              class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400">
+              <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                <path :class="{ 'hidden': open, 'inline-flex': !open }" class="inline-flex" stroke-linecap="round"
+                  stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                <path :class="{ 'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round"
+                  stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          @endif
         </div>
 
         <!-- Mobile Profile Dropdown (Far Right) -->
@@ -321,7 +332,8 @@
     </div>
   </div>
 
-  <!-- Responsive Navigation Menu -->
+  @unless (request()->routeIs('hr.*') || request()->routeIs('payroll.*'))
+  <!-- Responsive Navigation Menu (Non-Portal Pages) -->
   <div :class="{ 'block': open, 'hidden': !open }" class="absolute left-0 top-16 z-50 hidden w-full bg-white shadow-lg dark:bg-gray-800 sm:hidden">
     <div class="space-y-1 pb-3 pt-2">
       @if (Auth::user()->isAdmin)
@@ -444,4 +456,5 @@
       @endif
     </div>
   </div>
+  @endunless
 </nav>
