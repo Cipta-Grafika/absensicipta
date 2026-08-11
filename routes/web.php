@@ -145,7 +145,7 @@ Route::middleware([
     });
 
     // Payroll Group
-    Route::group(['prefix' => 'payroll', 'as' => 'payroll.', 'middleware' => ['payroll', 'throttle:60,1']], function () {
+    Route::group(['prefix' => 'payroll', 'as' => 'payroll.', 'middleware' => ['payroll']], function () {
         Route::get('/', \App\Livewire\Payroll\PayrollDashboardComponent::class)->name('dashboard');
         Route::get('/employee-salaries', \App\Livewire\Payroll\EmployeeSalaryComponent::class)->name('employee-salaries');
         Route::get('/payment-methods', \App\Livewire\Payroll\PaymentMethodComponent::class)->name('payment-methods');
@@ -177,7 +177,7 @@ Route::get('/robots.txt', function () {
 });
 
 Livewire::setUpdateRoute(function ($handle) {
-    return Route::post(Helpers::getNonRootBaseUrlPath() . '/livewire/update', $handle)->middleware(['web', 'throttle:60,1']);
+    return Route::post(Helpers::getNonRootBaseUrlPath() . '/livewire/update', $handle)->middleware(['web', 'throttle:300,1']);
 });
 
 Livewire::setScriptRoute(function ($handle) {
