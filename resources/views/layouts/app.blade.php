@@ -164,6 +164,19 @@
 
   @livewireScripts
 
+  <script>
+    document.addEventListener('livewire:init', () => {
+      Livewire.hook('request', ({ fail }) => {
+        fail(({ status, preventDefault }) => {
+          if (status === 429) {
+            preventDefault();
+            console.warn('Livewire 429 Rate Limit Throttled');
+          }
+        });
+      });
+    });
+  </script>
+
   @stack('scripts')
 </body>
 
