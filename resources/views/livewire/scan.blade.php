@@ -542,6 +542,7 @@
       return result;
     }
 
+    let initialGeoNonce = "{{ $this->getGeoNonce() }}";
     const btnRefreshGeo = document.querySelector('#btn-refresh-location');
 
     function requestLiveLocation(isManualRefresh = false) {
@@ -551,9 +552,9 @@
       }
 
       const options = {
-        enableHighAccuracy: isManualRefresh ? true : false,
-        timeout: isManualRefresh ? 8000 : 10000,
-        maximumAge: isManualRefresh ? 0 : 30000
+        enableHighAccuracy: true,
+        timeout: isManualRefresh ? 6000 : 8000,
+        maximumAge: isManualRefresh ? 0 : 15000
       };
 
       navigator.geolocation.getCurrentPosition(
@@ -570,19 +571,7 @@
 
           window.hasLocation = true;
 
-          try {
-            const geoNonce = await $wire.getGeoNonce();
-            const token = await computeGeoSignatureToken(liveLat, liveLng, accuracy, timestamp, geoNonce);
-
-            $wire.updateLiveLocation(liveLat, liveLng, accuracy, timestamp, token).then(err => {
-              if (err && typeof err === 'string') {
-                console.warn('[GPS Security Verification Warning]', err);
-              }
-            });
-          } catch (e) {
-            console.error('[GPS Token Generation Error]', e);
-          }
-
+          // INSTANT OPTIMISTIC UI UPDATE
           window.dispatchEvent(new CustomEvent('geo-updated', { detail: [liveLat, liveLng] }));
 
           const coordsText = document.querySelector('#modal-coords-text');
@@ -593,6 +582,24 @@
           if (modalLiveMap && modalMarker) {
             modalMarker.setLatLng([liveLat, liveLng]);
             modalLiveMap.setView([liveLat, liveLng], 16);
+          }
+
+          // ASYNCHRONOUS BACKGROUND SECURITY VERIFICATION (No UI Lag)
+          try {
+            const geoNonce = initialGeoNonce || (await $wire.getGeoNonce());
+            const token = await computeGeoSignatureToken(liveLat, liveLng, accuracy, timestamp, geoNonce);
+
+            $wire.updateLiveLocation(liveLat, liveLng, accuracy, timestamp, token).then(err => {
+              if (err && typeof err === 'string') {
+                console.warn('[GPS Security Verification Warning]', err);
+                if (err.includes('kadaluarsa') || err.includes('nonce')) {
+                  // Refresh nonce if expired
+                  $wire.getGeoNonce().then(n => { initialGeoNonce = n; });
+                }
+              }
+            });
+          } catch (e) {
+            console.error('[GPS Token Generation Error]', e);
           }
         },
         (error) => {
