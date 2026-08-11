@@ -56,7 +56,7 @@ class EmployeeMonthlyStat extends Model
                 ->with('shift')
                 ->get();
 
-            $totalPresent = $attendances->whereIn('status', ['present', 'late'])->count();
+            $totalPresent = $attendances->whereIn('status', ['present', 'late', 'wfh'])->count();
             $totalLate = $attendances->where('status', 'late')->count();
 
             $totalEarlyMinutes = 0;
