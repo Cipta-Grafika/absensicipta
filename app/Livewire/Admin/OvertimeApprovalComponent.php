@@ -182,6 +182,7 @@ class OvertimeApprovalComponent extends Component
                         'total_pay' => null,
                     ]);
                 }
+                $this->syncDraftPayrollOvertime($overtime->employee_id, $overtime->overtime_date);
             }
         });
 
@@ -312,7 +313,13 @@ class OvertimeApprovalComponent extends Component
             'total_pay' => $payData['total_pay'],
         ]);
 
-        $this->banner('Pengajuan lembur berhasil disetujui.');
+        $synced = $this->syncDraftPayrollOvertime($overtime->employee_id, $overtime->overtime_date);
+        $msg = 'Pengajuan lembur berhasil disetujui.';
+        if ($synced) {
+            $msg .= ' Data otomatis disinkronisasi ke Draft Payroll periode berjalan.';
+        }
+
+        $this->banner($msg);
     }
 
     public function reject($id)
@@ -333,7 +340,13 @@ class OvertimeApprovalComponent extends Component
             'approval_date' => now(),
         ]);
 
-        $this->banner('Pengajuan lembur telah ditolak.');
+        $synced = $this->syncDraftPayrollOvertime($overtime->employee_id, $overtime->overtime_date);
+        $msg = 'Pengajuan lembur telah ditolak.';
+        if ($synced) {
+            $msg .= ' Data otomatis disinkronisasi ke Draft Payroll periode berjalan.';
+        }
+
+        $this->banner($msg);
     }
 
     public function confirmDelete($id)
@@ -370,9 +383,57 @@ class OvertimeApprovalComponent extends Component
             abort(403, 'Akses Ditolak: Anda hanya berhak menghapus data lembur divisi Anda.');
         }
         
+        $empId = $overtime->employee_id;
+        $oDate = $overtime->overtime_date;
         $overtime->delete();
         
+        $this->syncDraftPayrollOvertime($empId, $oDate);
         $this->cancelDelete();
         $this->banner('Data pengajuan lembur berhasil dihapus.');
+    }
+
+    private function syncDraftPayrollOvertime(int $employeeId, string $overtimeDate): bool
+    {
+        $periodMonth = Carbon::parse($overtimeDate)->format('Y-m');
+        $draftPayroll = \App\Models\Payroll::where('employee_id', $employeeId)
+            ->where('period_month', $periodMonth)
+            ->where('status', 'draft')
+            ->first();
+
+        if (!$draftPayroll) {
+            return false;
+        }
+
+        $startOfMonth = Carbon::parse($periodMonth . '-01')->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::parse($periodMonth . '-01')->endOfMonth()->toDateString();
+
+        $totalApprovedHours = (float) Overtime::where('employee_id', $employeeId)
+            ->whereBetween('overtime_date', [$startOfMonth, $endOfMonth])
+            ->where('status', 'approved')
+            ->sum('duration_hours');
+
+        $draftPayroll->update([
+            'total_overtime_hours' => $totalApprovedHours,
+        ]);
+
+        $h = floor($totalApprovedHours);
+        $m = round(($totalApprovedHours - $h) * 60);
+        $compactOvertimeStr = $m > 0 ? "{$h}j {$m}m" : "{$h}j";
+
+        \App\Models\PayrollDetail::where('payroll_id', $draftPayroll->id)
+            ->where('type', 'earning')
+            ->where('name', 'like', 'Lembur%')
+            ->delete();
+
+        if ($totalApprovedHours > 0) {
+            \App\Models\PayrollDetail::create([
+                'payroll_id' => $draftPayroll->id,
+                'type' => 'earning',
+                'name' => "Lembur ({$compactOvertimeStr})",
+                'amount' => 0,
+            ]);
+        }
+
+        return true;
     }
 }

@@ -213,9 +213,10 @@ class PayrollHistoryComponent extends Component
 
                 foreach ($employees as $emp) {
                     $generatedCount++;
-                    // Check if payroll already exists for this period, delete it (overwrite draft)
+                    // Check if payroll already exists for this period, delete it (overwrite draft) - BL-02: lockForUpdate
                     $existing = Payroll::where('employee_id', $emp->id)
                         ->where('period_month', $this->generate_period_month)
+                        ->lockForUpdate()
                         ->first();
                     
                     if ($existing && $existing->status != 'draft') {
@@ -242,14 +243,29 @@ class PayrollHistoryComponent extends Component
                     // Dynamic Absent Calculation (using AttendanceScheduleService as single source of truth)
                     $start_period = \Carbon\Carbon::parse($this->generate_start_date);
                     $end_period = \Carbon\Carbon::parse($this->generate_end_date);
-                    $today_date = \Carbon\Carbon::today();
                     
                     $attendancesByDate = $attendances->groupBy(function($item) {
                         return $item->date->format('Y-m-d');
                     });
                     
                     $missing_absent_days = 0;
+                    
+                    // BL-04 Fix: Check previous consecutive leave leading up to $start_period across month boundary
                     $consecutive_cuti = 0;
+                    $prev_check_date = $start_period->copy()->subDay();
+                    while ($prev_check_date->gte($start_period->copy()->subDays(10))) {
+                        $prev_att = \App\Models\Attendance::where('user_id', $emp->id)
+                            ->where('date', $prev_check_date->format('Y-m-d'))
+                            ->first();
+
+                        if ($prev_att && $prev_att->status === 'leave') {
+                            $consecutive_cuti++;
+                            $prev_check_date->subDay();
+                        } else {
+                            break;
+                        }
+                    }
+
                     $penalized_cuti_days = 0;
                     $late_days_count = 0;
                     $actual_working_days = 0;
@@ -308,81 +324,79 @@ class PayrollHistoryComponent extends Component
                     }
 
                     // Fetch Overtimes
-                    $total_overtime_hours = \App\Models\Overtime::where('employee_id', $emp->id)
+                    $total_overtime_hours = (float) \App\Models\Overtime::where('employee_id', $emp->id)
                         ->whereBetween('overtime_date', [$this->generate_start_date, $this->generate_end_date])
                         ->where('status', 'approved')
                         ->sum('duration_hours');
 
-                    // Allowances Calculation
+                    // Allowances Calculation - BL-01 Fix: Explicit integer rounding
                     $basic_salary_earned = 0;
                     $meal_allowance = 0;
                     $transport_allowance = 0;
                     $attendance_allowance = 0;
                     
-                    // Daily vs Monthly Logic
                     if ($salary->salary_type == 'daily') {
-                        $basic_salary_earned = $salary->basic_salary * $total_paid_days;
-                        $meal_allowance = $salary->meal_allowance * $total_paid_days;
-                        $transport_allowance = $salary->transport_allowance * $total_paid_days;
-                        $attendance_allowance = $salary->attendance_allowance;
+                        $basic_salary_earned = (int) round($salary->basic_salary * $total_paid_days);
+                        $meal_allowance = (int) round($salary->meal_allowance * $total_paid_days);
+                        $transport_allowance = (int) round($salary->transport_allowance * $total_paid_days);
+                        $attendance_allowance = (int) round($salary->attendance_allowance);
                     } else { // monthly
-                        $basic_salary_earned = $salary->basic_salary;
-                        $meal_allowance = $salary->meal_allowance;
-                        $transport_allowance = $salary->transport_allowance;
-                        $attendance_allowance = $salary->attendance_allowance;
+                        $basic_salary_earned = (int) round($salary->basic_salary);
+                        $meal_allowance = (int) round($salary->meal_allowance);
+                        $transport_allowance = (int) round($salary->transport_allowance);
+                        $attendance_allowance = (int) round($salary->attendance_allowance);
                     }
 
-                    $total_allowance = $meal_allowance + $transport_allowance + $attendance_allowance;
-                    $total_overtime_pay = $total_overtime_hours * $salary->overtime_rate_per_hour;
+                    $total_allowance = (int) round($meal_allowance + $transport_allowance + $attendance_allowance);
+                    $total_overtime_pay = 0; // Overtime pay is not added to net salary as per business rule
 
                     // Fixed Income for deductions reference
-                    $fixed_income = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
+                    $fixed_income = (int) round($salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance);
                     $days_divisor = $salary->working_days_per_month ?? 25;
                     
                     if ($actual_working_days > 0 && $actual_working_days < $days_divisor) {
                         $days_divisor = $actual_working_days;
                     }
                     
-                    $daily_rate_approx = $days_divisor > 0 ? $fixed_income / $days_divisor : 0;
+                    $daily_rate_approx = $days_divisor > 0 ? (int) round($fixed_income / $days_divisor) : 0;
 
-                    // Standard Deductions
-                    $late_deduction = $total_late_minutes * $salary->late_deduction_per_minute;
-                    // IMP deduction based on exactly the minute proportion of total salary (user formula)
+                    // Standard Deductions - BL-01 Fix: Explicit integer rounding
+                    $late_deduction = (int) round($total_late_minutes * $salary->late_deduction_per_minute);
+                    $imp_deduction = ($days_divisor > 0) ? (int) round($total_unreplaced_imp_minutes * ($fixed_income / ($days_divisor * 8 * 60))) : 0;
                     
-                    $imp_deduction = ($days_divisor > 0) ? $total_unreplaced_imp_minutes * ($fixed_income / ($days_divisor * 8 * 60)) : 0;
-                    
-                    // Advanced Deductions (Capped at days_divisor to prevent >100% deductions causing negative salary)
+                    // Advanced Deductions (Capped at days_divisor to prevent >100% deductions)
                     $effective_absent = min($total_absent, max(1, $days_divisor));
-                    $absent_deduction = $daily_rate_approx * $effective_absent;
+                    $absent_deduction = (int) round($daily_rate_approx * $effective_absent);
                     
                     $effective_excused = min($total_excused, max(1, $days_divisor));
-                    $excused_deduction = ($days_divisor > 0) ? ($effective_excused / ($days_divisor * 2)) * $fixed_income + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+                    $excused_deduction = ($days_divisor > 0) ? (int) round(($effective_excused / ($days_divisor * 2)) * $fixed_income + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
                     
                     $effective_sick = min($total_sick, max(1, $days_divisor));
-                    $sick_deduction = ($days_divisor > 0) ? ($effective_sick / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+                    $sick_deduction = ($days_divisor > 0) ? (int) round(($effective_sick / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
                     
                     $effective_cuti = min($penalized_cuti_days, max(1, $days_divisor));
-                    $cuti_deduction = ($days_divisor > 0) ? ($effective_cuti / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+                    $cuti_deduction = ($days_divisor > 0) ? (int) round(($effective_cuti / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
                     
                     $effective_wfh = min($total_wfh, max(1, $days_divisor));
                     if ($emp->count_wfo) {
                         $wfh_deduction = 0;
                     } else {
-                        $wfh_deduction = ($days_divisor > 0) ? ($effective_wfh / $days_divisor) * (0.5 * $fixed_income) : 0;
+                        $wfh_deduction = ($days_divisor > 0) ? (int) round(($effective_wfh / $days_divisor) * (0.5 * $fixed_income)) : 0;
                     }
-                    $late_penalty_deduction = ($late_days_count > 3) ? (0.10 * $salary->attendance_allowance) : 0;
+                    $late_penalty_deduction = ($late_days_count > 3) ? (int) round(0.10 * $salary->attendance_allowance) : 0;
 
-                    // If daily worker, they already lose income by not being present, so they shouldn't get double deducted for Alpa/Sakit/Izin/Cuti
-                    // BUT per the formula request, if we strictly apply it, it might deduct them twice.
-                    // Assuming formulas apply universally:
+                    // BL-05 Fix: Daily Workers deduction clamping
                     if ($salary->salary_type == 'daily') {
-                        $absent_deduction = 0; // Already zeroed out from basic_salary_earned
-                        $excused_deduction = 0; // Already zeroed out from basic_salary_earned
-                        $sick_deduction = 0; // Already zeroed out from basic_salary_earned
-                        $cuti_deduction = 0; // Already zeroed out from basic_salary_earned
-                        $wfh_deduction = 0; // Already zeroed out from basic_salary_earned
-                        // The UI & manual input expects this mostly for monthly. 
-                        // If you want it applied to daily, you can adjust this later.
+                        $absent_deduction = 0;
+                        $excused_deduction = 0;
+                        $sick_deduction = 0;
+                        $cuti_deduction = 0;
+                        $wfh_deduction = 0;
+
+                        // Daily workers: max late deduction capped at daily rate to prevent negative daily earnings
+                        $daily_rate = (int) round($salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance);
+                        $late_deduction = min($late_deduction, $daily_rate * max(1, $late_days_count));
+                        $late_penalty_deduction = min($late_penalty_deduction, (int) round(0.10 * $salary->attendance_allowance));
                     }
 
                     // Syirkah / Savings Logic
@@ -393,17 +407,17 @@ class PayrollHistoryComponent extends Component
 
                     if ($salary->savings_id && $salary->savings && $total_paid_days >= 7) {
                         $savingProgram = $salary->savings;
-                        $syirkah_mandatory = $savingProgram->mandatory_savings;
-                        $syirkah_secondary = $savingProgram->secondary_savings;
+                        $syirkah_mandatory = (int) round($savingProgram->mandatory_savings);
+                        $syirkah_secondary = (int) round($savingProgram->secondary_savings);
                         $syirkah_deduction = $syirkah_mandatory + $syirkah_secondary;
                     }
 
-                    // Loan / Kasbon Logic
-                    $active_loans = \App\Models\Loan::where('user_id', $emp->id)->where('status', 'active')->get();
+                    // Loan / Kasbon Logic - BL-02 Fix: lockForUpdate
+                    $active_loans = \App\Models\Loan::where('user_id', $emp->id)->where('status', 'active')->lockForUpdate()->get();
                     $loan_deduction = 0;
                     $loan_installments_to_save = [];
                     foreach ($active_loans as $loan) {
-                        $installment = min($loan->installment_amount, $loan->remaining_balance);
+                        $installment = (int) round(min($loan->installment_amount, $loan->remaining_balance));
                         if ($installment > 0) {
                             $loan_deduction += $installment;
                             $loan_installments_to_save[] = [
@@ -413,11 +427,12 @@ class PayrollHistoryComponent extends Component
                         }
                     }
 
-                    $total_deduction = $absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction;
+                    $total_gross = $basic_salary_earned + $total_allowance + $total_overtime_pay;
+                    $total_deduction = (int) round($absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction);
+                    $total_deduction = min($total_deduction, $total_gross);
+                    $net_salary = max(0, $total_gross - $total_deduction);
 
-                    $net_salary = $basic_salary_earned + $total_allowance + $total_overtime_pay - $total_deduction;
-
-                    $total_unreplaced_imp_hours = $total_unreplaced_imp_minutes > 0 ? $total_unreplaced_imp_minutes / 60 : 0;
+                    $total_unreplaced_imp_hours = $total_unreplaced_imp_minutes > 0 ? (float) ($total_unreplaced_imp_minutes / 60) : 0;
                     
                     // Save Payroll
                     $payroll = Payroll::create([
@@ -475,29 +490,28 @@ class PayrollHistoryComponent extends Component
                     if ($meal_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Makan', 'amount' => $meal_allowance]);
                     if ($transport_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Transport', 'amount' => $transport_allowance]);
                     if ($attendance_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Tunjangan Absensi', 'amount' => $attendance_allowance]);
-                    if ($total_overtime_pay > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => "Lembur ($total_overtime_hours Jam)", 'amount' => $total_overtime_pay]);
+                    
+                    // Compact Overtime Display (BL-03 Fix)
+                    if ($total_overtime_hours > 0) {
+                        $h = floor($total_overtime_hours);
+                        $m = round(($total_overtime_hours - $h) * 60);
+                        $compactOvertimeStr = $m > 0 ? "{$h}j {$m}m" : "{$h}j";
+                        \App\Models\PayrollDetail::create([
+                            'payroll_id' => $payroll->id,
+                            'type' => 'earning',
+                            'name' => "Lembur ({$compactOvertimeStr})",
+                            'amount' => 0,
+                        ]);
+                    }
 
-                    if ($absent_deduction > 0) {
-                        $rate_label = ' @ Rp ' . number_format($daily_rate_approx, 0, ',', '.');
-                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Mangkir/Absen ($total_absent Hari{$rate_label})", 'amount' => $absent_deduction]);
-                    }
-                    if ($excused_deduction > 0) {
-                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Izin ($total_excused Hari)", 'amount' => $excused_deduction]);
-                    }
-                    if ($sick_deduction > 0) {
-                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Sakit ($total_sick Hari)", 'amount' => $sick_deduction]);
-                    }
-                    if ($cuti_deduction > 0) {
-                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Cuti Beruntun ($penalized_cuti_days Hari)", 'amount' => $cuti_deduction]);
-                    }
-                    if ($wfh_deduction > 0) {
-                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan WFH/WFA ($total_wfh Hari)", 'amount' => $wfh_deduction]);
-                    }
-                    if ($late_penalty_deduction > 0) {
-                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Penalti Sering Terlambat ($late_days_count Kali)", 'amount' => $late_penalty_deduction]);
-                    }
+                    if ($absent_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Alpa ($total_absent Hari)", 'amount' => $absent_deduction]);
                     if ($late_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Terlambat ($total_late_minutes Menit)", 'amount' => $late_deduction]);
-                    if ($imp_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan IMP Tdk Diganti ($total_unreplaced_imp_hours Jam)", 'amount' => $imp_deduction]);
+                    if ($excused_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Izin ($total_excused Hari)", 'amount' => $excused_deduction]);
+                    if ($sick_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Sakit ($total_sick Hari)", 'amount' => $sick_deduction]);
+                    if ($cuti_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Cuti >2 Hr ($penalized_cuti_days Hari)", 'amount' => $cuti_deduction]);
+                    if ($wfh_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan WFH ($total_wfh Hari)", 'amount' => $wfh_deduction]);
+                    if ($late_penalty_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Penalti Terlambat >3x", 'amount' => $late_penalty_deduction]);
+                    if ($imp_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan IMP Tdk Diganti ($total_unreplaced_imp_minutes Mnt)", 'amount' => $imp_deduction]);
                     if ($syirkah_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Syirkah", 'amount' => $syirkah_deduction]);
                 }
             });
