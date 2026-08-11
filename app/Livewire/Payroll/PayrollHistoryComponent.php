@@ -20,12 +20,41 @@ class PayrollHistoryComponent extends Component
     public $generate_period_month;
     public $generate_start_date;
     public $generate_end_date;
-    public $showDeductionModal = false;
-    public $showIncomeModal = false;
-    public $selectedDeductions = [];
-    public $selectedIncomes = [];
+    public $selectedPayrollId = null;
     public $selectedPayrollEmployeeName = '';
     public $isGenerating = false;
+
+    #[\Livewire\Attributes\Computed]
+    public function selectedDeductions()
+    {
+        if (!$this->selectedPayrollId) return [];
+        $payroll = \App\Models\Payroll::with(['details'])->find($this->selectedPayrollId);
+        return $payroll ? $payroll->details->where('type', 'deduction')->toArray() : [];
+    }
+
+    #[\Livewire\Attributes\Computed]
+    public function selectedIncomes()
+    {
+        if (!$this->selectedPayrollId) return [];
+        $payroll = \App\Models\Payroll::with(['details'])->find($this->selectedPayrollId);
+        if (!$payroll) return [];
+
+        $incomes = [];
+        if ($payroll->basic_salary_earned > 0) {
+            $incomes[] = [
+                'name' => 'Gaji Pokok',
+                'amount' => $payroll->basic_salary_earned
+            ];
+        }
+        $earnings = $payroll->details->where('type', 'earning');
+        foreach ($earnings as $earning) {
+            $incomes[] = [
+                'name' => $earning->name,
+                'amount' => $earning->amount
+            ];
+        }
+        return $incomes;
+    }
 
     protected $queryString = [];
 
@@ -157,6 +186,15 @@ class PayrollHistoryComponent extends Component
             'generate_end_date' => 'required|date|after_or_equal:generate_start_date',
         ]);
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+
+        $throttleKey = 'payroll_generate_' . auth()->id();
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 3)) {
+            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
+            session()->flash('flash.banner', "Proses generate payroll terlalu cepat. Harap tunggu {$seconds} detik.");
+            session()->flash('flash.bannerStyle', 'danger');
+            return;
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
 
         $this->isGenerating = true;
 
@@ -478,11 +516,14 @@ class PayrollHistoryComponent extends Component
         $this->isGenerating = false;
     }
 
+    public bool $showDeductionModal = false;
+    public bool $showIncomeModal = false;
+
     public function showDeductions($payrollId)
     {
-        $payroll = \App\Models\Payroll::with(['details', 'employee'])->find($payrollId);
+        $payroll = \App\Models\Payroll::with('employee')->find($payrollId);
         if ($payroll) {
-            $this->selectedDeductions = $payroll->details->where('type', 'deduction')->toArray();
+            $this->selectedPayrollId = $payrollId;
             $this->selectedPayrollEmployeeName = $payroll->employee->name ?? 'Karyawan';
             $this->showDeductionModal = true;
         }
@@ -491,35 +532,14 @@ class PayrollHistoryComponent extends Component
     public function closeDeductionModal()
     {
         $this->showDeductionModal = false;
-        // Data selectedDeductions dan selectedPayrollEmployeeName JANGAN di-clear di sini.
-        // Hal ini untuk menjaga state DOM tetap terisi saat animasi transisi (fade out) penutupan modal berjalan.
-        // Data tersebut akan otomatis tertimpa (overwrite) ketika user membuka modal untuk payroll yang lain.
+        $this->selectedPayrollId = null;
     }
 
     public function showIncomes($payrollId)
     {
-        $payroll = \App\Models\Payroll::with(['details', 'employee'])->find($payrollId);
+        $payroll = \App\Models\Payroll::with('employee')->find($payrollId);
         if ($payroll) {
-            $incomes = [];
-            
-            // Tambahkan Gaji Pokok dari master/tabel payroll
-            if ($payroll->basic_salary_earned > 0) {
-                $incomes[] = [
-                    'name' => 'Gaji Pokok',
-                    'amount' => $payroll->basic_salary_earned
-                ];
-            }
-
-            // Tambahkan Tunjangan dan Lembur dari detail (earning)
-            $earnings = $payroll->details->where('type', 'earning');
-            foreach ($earnings as $earning) {
-                $incomes[] = [
-                    'name' => $earning->name,
-                    'amount' => $earning->amount
-                ];
-            }
-
-            $this->selectedIncomes = $incomes;
+            $this->selectedPayrollId = $payrollId;
             $this->selectedPayrollEmployeeName = $payroll->employee->name ?? 'Karyawan';
             $this->showIncomeModal = true;
         }
@@ -528,6 +548,7 @@ class PayrollHistoryComponent extends Component
     public function closeIncomeModal()
     {
         $this->showIncomeModal = false;
+        $this->selectedPayrollId = null;
     }
 
     public function render()

@@ -18,13 +18,11 @@ class AdminSeeder extends Seeder
             'name' => 'Super Admin',
             'email' => 'superadmin@example.com',
             'password' => Hash::make('superadmin'),
-            'raw_password' => 'superadmin',
         ]);
         User::factory()->admin()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'password' => Hash::make('admin'),
-            'raw_password' => 'admin',
         ]);
     }
 }

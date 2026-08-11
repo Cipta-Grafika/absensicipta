@@ -57,6 +57,12 @@ class ScanComponent extends Component
             return __('Absen Gagal: Sesi pengguna tidak valid.');
         }
 
+        $throttleKey = 'scan_location_update_' . Auth::id();
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 25)) {
+            return __('Absen Gagal: Terlalu banyak permintaan perbaruan lokasi. Harap tunggu sebentar.');
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
+
         if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
             return __('Absen Gagal: Format koordinat GPS tidak valid.');
         }

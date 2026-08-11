@@ -74,7 +74,8 @@ class PayslipPrintController extends Controller
         $canvas = $pdf->getDomPDF()->getCanvas();
         $cpdf = $canvas->get_cpdf();
         if ($cpdf) {
-            $pdfPassword = $payroll->employee?->raw_password ?? 'password';
+            $emp = $payroll->employee;
+            $pdfPassword = $emp?->birth_date ? Carbon::parse($emp->birth_date)->format('dmY') : ($emp?->nip ?? '123456');
             $cpdf->setEncryption($pdfPassword, config('app.key'), ['print']);
         }
 
