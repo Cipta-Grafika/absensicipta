@@ -30,7 +30,7 @@ class AttendancesExport implements FromView
             division: $this->division,
             jobTitle: $this->jobTitle,
             education: $this->education
-        )->get();
+        )->with(['user.division', 'user.jobTitle', 'user.education', 'shift'])->get();
 
         return view('admin.import-export.export-attendances', ['attendances' => $attendances]);
     }

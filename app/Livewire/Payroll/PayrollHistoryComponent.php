@@ -208,16 +208,42 @@ class PayrollHistoryComponent extends Component
                     throw new \Exception("Tidak ada karyawan aktif yang memiliki pengaturan gaji.");
                 }
 
+                $employeeIds = $employees->pluck('id')->toArray();
+
+                // PERF-01: Eager-load all data in bulk queries to eliminate N+1 Query Cascade
+                $allAttendances = \App\Models\Attendance::whereIn('user_id', $employeeIds)
+                    ->whereBetween('date', [$this->generate_start_date, $this->generate_end_date])
+                    ->with('shift')
+                    ->get()
+                    ->groupBy('user_id');
+
+                $allOvertimes = \App\Models\Overtime::whereIn('employee_id', $employeeIds)
+                    ->whereBetween('overtime_date', [$this->generate_start_date, $this->generate_end_date])
+                    ->where('status', 'approved')
+                    ->get()
+                    ->groupBy('employee_id');
+
+                $allActiveLoans = \App\Models\Loan::whereIn('user_id', $employeeIds)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->get()
+                    ->groupBy('user_id');
+
+                $allExistingPayrolls = Payroll::whereIn('employee_id', $employeeIds)
+                    ->where('period_month', $this->generate_period_month)
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('employee_id');
+
                 // Build bulk schedule context for all employees in period
                 $scheduleContext = \App\Services\AttendanceScheduleService::buildContext($employees, $this->generate_start_date, $this->generate_end_date);
 
+                $allPayrollDetailsToInsert = [];
+
                 foreach ($employees as $emp) {
                     $generatedCount++;
-                    // Check if payroll already exists for this period, delete it (overwrite draft) - BL-02: lockForUpdate
-                    $existing = Payroll::where('employee_id', $emp->id)
-                        ->where('period_month', $this->generate_period_month)
-                        ->lockForUpdate()
-                        ->first();
+                    // Check if payroll already exists for this period (PERF-01 + BL-02)
+                    $existing = $allExistingPayrolls->get($emp->id);
                     
                     if ($existing && $existing->status != 'draft') {
                         continue; // Skip if already approved or paid
@@ -226,16 +252,14 @@ class PayrollHistoryComponent extends Component
                     if ($existing) {
                         \App\Models\LoanInstallment::where('payroll_id', $existing->id)->delete();
                         \App\Models\SavingTransaction::where('reference_type', 'payroll')->where('reference_id', $existing->id)->delete();
+                        \App\Models\PayrollDetail::where('payroll_id', $existing->id)->delete();
                         $existing->delete();
                     }
 
                     $salary = $emp->salary;
 
-                    // Fetch Attendances
-                    $attendances = \App\Models\Attendance::where('user_id', $emp->id)
-                        ->whereBetween('date', [$this->generate_start_date, $this->generate_end_date])
-                        ->with('shift')
-                        ->get();
+                    // Fetch Attendances from batch Collection
+                    $attendances = $allAttendances->get($emp->id, collect());
 
                     $total_paid_days = $attendances->whereIn('status', ['present', 'late', 'wfh', 'imp'])->count();
                     $total_present = $attendances->whereIn('status', ['present', 'late'])->count();
@@ -323,11 +347,9 @@ class PayrollHistoryComponent extends Component
                         $total_unreplaced_imp_minutes += $unreplaced;
                     }
 
-                    // Fetch Overtimes
-                    $total_overtime_hours = (float) \App\Models\Overtime::where('employee_id', $emp->id)
-                        ->whereBetween('overtime_date', [$this->generate_start_date, $this->generate_end_date])
-                        ->where('status', 'approved')
-                        ->sum('duration_hours');
+                    // Fetch Overtimes from batch Collection
+                    $empOvertimes = $allOvertimes->get($emp->id, collect());
+                    $total_overtime_hours = (float) $empOvertimes->sum('duration_hours');
 
                     // Allowances Calculation - BL-01 Fix: Explicit integer rounding
                     $basic_salary_earned = 0;
@@ -412,8 +434,8 @@ class PayrollHistoryComponent extends Component
                         $syirkah_deduction = $syirkah_mandatory + $syirkah_secondary;
                     }
 
-                    // Loan / Kasbon Logic - BL-02 Fix: lockForUpdate
-                    $active_loans = \App\Models\Loan::where('user_id', $emp->id)->where('status', 'active')->lockForUpdate()->get();
+                    // Loan / Kasbon Logic from batch Collection (PERF-01 + BL-02)
+                    $active_loans = $allActiveLoans->get($emp->id, collect());
                     $loan_deduction = 0;
                     $loan_installments_to_save = [];
                     foreach ($active_loans as $loan) {
@@ -460,9 +482,7 @@ class PayrollHistoryComponent extends Component
                         'notes' => 'Generated automatically.',
                     ]);
 
-                    $period_date = \Carbon\Carbon::parse($this->generate_period_month . '-01')->endOfMonth();
-
-                    // Save SavingTransaction via SavingTransactionService (prevents duplicates & recalculates true balances)
+                    // Save SavingTransaction via SavingTransactionService
                     if ($syirkah_deduction > 0 && $savingProgram) {
                         \App\Services\SavingTransactionService::recordPayrollSyirkah(
                             $emp->id,
@@ -483,36 +503,39 @@ class PayrollHistoryComponent extends Component
                             'payroll_id' => $payroll->id,
                             'status' => 'pending',
                         ]);
-                        \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Cicilan Pinjaman', 'amount' => $item['amount']]);
+                        $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Cicilan Pinjaman', 'amount' => $item['amount'], 'created_at' => now(), 'updated_at' => now()];
                     }
 
                     // Save Payroll Details (Rincian)
-                    if ($meal_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Makan', 'amount' => $meal_allowance]);
-                    if ($transport_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Transport', 'amount' => $transport_allowance]);
-                    if ($attendance_allowance > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Tunjangan Absensi', 'amount' => $attendance_allowance]);
+                    $nowTs = now();
+                    if ($meal_allowance > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Makan', 'amount' => $meal_allowance, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($transport_allowance > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Uang Transport', 'amount' => $transport_allowance, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($attendance_allowance > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => 'Tunjangan Absensi', 'amount' => $attendance_allowance, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     
                     // Compact Overtime Display (BL-03 Fix)
                     if ($total_overtime_hours > 0) {
                         $h = floor($total_overtime_hours);
                         $m = round(($total_overtime_hours - $h) * 60);
                         $compactOvertimeStr = $m > 0 ? "{$h}j {$m}m" : "{$h}j";
-                        \App\Models\PayrollDetail::create([
-                            'payroll_id' => $payroll->id,
-                            'type' => 'earning',
-                            'name' => "Lembur ({$compactOvertimeStr})",
-                            'amount' => 0,
-                        ]);
+                        $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => "Lembur ({$compactOvertimeStr})", 'amount' => 0, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     }
 
-                    if ($absent_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Alpa ($total_absent Hari)", 'amount' => $absent_deduction]);
-                    if ($late_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Terlambat ($total_late_minutes Menit)", 'amount' => $late_deduction]);
-                    if ($excused_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Izin ($total_excused Hari)", 'amount' => $excused_deduction]);
-                    if ($sick_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Sakit ($total_sick Hari)", 'amount' => $sick_deduction]);
-                    if ($cuti_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Cuti >2 Hr ($penalized_cuti_days Hari)", 'amount' => $cuti_deduction]);
-                    if ($wfh_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan WFH ($total_wfh Hari)", 'amount' => $wfh_deduction]);
-                    if ($late_penalty_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Penalti Terlambat >3x", 'amount' => $late_penalty_deduction]);
-                    if ($imp_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan IMP Tdk Diganti ($total_unreplaced_imp_minutes Mnt)", 'amount' => $imp_deduction]);
-                    if ($syirkah_deduction > 0) \App\Models\PayrollDetail::create(['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Syirkah", 'amount' => $syirkah_deduction]);
+                    if ($absent_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Alpa ($total_absent Hari)", 'amount' => $absent_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($late_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Terlambat ($total_late_minutes Menit)", 'amount' => $late_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($excused_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Izin ($total_excused Hari)", 'amount' => $excused_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($sick_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Sakit ($total_sick Hari)", 'amount' => $sick_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($cuti_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Cuti >2 Hr ($penalized_cuti_days Hari)", 'amount' => $cuti_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($wfh_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan WFH ($total_wfh Hari)", 'amount' => $wfh_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($late_penalty_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Penalti Terlambat >3x", 'amount' => $late_penalty_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($imp_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan IMP Tdk Diganti ($total_unreplaced_imp_minutes Mnt)", 'amount' => $imp_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($syirkah_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Syirkah", 'amount' => $syirkah_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                }
+
+                // Batch insert all PayrollDetails in chunks for maximum performance
+                if (!empty($allPayrollDetailsToInsert)) {
+                    foreach (array_chunk($allPayrollDetailsToInsert, 500) as $chunk) {
+                        \App\Models\PayrollDetail::insert($chunk);
+                    }
                 }
             });
 
