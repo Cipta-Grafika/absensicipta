@@ -35,6 +35,8 @@ class UserForm extends Form
     public function rules()
     {
         $requiredOrNullable = $this->group === 'user' ? 'required' : 'nullable';
+        $allowedGroups = Auth::user()?->isSuperadmin ? User::$groups : ['user'];
+
         return [
             'name' => [
                 'required',
@@ -59,7 +61,7 @@ class UserForm extends Form
             'gender' => [$requiredOrNullable, 'in:male,female'],
             'city' => [$requiredOrNullable, 'string', 'max:255'],
             'address' => [$requiredOrNullable, 'string', 'max:255'],
-            'group' => ['nullable', 'string', 'max:255', Rule::in(User::$groups)],
+            'group' => ['required', 'string', 'max:255', Rule::in($allowedGroups)],
             'type' => ['required', 'string', Rule::in(User::$types)],
             'birth_date' => ['nullable', 'date'],
             'birth_place' => ['nullable', 'string', 'max:255'],
@@ -105,7 +107,7 @@ class UserForm extends Form
     public function store()
     {
         if (!$this->isAllowed()) {
-            return abort(403);
+            return abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menambahkan pengguna atau peran ini.');
         }
         $this->validate();
 
@@ -121,6 +123,7 @@ class UserForm extends Form
         }
 
         if (!Auth::user()?->isSuperadmin) {
+            $data['group'] = 'user';
             unset($data['count_wfo']);
         }
 
@@ -137,7 +140,7 @@ class UserForm extends Form
     public function update()
     {
         if (!$this->isAllowed()) {
-            return abort(403);
+            return abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk memperbarui pengguna atau peran ini.');
         }
         $this->validate();
 
@@ -153,6 +156,7 @@ class UserForm extends Form
         }
 
         if (!Auth::user()?->isSuperadmin) {
+            $data['group'] = 'user';
             unset($data['count_wfo']);
         }
 
@@ -188,13 +192,24 @@ class UserForm extends Form
         $authUser = Auth::user();
         if (!$authUser) return false;
 
+        // Superadmin has full access to manage all groups (user, admin, payroll, superadmin)
         if ($authUser->isSuperadmin) return true;
 
+        // Division Admin can ONLY manage regular users in their own division
         if ($authUser->group === 'admin') {
-            if ($this->group === 'superadmin') return false; // Admin cannot touch superadmin
+            // Non-Superadmin CANNOT assign or set group to admin, payroll, or superadmin
+            if ($this->group !== 'user') {
+                return false;
+            }
 
+            // Non-Superadmin CANNOT edit existing accounts that have non-user role (admin, payroll, superadmin)
+            if ($this->user && $this->user->group !== 'user') {
+                return false;
+            }
+
+            // Non-Superadmin CANNOT edit users from another division
             if ($this->user && $this->user->division_id !== $authUser->division_id) {
-                return false; // Cannot update user from another division
+                return false;
             }
 
             return true;
