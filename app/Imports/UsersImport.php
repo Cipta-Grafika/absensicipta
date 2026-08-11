@@ -48,7 +48,6 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
             'division_id' => auth()->user()->group === 'admin' ? auth()->user()->division_id : $division_id,
             'job_title_id' => $job_title_id,
             'password' => Hash::make($row['password']),
-            'raw_password' => $row['password'],
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
         ]);

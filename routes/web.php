@@ -145,7 +145,7 @@ Route::middleware([
     });
 
     // Payroll Group
-    Route::group(['prefix' => 'payroll', 'as' => 'payroll.', 'middleware' => ['payroll']], function () {
+    Route::group(['prefix' => 'payroll', 'as' => 'payroll.', 'middleware' => ['payroll', 'throttle:60,1']], function () {
         Route::get('/', \App\Livewire\Payroll\PayrollDashboardComponent::class)->name('dashboard');
         Route::get('/employee-salaries', \App\Livewire\Payroll\EmployeeSalaryComponent::class)->name('employee-salaries');
         Route::get('/payment-methods', \App\Livewire\Payroll\PaymentMethodComponent::class)->name('payment-methods');
@@ -165,7 +165,7 @@ Route::middleware([
     Route::get('/user/payslips', \App\Livewire\User\PayslipComponent::class)->name('user.payslips');
 
     // Real-time SSE Leaderboard Stream Endpoint
-    Route::get('/api/leaderboard/stream', [\App\Http\Controllers\Api\LeaderboardStreamController::class, 'stream'])->name('api.leaderboard.stream');
+    Route::get('/api/leaderboard/stream', [\App\Http\Controllers\Api\LeaderboardStreamController::class, 'stream'])->middleware('throttle:30,1')->name('api.leaderboard.stream');
 
 });
 
@@ -177,7 +177,7 @@ Route::get('/robots.txt', function () {
 });
 
 Livewire::setUpdateRoute(function ($handle) {
-    return Route::post(Helpers::getNonRootBaseUrlPath() . '/livewire/update', $handle);
+    return Route::post(Helpers::getNonRootBaseUrlPath() . '/livewire/update', $handle)->middleware(['web', 'throttle:60,1']);
 });
 
 Livewire::setScriptRoute(function ($handle) {

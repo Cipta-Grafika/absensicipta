@@ -483,6 +483,65 @@
       return true;
     }
 
+    async function computeGeoSignatureToken(lat, lng, accuracy, timestamp, nonce) {
+      const dataStr = `${lat.toFixed(6)}|${lng.toFixed(6)}|${Math.round(accuracy)}|${timestamp}|${nonce}`;
+      if (window.crypto && window.crypto.subtle) {
+        try {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(dataStr);
+          const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch (e) {}
+      }
+      return jsSha256Fallback(dataStr);
+    }
+
+    function jsSha256Fallback(ascii) {
+      function rightRotate(value, amount) { return (value>>>amount) | (value<<(32-amount)); }
+      var mathPow = Math.pow, maxWord = mathPow(2, 32), lengthProperty = 'length';
+      var i, j, result = '', words = [], asciiBitLength = ascii[lengthProperty]*8;
+      var hash = [], k = [];
+      var primeCounter = 0, isNotPrime = {};
+      for (var candidate = 2; primeCounter < 64; candidate++) {
+        if (!isNotPrime[candidate]) {
+          for (i = 0; i < 300; i += candidate) { isNotPrime[i] = true; }
+          hash[primeCounter] = (mathPow(candidate, .5)*maxWord)|0;
+          k[primeCounter++] = (mathPow(candidate, 1/3)*maxWord)|0;
+        }
+      }
+      ascii += '\x80';
+      while (ascii[lengthProperty]%64 - 56) ascii += '\x00';
+      for (i = 0; i < ascii[lengthProperty]; i++) {
+        j = ascii.charCodeAt(i);
+        if (j>>8) return;
+        words[i>>2] |= j << ((3 - i)%4)*8;
+      }
+      words[words[lengthProperty]] = ((asciiBitLength/maxWord)|0);
+      words[words[lengthProperty]] = (asciiBitLength|0);
+      for (j = 0; j < words[lengthProperty];) {
+        var w = words.slice(j, j += 16);
+        var oldHash = hash;
+        hash = hash.slice(0, 8);
+        for (i = 0; i < 64; i++) {
+          var w15 = w[i - 15], w2 = w[i - 2];
+          var a = hash[0], e = hash[4];
+          var temp1 = hash[7] + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i] + (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) | 0);
+          var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+          hash = [(temp1 + temp2)|0].concat(hash);
+          hash[4] = (hash[4] + temp1)|0;
+        }
+        for (i = 0; i < 8; i++) { hash[i] = (hash[i] + oldHash[i])|0; }
+      }
+      for (i = 0; i < 8; i++) {
+        for (j = 3; j >= 0; j--) {
+          var b = (hash[i] >> (j * 8)) & 255;
+          result += (b < 16 ? '0' : '') + b.toString(16);
+        }
+      }
+      return result;
+    }
+
     const btnRefreshGeo = document.querySelector('#btn-refresh-location');
 
     function requestLiveLocation(isManualRefresh = false) {
@@ -498,7 +557,7 @@
       };
 
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           if (!validateLocationIntegrity(position)) {
             window.hasLocation = false;
             return;
@@ -506,9 +565,24 @@
 
           liveLat = position.coords.latitude;
           liveLng = position.coords.longitude;
+          const accuracy = position.coords.accuracy || 10;
+          const timestamp = Math.floor(position.timestamp / 1000) || Math.floor(Date.now() / 1000);
+
           window.hasLocation = true;
 
-          $wire.set('currentLiveCoords', [liveLat, liveLng]);
+          try {
+            const geoNonce = await $wire.getGeoNonce();
+            const token = await computeGeoSignatureToken(liveLat, liveLng, accuracy, timestamp, geoNonce);
+
+            $wire.updateLiveLocation(liveLat, liveLng, accuracy, timestamp, token).then(err => {
+              if (err && typeof err === 'string') {
+                console.warn('[GPS Security Verification Warning]', err);
+              }
+            });
+          } catch (e) {
+            console.error('[GPS Token Generation Error]', e);
+          }
+
           window.dispatchEvent(new CustomEvent('geo-updated', { detail: [liveLat, liveLng] }));
 
           const coordsText = document.querySelector('#modal-coords-text');
@@ -569,10 +643,14 @@
         const css = document.createElement('link');
         css.rel = 'stylesheet';
         css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        css.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+        css.crossOrigin = 'anonymous';
         document.head.appendChild(css);
 
         const js = document.createElement('script');
         js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        js.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+        js.crossOrigin = 'anonymous';
         js.onload = () => { leafletLoaded = true; resolve(); };
         document.head.appendChild(js);
       });

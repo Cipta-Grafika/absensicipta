@@ -43,7 +43,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'raw_password',
         'group',
         'type',
         'phone',
@@ -109,7 +108,6 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'raw_password',
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',

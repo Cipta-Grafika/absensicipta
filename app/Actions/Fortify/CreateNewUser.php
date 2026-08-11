@@ -38,7 +38,6 @@ class CreateNewUser implements CreatesNewUsers
             'address' => '-',
             'city' => '-',
             'password' => Hash::make($input['password']),
-            'raw_password' => $input['password'],
         ]);
     }
 }
