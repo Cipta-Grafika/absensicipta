@@ -33,6 +33,7 @@ class ReplacementApprovalComponent extends Component
     public array $bulk_replacement_data = []; // Map of [replacement_id => status]
     public ?string $bulk_search = null;
 
+    public string $perPage = '10';
     public $isModalOpen = false;
     public $selectedAttachment = null;
     public $isDeleteModalOpen = false;
@@ -51,6 +52,11 @@ class ReplacementApprovalComponent extends Component
     }
 
     public function updatingCalendarMonth()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPerPage()
     {
         $this->resetPage();
     }
@@ -275,7 +281,8 @@ class ReplacementApprovalComponent extends Component
             });
         }
 
-        $approvals = $query->paginate(15);
+        $perPageVal = $this->perPage === 'all' ? 999999 : (int) $this->perPage;
+        $approvals = $query->paginate($perPageVal);
 
         // Fetch replacement items for modal if bulk modal is open
         $modalReplacementItems = collect();

@@ -16,6 +16,20 @@ class OvertimeRateForm extends Form
     public $rate_amount = 0;
     public $rate_type = 'per_hour';
     public $division_id = null;
+    public $employee_type = 'all';
+    public $meal_allowance = 0;
+
+    /**
+     * Normalize numeric fields before validation — empty strings from Livewire inputs
+     * are NOT automatically converted to null/0, so we sanitize them explicitly.
+     */
+    protected function sanitizeNumericFields(): void
+    {
+        $this->meal_allowance = is_numeric($this->meal_allowance) && $this->meal_allowance !== '' ? (float) $this->meal_allowance : 0;
+        $this->rate_amount    = is_numeric($this->rate_amount) && $this->rate_amount !== ''    ? (float) $this->rate_amount    : 0;
+        $this->min_hours      = is_numeric($this->min_hours) && $this->min_hours !== ''        ? (float) $this->min_hours      : 0;
+        $this->max_hours      = is_numeric($this->max_hours) && $this->max_hours !== ''        ? (float) $this->max_hours      : 24;
+    }
 
     public function rules()
     {
@@ -26,6 +40,8 @@ class OvertimeRateForm extends Form
             'rate_amount' => ['required', 'numeric', 'min:0'],
             'rate_type' => ['required', 'in:per_hour,flat_package'],
             'division_id' => ['nullable', 'exists:divisions,id'],
+            'employee_type' => ['nullable', 'string'],
+            'meal_allowance' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 
@@ -38,6 +54,8 @@ class OvertimeRateForm extends Form
         $this->rate_amount = $rate->rate_amount;
         $this->rate_type = $rate->rate_type;
         $this->division_id = $rate->division_id;
+        $this->employee_type = $rate->employee_type ?? 'all';
+        $this->meal_allowance = $rate->meal_allowance ?? 0;
         return $this;
     }
 
@@ -52,8 +70,18 @@ class OvertimeRateForm extends Form
             $this->division_id = $user->division_id;
         }
 
+        $this->sanitizeNumericFields();
         $this->validate();
-        OvertimeRate::create($this->all());
+        OvertimeRate::create([
+            'name'          => $this->name,
+            'min_hours'     => $this->min_hours,
+            'max_hours'     => $this->max_hours,
+            'rate_amount'   => $this->rate_amount,
+            'rate_type'     => $this->rate_type,
+            'division_id'   => $this->division_id,
+            'employee_type' => $this->employee_type,
+            'meal_allowance'=> $this->meal_allowance,
+        ]);
         $this->reset();
     }
 
@@ -72,8 +100,18 @@ class OvertimeRateForm extends Form
             $this->division_id = $user->division_id;
         }
 
+        $this->sanitizeNumericFields();
         $this->validate();
-        $this->rate->update($this->all());
+        $this->rate->update([
+            'name'          => $this->name,
+            'min_hours'     => $this->min_hours,
+            'max_hours'     => $this->max_hours,
+            'rate_amount'   => $this->rate_amount,
+            'rate_type'     => $this->rate_type,
+            'division_id'   => $this->division_id,
+            'employee_type' => $this->employee_type,
+            'meal_allowance'=> $this->meal_allowance,
+        ]);
         $this->reset();
     }
 

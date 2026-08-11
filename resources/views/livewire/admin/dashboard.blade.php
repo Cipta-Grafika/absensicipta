@@ -47,8 +47,8 @@
     :sparklines="$sparklines"
   />
 
-  <div class="mb-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-    <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+  <div class="mb-4 w-full overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+    <table class="w-full min-w-[700px] divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
@@ -76,8 +76,8 @@
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
             {{ __('Time Out') }}
           </th>
-          <th scope="col" class="relative">
-            <span class="sr-only">Actions</span>
+          <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 min-w-[72px]">
+            <span class="sr-only">Aksi</span>
           </th>
         </tr>
       </thead>
@@ -175,18 +175,21 @@
             </td>
 
             {{-- Action --}}
-            <td
-              class="cursor-pointer text-center text-sm font-medium text-gray-900 group-hover:bg-gray-100 dark:text-white dark:group-hover:bg-gray-700">
-              <div class="flex items-center justify-center gap-3">
-                @if ($attendance && ($attendance->attachment || $attendance->note || $attendance->lat_lng))
-                  <x-button type="button" wire:click="show({{ $attendance->id }})"
-                    onclick="setLocation({{ $attendance->latitude ?? 0 }}, {{ $attendance->longitude ?? 0 }})">
-                    {{ __('Detail') }}
-                  </x-button>
-                @else
-                  -
-                @endif
-              </div>
+            <td class="px-4 py-3 text-center text-sm font-medium text-gray-900 group-hover:bg-gray-100 dark:text-white dark:group-hover:bg-gray-700 min-w-[72px]">
+              @if ($attendance && ($attendance->attachment || $attendance->note || $attendance->lat_lng))
+                <button type="button"
+                  wire:click="show({{ $attendance->id }})"
+                  onclick="setLocation({{ $attendance->latitude ?? 0 }}, {{ $attendance->longitude ?? 0 }})"
+                  title="Lihat Detail Absensi"
+                  class="inline-flex items-center justify-center rounded-md border border-transparent bg-sky-500 px-2 py-1.5 text-white shadow-sm hover:bg-sky-600 focus:outline-none transition-colors duration-150">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+              @else
+                <span class="text-gray-400">-</span>
+              @endif
             </td>
           </tr>
         @endforeach

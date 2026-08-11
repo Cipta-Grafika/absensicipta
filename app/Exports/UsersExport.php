@@ -17,7 +17,8 @@ class UsersExport implements FromView
 
     public function view(): View
     {
-        $query = User::whereIn('group', $this->groups);
+        $query = User::whereIn('group', $this->groups)
+            ->with(['division', 'education', 'jobTitle']);
         
         if (auth()->user()->group === 'admin') {
             $query->where('division_id', auth()->user()->division_id)

@@ -269,12 +269,18 @@
                 </td>
                 <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                   <div class="flex justify-end gap-2">
-                    <x-button wire:click="edit({{ $sched->id }})">
-                      Edit
-                    </x-button>
-                    <x-danger-button wire:click="confirmDeletion({{ $sched->id }})">
-                      Hapus
-                    </x-danger-button>
+                    <button type="button" wire:click="edit({{ $sched->id }})" title="Edit Jadwal"
+                      class="inline-flex items-center justify-center rounded-md border border-transparent bg-sky-500 px-2 py-1.5 text-white shadow-sm hover:bg-sky-600 focus:outline-none transition-colors duration-150">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button type="button" wire:click="confirmDeletion({{ $sched->id }})" title="Hapus Jadwal"
+                      class="inline-flex items-center justify-center rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none transition-colors duration-150">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 </td>
               </tr>

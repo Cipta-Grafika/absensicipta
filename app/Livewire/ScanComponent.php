@@ -22,6 +22,9 @@ class ScanComponent extends Component
     public $shift_id = null;
     public $shifts = null;
     public ?array $currentLiveCoords = null;
+    public ?string $geoSignature = null;
+    public ?int $geoTimestamp = null;
+    public ?float $geoAccuracy = null;
     public string $successMsg = '';
     public bool $isAbsence = false;
     public bool $showMotivationModal = false;
@@ -30,11 +33,114 @@ class ScanComponent extends Component
     public string $motivationMessage = '';
     public string $motivationType = '';
 
+    public static array $lockedStatuses = [
+        'excused', 'permit', 'izin',
+        'wfh',
+        'sick', 'sakit',
+        'leave', 'cuti',
+        'special-leaves', 'special_leave', 'special-leave', 'cuti_khusus',
+        'imp',
+        'dayoff', 'off', 'libur'
+    ];
+
+    public function getGeoNonce(): string
+    {
+        $userId = Auth::id() ?? 'guest';
+        $sessionId = session()->getId() ?? 'nosession';
+        $timeWindow = floor(time() / 180);
+        return hash_hmac('sha256', "{$userId}|{$sessionId}|{$timeWindow}", config('app.key', 'AbsensiCiptaSecretKey'));
+    }
+
+    public function updateLiveLocation(float $lat, float $lng, float $accuracy, int $timestamp, string $token): ?string
+    {
+        if (!Auth::check()) {
+            return __('Absen Gagal: Sesi pengguna tidak valid.');
+        }
+
+        $throttleKey = 'scan_location_update_' . Auth::id();
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 25)) {
+            return __('Absen Gagal: Terlalu banyak permintaan perbaruan lokasi. Harap tunggu sebentar.');
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
+
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+            return __('Absen Gagal: Format koordinat GPS tidak valid.');
+        }
+
+        if ($accuracy <= 0 || $accuracy > 500) {
+            return __('Absen Gagal: Akurasi sinyal GPS terdeteksi tidak wajar (' . round($accuracy) . 'm). Harap gunakan lokasi GPS asli.');
+        }
+
+        $now = time();
+        if (abs($now - $timestamp) > 120) {
+            return __('Absen Gagal: Waktu lokasi GPS tidak sesuai atau kadaluarsa.');
+        }
+
+        $expectedStr = sprintf("%.6f|%.6f|%d|%d|%s", $lat, $lng, round($accuracy), $timestamp, $this->getGeoNonce());
+        $expectedToken = hash('sha256', $expectedStr);
+
+        if (!hash_equals($expectedToken, $token)) {
+            return __('Absen Gagal: Token verifikasi lokasi GPS tidak valid atau telah dimanipulasi.');
+        }
+
+        if ($gpsError = $this->validateGpsHardening($lat, $lng)) {
+            return $gpsError;
+        }
+
+        $this->currentLiveCoords = [doubleval($lat), doubleval($lng)];
+        $this->geoTimestamp = $timestamp;
+        $this->geoAccuracy = $accuracy;
+        $this->geoSignature = hash_hmac(
+            'sha256',
+            sprintf("%.6f|%.6f|%d|%s|%s", $lat, $lng, $timestamp, Auth::id(), session()->getId()),
+            config('app.key', 'AbsensiCiptaSecretKey')
+        );
+
+        return null;
+    }
+
+    protected function verifyLocationIntegrity(): ?string
+    {
+        if (!Auth::check()) {
+            return __('Absen Gagal: Sesi otentikasi tidak valid.');
+        }
+
+        if (is_null($this->currentLiveCoords) || count($this->currentLiveCoords) < 2) {
+            return __('Absen Gagal: Lokasi GPS belum terdeteksi. Harap izinkan akses lokasi (GPS) pada browser Anda terlebih dahulu.');
+        }
+
+        if (is_null($this->geoSignature) || is_null($this->geoTimestamp)) {
+            return __('Absen Gagal: Tanda tangan keamanan lokasi GPS belum terverifikasi secara sah. Harap perbarui lokasi GPS.');
+        }
+
+        if (abs(time() - $this->geoTimestamp) > 300) {
+            return __('Absen Gagal: Data lokasi GPS sudah kadaluarsa (lebih dari 5 menit). Harap perbarui posisi GPS Anda.');
+        }
+
+        $expectedSignature = hash_hmac(
+            'sha256',
+            sprintf("%.6f|%.6f|%d|%s|%s", doubleval($this->currentLiveCoords[0]), doubleval($this->currentLiveCoords[1]), $this->geoTimestamp, Auth::id(), session()->getId()),
+            config('app.key', 'AbsensiCiptaSecretKey')
+        );
+
+        if (!hash_equals($expectedSignature, $this->geoSignature)) {
+            return __('Absen Gagal: Integritas tanda tangan lokasi GPS tidak valid (Terdeteksi manipulasi state Livewire). Harap perbarui posisi GPS Anda.');
+        }
+
+        return null;
+    }
+
     public function scan(string $barcode)
     {
-        if (is_null($this->currentLiveCoords) || count($this->currentLiveCoords) < 2) {
-            return __('Invalid location');
-        } else if (is_null($this->shift_id)) {
+        if ($this->isAbsence || ($this->attendance && in_array(strtolower(trim((string)$this->attendance->status)), self::$lockedStatuses))) {
+            return __('Absen Gagal: Presensi terkunci karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.');
+        }
+
+        if ($integrityError = $this->verifyLocationIntegrity()) {
+            return $integrityError;
+        }
+
+        if (is_null($this->shift_id)) {
             return __('Invalid shift');
         }
 
@@ -173,8 +279,13 @@ class ScanComponent extends Component
 
     public function manualCheckIn()
     {
-        if (is_null($this->currentLiveCoords) || count($this->currentLiveCoords) < 2) {
-            $this->dangerBanner(__('Lokasi GPS belum terdeteksi. Harap izinkan akses lokasi (GPS) pada browser Anda terlebih dahulu.'));
+        if ($this->isAbsence) {
+            $this->dangerBanner(__('Absen Masuk gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
+            return;
+        }
+
+        if ($integrityError = $this->verifyLocationIntegrity()) {
+            $this->dangerBanner($integrityError);
             return;
         }
 
@@ -239,8 +350,13 @@ class ScanComponent extends Component
 
     public function manualCheckOut()
     {
-        if (is_null($this->currentLiveCoords) || count($this->currentLiveCoords) < 2) {
-            $this->dangerBanner(__('Lokasi GPS belum terdeteksi. Harap izinkan akses lokasi (GPS) pada browser Anda terlebih dahulu.'));
+        if ($this->isAbsence) {
+            $this->dangerBanner(__('Absen Keluar gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
+            return;
+        }
+
+        if ($integrityError = $this->verifyLocationIntegrity()) {
+            $this->dangerBanner($integrityError);
             return;
         }
 
@@ -344,9 +460,9 @@ class ScanComponent extends Component
     {
         $this->attendance = $attendance;
         $this->shift_id = $attendance->shift_id;
-        // Only set isAbsence to true for formal approved full day leave / permits (sick, leave, permit, cuti, dayoff).
-        // Note: 'absent' (Tidak Hadir) is NOT an approved leave and MUST allow employees to Check In / Check Out!
-        $this->isAbsence = in_array($attendance->status, ['sick', 'leave', 'permit', 'cuti', 'dayoff']);
+        $statusLower = strtolower(trim((string)$attendance->status));
+        $this->isAbsence = in_array($statusLower, self::$lockedStatuses);
+
         if (is_null($this->currentLiveCoords) && !empty($attendance->latitude) && !empty($attendance->longitude)) {
             $this->currentLiveCoords = [doubleval($attendance->latitude), doubleval($attendance->longitude)];
         }
@@ -365,6 +481,12 @@ class ScanComponent extends Component
 
     public function updatedShiftId($value)
     {
+        if ($this->isAbsence) {
+            $this->shift_id = $this->attendance?->shift_id;
+            $this->dangerBanner(__('Shift kerja terkunci karena Anda tercatat berstatus ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . ' pada hari ini.'));
+            return;
+        }
+
         if (!empty($this->attendance?->time_in)) {
             $this->shift_id = $this->attendance->shift_id;
             $this->dangerBanner(__('Shift kerja tidak dapat diubah karena Anda sudah melakukan absen masuk hari ini.'));

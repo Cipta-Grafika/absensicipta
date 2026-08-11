@@ -15,6 +15,7 @@ class Overtime extends Model
         'overtime_date',
         'start_time',
         'end_time',
+        'break',
         'duration_hours',
         'applied_rate_amount',
         'total_pay',
@@ -49,15 +50,42 @@ class Overtime extends Model
     }
 
     /**
-     * Accessor for overtime_pay attribute
+     * Accessor for overtime_pay attribute (dynamically calculated from master data)
      */
     public function getOvertimePayAttribute()
     {
-        return $this->total_pay ?? 0;
+        $user = $this->employee ?: User::find($this->employee_id);
+        $hours = (float) ($this->duration_hours ?? $this->calculateDuration());
+        if ($hours <= 0) return 0;
+
+        $payData = OvertimeRate::calculatePayForDuration($hours, $user);
+        return $payData['total_pay'] > 0 ? $payData['total_pay'] : ($this->attributes['total_pay'] ?? 0);
     }
 
     /**
-     * Accessor for formatted duration (e.g. 3 jam 30 menit)
+     * Convert break duration string (HH:MM or minutes string) to integer minutes
+     */
+    public static function convertBreakToMinutes(?string $breakStr): int
+    {
+        if (empty($breakStr)) return 0;
+        $breakStr = trim($breakStr);
+
+        if (str_contains($breakStr, ':')) {
+            $parts = explode(':', $breakStr);
+            $hours = (int) ($parts[0] ?? 0);
+            $minutes = (int) ($parts[1] ?? 0);
+            return ($hours * 60) + $minutes;
+        }
+
+        if (is_numeric($breakStr)) {
+            return (int) $breakStr;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Accessor for formatted duration (e.g. 3 jam 30 menit (Istirahat 30 mnt))
      */
     public function getFormattedDurationAttribute()
     {
@@ -67,12 +95,28 @@ class Overtime extends Model
         $h = floor($hours);
         $m = round(($hours - $h) * 60);
         
-        if ($h > 0 && $m > 0) {
-            return "{$h} jam {$m} menit";
-        } elseif ($h > 0) {
-            return "{$h} jam";
+        $breakText = '';
+        if (!empty($this->break)) {
+            $bMins = self::convertBreakToMinutes($this->break);
+            if ($bMins > 0) {
+                $bH = floor($bMins / 60);
+                $bM = $bMins % 60;
+                if ($bH > 0 && $bM > 0) {
+                    $breakText = " (Istirahat {$bH}j {$bM}m)";
+                } elseif ($bH > 0) {
+                    $breakText = " (Istirahat {$bH} jam)";
+                } else {
+                    $breakText = " (Istirahat {$bM} mnt)";
+                }
+            }
         }
-        return "{$m} menit";
+
+        if ($h > 0 && $m > 0) {
+            return "{$h} jam {$m} menit" . $breakText;
+        } elseif ($h > 0) {
+            return "{$h} jam" . $breakText;
+        }
+        return "{$m} menit" . $breakText;
     }
 
     /**
@@ -80,46 +124,34 @@ class Overtime extends Model
      */
     public function calculateEstimatedPay()
     {
+        $user = $this->employee ?: User::find($this->employee_id);
+        $hours = (float) ($this->duration_hours ?? $this->calculateDuration());
+        if ($hours <= 0) return 0;
+
+        $payData = OvertimeRate::calculatePayForDuration($hours, $user);
+        if ($payData['total_pay'] > 0) {
+            return $payData['total_pay'];
+        }
+
         if ($this->total_pay && $this->total_pay > 0) {
             return $this->total_pay;
         }
 
-        $user = $this->employee ?: User::find($this->employee_id);
-        $hours = $this->duration_hours ?? $this->calculateDuration();
-        if ($hours <= 0) return 0;
-
         if (!$user || !$user->salary) {
-            // Default rate calculation from OvertimeRate table if salary not set
             $defaultRate = OvertimeRate::first()?->rate_amount ?? 20000;
             return round($hours * $defaultRate, 0);
         }
 
         $salary = $user->salary;
-        
-        // Hourly rate estimate: (Basic Salary + Allowances) / (working_days * 8)
         $workingDays = $salary->working_days_per_month ?? 25;
         $fixedIncome = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
         $hourlyRate = ($workingDays > 0) ? ($fixedIncome / ($workingDays * 8)) : 0;
         
-        // Match rate from OvertimeRate table if applicable
-        $matchedRate = OvertimeRate::where(function($q) use ($user) {
-            $q->where('division_id', $user->division_id)
-              ->orWhereNull('division_id');
-        })
-        ->where('min_hours', '<=', $hours)
-        ->where('max_hours', '>=', $hours)
-        ->first();
-
-        if ($matchedRate && $matchedRate->rate_amount > 0) {
-            return round($hours * $matchedRate->rate_amount, 0);
-        }
-        
-        $multiplier = 1.5;
-        return round($hours * $hourlyRate * $multiplier, 0);
+        return round($hours * $hourlyRate * 1.5, 0);
     }
 
     /**
-     * Calculate and return duration based on start and end time.
+     * Calculate and return duration based on start and end time minus break.
      */
     public function calculateDuration()
     {
@@ -133,6 +165,12 @@ class Overtime extends Model
             }
 
             $diffInMinutes = $start->diffInMinutes($end);
+
+            if (!empty($this->break)) {
+                $breakMinutes = self::convertBreakToMinutes($this->break);
+                $diffInMinutes = max(0, $diffInMinutes - $breakMinutes);
+            }
+
             return round($diffInMinutes / 60, 2);
         }
         return 0;

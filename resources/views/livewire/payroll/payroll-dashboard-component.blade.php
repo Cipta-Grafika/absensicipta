@@ -1,19 +1,19 @@
 <x-slot name="header">
-  <div class="relative flex items-center">
+  <div class="relative flex items-center justify-between">
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Payroll') }} - {{ $currentMonth }}
+      Dasbor Payroll &bull; <span class="text-sky-600 dark:text-sky-400">{{ $currentMonth }}</span>
     </h2>
-    <div class="absolute right-0 flex items-center gap-2">
+    <div class="flex items-center gap-2">
       <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
-        <x-heroicon-o-funnel class="sm:mr-1.5 h-4 w-4 text-sky-500" />
-        <span class="hidden sm:inline">Filter</span>
+        <x-heroicon-o-funnel class="mr-1.5 h-4 w-4 text-sky-500" />
+        Filter
       </x-secondary-button>
     </div>
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="w-full sm:px-6 lg:px-8 space-y-6">
     
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Dashboard</x-slot>
@@ -36,10 +36,10 @@
     </x-filter-sidebar>
 
     <div class="mb-6 grid grid-cols-1 gap-6">
-      <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div class="flex items-center gap-2 border-b border-gray-200 bg-gray-50/50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-          <svg class="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <h3 class="font-medium text-gray-700 dark:text-gray-300">Ringkasan Payroll</h3>
+      <div class="overflow-hidden rounded-none sm:rounded-2xl border-t border-b sm:border border-sky-200/80 bg-white/70 backdrop-blur-xl shadow-2xl shadow-black/5 dark:border-gray-800/80 dark:bg-gray-900/70">
+        <div class="flex items-center gap-2 border-b border-sky-200/80 bg-sky-50/50 px-4 py-3 dark:border-gray-800/80 dark:bg-gray-800/50">
+          <svg class="h-5 w-5 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <h3 class="font-bold text-gray-800 dark:text-gray-200">Ringkasan Payroll</h3>
         </div>
         <div class="grid grid-cols-1 divide-y divide-gray-200 dark:divide-gray-700 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           
@@ -158,7 +158,7 @@
     </div>
 
     <!-- Info Banner -->
-    <div class="mt-6 overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800">
+    <div class="mt-6 overflow-hidden rounded-none sm:rounded-2xl border-t border-b sm:border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
       <div class="p-6">
         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Alur Kerja Sistem Penggajian (Payroll)</h3>
         <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3 text-sm text-gray-600 dark:text-gray-400">

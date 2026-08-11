@@ -251,10 +251,12 @@ class WorkScheduleManagementComponent extends Component
         $this->selected_calendar_date = $formattedDate;
         $this->selectedDateDisplay = Carbon::parse($formattedDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
 
-        // Fetch existing schedules for this date
-        $existingSchedules = WorkSchedule::where('date', $formattedDate)
-            ->get()
-            ->keyBy('user_id');
+        // Fetch existing schedules for this date (scoped to division for non-superadmin)
+        $existingQuery = WorkSchedule::where('date', $formattedDate);
+        if (!$user->isSuperadmin) {
+            $existingQuery->whereHas('user', fn($u) => $u->where('division_id', $user->division_id));
+        }
+        $existingSchedules = $existingQuery->get()->keyBy('user_id');
 
         $usersQuery = User::where('group', 'user')->whereIn('status', ['active', 'suspend']);
         if (!$user->isSuperadmin) {
@@ -293,6 +295,16 @@ class WorkScheduleManagementComponent extends Component
             if (!empty($data['selected'])) {
                 $selectedUserIds[] = $userId;
             }
+        }
+
+        // Division Scope Security Check for Admin
+        if (!$user->isSuperadmin) {
+            $allowedUserIds = User::where('division_id', $user->division_id)
+                ->pluck('id')
+                ->map(fn($id) => (string) $id)
+                ->toArray();
+
+            $selectedUserIds = array_values(array_filter($selectedUserIds, fn($id) => in_array((string)$id, $allowedUserIds)));
         }
 
         if (empty($selectedUserIds)) {

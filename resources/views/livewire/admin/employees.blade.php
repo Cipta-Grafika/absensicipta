@@ -90,6 +90,7 @@
             <option value="freelance">Freelance (FR)</option>
             <option value="probation">Probation (PRB)</option>
             <option value="intern">Internship (INT)</option>
+            <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
             <option value="outsourcing">Outsourcing</option>
             <option value="volunteer">Volunteer</option>
           </x-select>
@@ -187,13 +188,19 @@
               {{ $wireClick }}>
               {{ $user->city }}
             </td>
-            <td class="relative flex justify-end gap-2 px-6 py-4">
-              <x-button wire:click="edit('{{ $user->id }}')">
-                Edit
-              </x-button>
-              <x-danger-button wire:click="confirmDeletion('{{ $user->id }}', '{{ $user->name }}')">
-                Delete
-              </x-danger-button>
+            <td class="relative flex justify-end gap-2 px-4 py-4">
+              <button type="button" wire:click="edit('{{ $user->id }}')" title="Edit Karyawan"
+                class="inline-flex items-center justify-center rounded-md border border-transparent bg-sky-500 px-2 py-1.5 text-white shadow-sm hover:bg-sky-600 focus:outline-none transition-colors duration-150">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button type="button" wire:click="confirmDeletion('{{ $user->id }}', '{{ $user->name }}')" title="Hapus Karyawan"
+                class="inline-flex items-center justify-center rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none transition-colors duration-150">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </td>
           </tr>
         @endforeach
@@ -296,6 +303,7 @@
               <option value="freelance">Freelance (FR)</option>
               <option value="probation">Probation (PRB)</option>
               <option value="intern">Internship (INT)</option>
+              <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
               <option value="outsourcing">Outsourcing</option>
               <option value="volunteer">Volunteer</option>
             </x-select>
@@ -554,6 +562,7 @@
               <option value="freelance">Freelance (FR)</option>
               <option value="probation">Probation (PRB)</option>
               <option value="intern">Internship (INT)</option>
+              <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
               <option value="outsourcing">Outsourcing</option>
               <option value="volunteer">Volunteer</option>
             </x-select>
@@ -749,73 +758,94 @@
         $jobTitle = $form->user->jobTitle?->name ?? '-';
         $education = $form->user->education?->name ?? '-';
       @endphp
-      <div class="px-6 py-4">
-        <div class="my-4 flex items-center justify-center">
-          <img class="h-32 w-32 rounded-full object-cover" src="{{ $form->user->profile_photo_url }}"
-            alt="{{ $form->user->name }}" />
+      <div class="flex flex-col min-h-0 max-h-[82vh] sm:max-h-[88vh] overflow-hidden">
+        <!-- Fixed Header -->
+        <div class="px-6 pt-5 pb-3.5 shrink-0 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white/90 dark:bg-gray-900/90 backdrop-blur-md">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+              Detail Karyawan: {{ $form->user->name }}
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              NIP: {{ $form->user->nip }}
+            </p>
+          </div>
+          <button type="button" wire:click="$set('showDetail', false)" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <div class="text-center text-lg font-medium text-gray-900 dark:text-gray-100">
-          {{ $form->user->name }}
+        <!-- Scrollable Vertical Body Container -->
+        <div class="px-6 py-4 overflow-y-auto min-h-0 flex-1 space-y-4 custom-scrollbar-y">
+          <div class="my-2 flex items-center justify-center">
+            <img class="h-28 w-28 rounded-full object-cover shadow-md border-2 border-sky-400/50" src="{{ $form->user->profile_photo_url }}"
+              alt="{{ $form->user->name }}" />
+          </div>
+
+          <div class="text-center text-lg font-bold text-gray-900 dark:text-gray-100">
+            {{ $form->user->name }}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400 pt-2">
+            <div>
+              <x-label value="NIP" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $form->user->nip }}</p>
+            </div>
+            <div>
+              <x-label value="{{ __('Email') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $form->user->email }}</p>
+            </div>
+            <div>
+              <x-label value="{{ __('Phone') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $form->user->phone }}</p>
+            </div>
+            <div>
+              <x-label value="{{ __('Gender') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ __($form->user->gender) }}</p>
+            </div>
+            <div>
+              <x-label value="{{ __('Birth Date') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">
+                @if ($form->user->birth_date)
+                  {{ \Illuminate\Support\Carbon::parse($form->user->birth_date)->format('D d M Y') }}
+                @else
+                  -
+                @endif
+              </p>
+            </div>
+            <div>
+              <x-label value="{{ __('Birth Place') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $form->user->birth_place ?? '-' }}</p>
+            </div>
+            <div>
+              <x-label value="{{ __('City') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $form->user->city ?? '-' }}</p>
+            </div>
+            <div>
+              <x-label value="{{ __('Job Title') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $jobTitle }}</p>
+            </div>
+            <div>
+              <x-label value="{{ __('Division') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $division }}</p>
+            </div>
+            <div>
+              <x-label value="{{ __('Last Education') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $education }}</p>
+            </div>
+            <div class="sm:col-span-2">
+              <x-label value="{{ __('Address') }}" />
+              <p class="font-semibold text-gray-800 dark:text-gray-200">{{ $form->user->address ?? '-' }}</p>
+            </div>
+          </div>
         </div>
 
-        <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">
-          <div class="mt-4">
-            <x-label for="nip" value="NIP" />
-            <p>{{ $form->user->nip }}</p>
-          </div>
-          <div class="mt-4">
-            <x-label for="email" value="{{ __('Email') }}" />
-            <p>{{ $form->user->email }}</p>
-          </div>
-          <div class="mt-4">
-            <x-label for="phone" value="{{ __('Phone') }}" />
-            <p>{{ $form->user->phone }}</p>
-          </div>
-          <div class="mt-4">
-            <x-label for="gender" value="{{ __('Gender') }}" />
-            <p>{{ __($form->user->gender) }}</p>
-          </div>
-          <div class="mt-4">
-            <x-label for="birth_date" value="{{ __('Birth Date') }}" />
-            @if ($form->user->birth_date)
-              <p>{{ \Illuminate\Support\Carbon::parse($form->user->birth_date)->format('D d M Y') }}</p>
-            @else
-              <p>-</p>
-            @endif
-          </div>
-          <div class="mt-4">
-            <x-label for="birth_place" value="{{ __('Birth Place') }}" />
-            <p>{{ $form->user->birth_place ?? '-' }}</p>
-          </div>
-          <div class="mt-4">
-            <x-label for="address" value="{{ __('Address') }}" />
-            @if (empty($form->user->address))
-              <p>-</p>
-            @else
-              <p>{{ $form->user->address }}</p>
-            @endif
-          </div>
-          <div class="mt-4">
-            <x-label for="city" value="{{ __('City') }}" />
-            @if (empty($form->user->city))
-              <p>-</p>
-            @else
-              <p>{{ $form->user->city }}</p>
-            @endif
-          </div>
-          <div class="mt-4">
-            <x-label for="job_title_id" value="{{ __('Job Title') }}" />
-            <p>{{ $jobTitle }}</p>
-          </div>
-          <div class="mt-4">
-            <x-label for="division_id" value="{{ __('Division') }}" />
-            <p>{{ $division }}</p>
-          </div>
-          <div class="mt-4">
-            <x-label for="education_id" value="{{ __('Last Education') }}" />
-            <p>{{ $education }}</p>
-          </div>
+        <!-- Fixed Footer -->
+        <div class="flex flex-row justify-end bg-gray-50 px-6 py-3.5 text-end dark:bg-gray-800/80 shrink-0 border-t border-gray-200 dark:border-gray-700">
+          <x-secondary-button wire:click="$set('showDetail', false)">
+            Tutup
+          </x-secondary-button>
         </div>
       </div>
     @endif

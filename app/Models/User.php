@@ -33,6 +33,7 @@ class User extends Authenticatable
         'freelance',
         'probation',
         'intern',
+        'pkl',
         'outsourcing',
         'volunteer',
     ];
@@ -42,7 +43,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'raw_password',
         'group',
         'type',
         'phone',
@@ -71,10 +71,11 @@ class User extends Authenticatable
             'freelance' => 'FR',
             'probation' => 'PRB',
             'intern' => 'INT',
+            'pkl' => 'PKL',
             default => '',
         };
 
-        $padLength = in_array($prefix, ['PT', 'FR', 'PRB', 'INT']) ? 3 : 4;
+        $padLength = in_array($prefix, ['PT', 'FR', 'PRB', 'INT', 'PKL']) ? 3 : 4;
         $base = $prefix . $yy . $mm;
 
         $existingNips = static::where('nip', 'like', $base . '%')->pluck('nip');
@@ -107,7 +108,6 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'raw_password',
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',
