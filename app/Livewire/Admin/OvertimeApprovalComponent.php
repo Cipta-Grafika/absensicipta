@@ -392,7 +392,7 @@ class OvertimeApprovalComponent extends Component
         $this->banner('Data pengajuan lembur berhasil dihapus.');
     }
 
-    private function syncDraftPayrollOvertime(int $employeeId, string $overtimeDate): bool
+    private function syncDraftPayrollOvertime(string|int $employeeId, string $overtimeDate): bool
     {
         $periodMonth = Carbon::parse($overtimeDate)->format('Y-m');
         $draftPayroll = \App\Models\Payroll::where('employee_id', $employeeId)
