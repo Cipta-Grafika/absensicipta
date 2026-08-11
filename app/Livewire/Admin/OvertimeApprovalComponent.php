@@ -291,7 +291,7 @@ class OvertimeApprovalComponent extends Component
         ])->layout('layouts.app');
     }
 
-    public function approve($id)
+    public function approve(int $id): void
     {
         if (Auth::user()->isNotAdmin) {
             abort(403);
@@ -322,7 +322,7 @@ class OvertimeApprovalComponent extends Component
         $this->banner($msg);
     }
 
-    public function reject($id)
+    public function reject(int $id): void
     {
         if (Auth::user()->isNotAdmin) {
             abort(403);
@@ -349,7 +349,7 @@ class OvertimeApprovalComponent extends Component
         $this->banner($msg);
     }
 
-    public function confirmDelete($id)
+    public function confirmDelete(int $id): void
     {
         if (Auth::user()->isNotAdmin) {
             abort(403);
@@ -365,13 +365,13 @@ class OvertimeApprovalComponent extends Component
         $this->isDeleteModalOpen = true;
     }
 
-    public function cancelDelete()
+    public function cancelDelete(): void
     {
         $this->isDeleteModalOpen = false;
         $this->overtimeToDelete = null;
     }
 
-    public function deleteOvertime()
+    public function deleteOvertime(): void
     {
         if (Auth::user()->isNotAdmin || !$this->overtimeToDelete) {
             abort(403);

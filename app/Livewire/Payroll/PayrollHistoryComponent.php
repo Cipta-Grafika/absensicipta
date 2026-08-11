@@ -72,8 +72,9 @@ class PayrollHistoryComponent extends Component
                 $this->generate_start_date = \Carbon\Carbon::parse($value . '-01')->format('Y-m-d');
                 $this->generate_end_date = \Carbon\Carbon::parse($value . '-01')->endOfMonth()->format('Y-m-d');
             } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Payroll Generation Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
-                // Ignore parsing errors
+                \Illuminate\Support\Facades\Log::warning('Payroll period parse warning: ' . $e->getMessage());
+                $this->generate_start_date = date('Y-m-01');
+                $this->generate_end_date = date('Y-m-t');
             }
         }
     }
