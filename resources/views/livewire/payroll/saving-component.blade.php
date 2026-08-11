@@ -1,7 +1,7 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Syirkah') }}
+      Syirkah
     </h2>
     <x-button x-data @click="$dispatch('open-saving-modal')" class="bg-sky-500 hover:bg-sky-600 focus:bg-sky-600 active:bg-sky-700">
       <svg class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -12,9 +12,9 @@
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-6" x-data @open-saving-modal.window="$wire.openModal()">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-    <div class="bg-white p-6 shadow-none sm:shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
+<div class="pt-3.5 pb-6 sm:py-6" x-data @open-saving-modal.window="$wire.openModal()">
+  <div class="w-full sm:px-6 lg:px-8">
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-t border-b sm:border border-white/90 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl shadow-slate-900/10 dark:shadow-black/50 rounded-none sm:rounded-2xl overflow-hidden p-4 sm:p-6 lg:p-8">
       
       <div class="mb-4">
         <div class="flex w-full flex-1 items-center gap-2">

@@ -19,6 +19,7 @@ class OvertimeComponent extends Component
     public $overtime_date;
     public $start_time;
     public $end_time;
+    public $break = '';
     public $reason;
     public $modalError;
     public $selectedDateDisplay = '';
@@ -55,6 +56,7 @@ class OvertimeComponent extends Component
         'overtime_date' => 'required|date',
         'start_time' => 'required|date_format:H:i',
         'end_time' => 'required|date_format:H:i',
+        'break' => 'nullable|string|max:10',
         'reason' => 'required|string|max:1000',
     ];
 
@@ -163,6 +165,7 @@ class OvertimeComponent extends Component
         $this->overtime_date = '';
         $this->start_time = '';
         $this->end_time = '';
+        $this->break = '';
         $this->reason = '';
         $this->modalError = null;
         $this->selectedDateDisplay = '';
@@ -197,6 +200,7 @@ class OvertimeComponent extends Component
             'overtime_date' => $this->overtime_date,
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
+            'break' => $this->break ? trim($this->break) : null,
             'reason' => $this->reason,
             'status' => 'pending',
         ]);

@@ -14,7 +14,10 @@
             Tipe Bayaran
           </th>
           <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 whitespace-nowrap">
-            Nominal Rate
+            Tipe Karyawan
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 whitespace-nowrap">
+            Nominal Rate & Uang Makan
           </th>
           <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 whitespace-nowrap">
             Divisi Scope
@@ -46,8 +49,18 @@
                 </span>
               @endif
             </td>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+              <span class="inline-flex items-center rounded-md bg-sky-50 dark:bg-sky-900/40 px-2 py-1 text-xs font-medium text-sky-700 dark:text-sky-300 ring-1 ring-inset ring-sky-700/10 uppercase">
+                {{ $rate->employee_type === 'all' || empty($rate->employee_type) ? 'Semua Tipe' : strtoupper($rate->employee_type) }}
+              </span>
+            </td>
             <td class="px-6 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-              Rp {{ number_format($rate->rate_amount, 0, ',', '.') }} {{ $rate->rate_type === 'per_hour' ? '/ jam' : '' }}
+              <div>Rp {{ number_format($rate->rate_amount, 0, ',', '.') }} {{ $rate->rate_type === 'per_hour' ? '/ jam' : '' }}</div>
+              @if(($rate->meal_allowance ?? 0) > 0)
+                <div class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
+                  + Uang Makan Rp {{ number_format($rate->meal_allowance, 0, ',', '.') }}
+                </div>
+              @endif
             </td>
             <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
               @if($rate->division)
@@ -60,18 +73,24 @@
                 </span>
               @endif
             </td>
-            <td class="relative flex justify-end gap-2 px-6 py-4 whitespace-nowrap">
-              <x-button wire:click="edit({{ $rate->id }})">
-                Edit
-              </x-button>
-              <x-danger-button wire:click="confirmDeletion({{ $rate->id }}, '{{ $rate->name }}')">
-                Delete
-              </x-danger-button>
+            <td class="relative flex justify-end gap-2 px-4 py-4 whitespace-nowrap">
+              <button type="button" wire:click="edit({{ $rate->id }})" title="Edit Tarif Lembur"
+                class="inline-flex items-center justify-center rounded-md border border-transparent bg-sky-500 px-2 py-1.5 text-white shadow-sm hover:bg-sky-600 focus:outline-none transition-colors duration-150">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button type="button" wire:click="confirmDeletion({{ $rate->id }}, '{{ $rate->name }}')" title="Hapus Tarif Lembur"
+                class="inline-flex items-center justify-center rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none transition-colors duration-150">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </td>
           </tr>
         @empty
           <tr>
-            <td colspan="6" class="px-6 py-8 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+            <td colspan="7" class="px-6 py-8 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
               Belum ada data tarif lembur.
             </td>
           </tr>
@@ -111,10 +130,40 @@
       <x-slot name="content">
         <div>
           <x-label for="name">Nama / Label Rate</x-label>
-          <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" placeholder="Misal: Lembur 1 - 3 Jam" />
+          <x-input id="name" class="mt-1 block w-full" type="text" wire:model="form.name" placeholder="Misal: Lembur 1 - 3 Jam (PKL)" />
           @error('form.name')
             <x-input-error for="form.name" class="mt-2" message="{{ $message }}" />
           @enderror
+        </div>
+
+        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+          <div class="w-full">
+            <x-label for="employee_type">Tipe Karyawan</x-label>
+            <select id="employee_type" wire:model="form.employee_type"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              <option value="all">Semua Tipe Karyawan</option>
+              <option value="full-time">Full-time</option>
+              <option value="contract">Kontrak (Contract)</option>
+              <option value="part-time">Part-time (PT)</option>
+              <option value="freelance">Freelance (FR)</option>
+              <option value="probation">Probation (PRB)</option>
+              <option value="intern">Internship (INT)</option>
+              <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
+              <option value="outsourcing">Outsourcing</option>
+              <option value="volunteer">Volunteer</option>
+            </select>
+            @error('form.employee_type')
+              <x-input-error for="form.employee_type" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+
+          <div class="w-full">
+            <x-label for="meal_allowance">Uang Makan Lembur (Opsional - Rp)</x-label>
+            <x-input id="meal_allowance" class="mt-1 block w-full" type="number" wire:model="form.meal_allowance" placeholder="0" />
+            @error('form.meal_allowance')
+              <x-input-error for="form.meal_allowance" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
         </div>
 
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
@@ -133,6 +182,10 @@
             @enderror
           </div>
         </div>
+        <p class="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+          <span class="font-bold text-sky-600 dark:text-sky-400">💡 Best-Practice Tier Range:</span>
+          Untuk tier berjenjang (misal Tier 1: 1 - 3 Jam & Tier 2: > 3 Jam s/d 24 Jam), sistem secara presisi memprioritaskan batas eksak (misal 3.0 jam masuk Tier 1, dan > 3.0 jam masuk Tier 2). Uang makan lembur (jika ada) ditambahkan <strong>flat (1x)</strong> per pengajuan lembur.
+        </p>
 
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
@@ -208,6 +261,36 @@
 
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
+            <x-label for="edit_employee_type">Tipe Karyawan</x-label>
+            <select id="edit_employee_type" wire:model="form.employee_type"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              <option value="all">Semua Tipe Karyawan</option>
+              <option value="full-time">Full-time</option>
+              <option value="contract">Kontrak (Contract)</option>
+              <option value="part-time">Part-time (PT)</option>
+              <option value="freelance">Freelance (FR)</option>
+              <option value="probation">Probation (PRB)</option>
+              <option value="intern">Internship (INT)</option>
+              <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
+              <option value="outsourcing">Outsourcing</option>
+              <option value="volunteer">Volunteer</option>
+            </select>
+            @error('form.employee_type')
+              <x-input-error for="form.employee_type" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+
+          <div class="w-full">
+            <x-label for="edit_meal_allowance">Uang Makan Lembur (Opsional - Rp)</x-label>
+            <x-input id="edit_meal_allowance" class="mt-1 block w-full" type="number" wire:model="form.meal_allowance" placeholder="0" />
+            @error('form.meal_allowance')
+              <x-input-error for="form.meal_allowance" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+          <div class="w-full">
             <x-label for="edit_min_hours">Min. Jam</x-label>
             <x-input id="edit_min_hours" class="mt-1 block w-full" type="number" step="0.5" wire:model="form.min_hours" required />
             @error('form.min_hours')
@@ -279,3 +362,4 @@
     </form>
   </x-dialog-modal>
 </div>
+

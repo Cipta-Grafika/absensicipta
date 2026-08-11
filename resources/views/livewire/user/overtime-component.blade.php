@@ -380,9 +380,9 @@
                             </span>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Jam Mulai</label>
+                                <label class="mb-1.5 block text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Jam Mulai</label>
                                 <input type="text"
                                        inputmode="numeric"
                                        placeholder="17:00"
@@ -401,7 +401,7 @@
                                 @error('start_time') <span class="block text-xs text-red-500 mt-0.5">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">Jam Selesai</label>
+                                <label class="mb-1.5 block text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Jam Selesai</label>
                                 <input type="text"
                                        inputmode="numeric"
                                        placeholder="20:00"
@@ -418,6 +418,30 @@
                                        required>
                                 <span class="text-[11px] text-gray-400">Format: 20:00</span>
                                 @error('end_time') <span class="block text-xs text-red-500 mt-0.5">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
+                                    Istirahat (durasi)
+                                </label>
+                                <input type="text"
+                                       inputmode="numeric"
+                                       placeholder="0:30"
+                                       maxlength="5"
+                                       x-data
+                                       x-on:input="
+                                         let v = $el.value.replace(/\D/g, '').slice(0, 4);
+                                         if (v.length >= 3) {
+                                           v = v.slice(0, v.length - 2) + ':' + v.slice(-2);
+                                         } else if (v.length === 2 && parseInt(v) > 59) {
+                                           v = '0:' + v;
+                                         }
+                                         $el.value = v;
+                                         $wire.set('break', v);
+                                       "
+                                       value="{{ $break }}"
+                                       class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm font-semibold tracking-wider text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600 dark:text-white">
+                                <span class="text-[11px] text-gray-400">Format: 0:30 (opsional)</span>
+                                @error('break') <span class="block text-xs text-red-500 mt-0.5">{{ $message }}</span> @enderror
                             </div>
                         </div>
 

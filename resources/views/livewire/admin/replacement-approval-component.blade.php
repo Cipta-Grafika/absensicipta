@@ -223,11 +223,25 @@
           </x-slot>
         </x-filter-sidebar>
 
-        <!-- Table Header Bar: Title & Total Entries -->
-        <div class="mb-4 flex items-center justify-between border-t border-gray-200/80 pt-5 dark:border-gray-700">
+        <!-- Table Header Bar: Title, Subtitle & Show Entries Dropdown -->
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200/80 pt-5 dark:border-gray-700">
           <div>
-            <h3 class="text-base font-bold text-gray-900 dark:text-white">Riwayat Pengajuan Ganti Jam</h3>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Total data {{ $approvals->total() }} pengajuan</p>
+            <h4 class="text-base font-bold text-gray-900 dark:text-white">
+              Pengajuan Ganti Jam {{ \Carbon\Carbon::parse($calendar_month)->isoFormat('MMMM YYYY') }}
+            </h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Menampilkan {{ $approvals->total() }} data pengajuan ganti jam kerja untuk bulan terpilih.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="perPage_replacement" class="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tampilkan:</label>
+            <select wire:model.live="perPage" id="perPage_replacement" class="w-24 truncate rounded-md border border-gray-300 bg-gray-50 py-1 pl-2 pr-7 text-xs text-gray-900 focus:border-sky-500 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="all">Semua</option>
+            </select>
           </div>
         </div>
 

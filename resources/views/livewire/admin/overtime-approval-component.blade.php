@@ -222,6 +222,28 @@
     </x-slot>
   </x-filter-sidebar>
 
+  <!-- Table Header Bar: Title, Subtitle & Show Entries Dropdown -->
+  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200/80 pt-5 dark:border-gray-700">
+    <div>
+      <h4 class="text-base font-bold text-gray-900 dark:text-white">
+        Pengajuan Lembur {{ \Carbon\Carbon::parse($calendar_month)->isoFormat('MMMM YYYY') }}
+      </h4>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        Menampilkan {{ $approvals->total() }} data pengajuan lembur karyawan untuk bulan terpilih.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <label for="perPage_overtime" class="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tampilkan:</label>
+      <select wire:model.live="perPage" id="perPage_overtime" class="w-24 truncate rounded-md border border-gray-300 bg-gray-50 py-1 pl-2 pr-7 text-xs text-gray-900 focus:border-sky-500 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="all">Semua</option>
+      </select>
+    </div>
+  </div>
+
   <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
     <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
@@ -273,13 +295,15 @@
               {{ Str::limit($approval->reason, 100) }}
             </td>
             <td class="px-2 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400 min-w-[140px]">
-              @if(!is_null($approval->total_pay))
-                Rp {{ number_format($approval->total_pay, 0, ',', '.') }}
-              @else
-                @php
-                  $est = \App\Models\OvertimeRate::calculatePayForDuration((float) $approval->duration_hours, $approval->employee);
-                @endphp
-                <span class="text-gray-500 dark:text-gray-400 font-medium text-xs">(Est: Rp {{ number_format($est['total_pay'], 0, ',', '.') }})</span>
+              @php
+                $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $approval->duration_hours, $approval->employee);
+                $finalPay = $payData['total_pay'] > 0 ? $payData['total_pay'] : ($approval->total_pay ?? 0);
+              @endphp
+              <div>Rp {{ number_format($finalPay, 0, ',', '.') }}</div>
+              @if(($payData['meal_allowance'] ?? 0) > 0)
+                <div class="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                  (+ Uang Makan Rp {{ number_format($payData['meal_allowance'], 0, ',', '.') }})
+                </div>
               @endif
             </td>
             <td class="whitespace-nowrap px-2 py-4 text-sm">

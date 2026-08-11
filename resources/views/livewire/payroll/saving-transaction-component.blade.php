@@ -1,25 +1,25 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
     <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-      {{ __('Mutasi Syirkah') }}
+      Mutasi Syirkah
     </h2>
-    <div class="absolute right-0 flex items-center gap-2">
+    <div class="flex items-center gap-2">
       <x-button type="button" x-data @click.prevent="$dispatch('open-withdrawal-modal')">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="sm:mr-1.5 h-4 w-4">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span class="hidden sm:inline">Pencairan</span>
+        Pencairan
       </x-button>
       <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
-        <x-heroicon-o-funnel class="sm:mr-1.5 h-4 w-4 text-sky-500" />
-        <span class="hidden sm:inline">Filter</span>
+        <x-heroicon-o-funnel class="mr-1.5 h-4 w-4 text-sky-500" />
+        Filter
       </x-secondary-button>
     </div>
   </div>
 </x-slot>
 
-<div class="py-0 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
-  <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+  <div class="w-full sm:px-6 lg:px-8">
 
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Mutasi</x-slot>
@@ -60,7 +60,7 @@
       </x-slot>
     </x-filter-sidebar>
 
-    <div class="bg-white p-6 shadow-none sm:shadow-xl dark:bg-gray-800 sm:rounded-lg lg:p-8">
+    <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-t border-b sm:border border-white/90 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl shadow-slate-900/10 dark:shadow-black/50 rounded-none sm:rounded-2xl overflow-hidden p-4 sm:p-6 lg:p-8">
       
       <!-- SUMMARY CARDS -->
       <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">

@@ -145,103 +145,6 @@
         </div>
       </div>
 
-      <!-- Interactive Monthly Holiday Calendar Box -->
-      <div class="mb-6 rounded-2xl bg-gray-50/80 dark:bg-gray-900/60 p-4 sm:p-5 border border-gray-200 dark:border-gray-700 shadow-xs">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center justify-between border-b border-gray-200/80 pb-4 dark:border-gray-700">
-          <div>
-            <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <x-heroicon-o-calendar-days class="h-5 w-5 text-sky-600 dark:text-sky-400" />
-              Kalender Hari Libur {{ \Carbon\Carbon::parse($calendar_month)->isoFormat('MMMM YYYY') }}
-            </h3>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Klik pada tanggal di bawah untuk menginput hari libur (Nasional, Divisi, atau Custom Multi-User)
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
-            <x-label for="calendar_month_filter" value="Pilih Bulan" class="whitespace-nowrap text-xs font-semibold"></x-label>
-            <x-input type="month" name="calendar_month_filter" id="calendar_month_filter" wire:model.live="calendar_month" class="text-xs py-1.5" />
-          </div>
-        </div>
-
-        @php
-          $calDayLabels = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
-          $calDayNames  = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        @endphp
-
-        <div class="mt-4 overflow-x-auto">
-          <div class="grid w-full min-w-[320px] grid-cols-7 dark:text-white gap-1">
-            @foreach ($calDayLabels as $idx => $dayAbbr)
-              @php
-                $isOffHeader = $calDayNames[$idx] === 'sunday';
-              @endphp
-              <div class="{{ $isOffHeader ? 'text-red-500 font-bold' : 'text-gray-700 dark:text-gray-300' }} flex h-8 items-center justify-center text-xs font-semibold uppercase tracking-wider text-center">
-                {{ $dayAbbr }}
-              </div>
-            @endforeach
-
-            @if ($calStart->dayOfWeek !== 0)
-              @foreach (range(1, $calStart->dayOfWeek) as $i)
-                <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
-              @endforeach
-            @endif
-
-            @foreach ($calDates as $dateObj)
-              @php
-                $dateStr = $dateObj->format('Y-m-d');
-                $isSunday = $dateObj->dayOfWeek === 0;
-                $dateHolidays = $monthHolidays->get($dateStr) ?? collect();
-                $hasHolidays = $dateHolidays->count() > 0;
-              @endphp
-
-              <button type="button"
-                wire:click="handleCalendarDateClick('{{ $dateStr }}')"
-                x-data x-on:click="$el.blur()"
-                class="group relative flex h-16 flex-col justify-between rounded-xl border p-2 text-left transition-all duration-150
-                       {{ $hasHolidays 
-                          ? 'border-sky-200 bg-sky-50/60 dark:border-sky-800/80 dark:bg-sky-950/40 hover:border-sky-400 hover:shadow-md' 
-                          : 'border-gray-200 bg-white dark:border-gray-700/80 dark:bg-gray-800/80 hover:border-sky-300 hover:bg-gray-50 dark:hover:bg-gray-700/60' }}">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-extrabold {{ $isSunday ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' }}">
-                    {{ $dateObj->format('d') }}
-                  </span>
-                  @if($hasHolidays)
-                    <span class="h-2 w-2 rounded-full bg-sky-500"></span>
-                  @endif
-                </div>
-
-                <div class="mt-1 flex flex-wrap gap-1">
-                  @forelse($dateHolidays as $dh)
-                    @if($dh->type === 'general')
-                      <span class="inline-flex items-center rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-900/80 dark:text-purple-200 truncate max-w-[70px]" title="{{ $dh->name }}">
-                        Nasional
-                      </span>
-                    @elseif($dh->type === 'division')
-                      <span class="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-900/80 dark:text-blue-200 truncate max-w-[70px]" title="{{ $dh->name }}">
-                        Divisi
-                      </span>
-                    @else
-                      <span class="inline-flex items-center rounded-full bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-800 dark:bg-teal-900/80 dark:text-teal-200 truncate max-w-[70px]" title="{{ $dh->name }}">
-                        {{ $dh->users->count() }} User
-                      </span>
-                    @endif
-                  @empty
-                    <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 group-hover:text-sky-600 dark:group-hover:text-sky-400">
-                      + Libur
-                    </span>
-                  @endforelse
-                </div>
-              </button>
-            @endforeach
-
-            @if ($calEnd->dayOfWeek !== 6)
-              @foreach (range(5, $calEnd->dayOfWeek) as $i)
-                <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
-              @endforeach
-            @endif
-          </div>
-        </div>
-      </div>
-
       <!-- Filter Sidebar -->
       <x-filter-sidebar maxWidth="sm">
         <x-slot name="title">Filter Hari Libur</x-slot>
@@ -357,12 +260,18 @@
                 </td>
                 <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                   <div class="flex justify-end gap-2">
-                    <x-button wire:click="edit({{ $h->id }})">
-                      Edit
-                    </x-button>
-                    <x-danger-button wire:click="confirmDeletion({{ $h->id }})">
-                      Hapus
-                    </x-danger-button>
+                    <button type="button" wire:click="edit({{ $h->id }})" title="Edit Hari Libur"
+                      class="inline-flex items-center justify-center rounded-md border border-transparent bg-sky-500 px-2 py-1.5 text-white shadow-sm hover:bg-sky-600 focus:outline-none transition-colors duration-150">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button type="button" wire:click="confirmDeletion({{ $h->id }})" title="Hapus Hari Libur"
+                      class="inline-flex items-center justify-center rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-white shadow-sm hover:bg-red-700 focus:outline-none transition-colors duration-150">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 </td>
               </tr>

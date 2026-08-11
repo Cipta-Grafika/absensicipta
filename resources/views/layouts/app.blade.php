@@ -44,7 +44,7 @@
   @stack('styles')
 </head>
 
-<body class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-slate-200/70 dark:bg-gray-950 relative selection:bg-sky-500 selection:text-white">
+<body class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-slate-200/70 dark:bg-gray-950 relative selection:bg-sky-500 selection:text-white max-w-full overflow-x-hidden">
   <!-- AMBIENT GLASSMORPHISM BACKGROUND MESH GLOWS -->
   <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
     <div class="absolute -top-32 -left-32 w-[32rem] h-[32rem] rounded-full bg-sky-400/40 dark:bg-sky-600/20 blur-3xl"></div>
@@ -52,36 +52,44 @@
     <div class="absolute -bottom-32 left-1/3 w-[32rem] h-[32rem] rounded-full bg-indigo-400/35 dark:bg-indigo-600/20 blur-3xl"></div>
   </div>
 
-  <div class="relative z-10 flex min-h-screen flex-col justify-between pt-16">
+  <div class="relative z-10 flex min-h-screen flex-col justify-between pt-16 max-w-full overflow-x-hidden">
     <x-banner />
     
     @livewire('navigation-menu')
 
-    @if (request()->routeIs('hr.*'))
-      <!-- HR PORTAL FIXED LAYOUT: FULL-WIDTH NAVBAR -> FULL-WIDTH HEADER BANNER -> FIXED SIDEBAR BELOW -->
-      <div class="relative flex-grow flex w-full"
+    @if (request()->routeIs('hr.*') || request()->routeIs('payroll.*'))
+      <!-- PORTAL FIXED LAYOUT: FULL-WIDTH NAVBAR -> FULL-WIDTH HEADER BANNER -> FIXED SIDEBAR BELOW -->
+      <div class="relative flex-grow flex w-full max-w-full overflow-x-hidden"
            x-data="{
              sidebarCollapsed: localStorage.getItem('hr_sidebar_collapsed') === 'true',
+             mobileSidebarOpen: false,
              toggleSidebar() {
-               this.sidebarCollapsed = !this.sidebarCollapsed;
-               localStorage.setItem('hr_sidebar_collapsed', this.sidebarCollapsed);
-               if (this.sidebarCollapsed) {
-                 document.documentElement.classList.add('hr-sidebar-collapsed');
+               if (window.innerWidth < 1024) {
+                 this.mobileSidebarOpen = !this.mobileSidebarOpen;
                } else {
-                 document.documentElement.classList.remove('hr-sidebar-collapsed');
+                 this.sidebarCollapsed = !this.sidebarCollapsed;
+                 localStorage.setItem('hr_sidebar_collapsed', this.sidebarCollapsed);
+                 if (this.sidebarCollapsed) {
+                   document.documentElement.classList.add('hr-sidebar-collapsed');
+                 } else {
+                   document.documentElement.classList.remove('hr-sidebar-collapsed');
+                 }
                }
              }
-           }">
+           }"
+           @toggle-portal-sidebar.window="toggleSidebar()"
+           @open-portal-sidebar.window="mobileSidebarOpen = true"
+           @close-portal-sidebar.window="mobileSidebarOpen = false">
 
         @if (isset($header))
           <!-- Full-Width Fixed Header Banner Glassmorphism -->
-          <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-white/80 dark:border-gray-800/80 shadow-xs transition-colors">
-            <div class="w-full px-4 py-3.5 sm:px-6 lg:px-8 flex items-center gap-3">
+          <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-sky-200/80 dark:border-gray-800/80 shadow-xs transition-colors">
+            <div class="w-full px-4 py-3 sm:px-6 lg:px-8 flex items-center gap-3">
               <!-- Sidebar Toggle Button (Sky Blue Theme Icon) -->
               <button type="button"
                       @click="toggleSidebar()"
                       title="Toggle Sidebar"
-                      class="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/80 dark:border-gray-700/80 bg-white/90 dark:bg-gray-800/90 text-sky-600 dark:text-sky-400 shadow-xs backdrop-blur-md transition-all duration-200 hover:bg-sky-50 dark:hover:bg-gray-700 cursor-pointer">
+                      class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sky-200/80 dark:border-gray-700/80 bg-white/90 dark:bg-gray-800/90 text-sky-600 dark:text-sky-400 shadow-xs backdrop-blur-md transition-all duration-200 hover:bg-sky-50 dark:hover:bg-gray-700 cursor-pointer">
                 <x-heroicon-o-view-columns class="h-4 w-4 text-sky-600 dark:text-sky-400" />
               </button>
 
@@ -93,10 +101,14 @@
         @endif
 
         <!-- Reusable Fixed Left Sidebar Component (Positioned Below Banner Component) -->
-        <x-hr-sidebar />
+        @if (request()->routeIs('payroll.*'))
+          <x-payroll-sidebar />
+        @else
+          <x-hr-sidebar />
+        @endif
 
         <!-- Right Main Content Area (Slot & Footer) -->
-        <div class="hr-main-content flex-1 min-w-0 flex flex-col min-h-[calc(100vh-4rem)] lg:pl-64 transition-[padding] duration-300 ease-in-out"
+        <div class="hr-main-content flex-1 min-w-0 max-w-full flex flex-col min-h-[calc(100vh-4rem)] lg:pl-64 transition-[padding] duration-300 ease-in-out"
              :class="sidebarCollapsed ? '!pl-0' : 'lg:pl-64'">
 
           <main class="flex-grow flex flex-col {{ isset($header) ? 'pt-14' : '' }} pb-16 md:pb-0">
@@ -104,7 +116,7 @@
           </main>
 
           <!-- Footer Glassmorphism -->
-          <footer class="mt-auto border-t border-white/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
+          <footer class="mt-auto border-t border-sky-200/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
             <div class="w-full flex items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
               <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />
               <span>Crafted by</span>
@@ -116,9 +128,9 @@
         </div>
       </div>
     @else
-      <!-- STANDARD LAYOUT FOR NON-HR PAGES -->
+      <!-- STANDARD LAYOUT FOR NON-PORTAL PAGES -->
       @if (isset($header))
-        <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-white/80 dark:border-gray-800/80 shadow-xs transition-colors">
+        <header class="fixed top-16 left-0 right-0 z-40 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-sky-200/80 dark:border-gray-800/80 shadow-xs transition-colors">
           <div class="mx-auto max-w-7xl px-4 py-3.5 sm:px-6 lg:px-8">
             {{ $header }}
           </div>
@@ -134,9 +146,9 @@
     <!-- Mobile Bottom Navigation Bar -->
     <x-bottom-navigation-bar />
 
-    <!-- Footer for Non-HR pages -->
-    @unless (request()->routeIs('hr.*'))
-      <footer class="mt-auto border-t border-white/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
+    <!-- Footer for Non-Portal pages -->
+    @unless (request()->routeIs('hr.*') || request()->routeIs('payroll.*'))
+      <footer class="mt-auto border-t border-sky-200/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 py-4 backdrop-blur-xl mb-16 md:mb-0">
         <div class="mx-auto flex max-w-7xl items-center justify-center gap-1.5 px-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
           <x-heroicon-s-fire class="h-4 w-4 text-amber-500 shrink-0" />
           <span>Crafted by</span>

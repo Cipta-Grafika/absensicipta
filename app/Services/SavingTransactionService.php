@@ -98,13 +98,11 @@ class SavingTransactionService
             $query->where('savings_id', $savingsId);
         }
 
-        // Sort strictly chronologically by timestamp then ID
-        $transactions = $query->orderBy('created_at', 'asc')->orderBy('id', 'asc')->get();
-
+        // PERF-03: Use cursor() for memory-efficient streaming without loading all models to RAM
         $runningMandatory = 0.0;
         $runningSecondary = 0.0;
 
-        foreach ($transactions as $tx) {
+        foreach ($query->orderBy('created_at', 'asc')->orderBy('id', 'asc')->cursor() as $tx) {
             if ($tx->transaction_type === 'deposit') {
                 $runningMandatory += (float) $tx->mandatory_amount;
                 $runningSecondary += (float) $tx->secondary_amount;
@@ -117,12 +115,15 @@ class SavingTransactionService
             $runningMandatory = max(0.0, $runningMandatory);
             $runningSecondary = max(0.0, $runningSecondary);
 
-            DB::table('saving_transactions')
-                ->where('id', $tx->id)
-                ->update([
-                    'balance_mandatory' => $runningMandatory,
-                    'balance_secondary' => $runningSecondary,
-                ]);
+            // Only issue SQL update if balances actually changed
+            if ((float) $tx->balance_mandatory !== $runningMandatory || (float) $tx->balance_secondary !== $runningSecondary) {
+                DB::table('saving_transactions')
+                    ->where('id', $tx->id)
+                    ->update([
+                        'balance_mandatory' => $runningMandatory,
+                        'balance_secondary' => $runningSecondary,
+                    ]);
+            }
         }
 
         // Update SavingSummary

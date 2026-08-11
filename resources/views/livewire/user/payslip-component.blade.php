@@ -45,7 +45,7 @@
                    class="relative group flex flex-col rounded-2xl border border-white/80 dark:border-gray-800/80 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md p-5 shadow-sm transition-all hover:shadow-md overflow-hidden">
                 
                 <!-- Card Header -->
-                <div class="flex items-center justify-between border-b border-gray-100/80 pb-3 dark:border-gray-700/80 relative z-10">
+                <div class="flex items-center justify-between border-b border-gray-100/80 pb-3 dark:border-gray-700/80 relative z-30">
                   <div class="flex items-center gap-2">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {{ \Carbon\Carbon::parse($pr->period_month)->format('F Y') }}
@@ -58,7 +58,7 @@
                           @click.stop="revealed = !revealed"
                           :title="revealed ? 'Sembunyikan Rincian Gaji' : 'Tampilkan Rincian Gaji'"
                           class="p-1.5 rounded-xl border border-white/80 dark:border-gray-700/80 bg-white/80 dark:bg-gray-800/80 text-gray-400 hover:text-sky-500 dark:hover:text-sky-400 backdrop-blur-md transition-all cursor-pointer">
-                    <span x-show="revealed">
+                    <span x-show="revealed" style="display: none;">
                       <x-heroicon-o-eye class="h-4 w-4 shrink-0" />
                     </span>
                     <span x-show="!revealed">
@@ -67,18 +67,27 @@
                   </button>
                 </div>
                 
-                <!-- Payslip Details Body (Blurred when not revealed) -->
-                <div class="mt-4 flex-1 relative transition-all duration-300"
-                     :class="revealed ? '' : 'filter blur-md select-none pointer-events-none'">
+                <!-- Payslip Details Body (Statically blurred by default, unblurred when revealed) -->
+                <div class="mt-4 flex-1 relative transition-all duration-300 filter blur-md select-none pointer-events-none"
+                     :class="revealed ? 'filter-none select-auto pointer-events-auto' : 'filter blur-md select-none pointer-events-none'">
                   <div class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Pemasukan</div>
-                  <div class="text-lg font-semibold text-emerald-600 dark:text-emerald-400">Rp {{ number_format($pr->basic_salary_earned + $pr->total_allowance + $pr->total_overtime_pay, 0, ',', '.') }}</div>
+                  <div class="text-lg font-semibold text-emerald-600 dark:text-emerald-400"
+                       x-text="revealed ? 'Rp {{ number_format($pr->basic_salary_earned + $pr->total_allowance + $pr->total_overtime_pay, 0, ',', '.') }}' : 'Rp ••••••••'">
+                    Rp ••••••••
+                  </div>
                   
                   <div class="mt-2 text-xs font-medium text-gray-500 dark:text-gray-400">Total Potongan</div>
-                  <div class="text-lg font-semibold text-rose-600 dark:text-rose-400">Rp {{ number_format($pr->total_deduction, 0, ',', '.') }}</div>
+                  <div class="text-lg font-semibold text-rose-600 dark:text-rose-400"
+                       x-text="revealed ? 'Rp {{ number_format($pr->total_deduction, 0, ',', '.') }}' : 'Rp ••••••••'">
+                    Rp ••••••••
+                  </div>
                   
                   <div class="mt-4 border-t border-gray-100/80 pt-3 dark:border-gray-700/80">
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400">Gaji Bersih (Take Home Pay)</div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($pr->net_salary, 0, ',', '.') }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white"
+                         x-text="revealed ? 'Rp {{ number_format($pr->net_salary, 0, ',', '.') }}' : 'Rp ••••••••'">
+                      Rp ••••••••
+                    </div>
                   </div>
                   
                   <div class="mt-5 text-center">
@@ -89,9 +98,9 @@
                   </div>
                 </div>
 
-                <!-- SENSITIVE CONTENT GLASS OVERLAY -->
+                <!-- SENSITIVE CONTENT GLASS OVERLAY (Visible by default, hidden when revealed) -->
                 <div x-show="!revealed"
-                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter="transition ease-out duration-150"
                      x-transition:enter-start="opacity-0 scale-95"
                      x-transition:enter-end="opacity-100 scale-100"
                      x-transition:leave="transition ease-in duration-150"
