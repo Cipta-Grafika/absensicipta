@@ -169,6 +169,11 @@ Route::middleware([
 
 });
 
+// CSRF Token Refresh Endpoint
+Route::get('/csrf-token', function () {
+    return response()->json(['token' => csrf_token()]);
+})->middleware('web');
+
 // Public Robots.txt Route
 Route::get('/robots.txt', function () {
     $path = public_path('robots.txt');

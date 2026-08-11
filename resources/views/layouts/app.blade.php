@@ -168,7 +168,18 @@
     document.addEventListener('livewire:init', () => {
       Livewire.hook('request', ({ fail }) => {
         fail(({ status, preventDefault }) => {
-          if (status === 429) {
+          if (status === 419) {
+            preventDefault();
+            fetch('/csrf-token', { headers: { 'Accept': 'application/json' } })
+              .then(res => res.json())
+              .then(data => {
+                if (data && data.token) {
+                  const meta = document.querySelector('meta[name="csrf-token"]');
+                  if (meta) meta.setAttribute('content', data.token);
+                }
+              })
+              .catch(() => {});
+          } else if (status === 429) {
             preventDefault();
             console.warn('Livewire 429 Rate Limit Throttled');
           }
