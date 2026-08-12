@@ -257,34 +257,10 @@
 
     <!-- DETAIL REPLACEMENT HOUR MODAL (For existing active date clicks) -->
     @if(($isDetailModalOpen ?? false) && $selectedReplacement)
-        <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden">
-                <div class="flex items-center justify-between rounded-t border-b p-4 md:p-5 dark:border-gray-700 shrink-0">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-                            Detail Pengajuan Ganti Jam
-                        </h3>
-                        <p class="text-xs text-sky-600 dark:text-sky-400 font-semibold mt-0.5">
-                            {{ $selectedDateDisplay }}
-                        </p>
-                    </div>
-                    <button wire:click="closeDetailModal" class="ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white" type="button">
-                        <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                        </svg>
-                        <span class="sr-only">Tutup modal</span>
-                    </button>
-                </div>
-
-                <div class="p-4 md:p-5 space-y-4 overflow-y-auto min-h-0 flex-1">
-                    <div class="grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
-                        <div>
-                            <span class="text-xs text-gray-500 dark:text-gray-400 block font-medium">Status</span>
-                            @if($selectedReplacement->status == 'pending')
-                                <span class="inline-flex mt-1 rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100">
-                                    Pending
-                                </span>
-                            @elseif($selectedReplacement->status == 'approved')
+        <div x-data>
+            <template x-teleport="body">
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-gray-900/60 dark:bg-gray-950/75 backdrop-blur-xs overflow-y-auto">
+                    <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden transform-gpu">
                                 <span class="inline-flex mt-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-700 dark:text-emerald-100">
                                     Approved
                                 </span>
@@ -356,13 +332,16 @@
                     </button>
                 </div>
             </div>
-        </div>
+        </template>
+    </div>
     @endif
 
     <!-- DEDICATED SUBMISSION FORM MODAL (Triggered exclusively from date box clicks) -->
     @if($isDateModalOpen ?? false)
-        <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden">
+        <div x-data>
+            <template x-teleport="body">
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-gray-900/60 dark:bg-gray-950/75 backdrop-blur-xs overflow-y-auto">
+                    <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden transform-gpu">
                 <div class="flex items-center justify-between rounded-t border-b p-4 md:p-5 dark:border-gray-700 shrink-0">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">
@@ -519,5 +498,7 @@
                 </form>
             </div>
         </div>
-    @endif
+    </template>
+</div>
+@endif
 </div>

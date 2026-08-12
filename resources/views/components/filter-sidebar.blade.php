@@ -16,11 +16,11 @@
       class="fixed inset-0 z-[250]" aria-labelledby="slide-over-title" role="dialog" aria-modal="true" style="display: none;">
       
       <!-- Backdrop -->
-      <div x-show="filterOpen" class="fixed inset-0 z-[251] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-xs sm:backdrop-blur-sm transition-opacity" x-on:click="filterOpen = false"
+      <div x-show="filterOpen" class="fixed inset-0 z-[251] bg-gray-900/60 dark:bg-gray-950/75 backdrop-blur-xs transition-opacity transform-gpu" x-on:click="filterOpen = false"
         x-transition:enter="ease-out duration-150" 
         x-transition:enter-start="opacity-0" 
         x-transition:enter-end="opacity-100"
-        x-transition:leave="ease-in duration-150" 
+        x-transition:leave="ease-in duration-100" 
         x-transition:leave-start="opacity-100" 
         x-transition:leave-end="opacity-0">
       </div>
@@ -32,7 +32,7 @@
             
             <!-- Sidebar Panel -->
             <div x-show="filterOpen"
-              class="pointer-events-auto {{ $maxWidth }} w-screen h-full overflow-y-auto bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-l border-white/60 dark:border-gray-800 shadow-2xl relative flex flex-col will-change-transform"
+              class="pointer-events-auto {{ $maxWidth }} w-screen h-full overflow-y-auto bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-l border-white/60 dark:border-gray-800 shadow-2xl relative flex flex-col transform-gpu"
               x-trap.inert.noscroll="filterOpen" 
               x-transition:enter="transform transition ease-out duration-200"
               x-transition:enter-start="translate-x-full"
