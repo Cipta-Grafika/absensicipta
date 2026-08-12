@@ -527,7 +527,7 @@
         </x-dialog-modal>
 
         <!-- Delete Confirmation Modal -->
-        <x-dialog-modal wire:model="isDeleteModalOpen">
+        <x-confirmation-modal wire:model="isDeleteModalOpen">
           <x-slot name="title">
             Konfirmasi Hapus Data Ganti Jam
           </x-slot>
@@ -537,15 +537,14 @@
           </x-slot>
 
           <x-slot name="footer">
-            <x-secondary-button wire:click="cancelDelete">
+            <x-danger-button wire:click="deleteReplacement" wire:loading.attr="disabled">
+              Ya, Hapus
+            </x-danger-button>
+            <x-secondary-button class="ms-2" wire:click="cancelDelete" wire:loading.attr="disabled">
               Batal
             </x-secondary-button>
-
-            <x-danger-button class="ml-2" wire:click="deleteReplacement">
-              Hapus Permanen
-            </x-danger-button>
           </x-slot>
-        </x-dialog-modal>
+        </x-confirmation-modal>
 
       </div>
     </div>
