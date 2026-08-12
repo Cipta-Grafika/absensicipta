@@ -251,8 +251,10 @@
 
     <!-- DETAIL OVERTIME MODAL (For existing active date clicks) -->
     @if(($isDetailModalOpen ?? false) && $selectedOvertime)
-        <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden">
+        <div x-data>
+            <template x-teleport="body">
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-gray-900/60 dark:bg-gray-950/75 backdrop-blur-xs overflow-y-auto">
+                    <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden transform-gpu">
                 <div class="flex items-center justify-between rounded-t border-b p-4 md:p-5 dark:border-gray-700 shrink-0">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">
@@ -334,13 +336,16 @@
                     </button>
                 </div>
             </div>
-        </div>
+        </template>
+    </div>
     @endif
 
     <!-- DEDICATED SUBMISSION FORM MODAL (Triggered exclusively from date box clicks) -->
     @if($isDateModalOpen ?? false)
-        <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden">
+        <div x-data>
+            <template x-teleport="body">
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-gray-900/60 dark:bg-gray-950/75 backdrop-blur-xs overflow-y-auto">
+                    <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden transform-gpu">
                 <div class="flex items-center justify-between rounded-t border-b p-4 md:p-5 dark:border-gray-700 shrink-0">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">
@@ -459,5 +464,7 @@
                 </form>
             </div>
         </div>
-    @endif
+    </template>
+</div>
+@endif
 </div>
