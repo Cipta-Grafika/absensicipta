@@ -35,6 +35,10 @@ class FortifyServiceProvider extends ServiceProvider
                     return redirect('/payroll');
                 }
 
+                if (Auth::user() && Auth::user()->isSyirkah) {
+                    return redirect('/payroll/saving-transactions');
+                }
+
                 return redirect('/');
             }
         });
