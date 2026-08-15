@@ -138,7 +138,7 @@ class User extends Authenticatable
         ];
     }
 
-    public static $groups = ['user', 'admin', 'superadmin', 'payroll'];
+    public static $groups = ['user', 'admin', 'superadmin', 'payroll', 'syirkah'];
 
     final public function overtimes()
     {
@@ -173,6 +173,11 @@ class User extends Authenticatable
     final public function getIsPayrollAttribute(): bool
     {
         return $this->group === 'payroll';
+    }
+
+    final public function getIsSyirkahAttribute(): bool
+    {
+        return $this->group === 'syirkah';
     }
 
     public function education()

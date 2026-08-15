@@ -22,7 +22,12 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/', fn () => Auth::user()->isAdmin ? redirect('/hr') : redirect('/home'));
+    Route::get('/', function () {
+        if (Auth::user()->isAdmin) return redirect('/hr');
+        if (Auth::user()->isPayroll) return redirect('/payroll');
+        if (Auth::user()->isSyirkah) return redirect('/payroll/saving-transactions');
+        return redirect('/home');
+    });
     Route::get('/api/employees/search', [\App\Http\Controllers\Admin\EmployeeController::class, 'search'])->name('api.employees.search');
 
     // USER AREA
