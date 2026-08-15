@@ -1,53 +1,11 @@
 <div>
-  @if($showMotivationModal)
-    <div x-data>
-      <template x-teleport="body">
-        <div class="fixed inset-0 z-[250] flex items-center justify-center p-4 overflow-y-auto">
-          <div class="fixed inset-0 z-[251] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-md transition-opacity" wire:click="closeMotivationModal"></div>
-          <div class="relative w-full max-w-md rounded-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-white/60 dark:border-gray-700/60 p-6 shadow-2xl text-center transform transition-all scale-100 max-h-[88vh] overflow-y-auto my-auto z-[255]">
-            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shrink-0
-              {{ $motivationType === 'danger' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400' : '' }}
-              {{ $motivationType === 'warning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400' : '' }}
-              {{ $motivationType === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : '' }}
-              {{ $motivationType === 'super' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' : '' }}
-              {{ $motivationType === 'info' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' : '' }}">
-              @if($motivationType === 'super')
-                <x-heroicon-s-sparkles class="h-10 w-10 animate-bounce" />
-              @elseif($motivationType === 'success')
-                <x-heroicon-s-check-circle class="h-10 w-10" />
-              @elseif($motivationType === 'warning')
-                <x-heroicon-s-exclamation-triangle class="h-10 w-10" />
-              @elseif($motivationType === 'danger')
-                <x-heroicon-s-x-circle class="h-10 w-10" />
-              @else
-                <x-heroicon-s-heart class="h-10 w-10" />
-              @endif
-            </div>
-
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              {{ $motivationTitle }}
-            </h3>
-
-            <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 font-medium">
-              "{{ $motivationMessage }}"
-            </p>
-
-            <button wire:click="closeMotivationModal" type="button" 
-              class="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600">
-              Siap, Lanjutkan!
-            </button>
-          </div>
-        </div>
-      </template>
-    </div>
-  @endif
 
   @if($showLocationMapModal)
     <div x-data x-init="$nextTick(() => { window.initModalMap && window.initModalMap(); })">
       <template x-teleport="body">
         <div class="fixed inset-0 z-[250] flex items-center justify-center p-4 overflow-y-auto">
-          <div class="fixed inset-0 z-[251] bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-md transition-opacity" wire:click="$set('showLocationMapModal', false)"></div>
-          <div class="relative w-full max-w-lg rounded-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-white/60 dark:border-gray-700/60 p-5 shadow-2xl text-left flex flex-col max-h-[88vh] my-auto z-[255]">
+          <div class="fixed inset-0 z-[251] bg-gray-900/60 dark:bg-gray-950/75 backdrop-blur-xs transform-gpu transition-opacity" wire:click="$set('showLocationMapModal', false)"></div>
+          <div class="relative w-full max-w-lg rounded-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-white/60 dark:border-gray-700/60 p-5 shadow-2xl text-left flex flex-col max-h-[88vh] my-auto z-[255] transform-gpu">
             <div class="flex items-center justify-between border-b border-gray-200/80 pb-3 dark:border-gray-700 shrink-0">
               <div class="flex items-center gap-2">
                 <x-heroicon-o-map-pin class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -204,8 +162,17 @@
 
     <!-- 4. CARDS JAM MASUK & JAM KELUAR (BERSEBELAHAN DI MOBILE & DESKTOP) -->
     @php
+      $hasTimeIn = !empty($attendance?->time_in);
+      $hasTimeOut = !empty($attendance?->time_out);
       $canManualCheckIn = empty($attendance?->time_in) && !$isAbsence;
-      $canManualCheckOut = !empty($attendance?->time_in) && empty($attendance?->time_out) && !$isAbsence;
+
+      $windowInfo = $this->checkOutWindowInfo;
+      $hasShift = $windowInfo['hasShift'] ?? true;
+      $isCheckOutWindowOpen = $windowInfo['isOpen'];
+      $checkOutUnlockTime = $windowInfo['unlockTime'];
+
+      $canManualCheckOut = $hasTimeIn && !$hasTimeOut && !$isAbsence && $hasShift && $isCheckOutWindowOpen;
+      $isCheckOutLockedUntilWindow = $hasTimeIn && !$hasTimeOut && !$isAbsence && (!$hasShift || !$isCheckOutWindowOpen);
     @endphp
 
     <div class="grid grid-cols-2 gap-2.5 sm:gap-4">
@@ -280,19 +247,27 @@
         @if($canManualCheckOut)
           wire:click="manualCheckOut"
           title="Klik untuk Absen Keluar (Verifikasi GPS Radius Barcode Kantor)"
+        @elseif($isCheckOutLockedUntilWindow)
+          title="{{ !$hasShift ? 'Pilih shift terlebih dahulu sebelum melakukan presensi.' : 'Absen Keluar belum dibuka. Dapat diakses mulai pukul ' . $checkOutUnlockTime . ' (1 jam sebelum shift berakhir).' }}"
         @endif
         class="col-span-1 relative flex flex-col justify-between rounded-xl p-2.5 sm:p-4 transition-all duration-200
                {{ $canManualCheckOut 
                   ? 'cursor-pointer bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 dark:from-amber-950 dark:via-orange-950 dark:to-amber-900 border-2 border-amber-500 dark:border-amber-500 shadow-md shadow-amber-500/15 hover:shadow-lg hover:scale-[1.01] active:scale-95' 
                   : ($attendance?->time_out 
                       ? 'bg-amber-50/80 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800' 
-                      : 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 opacity-80') }}">
+                      : ($isCheckOutLockedUntilWindow 
+                          ? 'bg-gray-100/90 dark:bg-gray-800/60 border border-gray-300/80 dark:border-gray-700/80 cursor-not-allowed opacity-90' 
+                          : 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 opacity-80')) }}">
         
         <div class="space-y-2">
           <!-- HEADER: ICON & TITLE (JAM KELUAR) -->
           <div class="flex items-center gap-1.5 sm:gap-2">
             <div class="rounded-lg p-1.5 sm:p-2 {{ $canManualCheckOut ? 'bg-amber-600 text-white' : ($attendance?->time_out ? 'bg-amber-600/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400') }} shrink-0">
-              <x-heroicon-o-arrows-pointing-out class="h-4 w-4 sm:h-5 sm:w-5" />
+              @if($isCheckOutLockedUntilWindow)
+                <x-heroicon-o-lock-closed class="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
+              @else
+                <x-heroicon-o-arrows-pointing-out class="h-4 w-4 sm:h-5 sm:w-5" />
+              @endif
             </div>
             <h4 class="text-xs sm:text-base font-bold text-gray-900 dark:text-white leading-tight truncate">Jam Keluar</h4>
           </div>
@@ -304,6 +279,11 @@
                 <span class="inline-flex items-center gap-1 rounded-full bg-amber-600 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-white shadow-xs animate-pulse">
                   <span>Klik Absen</span>
                   <x-heroicon-s-hand-raised class="h-3 w-3" />
+                </span>
+              @elseif($isCheckOutLockedUntilWindow)
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-amber-800 dark:text-amber-300">
+                  <x-heroicon-o-lock-closed class="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                  {{ !$hasShift ? 'Pilih Shift Dulu' : 'Buka Pukul ' . $checkOutUnlockTime }}
                 </span>
               @elseif($attendance?->time_out)
                 <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-amber-800 dark:bg-amber-900/80 dark:text-amber-200">
@@ -326,6 +306,8 @@
         <p class="mt-2 text-[10px] sm:text-xs font-medium {{ $canManualCheckOut ? 'text-amber-800 dark:text-amber-200 font-semibold' : 'text-gray-500 dark:text-gray-400' }} line-clamp-2">
           @if($canManualCheckOut)
             Tap di sini untuk Absen Keluar (GPS)
+          @elseif($isCheckOutLockedUntilWindow)
+            {{ !$hasShift ? 'Pilih shift kerja terlebih dahulu' : 'Buka pukul ' . $checkOutUnlockTime . ' (1 jam sblm shift usai)' }}
           @else
             Waktu presensi keluar hari ini
           @endif
@@ -369,34 +351,34 @@
 
     <!-- 6. FORM MODALS BUTTONS: AJUKAN IZIN, SAKIT, CUTI, IMP -->
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <a href="#" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer">
+      <button type="button" x-data @click.prevent="$dispatch('open-apply-leave-modal')" class="col-span-1 cursor-pointer w-full text-left">
         <div
           class="flex flex-row items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 px-3 py-2.5 text-center font-bold text-gray-700 dark:text-gray-200 transition duration-150 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600 md:gap-2 active:scale-95 shadow-xs">
           <x-heroicon-o-document-text class="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
           <span class="whitespace-nowrap">Ajukan Izin</span>
         </div>
-      </a>
-      <a href="#" x-data @click.prevent="$dispatch('open-apply-sick-modal')" class="col-span-1 cursor-pointer">
+      </button>
+      <button type="button" x-data @click.prevent="$dispatch('open-apply-sick-modal')" class="col-span-1 cursor-pointer w-full text-left">
         <div
           class="flex flex-row items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 px-3 py-2.5 text-center font-bold text-gray-700 dark:text-gray-200 transition duration-150 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600 md:gap-2 active:scale-95 shadow-xs">
           <x-heroicon-o-heart class="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
           <span class="whitespace-nowrap">Ajukan Sakit</span>
         </div>
-      </a>
-      <a href="#" x-data @click.prevent="$dispatch('open-apply-cuti-modal')" class="col-span-1 cursor-pointer">
+      </button>
+      <button type="button" x-data @click.prevent="$dispatch('open-apply-cuti-modal')" class="col-span-1 cursor-pointer w-full text-left">
         <div
           class="flex flex-row items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 px-3 py-2.5 text-center font-bold text-gray-700 dark:text-gray-200 transition duration-150 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600 md:gap-2 active:scale-95 shadow-xs">
           <x-heroicon-o-calendar-days class="h-5 w-5 shrink-0 text-purple-600 dark:text-purple-400" />
           <span class="whitespace-nowrap">Ajukan Cuti</span>
         </div>
-      </a>
-      <a href="#" x-data @click.prevent="$dispatch('open-apply-imp-modal')" class="col-span-1 cursor-pointer">
+      </button>
+      <button type="button" x-data @click.prevent="$dispatch('open-apply-imp-modal')" class="col-span-1 cursor-pointer w-full text-left">
         <div
           class="flex flex-row items-center justify-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 px-3 py-2.5 text-center font-bold text-gray-700 dark:text-gray-200 transition duration-150 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:border-gray-600 md:gap-2 active:scale-95 shadow-xs">
           <x-heroicon-o-user-minus class="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span class="whitespace-nowrap">Ajukan IMP</span>
         </div>
-      </a>
+      </button>
     </div>
 
     @livewire('user.apply-leave-modal-component')
@@ -483,67 +465,6 @@
       return true;
     }
 
-    async function computeGeoSignatureToken(lat, lng, accuracy, timestamp, nonce) {
-      const dataStr = `${lat.toFixed(6)}|${lng.toFixed(6)}|${Math.round(accuracy)}|${timestamp}|${nonce}`;
-      if (window.crypto && window.crypto.subtle) {
-        try {
-          const encoder = new TextEncoder();
-          const data = encoder.encode(dataStr);
-          const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-          const hashArray = Array.from(new Uint8Array(hashBuffer));
-          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        } catch (e) {}
-      }
-      return jsSha256Fallback(dataStr);
-    }
-
-    function jsSha256Fallback(ascii) {
-      function rightRotate(value, amount) { return (value>>>amount) | (value<<(32-amount)); }
-      var mathPow = Math.pow, maxWord = mathPow(2, 32), lengthProperty = 'length';
-      var i, j, result = '', words = [], asciiBitLength = ascii[lengthProperty]*8;
-      var hash = [], k = [];
-      var primeCounter = 0, isNotPrime = {};
-      for (var candidate = 2; primeCounter < 64; candidate++) {
-        if (!isNotPrime[candidate]) {
-          for (i = 0; i < 300; i += candidate) { isNotPrime[i] = true; }
-          hash[primeCounter] = (mathPow(candidate, .5)*maxWord)|0;
-          k[primeCounter++] = (mathPow(candidate, 1/3)*maxWord)|0;
-        }
-      }
-      ascii += '\x80';
-      while (ascii[lengthProperty]%64 - 56) ascii += '\x00';
-      for (i = 0; i < ascii[lengthProperty]; i++) {
-        j = ascii.charCodeAt(i);
-        if (j>>8) return;
-        words[i>>2] |= j << ((3 - i)%4)*8;
-      }
-      words[words[lengthProperty]] = ((asciiBitLength/maxWord)|0);
-      words[words[lengthProperty]] = (asciiBitLength|0);
-      for (j = 0; j < words[lengthProperty];) {
-        var w = words.slice(j, j += 16);
-        var oldHash = hash;
-        hash = hash.slice(0, 8);
-        for (i = 0; i < 64; i++) {
-          var w15 = w[i - 15], w2 = w[i - 2];
-          var a = hash[0], e = hash[4];
-          var temp1 = hash[7] + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i] + (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) | 0);
-          var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
-          hash = [(temp1 + temp2)|0].concat(hash);
-          hash[4] = (hash[4] + temp1)|0;
-        }
-        for (i = 0; i < 8; i++) { hash[i] = (hash[i] + oldHash[i])|0; }
-      }
-      for (i = 0; i < 8; i++) {
-        for (j = 3; j >= 0; j--) {
-          var b = (hash[i] >> (j * 8)) & 255;
-          result += (b < 16 ? '0' : '') + b.toString(16);
-        }
-      }
-      return result;
-    }
-
-    const btnRefreshGeo = document.querySelector('#btn-refresh-location');
-
     function requestLiveLocation(isManualRefresh = false) {
       if (!navigator.geolocation) {
         window.hasLocation = false;
@@ -551,9 +472,9 @@
       }
 
       const options = {
-        enableHighAccuracy: isManualRefresh ? true : false,
-        timeout: isManualRefresh ? 8000 : 10000,
-        maximumAge: isManualRefresh ? 0 : 30000
+        enableHighAccuracy: true,
+        timeout: isManualRefresh ? 6000 : 8000,
+        maximumAge: isManualRefresh ? 0 : 15000
       };
 
       navigator.geolocation.getCurrentPosition(
@@ -570,19 +491,7 @@
 
           window.hasLocation = true;
 
-          try {
-            const geoNonce = await $wire.getGeoNonce();
-            const token = await computeGeoSignatureToken(liveLat, liveLng, accuracy, timestamp, geoNonce);
-
-            $wire.updateLiveLocation(liveLat, liveLng, accuracy, timestamp, token).then(err => {
-              if (err && typeof err === 'string') {
-                console.warn('[GPS Security Verification Warning]', err);
-              }
-            });
-          } catch (e) {
-            console.error('[GPS Token Generation Error]', e);
-          }
-
+          // INSTANT OPTIMISTIC UI UPDATE
           window.dispatchEvent(new CustomEvent('geo-updated', { detail: [liveLat, liveLng] }));
 
           const coordsText = document.querySelector('#modal-coords-text');
@@ -593,6 +502,17 @@
           if (modalLiveMap && modalMarker) {
             modalMarker.setLatLng([liveLat, liveLng]);
             modalLiveMap.setView([liveLat, liveLng], 16);
+          }
+
+          // DIRECT SERVER-SIDE GPS VERIFICATION (No client-side token forging)
+          try {
+            $wire.updateLiveLocation(liveLat, liveLng, accuracy, timestamp).then(err => {
+              if (err && typeof err === 'string') {
+                console.warn('[GPS Security Verification Warning]', err);
+              }
+            });
+          } catch (e) {
+            console.error('[GPS Verification Error]', e);
           }
         },
         (error) => {
@@ -629,6 +549,7 @@
 
     initGeolocationEngine();
 
+    const btnRefreshGeo = document.querySelector('#btn-refresh-location');
     if (btnRefreshGeo) {
       btnRefreshGeo.addEventListener('click', () => {
         requestLiveLocation(true);

@@ -55,7 +55,7 @@ class Saving extends Component
 
     public function import()
     {
-        if (Auth::user()->isNotAdmin && !Auth::user()->isPayroll) {
+        if (Auth::user()->isNotAdmin && !Auth::user()->isPayroll && !Auth::user()->isSyirkah) {
             abort(403);
         }
         try {
@@ -72,7 +72,7 @@ class Saving extends Component
 
     public function export()
     {
-        if (Auth::user()->isNotAdmin && !Auth::user()->isPayroll) {
+        if (Auth::user()->isNotAdmin && !Auth::user()->isPayroll && !Auth::user()->isSyirkah) {
             abort(403);
         }
         return Excel::download(

@@ -45,6 +45,8 @@
 </head>
 
 <body class="font-sans antialiased text-gray-900 dark:text-gray-100 bg-slate-200/70 dark:bg-gray-950 relative selection:bg-sky-500 selection:text-white max-w-full overflow-x-hidden">
+  <x-alert-modal />
+
   <!-- AMBIENT GLASSMORPHISM BACKGROUND MESH GLOWS -->
   <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
     <div class="absolute -top-32 -left-32 w-[32rem] h-[32rem] rounded-full bg-sky-400/40 dark:bg-sky-600/20 blur-3xl"></div>
@@ -53,8 +55,6 @@
   </div>
 
   <div class="relative z-10 flex min-h-screen flex-col justify-between pt-16 max-w-full overflow-x-hidden">
-    <x-banner />
-    
     @livewire('navigation-menu')
 
     @if (request()->routeIs('hr.*') || request()->routeIs('payroll.*'))
@@ -170,15 +170,11 @@
         fail(({ status, preventDefault }) => {
           if (status === 419) {
             preventDefault();
-            fetch('/csrf-token', { headers: { 'Accept': 'application/json' } })
-              .then(res => res.json())
-              .then(data => {
-                if (data && data.token) {
-                  const meta = document.querySelector('meta[name="csrf-token"]');
-                  if (meta) meta.setAttribute('content', data.token);
-                }
-              })
-              .catch(() => {});
+            alert('Sesi halaman Anda telah berakhir karena tidak ada aktivitas. Halaman akan diperbarui otomatis.');
+            window.location.reload();
+          } else if (status === 401) {
+            preventDefault();
+            window.location.href = '{{ route('login') }}';
           } else if (status === 429) {
             preventDefault();
             console.warn('Livewire 429 Rate Limit Throttled');

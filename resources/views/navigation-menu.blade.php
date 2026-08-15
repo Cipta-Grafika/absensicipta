@@ -5,7 +5,7 @@
       <div class="flex">
         <!-- Logo -->
         <div class="flex shrink-0 items-center">
-          <a href="{{ Auth::user()->isAdmin ? route('hr.dashboard') : route('home') }}" class="block h-14 w-14">
+          <a href="{{ Auth::user()->isAdmin ? route('hr.dashboard') : (Auth::user()->isPayroll ? route('payroll.dashboard') : (Auth::user()->isSyirkah ? route('payroll.saving-transactions') : route('home'))) }}" class="block h-14 w-14">
             <x-application-mark class="block h-full w-full object-contain" />
           </a>
         </div>
@@ -176,7 +176,7 @@
               </x-slot>
             </x-nav-dropdown>
           @endif
-          @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll)
+          @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll && !Auth::user()->isSyirkah)
             <x-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
               {{ __('Home') }}
             </x-nav-link>
