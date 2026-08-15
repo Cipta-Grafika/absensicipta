@@ -16,6 +16,7 @@
   <!-- Auto Vertical Scroll Wrapper for All Sidebar Items -->
   <div class="flex-1 overflow-y-auto px-3.5 py-4 space-y-1.5 custom-scrollbar-y">
 
+    @if (!Auth::user()?->isSyirkah)
     <!-- 1. DASBOR -->
     @php $active = request()->routeIs('payroll.dashboard'); @endphp
     <a href="{{ route('payroll.dashboard') }}"
@@ -31,6 +32,7 @@
       <x-heroicon-o-document-text class="h-5 w-5 shrink-0 {{ $active ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-300' }}" />
       <span class="truncate">Riwayat Gaji</span>
     </a>
+    @endif
 
     <!-- 3. SYIRKAH (DROPDOWN) -->
     <div>
@@ -70,6 +72,7 @@
       </button>
 
       <div x-show="openMaster" x-collapse x-cloak class="mt-1 ml-4 pl-3 border-l-2 border-gray-200 dark:border-gray-700 space-y-1">
+        @if (!Auth::user()?->isSyirkah)
         @php $active = request()->routeIs('payroll.employee-salaries'); @endphp
         <a href="{{ route('payroll.employee-salaries') }}"
            class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
@@ -81,6 +84,7 @@
            class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
           <span>Metode Pembayaran</span>
         </a>
+        @endif
 
         @php $active = request()->routeIs('payroll.savings'); @endphp
         <a href="{{ route('payroll.savings') }}"
@@ -102,6 +106,7 @@
       </button>
 
       <div x-show="openImport" x-collapse x-cloak class="mt-1 ml-4 pl-3 border-l-2 border-gray-200 dark:border-gray-700 space-y-1">
+        @if (!Auth::user()?->isSyirkah)
         @php $active = request()->routeIs('payroll.import-export.employee-salaries'); @endphp
         <a href="{{ route('payroll.import-export.employee-salaries') }}"
            class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
@@ -113,6 +118,7 @@
            class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
           <span>Metode Pembayaran</span>
         </a>
+        @endif
 
         @php $active = request()->routeIs('payroll.import-export.savings'); @endphp
         <a href="{{ route('payroll.import-export.savings') }}"
@@ -204,6 +210,7 @@
         <!-- Sidebar Navigation Content -->
         <div class="flex-1 overflow-y-auto px-3.5 py-4 space-y-1.5 custom-scrollbar-y" @click="if ($event.target.closest('a')) mobileSidebarOpen = false">
 
+          @if (!Auth::user()?->isSyirkah)
           <!-- 1. DASBOR -->
           @php $active = request()->routeIs('payroll.dashboard'); @endphp
           <a href="{{ route('payroll.dashboard') }}"
@@ -219,6 +226,7 @@
             <x-heroicon-o-document-text class="h-5 w-5 shrink-0 {{ $active ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-300' }}" />
             <span class="truncate">Riwayat Gaji</span>
           </a>
+          @endif
 
           <!-- 3. SYIRKAH (DROPDOWN) -->
           <div>
@@ -258,6 +266,7 @@
             </button>
 
             <div x-show="openMaster" x-collapse x-cloak class="mt-1 ml-4 pl-3 border-l-2 border-gray-200 dark:border-gray-700 space-y-1">
+              @if (!Auth::user()?->isSyirkah)
               @php $active = request()->routeIs('payroll.employee-salaries'); @endphp
               <a href="{{ route('payroll.employee-salaries') }}"
                  class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
@@ -269,6 +278,7 @@
                  class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
                 <span>Metode Pembayaran</span>
               </a>
+              @endif
 
               @php $active = request()->routeIs('payroll.savings'); @endphp
               <a href="{{ route('payroll.savings') }}"

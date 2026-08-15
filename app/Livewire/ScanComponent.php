@@ -43,22 +43,45 @@ class ScanComponent extends Component
         'dayoff', 'off', 'libur'
     ];
 
-    public function getGeoNonce(): string
+    public function dangerBanner(string $message, ?string $title = null): void
     {
-        $userId = Auth::id() ?? 'guest';
-        $sessionId = session()->getId() ?? 'nosession';
-        $timeWindow = floor(time() / 180);
-        return hash_hmac('sha256', "{$userId}|{$sessionId}|{$timeWindow}", config('app.key', 'AbsensiCiptaSecretKey'));
+        $cleanMessage = preg_replace('/^(Absen Gagal|Absen Masuk gagal|Absen Keluar gagal|Presensi Gagal|Gagal)\s*:\s*/i', '', $message);
+
+        $this->dispatch('alert-modal', [
+            'type' => 'danger',
+            'title' => $title ?? 'Absen Gagal',
+            'message' => $cleanMessage,
+            'buttonText' => 'Mengerti'
+        ]);
+        session()->flash('flash.banner', $cleanMessage);
+        session()->flash('flash.bannerStyle', 'danger');
     }
 
-    public function updateLiveLocation(float $lat, float $lng, float $accuracy, int $timestamp, string $token): ?string
+    public function banner(string $message, string $style = 'success', ?string $title = null): void
+    {
+        $this->dispatch('alert-modal', [
+            'type' => $style,
+            'title' => $title ?? ($style === 'success' ? 'Berhasil' : ($style === 'warning' ? 'Peringatan' : 'Informasi')),
+            'message' => $message,
+            'buttonText' => $style === 'success' ? 'Siap, Lanjutkan!' : 'Mengerti'
+        ]);
+        session()->flash('flash.banner', $message);
+        session()->flash('flash.bannerStyle', $style);
+    }
+
+    protected function getAppSecretKey(): string
+    {
+        return config('app.key') ?: sha1(config('app.name', 'AbsensiCiptaSecretFallbackKey'));
+    }
+
+    public function updateLiveLocation(float $lat, float $lng, float $accuracy, int $timestamp): ?string
     {
         if (!Auth::check()) {
             return __('Absen Gagal: Sesi pengguna tidak valid.');
         }
 
         $throttleKey = 'scan_location_update_' . Auth::id();
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 25)) {
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 30)) {
             return __('Absen Gagal: Terlalu banyak permintaan perbaruan lokasi. Harap tunggu sebentar.');
         }
         \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
@@ -76,13 +99,6 @@ class ScanComponent extends Component
             return __('Absen Gagal: Waktu lokasi GPS tidak sesuai atau kadaluarsa.');
         }
 
-        $expectedStr = sprintf("%.6f|%.6f|%d|%d|%s", $lat, $lng, round($accuracy), $timestamp, $this->getGeoNonce());
-        $expectedToken = hash('sha256', $expectedStr);
-
-        if (!hash_equals($expectedToken, $token)) {
-            return __('Absen Gagal: Token verifikasi lokasi GPS tidak valid atau telah dimanipulasi.');
-        }
-
         if ($gpsError = $this->validateGpsHardening($lat, $lng)) {
             return $gpsError;
         }
@@ -93,7 +109,7 @@ class ScanComponent extends Component
         $this->geoSignature = hash_hmac(
             'sha256',
             sprintf("%.6f|%.6f|%d|%s|%s", $lat, $lng, $timestamp, Auth::id(), session()->getId()),
-            config('app.key', 'AbsensiCiptaSecretKey')
+            $this->getAppSecretKey()
         );
 
         return null;
@@ -120,7 +136,7 @@ class ScanComponent extends Component
         $expectedSignature = hash_hmac(
             'sha256',
             sprintf("%.6f|%.6f|%d|%s|%s", doubleval($this->currentLiveCoords[0]), doubleval($this->currentLiveCoords[1]), $this->geoTimestamp, Auth::id(), session()->getId()),
-            config('app.key', 'AbsensiCiptaSecretKey')
+            $this->getAppSecretKey()
         );
 
         if (!hash_equals($expectedSignature, $this->geoSignature)) {
@@ -131,6 +147,22 @@ class ScanComponent extends Component
     }
 
     public function scan(string $barcode)
+    {
+        $lockKey = 'scan_lock_' . Auth::id() . '_' . date('Y-m-d');
+        $lock = \Illuminate\Support\Facades\Cache::lock($lockKey, 5);
+
+        if (!$lock->get()) {
+            return __('Absen Gagal: Proses presensi sedang berjalan. Harap tunggu sebentar.');
+        }
+
+        try {
+            return $this->executeScan($barcode);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    protected function executeScan(string $barcode)
     {
         if ($this->isAbsence || ($this->attendance && in_array(strtolower(trim((string)$this->attendance->status)), self::$lockedStatuses))) {
             return __('Absen Gagal: Presensi terkunci karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.');
@@ -206,10 +238,14 @@ class ScanComponent extends Component
             }
 
             $feedback = \App\Models\ScanFeedback::getRandomFeedback($category, $userName);
-            $this->motivationType = $feedback['type'];
-            $this->motivationTitle = $feedback['title'];
-            $this->motivationMessage = $feedback['message'];
-            $this->showMotivationModal = true;
+            $this->dispatch('alert-modal', [
+                'type' => $feedback['type'],
+                'title' => $feedback['title'],
+                'message' => $feedback['message'],
+                'icon' => $feedback['icon'] ?? null,
+                'badge_color' => $feedback['badge_color'] ?? null,
+                'buttonText' => 'Siap, Lanjutkan!'
+            ]);
         } else {
             $attendance = $existingAttendance;
             $attendance->update([
@@ -221,10 +257,14 @@ class ScanComponent extends Component
 
             $userName = explode(' ', trim(Auth::user()->name ?? 'Karyawan'))[0];
             $feedback = \App\Models\ScanFeedback::getRandomFeedback('out', $userName);
-            $this->motivationType = $feedback['type'];
-            $this->motivationTitle = $feedback['title'];
-            $this->motivationMessage = $feedback['message'];
-            $this->showMotivationModal = true;
+            $this->dispatch('alert-modal', [
+                'type' => $feedback['type'],
+                'title' => $feedback['title'],
+                'message' => $feedback['message'],
+                'icon' => $feedback['icon'] ?? null,
+                'badge_color' => $feedback['badge_color'] ?? null,
+                'buttonText' => 'Siap, Lanjutkan!'
+            ]);
         }
 
         if ($attendance) {
@@ -279,143 +319,238 @@ class ScanComponent extends Component
 
     public function manualCheckIn()
     {
-        if ($this->isAbsence) {
-            $this->dangerBanner(__('Absen Masuk gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
+        $lockKey = 'scan_lock_' . Auth::id() . '_' . date('Y-m-d');
+        $lock = \Illuminate\Support\Facades\Cache::lock($lockKey, 5);
+        if (!$lock->get()) {
+            $this->dangerBanner(__('Absen Masuk gagal: Presensi sedang diproses. Harap tunggu sebentar.'));
             return;
         }
 
-        if ($integrityError = $this->verifyLocationIntegrity()) {
-            $this->dangerBanner($integrityError);
-            return;
-        }
-
-        $userLat = doubleval($this->currentLiveCoords[0]);
-        $userLng = doubleval($this->currentLiveCoords[1]);
-
-        if ($gpsError = $this->validateGpsHardening($userLat, $userLng)) {
-            $this->dangerBanner($gpsError);
-            return;
-        }
-
-        if (is_null($this->shift_id)) {
-            $this->dangerBanner(__('Pilih shift terlebih dahulu sebelum melakukan absen.'));
-            return;
-        }
-
-        $userLocation = new LatLong($userLat, $userLng);
-        $barcodes = Barcode::all();
-
-        if ($barcodes->isEmpty()) {
-            $this->dangerBanner(__('Data barcode lokasi kantor belum terdaftar di sistem.'));
-            return;
-        }
-
-        $matchedBarcode = null;
-        $matchedMinDistance = null;
-        $closestBarcode = null;
-        $minDistance = null;
-
-        foreach ($barcodes as $barcode) {
-            $bCoords = $barcode->latLng;
-            if (!$bCoords || !isset($bCoords['lat']) || !isset($bCoords['lng'])) continue;
-
-            $barcodeLocation = new LatLong($bCoords['lat'], $bCoords['lng']);
-            $distance = $this->calculateDistance($userLocation, $barcodeLocation);
-
-            if (is_null($minDistance) || $distance < $minDistance) {
-                $minDistance = $distance;
-                $closestBarcode = $barcode;
+        try {
+            if ($this->isAbsence) {
+                $this->dangerBanner(__('Absen Masuk gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
+                return;
             }
 
-            if ($distance <= $barcode->radius) {
-                if (is_null($matchedMinDistance) || $distance < $matchedMinDistance) {
-                    $matchedMinDistance = $distance;
-                    $matchedBarcode = $barcode;
+            if ($integrityError = $this->verifyLocationIntegrity()) {
+                $this->dangerBanner($integrityError);
+                return;
+            }
+
+            $userLat = doubleval($this->currentLiveCoords[0]);
+            $userLng = doubleval($this->currentLiveCoords[1]);
+
+            if ($gpsError = $this->validateGpsHardening($userLat, $userLng)) {
+                $this->dangerBanner($gpsError);
+                return;
+            }
+
+            if (is_null($this->shift_id)) {
+                $this->dangerBanner(__('Pilih shift terlebih dahulu sebelum melakukan absen.'));
+                return;
+            }
+
+            $userLocation = new LatLong($userLat, $userLng);
+            $barcodes = Barcode::all();
+
+            if ($barcodes->isEmpty()) {
+                $this->dangerBanner(__('Data barcode lokasi kantor belum terdaftar di sistem.'));
+                return;
+            }
+
+            $matchedBarcode = null;
+            $matchedMinDistance = null;
+            $closestBarcode = null;
+            $minDistance = null;
+
+            foreach ($barcodes as $barcode) {
+                $bCoords = $barcode->latLng;
+                if (!$bCoords || !isset($bCoords['lat']) || !isset($bCoords['lng'])) continue;
+
+                $barcodeLocation = new LatLong($bCoords['lat'], $bCoords['lng']);
+                $distance = $this->calculateDistance($userLocation, $barcodeLocation);
+
+                if (is_null($minDistance) || $distance < $minDistance) {
+                    $minDistance = $distance;
+                    $closestBarcode = $barcode;
+                }
+
+                if ($distance <= $barcode->radius) {
+                    if (is_null($matchedMinDistance) || $distance < $matchedMinDistance) {
+                        $matchedMinDistance = $distance;
+                        $matchedBarcode = $barcode;
+                    }
                 }
             }
+
+            if (!$matchedBarcode) {
+                $maxRadius = $closestBarcode ? $closestBarcode->radius : 50;
+                $distFormatted = number_format($minDistance, 0, ',', '.');
+                $this->dangerBanner("Absen Masuk gagal: Anda berada di luar radius area kantor/barcode. Jarak Anda saat ini: {$distFormatted} meter (Batas radius: {$maxRadius} meter).");
+                return;
+            }
+
+            $result = $this->executeScan($matchedBarcode->value);
+            if ($result !== true && is_string($result)) {
+                $this->dangerBanner($result);
+            }
+        } finally {
+            $lock->release();
+        }
+    }
+
+    #[\Livewire\Attributes\Computed]
+    public function checkOutWindowInfo(): array
+    {
+        $shiftId = $this->shift_id ?? $this->attendance?->shift_id;
+        $shift = $shiftId ? Shift::find($shiftId) : null;
+
+        if (!$shift) {
+            return [
+                'hasShift' => false,
+                'isOpen' => false,
+                'unlockTime' => '-',
+                'shiftEndTime' => '-',
+            ];
         }
 
-        if (!$matchedBarcode) {
-            $maxRadius = $closestBarcode ? $closestBarcode->radius : 50;
-            $distFormatted = number_format($minDistance, 0, ',', '.');
-            $this->dangerBanner("Absen Masuk gagal: Anda berada di luar radius area kantor/barcode. Jarak Anda saat ini: {$distFormatted} meter (Batas radius: {$maxRadius} meter).");
-            return;
+        $shiftEndTimeStr = $shift->end_time ?? '17:00:00';
+        $shiftStartTimeStr = $shift->start_time ?? '08:00:00';
+
+        $endTime = Carbon::today()->setTimeFromTimeString($shiftEndTimeStr);
+        if (Carbon::parse($shiftEndTimeStr)->lt(Carbon::parse($shiftStartTimeStr))) {
+            if (Carbon::now()->lt(Carbon::today()->setTimeFromTimeString($shiftStartTimeStr))) {
+                $endTime = Carbon::today()->setTimeFromTimeString($shiftEndTimeStr);
+            } else {
+                $endTime = Carbon::tomorrow()->setTimeFromTimeString($shiftEndTimeStr);
+            }
         }
 
-        $result = $this->scan($matchedBarcode->value);
-        if ($result !== true && is_string($result)) {
-            $this->dangerBanner($result);
-        }
+        $allowCheckOutFrom = $endTime->copy()->subHour();
+        $isOpen = Carbon::now()->gte($allowCheckOutFrom);
+
+        return [
+            'hasShift' => true,
+            'isOpen' => $isOpen,
+            'unlockTime' => $allowCheckOutFrom->format('H:i'),
+            'shiftEndTime' => $endTime->format('H:i'),
+        ];
     }
 
     public function manualCheckOut()
     {
-        if ($this->isAbsence) {
-            $this->dangerBanner(__('Absen Keluar gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
+        $lockKey = 'scan_lock_' . Auth::id() . '_' . date('Y-m-d');
+        $lock = \Illuminate\Support\Facades\Cache::lock($lockKey, 5);
+        if (!$lock->get()) {
+            $this->dangerBanner(__('Absen Keluar gagal: Presensi sedang diproses. Harap tunggu sebentar.'));
             return;
         }
 
-        if ($integrityError = $this->verifyLocationIntegrity()) {
-            $this->dangerBanner($integrityError);
-            return;
-        }
-
-        $userLat = doubleval($this->currentLiveCoords[0]);
-        $userLng = doubleval($this->currentLiveCoords[1]);
-
-        if ($gpsError = $this->validateGpsHardening($userLat, $userLng)) {
-            $this->dangerBanner($gpsError);
-            return;
-        }
-
-        if (is_null($this->shift_id)) {
-            $this->dangerBanner(__('Pilih shift terlebih dahulu sebelum melakukan absen.'));
-            return;
-        }
-
-        $userLocation = new LatLong($userLat, $userLng);
-        $barcodes = Barcode::all();
-
-        if ($barcodes->isEmpty()) {
-            $this->dangerBanner(__('Data barcode lokasi kantor belum terdaftar di sistem.'));
-            return;
-        }
-
-        $matchedBarcode = null;
-        $matchedMinDistance = null;
-        $closestBarcode = null;
-        $minDistance = null;
-
-        foreach ($barcodes as $barcode) {
-            $bCoords = $barcode->latLng;
-            if (!$bCoords || !isset($bCoords['lat']) || !isset($bCoords['lng'])) continue;
-
-            $barcodeLocation = new LatLong($bCoords['lat'], $bCoords['lng']);
-            $distance = $this->calculateDistance($userLocation, $barcodeLocation);
-
-            if (is_null($minDistance) || $distance < $minDistance) {
-                $minDistance = $distance;
-                $closestBarcode = $barcode;
+        try {
+            if ($this->isAbsence) {
+                $this->dangerBanner(__('Absen Keluar gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
+                return;
             }
 
-            if ($distance <= $barcode->radius) {
-                if (is_null($matchedMinDistance) || $distance < $matchedMinDistance) {
-                    $matchedMinDistance = $distance;
-                    $matchedBarcode = $barcode;
+            if (is_null($this->shift_id)) {
+                $this->shift_id = $this->attendance?->shift_id;
+            }
+
+            if (is_null($this->shift_id)) {
+                $this->dangerBanner(__('Pilih shift terlebih dahulu sebelum melakukan absen.'));
+                return;
+            }
+
+            $windowInfo = $this->checkOutWindowInfo;
+            if (!$windowInfo['hasShift']) {
+                $this->dangerBanner(__('Absen Keluar gagal: Pilih shift terlebih dahulu sebelum melakukan absen.'));
+                return;
+            }
+
+            if (!$windowInfo['isOpen']) {
+                $this->dangerBanner("Absen Keluar gagal: Absen Keluar belum dibuka. Anda baru dapat melakukan Absen Keluar mulai pukul {$windowInfo['unlockTime']} (1 jam sebelum shift berakhir).");
+                return;
+            }
+
+            if ($integrityError = $this->verifyLocationIntegrity()) {
+                $this->dangerBanner($integrityError);
+                return;
+            }
+
+            $userLat = doubleval($this->currentLiveCoords[0]);
+            $userLng = doubleval($this->currentLiveCoords[1]);
+
+            if ($gpsError = $this->validateGpsHardening($userLat, $userLng)) {
+                $this->dangerBanner($gpsError);
+                return;
+            }
+
+            $userLocation = new LatLong($userLat, $userLng);
+
+            // Strict Check-In Barcode Lock Enforcement:
+            // If user already checked in at a specific barcode, verify radius strictly against THAT barcode!
+            $checkInBarcode = null;
+            if ($this->attendance?->barcode_id) {
+                $checkInBarcode = Barcode::find($this->attendance->barcode_id);
+            }
+
+            if ($checkInBarcode && isset($checkInBarcode->latLng['lat'], $checkInBarcode->latLng['lng'])) {
+                $barcodeLocation = new LatLong($checkInBarcode->latLng['lat'], $checkInBarcode->latLng['lng']);
+                $distance = $this->calculateDistance($userLocation, $barcodeLocation);
+
+                if ($distance > $checkInBarcode->radius) {
+                    $distFormatted = number_format($distance, 0, ',', '.');
+                    $this->dangerBanner("Absen Keluar gagal: Anda berada di luar radius lokasi kantor tempat Absen Masuk ({$checkInBarcode->name}). Jarak Anda saat ini: {$distFormatted} meter (Batas radius: {$checkInBarcode->radius} meter).");
+                    return;
+                }
+
+                $matchedBarcode = $checkInBarcode;
+            } else {
+                $barcodes = Barcode::all();
+                if ($barcodes->isEmpty()) {
+                    $this->dangerBanner(__('Data barcode lokasi kantor belum terdaftar di sistem.'));
+                    return;
+                }
+
+                $matchedBarcode = null;
+                $matchedMinDistance = null;
+                $closestBarcode = null;
+                $minDistance = null;
+
+                foreach ($barcodes as $barcode) {
+                    $bCoords = $barcode->latLng;
+                    if (!$bCoords || !isset($bCoords['lat']) || !isset($bCoords['lng'])) continue;
+
+                    $barcodeLocation = new LatLong($bCoords['lat'], $bCoords['lng']);
+                    $distance = $this->calculateDistance($userLocation, $barcodeLocation);
+
+                    if (is_null($minDistance) || $distance < $minDistance) {
+                        $minDistance = $distance;
+                        $closestBarcode = $barcode;
+                    }
+
+                    if ($distance <= $barcode->radius) {
+                        if (is_null($matchedMinDistance) || $distance < $matchedMinDistance) {
+                            $matchedMinDistance = $distance;
+                            $matchedBarcode = $barcode;
+                        }
+                    }
+                }
+
+                if (!$matchedBarcode) {
+                    $maxRadius = $closestBarcode ? $closestBarcode->radius : 50;
+                    $distFormatted = number_format($minDistance, 0, ',', '.');
+                    $this->dangerBanner("Absen Keluar gagal: Anda berada di luar radius area kantor/barcode. Jarak Anda saat ini: {$distFormatted} meter (Batas radius: {$maxRadius} meter).");
+                    return;
                 }
             }
-        }
 
-        if (!$matchedBarcode) {
-            $maxRadius = $closestBarcode ? $closestBarcode->radius : 50;
-            $distFormatted = number_format($minDistance, 0, ',', '.');
-            $this->dangerBanner("Absen Keluar gagal: Anda berada di luar radius area kantor/barcode. Jarak Anda saat ini: {$distFormatted} meter (Batas radius: {$maxRadius} meter).");
-            return;
-        }
-
-        $result = $this->scan($matchedBarcode->value);
-        if ($result !== true && is_string($result)) {
-            $this->dangerBanner($result);
+            $result = $this->executeScan($matchedBarcode->value);
+            if ($result !== true && is_string($result)) {
+                $this->dangerBanner($result);
+            }
+        } finally {
+            $lock->release();
         }
     }
 

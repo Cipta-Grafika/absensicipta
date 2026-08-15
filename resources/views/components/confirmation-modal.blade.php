@@ -1,27 +1,39 @@
-@props(['id' => null, 'maxWidth' => 'md', 'zIndex' => '300'])
+@props(['id' => null, 'maxWidth' => 'md', 'zIndex' => '999999'])
 
 <x-modal :id="$id" :maxWidth="$maxWidth" :zIndex="$zIndex" {{ $attributes }}>
-    <div class="bg-white/95 dark:bg-gray-900/95 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-        <div class="sm:flex sm:items-start">
-            <div class="mx-auto shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50 sm:mx-0 sm:h-10 sm:w-10">
-                <svg class="h-6 w-6 text-red-600 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-            </div>
+    <div class="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-md p-6 text-center select-none overflow-hidden rounded-2xl">
+        <!-- TOP COLORED ACCENT BAR -->
+        <div class="absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl z-10 bg-rose-500 dark:bg-rose-600"></div>
 
-            <div class="mt-3 text-center sm:mt-0 sm:ms-4 sm:text-start">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">
-                    {{ $title }}
-                </h3>
+        <!-- TOP-RIGHT CLOSE BUTTON (X) -->
+        <button type="button" x-on:click="show = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 z-20">
+            <x-heroicon-o-x-mark class="h-5 w-5" />
+        </button>
 
-                <div class="mt-4 text-sm text-gray-600 dark:text-gray-300">
-                    {{ $content }}
-                </div>
-            </div>
+        <!-- CENTERED COLORED ICON BADGE (RED / ROSE WARNING TRIANGLE) -->
+        <div class="mx-auto mt-2 mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/70 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 shadow-xs shrink-0 relative z-10">
+            <x-heroicon-s-exclamation-triangle class="h-10 w-10 animate-bounce" />
         </div>
-    </div>
 
-    <div class="flex flex-row justify-end px-6 py-4 bg-gray-50/90 dark:bg-gray-800/90 text-end gap-2 border-t border-gray-100 dark:border-gray-800">
-        {{ $footer }}
+        <!-- TITLE -->
+        @if (isset($title))
+            <h3 class="text-xl font-extrabold text-gray-900 dark:text-white mb-2 leading-tight tracking-tight relative z-10">
+                {{ $title }}
+            </h3>
+        @endif
+
+        <!-- CONTENT / MESSAGE -->
+        @if (isset($content))
+            <div class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-6 font-medium px-1 sm:px-3 relative z-10">
+                {{ $content }}
+            </div>
+        @endif
+
+        <!-- FOOTER BUTTONS -->
+        @if (isset($footer))
+            <div class="flex items-center justify-center gap-3 pt-1 relative z-10">
+                {{ $footer }}
+            </div>
+        @endif
     </div>
 </x-modal>

@@ -24,6 +24,9 @@ class PayrollHistoryComponent extends Component
     public $selectedPayrollEmployeeName = '';
     public $isGenerating = false;
 
+    public $selectedDeductions = [];
+    public $selectedIncomes = [];
+
     #[\Livewire\Attributes\Computed]
     public function selectedDeductions()
     {
