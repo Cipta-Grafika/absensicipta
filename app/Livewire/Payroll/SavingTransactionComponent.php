@@ -27,6 +27,70 @@ class SavingTransactionComponent extends Component
     public $withdrawal_type = 'secondary'; // mandatory or secondary
     public $withdrawal_description = '';
 
+    // Modal Edit Nominal (Khusus Syirkah Group)
+    public $editNominalModalOpen = false;
+    public $editingTransactionId = null;
+    public $edit_mandatory_amount = 0;
+    public $edit_secondary_amount = 0;
+    public $editingTransaction = null;
+
+    public function openEditNominalModal($transactionId)
+    {
+        if (!auth()->user()?->isSyirkah) {
+            abort(403, 'Akses Ditolak: Hanya group syirkah yang berhak mengedit nominal mutasi.');
+        }
+
+        $tx = SavingTransaction::with(['user', 'masterSaving'])->findOrFail($transactionId);
+        $this->editingTransactionId = $tx->id;
+        $this->editingTransaction = $tx;
+        $this->edit_mandatory_amount = (float) $tx->mandatory_amount;
+        $this->edit_secondary_amount = (float) $tx->secondary_amount;
+        $this->editNominalModalOpen = true;
+    }
+
+    public function closeEditNominalModal()
+    {
+        $this->editNominalModalOpen = false;
+        $this->editingTransactionId = null;
+        $this->editingTransaction = null;
+        $this->reset(['edit_mandatory_amount', 'edit_secondary_amount']);
+    }
+
+    public function updateNominal()
+    {
+        if (!auth()->user()?->isSyirkah) {
+            abort(403, 'Akses Ditolak: Hanya group syirkah yang berhak mengedit nominal mutasi.');
+        }
+
+        $this->validate([
+            'edit_mandatory_amount' => 'required|numeric|min:0',
+            'edit_secondary_amount' => 'required|numeric|min:0',
+        ], [
+            'edit_mandatory_amount.required' => 'Nominal Mutasi Wajib wajib diisi.',
+            'edit_mandatory_amount.numeric' => 'Nominal Mutasi Wajib harus berupa angka.',
+            'edit_mandatory_amount.min' => 'Nominal Mutasi Wajib tidak boleh negatif.',
+            'edit_secondary_amount.required' => 'Nominal Mutasi Sukarela wajib diisi.',
+            'edit_secondary_amount.numeric' => 'Nominal Mutasi Sukarela harus berupa angka.',
+            'edit_secondary_amount.min' => 'Nominal Mutasi Sukarela tidak boleh negatif.',
+        ]);
+
+        $tx = SavingTransaction::findOrFail($this->editingTransactionId);
+
+        DB::transaction(function () use ($tx) {
+            $tx->update([
+                'mandatory_amount' => $this->edit_mandatory_amount,
+                'secondary_amount' => $this->edit_secondary_amount,
+                'updated_at' => now(),
+            ]);
+
+            // Recalculate running balance and summaries
+            \App\Services\SavingTransactionService::recalculateUserTransactions($tx->user_id);
+        });
+
+        $this->closeEditNominalModal();
+        $this->dispatch('notify', 'Nominal mutasi syirkah berhasil diperbarui.');
+    }
+
     public function updatingSearch()
     {
         $this->resetPage();

@@ -116,7 +116,7 @@ class SavingTransactionService
             $runningSecondary = max(0.0, $runningSecondary);
 
             // Only issue SQL update if balances actually changed
-            if ((float) $tx->balance_mandatory !== $runningMandatory || (float) $tx->balance_secondary !== $runningSecondary) {
+            if (abs((float) $tx->balance_mandatory - $runningMandatory) > 0.001 || abs((float) $tx->balance_secondary - $runningSecondary) > 0.001) {
                 DB::table('saving_transactions')
                     ->where('id', $tx->id)
                     ->update([

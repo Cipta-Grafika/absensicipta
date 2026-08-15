@@ -134,10 +134,48 @@
                   @endif
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-right text-sm {{ $trx->transaction_type == 'deposit' ? 'text-green-600' : 'text-red-600' }}">
-                  {{ $trx->transaction_type == 'deposit' ? '+' : '-' }} Rp {{ number_format($trx->mandatory_amount, 0, ',', '.') }}
+                  <div class="inline-flex items-center justify-end gap-1.5">
+                    <div class="flex flex-col items-end leading-tight">
+                      <span>{{ $trx->transaction_type == 'deposit' ? '+' : '-' }} Rp {{ number_format($trx->mandatory_amount, 0, ',', '.') }}</span>
+                      @if($trx->updated_at && $trx->updated_at->gt($trx->created_at))
+                        <span class="text-[10px] text-gray-400 dark:text-gray-500 italic font-normal tracking-tight leading-none mt-0.5 select-none">
+                          Edited
+                        </span>
+                      @endif
+                    </div>
+                    @if(Auth::user()?->isSyirkah)
+                      <button type="button" 
+                              wire:click="openEditNominalModal('{{ $trx->id }}')" 
+                              title="Edit Nominal Mutasi Wajib"
+                              class="inline-flex items-center justify-center p-1 rounded-md text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/60 transition-colors cursor-pointer">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    @endif
+                  </div>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-right text-sm {{ $trx->transaction_type == 'deposit' ? 'text-green-600' : 'text-red-600' }}">
-                  {{ $trx->transaction_type == 'deposit' ? '+' : '-' }} Rp {{ number_format($trx->secondary_amount, 0, ',', '.') }}
+                  <div class="inline-flex items-center justify-end gap-1.5">
+                    <div class="flex flex-col items-end leading-tight">
+                      <span>{{ $trx->transaction_type == 'deposit' ? '+' : '-' }} Rp {{ number_format($trx->secondary_amount, 0, ',', '.') }}</span>
+                      @if($trx->updated_at && $trx->updated_at->gt($trx->created_at))
+                        <span class="text-[10px] text-gray-400 dark:text-gray-500 italic font-normal tracking-tight leading-none mt-0.5 select-none">
+                          Edited
+                        </span>
+                      @endif
+                    </div>
+                    @if(Auth::user()?->isSyirkah)
+                      <button type="button" 
+                              wire:click="openEditNominalModal('{{ $trx->id }}')" 
+                              title="Edit Nominal Mutasi Sukarela"
+                              class="inline-flex items-center justify-center p-1 rounded-md text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/60 transition-colors cursor-pointer">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    @endif
+                  </div>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 dark:text-gray-200">
                   Rp {{ number_format($trx->balance_mandatory, 0, ',', '.') }}
@@ -232,6 +270,52 @@
       </x-button>
     </x-slot>
   </x-dialog-modal>
+
+  <!-- Modal Edit Nominal Mutasi (Khusus Syirkah Group) -->
+  @if(Auth::user()?->isSyirkah)
+    <x-dialog-modal wire:model.live="editNominalModalOpen" maxWidth="lg">
+      <x-slot name="title">
+        Edit Nominal Mutasi Syirkah
+      </x-slot>
+
+      <x-slot name="content">
+        @if($editingTransaction)
+          <div class="mb-4 p-3 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 text-xs text-sky-800 dark:text-sky-300">
+            <div class="font-semibold text-sm">{{ $editingTransaction->user->name ?? '-' }} ({{ $editingTransaction->user->nip ?? '-' }})</div>
+            <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sky-600 dark:text-sky-400">
+              <span>Jenis: <strong class="text-sky-900 dark:text-sky-200">{{ $editingTransaction->masterSaving->savings_name ?? '-' }}</strong></span>
+              <span>Tipe: <strong class="uppercase text-sky-900 dark:text-sky-200">{{ $editingTransaction->transaction_type }}</strong></span>
+              <span>Tanggal: <strong class="text-sky-900 dark:text-sky-200">{{ $editingTransaction->created_at->format('d M Y H:i') }}</strong></span>
+            </div>
+          </div>
+        @endif
+
+        <div class="grid grid-cols-1 gap-5">
+          <div>
+            <x-label for="edit_mandatory_amount" value="Nominal Mutasi Wajib (Rp)" />
+            <x-input id="edit_mandatory_amount" type="number" step="0.01" class="mt-1 block w-full" wire:model="edit_mandatory_amount" placeholder="0" />
+            <x-input-error for="edit_mandatory_amount" class="mt-2" />
+          </div>
+
+          <div>
+            <x-label for="edit_secondary_amount" value="Nominal Mutasi Sukarela (Rp)" />
+            <x-input id="edit_secondary_amount" type="number" step="0.01" class="mt-1 block w-full" wire:model="edit_secondary_amount" placeholder="0" />
+            <x-input-error for="edit_secondary_amount" class="mt-2" />
+          </div>
+        </div>
+      </x-slot>
+
+      <x-slot name="footer">
+        <x-secondary-button wire:click="closeEditNominalModal" wire:loading.attr="disabled">
+          Batal
+        </x-secondary-button>
+
+        <x-button class="ms-3 bg-sky-600 hover:bg-sky-700 text-white" wire:click="updateNominal" wire:loading.attr="disabled">
+          Simpan Perubahan
+        </x-button>
+      </x-slot>
+    </x-dialog-modal>
+  @endif
 </div>
 
 <script>
