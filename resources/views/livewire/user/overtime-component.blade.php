@@ -214,6 +214,11 @@
                                             <span class="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold leading-tight text-blue-700 dark:bg-blue-900/60 dark:text-blue-200">
                                                 Paid (Dibayar)
                                             </span>
+                                            @if($overtime->paid_at)
+                                                <div class="mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                                                    {{ \Carbon\Carbon::parse($overtime->paid_at)->format('d M Y H:i') }}
+                                                </div>
+                                            @endif
                                         @else
                                             <span class="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold leading-tight text-red-700 dark:bg-red-700 dark:text-red-100">
                                                 Rejected
