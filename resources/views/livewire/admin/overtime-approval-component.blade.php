@@ -419,7 +419,7 @@
         </div>
 
         <!-- Search & Quick Action Buttons -->
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div class="relative flex-1">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -429,27 +429,31 @@
             <x-input type="text" wire:model.live.debounce.150ms="bulk_search" class="w-full pl-9 pr-4 text-xs" placeholder="Cari nama karyawan atau NIP..." />
           </div>
 
-          <div class="flex items-center gap-2">
-            <button type="button" wire:click="bulkSetAllStatus('approved')" class="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 focus:outline-none transition">
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          <!-- 2x2 Grid on Mobile, Flex on Tablet/Desktop -->
+          <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
+            <button type="button" wire:click="bulkSetAllStatus('approved')" class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 sm:py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 focus:outline-none transition">
+              <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
               </svg>
-              Approve All
+              <span>Approve All</span>
             </button>
-            <button type="button" wire:click="bulkSetAllStatus('paid')" class="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 focus:outline-none transition">
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <button type="button" wire:click="bulkSetAllStatus('paid')" class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 sm:py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 focus:outline-none transition">
+              <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Paid All
+              <span>Paid All</span>
             </button>
-            <button type="button" wire:click="bulkSetAllStatus('rejected')" class="inline-flex items-center gap-1 rounded-md bg-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-rose-700 focus:outline-none transition">
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <button type="button" wire:click="bulkSetAllStatus('rejected')" class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 sm:py-1.5 text-xs font-bold text-white shadow-xs hover:bg-rose-700 active:scale-95 focus:outline-none transition">
+              <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Reject All
+              <span>Reject All</span>
             </button>
-            <button type="button" wire:click="bulkSetAllStatus('pending')" class="inline-flex items-center gap-1 rounded-md bg-amber-500 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-amber-600 focus:outline-none transition" title="Reset ke Pending">
-              Reset Pending
+            <button type="button" wire:click="bulkSetAllStatus('pending')" class="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 sm:py-1.5 text-xs font-bold text-white shadow-xs hover:bg-amber-600 active:scale-95 focus:outline-none transition" title="Reset ke Pending">
+              <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Reset Pending</span>
             </button>
           </div>
         </div>
