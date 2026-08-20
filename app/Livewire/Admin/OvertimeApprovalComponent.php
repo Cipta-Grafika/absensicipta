@@ -103,7 +103,7 @@ class OvertimeApprovalComponent extends Component
 
     public function bulkSetAllStatus(string $targetStatus): void
     {
-        if (!in_array($targetStatus, ['approved', 'rejected', 'pending'], true)) {
+        if (!in_array($targetStatus, ['approved', 'paid', 'rejected', 'pending'], true)) {
             return;
         }
 
@@ -158,14 +158,25 @@ class OvertimeApprovalComponent extends Component
                     continue;
                 }
 
-                if ($newStatus === 'approved') {
+                if ($newStatus === 'paid') {
+                    $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee);
+                    $overtime->update([
+                        'status' => 'paid',
+                        'approved_by' => $overtime->approved_by ?? Auth::id(),
+                        'approval_date' => $overtime->approval_date ?? now(),
+                        'paid_at' => $overtime->paid_at ?? now(),
+                        'applied_rate_amount' => $payData['applied_rate_amount'],
+                        'total_pay' => $payData['total_pay'],
+                    ]);
+                } elseif ($newStatus === 'approved') {
                     $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee);
                     $overtime->update([
                         'status' => 'approved',
                         'approved_by' => Auth::id(),
-                        'approval_date' => now(),
+                        'approval_date' => $overtime->approval_date ?? now(),
                         'applied_rate_amount' => $payData['applied_rate_amount'],
                         'total_pay' => $payData['total_pay'],
+                        'paid_at' => null,
                     ]);
                 } elseif ($newStatus === 'rejected') {
                     $overtime->update([

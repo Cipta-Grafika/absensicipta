@@ -436,6 +436,12 @@
               </svg>
               Approve All
             </button>
+            <button type="button" wire:click="bulkSetAllStatus('paid')" class="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 focus:outline-none transition">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Paid All
+            </button>
             <button type="button" wire:click="bulkSetAllStatus('rejected')" class="inline-flex items-center gap-1 rounded-md bg-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-rose-700 focus:outline-none transition">
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -455,7 +461,7 @@
               <tr>
                 <th scope="col" class="px-4 py-3 min-w-[200px]">Karyawan</th>
                 <th scope="col" class="px-4 py-3 min-w-[220px]">Detail Lembur</th>
-                <th scope="col" class="px-4 py-3 text-center min-w-[220px]">Aksi Status</th>
+                <th scope="col" class="px-4 py-3 text-center min-w-[260px]">Aksi Status</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -490,22 +496,27 @@
                     @endif
                     <div class="mt-1 text-[11px] text-gray-600 dark:text-gray-300 italic">"{{ Str::limit($item->reason, 80) }}"</div>
                   </td>
-                  <td class="px-4 py-3 text-center min-w-[220px]">
+                  <td class="px-4 py-3 text-center min-w-[260px]">
                     <div class="inline-flex rounded-md shadow-sm whitespace-nowrap" role="group">
                       <button type="button" 
                         wire:click="$set('bulk_overtime_data.{{ $item->id }}', 'approved')"
-                        class="px-3 py-1.5 text-xs font-bold rounded-l-lg border transition {{ ($bulk_overtime_data[$item->id] ?? 'pending') === 'approved' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-gray-300 hover:bg-emerald-50 dark:bg-gray-800 dark:text-emerald-400 dark:border-gray-600 dark:hover:bg-gray-700' }}">
-                        Setujui
+                        class="px-2.5 py-1.5 text-xs font-bold rounded-l-lg border transition {{ ($bulk_overtime_data[$item->id] ?? 'pending') === 'approved' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-gray-300 hover:bg-emerald-50 dark:bg-gray-800 dark:text-emerald-400 dark:border-gray-600 dark:hover:bg-gray-700' }}">
+                        Approve
+                      </button>
+                      <button type="button" 
+                        wire:click="$set('bulk_overtime_data.{{ $item->id }}', 'paid')"
+                        class="px-2.5 py-1.5 text-xs font-bold border-t border-b border-r transition {{ ($bulk_overtime_data[$item->id] ?? 'pending') === 'paid' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-700 border-gray-300 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-700' }}">
+                        Paid
                       </button>
                       <button type="button" 
                         wire:click="$set('bulk_overtime_data.{{ $item->id }}', 'pending')"
-                        class="px-3 py-1.5 text-xs font-bold border-t border-b transition {{ ($bulk_overtime_data[$item->id] ?? 'pending') === 'pending' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-amber-700 border-gray-300 hover:bg-amber-50 dark:bg-gray-800 dark:text-amber-400 dark:border-gray-600 dark:hover:bg-gray-700' }}">
+                        class="px-2.5 py-1.5 text-xs font-bold border-t border-b transition {{ ($bulk_overtime_data[$item->id] ?? 'pending') === 'pending' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-amber-700 border-gray-300 hover:bg-amber-50 dark:bg-gray-800 dark:text-amber-400 dark:border-gray-600 dark:hover:bg-gray-700' }}">
                         Pending
                       </button>
                       <button type="button" 
                         wire:click="$set('bulk_overtime_data.{{ $item->id }}', 'rejected')"
-                        class="px-3 py-1.5 text-xs font-bold rounded-r-lg border transition {{ ($bulk_overtime_data[$item->id] ?? 'pending') === 'rejected' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-gray-300 hover:bg-rose-50 dark:bg-gray-800 dark:text-rose-400 dark:border-gray-600 dark:hover:bg-gray-700' }}">
-                        Tolak
+                        class="px-2.5 py-1.5 text-xs font-bold rounded-r-lg border transition {{ ($bulk_overtime_data[$item->id] ?? 'pending') === 'rejected' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-gray-300 hover:bg-rose-50 dark:bg-gray-800 dark:text-rose-400 dark:border-gray-600 dark:hover:bg-gray-700' }}">
+                        Reject
                       </button>
                     </div>
                   </td>
