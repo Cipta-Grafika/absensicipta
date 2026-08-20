@@ -77,6 +77,10 @@
                                     $dateNumClass = 'text-white font-bold';
                                 } elseif ($existingOvertime) {
                                     switch ($existingOvertime->status) {
+                                        case 'paid':
+                                            $bgColor = 'bg-blue-50 dark:bg-blue-950/70 border-2 border-blue-400 dark:border-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/80 shadow-xs';
+                                            $dateNumClass = 'font-bold text-blue-950 dark:text-blue-100';
+                                            break;
                                         case 'approved':
                                             $bgColor = 'bg-emerald-50 dark:bg-emerald-950/70 border-2 border-emerald-400 dark:border-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 shadow-xs';
                                             $dateNumClass = 'font-bold text-emerald-950 dark:text-emerald-100';
@@ -109,7 +113,12 @@
                                 </span>
 
                                 @if ($existingOvertime)
-                                    @if ($existingOvertime->status === 'approved')
+                                    @if ($existingOvertime->status === 'paid')
+                                        <div class="bg-blue-600 text-white font-bold text-[10px] p-1 sm:px-2.5 sm:py-0.5 rounded-full shadow-xs flex items-center justify-center gap-1.5">
+                                            <span class="h-2 w-2 rounded-full bg-white shrink-0"></span>
+                                            <span class="hidden sm:inline leading-none">Paid</span>
+                                        </div>
+                                    @elseif ($existingOvertime->status === 'approved')
                                         <div class="bg-emerald-600 text-white font-bold text-[10px] p-1 sm:px-2.5 sm:py-0.5 rounded-full shadow-xs flex items-center justify-center gap-1.5">
                                             <span class="h-2 w-2 rounded-full bg-white shrink-0"></span>
                                             <span class="hidden sm:inline leading-none">Approved</span>
@@ -201,6 +210,10 @@
                                             <span class="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold leading-tight text-green-700 dark:bg-green-700 dark:text-green-100">
                                                 Approved
                                             </span>
+                                        @elseif($overtime->status == 'paid')
+                                            <span class="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold leading-tight text-blue-700 dark:bg-blue-900/60 dark:text-blue-200">
+                                                Paid (Dibayar)
+                                            </span>
                                         @else
                                             <span class="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold leading-tight text-red-700 dark:bg-red-700 dark:text-red-100">
                                                 Rejected
@@ -217,7 +230,7 @@
                                         {{ $overtime->formatted_duration }}
                                     </td>
                                     <td class="px-4 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                                        @if($overtime->status == 'approved' && $overtime->overtime_pay > 0)
+                                        @if(in_array($overtime->status, ['approved', 'paid']) && $overtime->overtime_pay > 0)
                                             Rp {{ number_format($overtime->overtime_pay, 0, ',', '.') }}
                                         @elseif($overtime->duration_hours > 0)
                                             <span class="text-gray-500 dark:text-gray-400 font-normal">
@@ -284,6 +297,13 @@
                                 <span class="inline-flex mt-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-700 dark:text-emerald-100">
                                     Approved
                                 </span>
+                            @elseif($selectedOvertime->status == 'paid')
+                                <span class="inline-flex mt-1 items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Paid (Dibayar)
+                                </span>
                             @else
                                 <span class="inline-flex mt-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-800 dark:bg-rose-700 dark:text-rose-100">
                                     Rejected
@@ -312,10 +332,19 @@
                             </span>
                         </div>
 
+                        @if($selectedOvertime->paid_at)
+                        <div class="col-span-2 rounded-md bg-blue-50/80 p-2.5 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800">
+                            <span class="text-xs text-blue-700 dark:text-blue-300 block font-semibold">Waktu Pembayaran</span>
+                            <span class="text-xs font-bold text-blue-950 dark:text-blue-100">
+                                {{ \Carbon\Carbon::parse($selectedOvertime->paid_at)->format('d F Y, H:i') }} WIB
+                            </span>
+                        </div>
+                        @endif
+
                         <div class="col-span-2 border-t border-gray-200 dark:border-gray-700 pt-3">
                             <span class="text-xs text-gray-500 dark:text-gray-400 block font-medium">Bayaran Lembur</span>
                             <span class="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                                @if($selectedOvertime->status == 'approved' && $selectedOvertime->overtime_pay > 0)
+                                @if(in_array($selectedOvertime->status, ['approved', 'paid']) && $selectedOvertime->overtime_pay > 0)
                                     Rp {{ number_format($selectedOvertime->overtime_pay, 0, ',', '.') }}
                                 @else
                                     ~ Rp {{ number_format($selectedOvertime->calculateEstimatedPay(), 0, ',', '.') }} (Estimasi)

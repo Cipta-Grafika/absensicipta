@@ -23,11 +23,13 @@ class Overtime extends Model
         'status',
         'approved_by',
         'approval_date',
+        'paid_at',
     ];
 
     protected $casts = [
         'overtime_date' => 'date',
         'approval_date' => 'datetime',
+        'paid_at' => 'datetime',
         'duration_hours' => 'float',
         'applied_rate_amount' => 'float',
         'total_pay' => 'float',
