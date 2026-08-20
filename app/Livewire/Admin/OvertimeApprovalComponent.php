@@ -172,6 +172,7 @@ class OvertimeApprovalComponent extends Component
                         'status' => 'rejected',
                         'approved_by' => Auth::id(),
                         'approval_date' => now(),
+                        'paid_at' => null,
                     ]);
                 } elseif ($newStatus === 'pending') {
                     $overtime->update([
@@ -180,6 +181,7 @@ class OvertimeApprovalComponent extends Component
                         'approval_date' => null,
                         'applied_rate_amount' => null,
                         'total_pay' => null,
+                        'paid_at' => null,
                     ]);
                 }
                 $this->syncDraftPayrollOvertime($overtime->employee_id, $overtime->overtime_date);
@@ -349,6 +351,37 @@ class OvertimeApprovalComponent extends Component
         $this->banner($msg);
     }
 
+    public function markAsPaid(int $id): void
+    {
+        if (Auth::user()->isNotAdmin) {
+            abort(403);
+        }
+
+        $overtime = Overtime::with('employee')->findOrFail($id);
+
+        if (Auth::user()->group === 'admin' && $overtime->employee?->division_id !== Auth::user()->division_id) {
+            abort(403, 'Akses Ditolak: Anda hanya berhak memproses lembur divisi Anda.');
+        }
+
+        if ($overtime->status !== 'approved') {
+            $this->dangerBanner('Aksi Gagal: Status lembur hanya dapat diubah menjadi Paid jika status sudah disetujui (Approved).');
+            return;
+        }
+
+        $overtime->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $synced = $this->syncDraftPayrollOvertime($overtime->employee_id, $overtime->overtime_date);
+        $msg = 'Status lembur berhasil diubah menjadi Paid (Sudah Dibayar).';
+        if ($synced) {
+            $msg .= ' Data otomatis disinkronisasi ke Draft Payroll periode berjalan.';
+        }
+
+        $this->banner($msg);
+    }
+
     public function confirmDelete(int $id): void
     {
         if (Auth::user()->isNotAdmin) {
@@ -409,7 +442,7 @@ class OvertimeApprovalComponent extends Component
 
         $totalApprovedHours = (float) Overtime::where('employee_id', $employeeId)
             ->whereBetween('overtime_date', [$startOfMonth, $endOfMonth])
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'paid'])
             ->sum('duration_hours');
 
         $draftPayroll->update([

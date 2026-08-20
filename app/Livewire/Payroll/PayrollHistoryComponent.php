@@ -223,7 +223,7 @@ class PayrollHistoryComponent extends Component
 
                 $allOvertimes = \App\Models\Overtime::whereIn('employee_id', $employeeIds)
                     ->whereBetween('overtime_date', [$this->generate_start_date, $this->generate_end_date])
-                    ->where('status', 'approved')
+                    ->whereIn('status', ['approved', 'paid'])
                     ->get()
                     ->groupBy('employee_id');
 

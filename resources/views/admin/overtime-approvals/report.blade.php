@@ -111,6 +111,8 @@
               Pending
             @elseif($approval->status == 'approved')
               Approved
+            @elseif($approval->status == 'paid')
+              Paid (Dibayar)
             @else
               Rejected
             @endif

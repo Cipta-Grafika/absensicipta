@@ -20,7 +20,7 @@ class OvertimeApprovalController extends Controller
             'week' => 'nullable',
             'division' => 'nullable|exists:divisions,id',
             'jobTitle' => 'nullable|exists:job_titles,id',
-            'status' => 'nullable|in:pending,approved,rejected',
+            'status' => 'nullable|in:pending,approved,rejected,paid',
         ]);
 
         $query = Overtime::with(['employee.division', 'employee.jobTitle', 'approver'])

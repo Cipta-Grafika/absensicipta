@@ -74,6 +74,7 @@
                     $dateOvertimes = $monthOvertimes->get($dateStr) ?? collect();
                     $pendingCount = $dateOvertimes->where('status', 'pending')->count();
                     $approvedCount = $dateOvertimes->where('status', 'approved')->count();
+                    $paidCount = $dateOvertimes->where('status', 'paid')->count();
                     $rejectedCount = $dateOvertimes->where('status', 'rejected')->count();
                     $hasOvertimes = $dateOvertimes->isNotEmpty();
                   @endphp
@@ -109,6 +110,12 @@
                             <span class="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200" title="{{ $approvedCount }} Acc">
                               <span class="sm:hidden">{{ $approvedCount }}</span>
                               <span class="hidden sm:inline">{{ $approvedCount }} Acc</span>
+                            </span>
+                          @endif
+                          @if ($paidCount > 0)
+                            <span class="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-blue-800 dark:bg-blue-900/80 dark:text-blue-200" title="{{ $paidCount }} Paid">
+                              <span class="sm:hidden">{{ $paidCount }}</span>
+                              <span class="hidden sm:inline">{{ $paidCount }} Paid</span>
                             </span>
                           @endif
                           @if ($rejectedCount > 0)
@@ -177,6 +184,7 @@
             <option value="">Semua</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
+            <option value="paid">Paid (Dibayar)</option>
             <option value="rejected">Rejected</option>
           </x-select>
         </div>
@@ -316,6 +324,17 @@
                       Approved
                   </span>
                   <div class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">by {{ $approval->approver->name ?? '-' }}</div>
+              @elseif($approval->status == 'paid')
+                  <span class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Paid
+                  </span>
+                  @if($approval->paid_at)
+                    <div class="mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-semibold">{{ \Carbon\Carbon::parse($approval->paid_at)->format('d M Y H:i') }}</div>
+                  @endif
+                  <div class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">by {{ $approval->approver->name ?? '-' }}</div>
               @else
                   <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">
                       Rejected
@@ -326,20 +345,36 @@
             <td class="whitespace-nowrap px-2 py-4 text-center text-sm font-medium">
               <div class="flex items-center justify-center space-x-2">
                 @if($approval->status == 'pending')
-                    <button wire:click="approve({{ $approval->id }})" class="rounded-md border border-transparent bg-green-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none" title="Setujui">
+                    <button wire:click="approve({{ $approval->id }})" class="rounded-md border border-transparent bg-green-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none transition" title="Setujui (Approve)">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                     </button>
-                    <button wire:click="reject({{ $approval->id }})" class="rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none" title="Tolak">
+                    <button wire:click="reject({{ $approval->id }})" class="rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none transition" title="Tolak (Reject)">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
+                @elseif($approval->status == 'approved')
+                    <button wire:click="markAsPaid({{ $approval->id }})" 
+                            class="inline-flex items-center gap-1 rounded-md border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none transition" 
+                            title="Tandai Sudah Dibayar (Paid)">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Bayar</span>
+                    </button>
+                @elseif($approval->status == 'paid')
+                    <span class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-1 rounded-md border border-blue-200 dark:border-blue-800/80">
+                        <svg class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Lunas</span>
+                    </span>
                 @endif
                 
                 @if(Auth::user()->isAdmin)
-                    <button wire:click="confirmDelete({{ $approval->id }})" class="rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none" title="Hapus Permanen">
+                    <button wire:click="confirmDelete({{ $approval->id }})" class="rounded-md border border-transparent bg-red-600 px-2 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none transition" title="Hapus Permanen">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
