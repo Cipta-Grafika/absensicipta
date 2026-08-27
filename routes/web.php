@@ -137,6 +137,8 @@ Route::middleware([
             ->name('hr.import-export.work-schedules');
         Route::get('/import-export/holidays', [ImportExportController::class, 'holidays'])
             ->name('hr.import-export.holidays');
+        Route::get('/import-export/overtimes', [ImportExportController::class, 'overtimes'])
+            ->name('hr.import-export.overtimes');
 
         Route::post('/users/import', [ImportExportController::class, 'importUsers'])
             ->name('hr.users.import');
@@ -147,6 +149,10 @@ Route::middleware([
             ->name('hr.users.export');
         Route::get('/attendances/export', [ImportExportController::class, 'exportAttendances'])
             ->name('hr.attendances.export');
+        Route::get('/overtimes/export-peachtree', [ImportExportController::class, 'exportPeachtree'])
+            ->name('hr.overtimes.export-peachtree');
+        Route::get('/overtimes/export', [ImportExportController::class, 'exportOvertimes'])
+            ->name('hr.overtimes.export');
     });
 
     // Payroll Group
