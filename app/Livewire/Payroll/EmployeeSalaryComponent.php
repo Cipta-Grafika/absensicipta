@@ -4,6 +4,7 @@ namespace App\Livewire\Payroll;
 
 use App\Models\EmployeeSalary;
 use App\Models\User;
+use App\Models\Division;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Laravel\Jetstream\InteractsWithBanner;
@@ -14,6 +15,7 @@ class EmployeeSalaryComponent extends Component
 
     public $search = '';
     public $division = '';
+    public $status = '';
     public $isModalOpen = false;
 
     // Form fields
@@ -30,20 +32,23 @@ class EmployeeSalaryComponent extends Component
     public $savings_id = null;
     public $custom_secondary_savings = null;
 
-    protected $rules = [
-        'employee_id' => 'required|exists:users,id',
-        'salary_type' => 'required|in:monthly,daily',
-        'working_days_per_month' => 'required_if:salary_type,monthly|numeric|min:1|max:31',
-        'basic_salary' => 'required|numeric|min:0',
-        'overtime_rate' => 'nullable|numeric|min:0',
-        'meal_allowance' => 'nullable|numeric|min:0',
-        'transport_allowance' => 'nullable|numeric|min:0',
-        'attendance_allowance' => 'nullable|numeric|min:0',
-        'late_deduction_rate' => 'nullable|numeric|min:0',
-        'annual_leave_quota' => 'required|numeric|min:0',
-        'savings_id' => 'nullable|exists:savings,id',
-        'custom_secondary_savings' => 'nullable|numeric|min:0',
-    ];
+    protected function rules()
+    {
+        return [
+            'employee_id' => 'required|exists:users,id',
+            'salary_type' => 'required|in:monthly,daily',
+            'working_days_per_month' => 'required_if:salary_type,monthly|numeric|min:1|max:31',
+            'basic_salary' => 'required|numeric|min:0',
+            'overtime_rate' => 'nullable|numeric|min:0',
+            'meal_allowance' => 'nullable|numeric|min:0',
+            'transport_allowance' => 'nullable|numeric|min:0',
+            'attendance_allowance' => 'nullable|numeric|min:0',
+            'late_deduction_rate' => 'nullable|numeric|min:0',
+            'annual_leave_quota' => 'required|numeric|min:0',
+            'savings_id' => 'nullable|exists:savings,id',
+            'custom_secondary_savings' => 'nullable|numeric|min:0',
+        ];
+    }
 
     public function updatingSearch()
     {
@@ -51,6 +56,11 @@ class EmployeeSalaryComponent extends Component
     }
 
     public function updatingDivision()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatus()
     {
         $this->resetPage();
     }
@@ -124,22 +134,38 @@ class EmployeeSalaryComponent extends Component
     {
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
 
-        $employees = User::where('group', 'user')
-            ->whereIn('status', ['active', 'suspend'])
+        $employees = User::where('group', '!=', 'superadmin')
+            ->when($this->status, function ($query) {
+                if ($this->status === 'all') {
+                    return $query;
+                }
+                return $query->where('status', $this->status);
+            }, function ($query) {
+                // By default display all registered working employees
+                return $query->where(function ($q) {
+                    $q->whereNull('status')
+                      ->orWhereNotIn('status', ['fired', 'resign']);
+                });
+            })
             ->when($this->search, function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%')
-                      ->orWhere('nip', 'like', '%' . $this->search . '%');
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('nip', 'like', '%' . $this->search . '%')
+                      ->orWhere('email', 'like', '%' . $this->search . '%');
+                });
             })
             ->when($this->division, function ($query) {
                 $query->where('division_id', $this->division);
             })
             ->with(['salary', 'division', 'jobTitle'])
+            ->orderBy('name')
             ->paginate(15);
 
         $savingsList = \App\Models\Saving::all();
 
         return view('livewire.payroll.employee-salary-component', [
             'employees' => $employees,
+            'divisions' => Division::orderBy('name')->get(),
             'savingsList' => $savingsList,
         ])->layout('layouts.app');
     }

@@ -442,10 +442,12 @@ class SavingTransactionComponent extends Component
         $users = User::where('group', 'user')->whereIn('status', ['active', 'suspend'])->orderBy('name')->get();
         $savingsList = Saving::orderBy('savings_name')->get();
 
-        // Calculate dynamic true balance for summary from approved transactions
-        $summaryQuery = \App\Models\SavingSummary::query();
+        // Calculate dynamic true balance directly from approved transactions (Single Source of Truth)
+        $approvedDepositQuery = SavingTransaction::where('status', 'approved')->where('transaction_type', 'deposit');
+        $approvedWithdrawalQuery = SavingTransaction::where('status', 'approved')->where('transaction_type', 'withdrawal');
+
         if ($this->search) {
-            $summaryQuery->where(function($q) {
+            $searchFilter = function($q) {
                 $q->whereHas('user', function($subQ) {
                     $subQ->where('name', 'like', '%' . $this->search . '%')
                          ->orWhere('nip', 'like', '%' . $this->search . '%');
@@ -453,17 +455,23 @@ class SavingTransactionComponent extends Component
                 ->orWhereHas('masterSaving', function($subQ) {
                     $subQ->where('savings_name', 'like', '%' . $this->search . '%');
                 });
-            });
+            };
+            $approvedDepositQuery->where($searchFilter);
+            $approvedWithdrawalQuery->where($searchFilter);
         }
-        
+
         if ($this->division) {
-            $summaryQuery->whereHas('user', function($q) {
-                $q->where('division_id', $this->division);
-            });
+            $divisionFilter = function($q) {
+                $q->whereHas('user', function($subQ) {
+                    $subQ->where('division_id', $this->division);
+                });
+            };
+            $approvedDepositQuery->where($divisionFilter);
+            $approvedWithdrawalQuery->where($divisionFilter);
         }
-        
-        $totalWajib = (float) $summaryQuery->sum('total_mandatory');
-        $totalSukarela = (float) $summaryQuery->sum('total_secondary');
+
+        $totalWajib = max(0.0, (float) $approvedDepositQuery->sum('mandatory_amount') - (float) $approvedWithdrawalQuery->sum('mandatory_amount'));
+        $totalSukarela = max(0.0, (float) $approvedDepositQuery->sum('secondary_amount') - (float) $approvedWithdrawalQuery->sum('secondary_amount'));
 
         // Pending Counter
         $pendingCount = SavingTransaction::where('status', 'pending')->count();

@@ -142,45 +142,70 @@ class SavingTransactionService
         }
 
         // Update SavingSummary strictly from approved transactions
+        $existingSummarySavingsIds = SavingSummary::where('user_id', $userId)->pluck('savings_id')->toArray();
+        $txSavingsIds = SavingTransaction::where('user_id', $userId)->pluck('savings_id')->toArray();
+
         $distinctSavingsIds = $savingsId
             ? [$savingsId]
-            : SavingTransaction::where('user_id', $userId)->pluck('savings_id')->unique();
+            : array_values(array_unique(array_merge($existingSummarySavingsIds, $txSavingsIds)));
 
         foreach ($distinctSavingsIds as $sId) {
-            $depMan = SavingTransaction::where('user_id', $userId)
+            $depMan = (float) SavingTransaction::where('user_id', $userId)
                 ->where('savings_id', $sId)
                 ->where('status', 'approved')
                 ->where('transaction_type', 'deposit')
                 ->sum('mandatory_amount');
 
-            $wdMan = SavingTransaction::where('user_id', $userId)
+            $wdMan = (float) SavingTransaction::where('user_id', $userId)
                 ->where('savings_id', $sId)
                 ->where('status', 'approved')
                 ->where('transaction_type', 'withdrawal')
                 ->sum('mandatory_amount');
 
-            $depSec = SavingTransaction::where('user_id', $userId)
+            $depSec = (float) SavingTransaction::where('user_id', $userId)
                 ->where('savings_id', $sId)
                 ->where('status', 'approved')
                 ->where('transaction_type', 'deposit')
                 ->sum('secondary_amount');
 
-            $wdSec = SavingTransaction::where('user_id', $userId)
+            $wdSec = (float) SavingTransaction::where('user_id', $userId)
                 ->where('savings_id', $sId)
                 ->where('status', 'approved')
                 ->where('transaction_type', 'withdrawal')
                 ->sum('secondary_amount');
 
-            SavingSummary::updateOrCreate(
-                [
-                    'user_id' => $userId,
-                    'savings_id' => $sId,
-                ],
-                [
-                    'total_mandatory' => max(0, $depMan - $wdMan),
-                    'total_secondary' => max(0, $depSec - $wdSec),
-                ]
-            );
+            $totalMandatory = max(0.0, $depMan - $wdMan);
+            $totalSecondary = max(0.0, $depSec - $wdSec);
+
+            if ($totalMandatory == 0.0 && $totalSecondary == 0.0 && !SavingTransaction::where('user_id', $userId)->where('savings_id', $sId)->exists()) {
+                SavingSummary::where('user_id', $userId)->where('savings_id', $sId)->delete();
+            } else {
+                SavingSummary::updateOrCreate(
+                    [
+                        'user_id' => $userId,
+                        'savings_id' => $sId,
+                    ],
+                    [
+                        'total_mandatory' => $totalMandatory,
+                        'total_secondary' => $totalSecondary,
+                    ]
+                );
+            }
+        }
+    }
+
+    /**
+     * Synchronize and clean all SavingSummary records across all users in the system.
+     */
+    public static function syncAllSummaries(): void
+    {
+        $allUserIds = array_unique(array_merge(
+            SavingTransaction::pluck('user_id')->toArray(),
+            SavingSummary::pluck('user_id')->toArray()
+        ));
+
+        foreach ($allUserIds as $userId) {
+            self::recalculateUserTransactions($userId);
         }
     }
 

@@ -206,7 +206,14 @@ class PayrollHistoryComponent extends Component
             $generatedCount = 0;
             \Illuminate\Support\Facades\DB::transaction(function () use (&$generatedCount) {
                 // Get active employees who have a salary setup
-                $employees = \App\Models\User::where('group', 'user')->whereHas('salary')->with(['salary.savings'])->get();
+                $employees = \App\Models\User::where('group', '!=', 'superadmin')
+                    ->where(function ($q) {
+                        $q->whereNull('status')
+                          ->orWhereNotIn('status', ['fired', 'resign']);
+                    })
+                    ->whereHas('salary')
+                    ->with(['salary.savings'])
+                    ->get();
 
                 if ($employees->isEmpty()) {
                     throw new \Exception("Tidak ada karyawan aktif yang memiliki pengaturan gaji.");
@@ -233,6 +240,13 @@ class PayrollHistoryComponent extends Component
                     ->get()
                     ->groupBy('user_id');
 
+                $allFlexibleDeductions = \App\Models\FlexibleDeduction::whereIn('user_id', $employeeIds)
+                    ->where('period_month', $this->generate_period_month)
+                    ->where('amount', '>', 0)
+                    ->with('program')
+                    ->get()
+                    ->groupBy('user_id');
+
                 $allExistingPayrolls = Payroll::whereIn('employee_id', $employeeIds)
                     ->where('period_month', $this->generate_period_month)
                     ->lockForUpdate()
@@ -256,6 +270,7 @@ class PayrollHistoryComponent extends Component
                     if ($existing) {
                         \App\Models\LoanInstallment::where('payroll_id', $existing->id)->delete();
                         \App\Models\SavingTransaction::where('reference_type', 'payroll')->where('reference_id', $existing->id)->delete();
+                        \App\Models\FlexibleDeduction::where('payroll_id', $existing->id)->update(['is_applied' => false, 'payroll_id' => null]);
                         \App\Models\PayrollDetail::where('payroll_id', $existing->id)->delete();
                         $existing->delete();
                     }
@@ -460,8 +475,17 @@ class PayrollHistoryComponent extends Component
                         }
                     }
 
+                    // Flexible Deductions Logic (Galang Dana / Kustom)
+                    $emp_flex_deductions = $allFlexibleDeductions->get($emp->id, collect());
+                    $flex_deduction_total = 0;
+                    foreach ($emp_flex_deductions as $flex) {
+                        if ($flex->deduction_source === 'payroll') {
+                            $flex_deduction_total += (int) round($flex->amount);
+                        }
+                    }
+
                     $total_gross = $basic_salary_earned + $total_allowance + $total_overtime_pay;
-                    $total_deduction = (int) round($absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction);
+                    $total_deduction = (int) round($absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction + $flex_deduction_total);
                     $total_deduction = min($total_deduction, $total_gross);
                     $net_salary = max(0, $total_gross - $total_deduction);
 
@@ -515,6 +539,59 @@ class PayrollHistoryComponent extends Component
                             'status' => 'pending',
                         ]);
                         $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Cicilan Pinjaman', 'amount' => $item['amount'], 'created_at' => now(), 'updated_at' => now()];
+                    }
+
+                    // Save Flexible Deductions to Payroll Details & Update Status
+                    foreach ($emp_flex_deductions as $flex) {
+                        $savingTx = null;
+                        if ($flex->deduction_source !== 'payroll' && $savingProgram) {
+                            $mandAmount = 0;
+                            $secAmount = 0;
+                            if ($flex->deduction_source === 'syirkah_mandatory') {
+                                $mandAmount = $flex->amount;
+                            } elseif ($flex->deduction_source === 'syirkah_secondary') {
+                                $secAmount = $flex->amount;
+                            } elseif ($flex->deduction_source === 'syirkah_all') {
+                                $depSec = (float) \App\Models\SavingTransaction::where('user_id', $emp->id)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
+                                $wdSec = (float) \App\Models\SavingTransaction::where('user_id', $emp->id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+                                $availSec = max(0.0, $depSec - $wdSec);
+                                $secAmount = min($flex->amount, $availSec);
+                                $mandAmount = max(0.0, $flex->amount - $secAmount);
+                            }
+
+                            $savingTx = \App\Models\SavingTransaction::create([
+                                'user_id' => $emp->id,
+                                'savings_id' => $savingProgram->id,
+                                'transaction_type' => 'withdrawal',
+                                'mandatory_amount' => $mandAmount,
+                                'secondary_amount' => $secAmount,
+                                'status' => 'approved',
+                                'period_month' => $this->generate_period_month,
+                                'reference_type' => 'flexible_deduction',
+                                'reference_id' => $flex->id,
+                                'notes' => 'Potongan ' . ($flex->program->name ?? 'Fleksibel') . ' via ' . $flex->deduction_source_label,
+                                'approved_by' => \Illuminate\Support\Facades\Auth::id(),
+                                'approved_at' => now(),
+                            ]);
+                            \App\Services\SavingTransactionService::recalculateUserTransactions($emp->id);
+                        }
+
+                        $flex->update([
+                            'is_applied' => true,
+                            'payroll_id' => $payroll->id,
+                            'saving_transaction_id' => $savingTx?->id,
+                        ]);
+
+                        if ($flex->deduction_source === 'payroll') {
+                            $allPayrollDetailsToInsert[] = [
+                                'payroll_id' => $payroll->id,
+                                'type' => 'deduction',
+                                'name' => 'Potongan: ' . ($flex->program->name ?? 'Fleksibel'),
+                                'amount' => (int) round($flex->amount),
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
                     }
 
                     // Save Payroll Details (Rincian)

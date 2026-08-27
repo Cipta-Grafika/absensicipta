@@ -18,21 +18,37 @@ class PaymentMethodsImport implements ToModel, WithHeadingRow, WithValidation, S
 
     public function model(array $row)
     {
-        $user = User::where('nip', $row['employee_nip'])->first();
+        $nip = $row['employee_nip'] ?? $row['nip'] ?? null;
+        if (!$nip) {
+            return null; // Skip if NIP is missing
+        }
+
+        $user = User::where('nip', $nip)->first();
         if (!$user) {
             return null; // Skip if user not found
         }
 
-        $paymentMethod = PaymentMethod::firstOrNew(['user_id' => $user->id]);
-
-        $paymentMethod->forceFill([
-            'payment_name' => $row['payment_name'],
-            'bank_account' => $row['bank_account'],
-            'account_name' => $row['account_name'],
-        ]);
+        $paymentName = !empty($row['payment_name']) ? trim($row['payment_name']) : 'CASH';
+        $bankAccount = !empty($row['bank_account']) ? trim($row['bank_account']) : null;
+        $accountName = !empty($row['account_name']) ? trim($row['account_name']) : $user->name;
 
         if ($this->save) {
-            $paymentMethod->save();
+            // Delete any existing duplicate payment methods for this user to enforce 1 method per employee
+            PaymentMethod::where('user_id', $user->id)->delete();
+
+            $paymentMethod = PaymentMethod::create([
+                'user_id'      => $user->id,
+                'payment_name' => $paymentName,
+                'bank_account' => $bankAccount,
+                'account_name' => $accountName,
+            ]);
+        } else {
+            $paymentMethod = new PaymentMethod([
+                'user_id'      => $user->id,
+                'payment_name' => $paymentName,
+                'bank_account' => $bankAccount,
+                'account_name' => $accountName,
+            ]);
         }
 
         $paymentMethod->setRelation('user', $user);
@@ -43,10 +59,11 @@ class PaymentMethodsImport implements ToModel, WithHeadingRow, WithValidation, S
     public function rules(): array
     {
         return [
-            'employee_nip' => ['required', 'exists:users,nip'],
-            'payment_name' => ['required'],
-            'bank_account' => ['required'],
-            'account_name' => ['required'],
+            'employee_nip' => ['required_without:nip'],
+            'nip'          => ['required_without:employee_nip'],
+            'payment_name' => ['nullable'],
+            'bank_account' => ['nullable'],
+            'account_name' => ['nullable'],
         ];
     }
 
@@ -59,3 +76,4 @@ class PaymentMethodsImport implements ToModel, WithHeadingRow, WithValidation, S
         throw new \Exception(implode('<br>', $messages));
     }
 }
+

@@ -17,6 +17,7 @@ class Loan extends Model
         'tenor_months',
         'installment_amount',
         'remaining_balance',
+        'payment_source',
         'status',
         'approved_by',
         'approval_date',
@@ -30,7 +31,18 @@ class Loan extends Model
         'installment_amount' => 'float',
         'remaining_balance' => 'float',
         'tenor_months' => 'integer',
+        'payment_source' => 'string',
     ];
+
+    public function getPaymentSourceLabelAttribute(): string
+    {
+        return match ($this->payment_source) {
+            'syirkah_mandatory' => 'Saldo Syirkah Wajib',
+            'syirkah_secondary' => 'Saldo Syirkah SSR',
+            'syirkah_all' => 'Syirkah (Wajib + SSR)',
+            default => 'Payroll Bulanan',
+        };
+    }
 
     public function user()
     {

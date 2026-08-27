@@ -1,6 +1,6 @@
 <!-- REUSABLE PAYROLL PORTAL LEFT SIDEBAR COMPONENT (FIXED FULL-HEIGHT WITH AUTO VERTICAL SCROLL) -->
 @php
-  $isSyirkahActive = request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.loans');
+  $isSyirkahActive = request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.loans') || request()->routeIs('payroll.flexible-deductions');
   $isMasterActive = request()->routeIs('payroll.employee-salaries') || request()->routeIs('payroll.payment-methods') || request()->routeIs('payroll.savings');
   $isImportActive = request()->routeIs('payroll.import-export.*');
 @endphp
@@ -56,6 +56,12 @@
         <a href="{{ route('payroll.loans') }}"
            class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
           <span>Pinjaman Karyawan</span>
+        </a>
+
+        @php $active = request()->routeIs('payroll.flexible-deductions'); @endphp
+        <a href="{{ route('payroll.flexible-deductions') }}"
+           class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
+          <span>Potongan Fleksibel</span>
         </a>
       </div>
     </div>

@@ -4,6 +4,7 @@ namespace App\Livewire\Payroll;
 
 use App\Models\PaymentMethod;
 use App\Models\User;
+use App\Models\Division;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Laravel\Jetstream\InteractsWithBanner;
@@ -15,19 +16,21 @@ class PaymentMethodComponent extends Component
     public $search = '';
     public $division = '';
     public $isModalOpen = false;
-    public $isConfirmingDeletion = false;
+
+    // Selected Employee Context
+    public $selectedUser = null;
+    public $user_id;
+    public $payment_id;
 
     // Form fields
-    public $payment_id;
-    public $user_id;
-    public $payment_name;
-    public $bank_account;
-    public $account_name;
-    
+    public $payment_name = '';
+    public $bank_account = '';
+    public $account_name = '';
+
     protected function rules()
     {
         return [
-            'user_id'      => 'required|exists:users,id|unique:payment_methods,user_id,' . $this->payment_id,
+            'user_id'      => 'required|exists:users,id',
             'payment_name' => 'required|string|max:255',
             'bank_account' => 'nullable|string|max:255',
             'account_name' => 'nullable|string|max:255',
@@ -37,9 +40,8 @@ class PaymentMethodComponent extends Component
     protected function messages()
     {
         return [
-            'user_id.unique' => 'Karyawan ini sudah memiliki metode pembayaran yang terdaftar.',
-            'user_id.required' => 'Pilihan karyawan wajib diisi.',
-            'payment_name.required' => 'Nama Metode/Bank wajib diisi.',
+            'user_id.required'      => 'Pilihan karyawan wajib terisi.',
+            'payment_name.required' => 'Nama Metode / Bank wajib diisi.',
         ];
     }
 
@@ -53,39 +55,34 @@ class PaymentMethodComponent extends Component
         $this->resetPage();
     }
 
-    public function openModal()
-    {
-        $this->resetValidation();
-        $this->reset(['payment_id', 'user_id', 'payment_name', 'bank_account', 'account_name']);
-        $this->isModalOpen = true;
-    }
-
     public function closeModal()
     {
         $this->isModalOpen = false;
-        $this->isConfirmingDeletion = false;
+        $this->reset(['selectedUser', 'user_id', 'payment_id', 'payment_name', 'bank_account', 'account_name']);
+        $this->resetValidation();
     }
 
-    public function edit($id)
+    public function edit(string $userId)
     {
         $this->resetValidation();
-        $payment = PaymentMethod::with('user')->findOrFail($id);
+        $user = User::with(['paymentMethod', 'division', 'jobTitle'])->findOrFail($userId);
         
-        $this->payment_id = $payment->id;
-        $this->user_id = $payment->user_id;
-        $this->payment_name = $payment->payment_name;
-        $this->bank_account = $payment->bank_account;
-        $this->account_name = $payment->account_name;
+        $this->selectedUser = $user;
+        $this->user_id = $user->id;
+
+        if ($user->paymentMethod) {
+            $this->payment_id = $user->paymentMethod->id;
+            $this->payment_name = $user->paymentMethod->payment_name;
+            $this->bank_account = $user->paymentMethod->bank_account;
+            $this->account_name = $user->paymentMethod->account_name;
+        } else {
+            $this->payment_id = null;
+            $this->payment_name = '';
+            $this->bank_account = '';
+            $this->account_name = $user->name; // Smart default: employee's full name
+        }
 
         $this->isModalOpen = true;
-
-        if ($payment->user) {
-            $this->dispatch('set-tomselect-option-user_id', [
-                'id' => $payment->user->id,
-                'name' => $payment->user->name,
-                'nip' => $payment->user->nip,
-            ]);
-        }
     }
 
     public function save()
@@ -93,62 +90,74 @@ class PaymentMethodComponent extends Component
         $this->validate();
 
         PaymentMethod::updateOrCreate(
-            ['id' => $this->payment_id],
+            ['user_id' => $this->user_id],
             [
-                'user_id' => $this->user_id,
                 'payment_name' => $this->payment_name,
                 'bank_account' => $this->bank_account,
                 'account_name' => $this->account_name,
             ]
         );
 
-        $this->banner($this->payment_id ? 'Metode pembayaran berhasil diperbarui.' : 'Metode pembayaran berhasil ditambahkan.');
+        $this->banner('Metode pembayaran karyawan berhasil disimpan.');
         $this->closeModal();
     }
 
-    public function confirmDelete($id)
+    public function removePaymentMethod()
     {
-        $this->payment_id = $id;
-        $this->isConfirmingDeletion = true;
-    }
-
-    public function cancelDelete()
-    {
-        $this->isConfirmingDeletion = false;
-        $this->reset(['payment_id']);
-    }
-
-    public function delete()
-    {
-        if ($this->payment_id) {
-            PaymentMethod::findOrFail($this->payment_id)->delete();
-            $this->banner('Metode pembayaran berhasil dihapus.');
+        if ($this->user_id) {
+            PaymentMethod::where('user_id', $this->user_id)->delete();
+            $this->banner('Metode pembayaran karyawan berhasil direset / dihapus.');
         }
 
         $this->closeModal();
     }
 
+    public $status = '';
+
+    public function updatingStatus()
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
-        $methods = PaymentMethod::with('user')
-            ->where(function ($query) {
-                $query->where('payment_name', 'like', '%' . $this->search . '%')
-                      ->orWhere('bank_account', 'like', '%' . $this->search . '%')
-                      ->orWhere('account_name', 'like', '%' . $this->search . '%')
-                      ->orWhereHas('user', function($q) {
-                          $q->where('name', 'like', '%' . $this->search . '%');
-                      });
-            })
-            ->when($this->division, function ($query) {
-                $query->whereHas('user', function ($q) {
-                    $q->where('division_id', $this->division);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+
+        $employees = User::where('group', '!=', 'superadmin')
+            ->when($this->status, function ($query) {
+                if ($this->status === 'all') {
+                    return $query;
+                }
+                return $query->where('status', $this->status);
+            }, function ($query) {
+                // By default display all registered working employees
+                return $query->where(function ($q) {
+                    $q->whereNull('status')
+                      ->orWhereNotIn('status', ['fired', 'resign']);
                 });
             })
-            ->latest()
-            ->paginate(10);
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('nip', 'like', '%' . $this->search . '%')
+                      ->orWhere('email', 'like', '%' . $this->search . '%')
+                      ->orWhereHas('paymentMethod', function ($subQ) {
+                          $subQ->where('payment_name', 'like', '%' . $this->search . '%')
+                               ->orWhere('bank_account', 'like', '%' . $this->search . '%')
+                               ->orWhere('account_name', 'like', '%' . $this->search . '%');
+                      });
+                });
+            })
+            ->when($this->division, function ($query) {
+                $query->where('division_id', $this->division);
+            })
+            ->with(['paymentMethod', 'division', 'jobTitle'])
+            ->orderBy('name')
+            ->paginate(15);
 
         return view('livewire.payroll.payment-method-component', [
-            'methods' => $methods
+            'employees' => $employees,
+            'divisions' => Division::orderBy('name')->get(),
         ])->layout('layouts.app');
     }
 }

@@ -225,6 +225,16 @@ class User extends Authenticatable
         return $this->hasMany(WorkSchedule::class);
     }
 
+    public function loans()
+    {
+        return $this->hasMany(Loan::class);
+    }
+
+    public function flexibleDeductions()
+    {
+        return $this->hasMany(FlexibleDeduction::class);
+    }
+
     /**
      * Scope query to only include working employees (active or suspend).
      */

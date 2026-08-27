@@ -164,6 +164,7 @@ Route::middleware([
         Route::get('/savings', \App\Livewire\Payroll\SavingComponent::class)->name('savings');
         Route::get('/saving-transactions', \App\Livewire\Payroll\SavingTransactionComponent::class)->name('saving-transactions');
         Route::get('/loans', \App\Livewire\Payroll\LoanComponent::class)->name('loans');
+        Route::get('/flexible-deductions', \App\Livewire\Payroll\FlexibleDeductionComponent::class)->name('flexible-deductions');
 
         // Import/Export
         Route::get('/import-export/employee-salaries', [\App\Http\Controllers\Payroll\ImportExportController::class, 'employeeSalaries'])->name('import-export.employee-salaries');

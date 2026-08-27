@@ -217,6 +217,7 @@
               <th scope="col" class="px-4 py-3 min-w-[130px] whitespace-nowrap text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tgl Pengajuan</th>
               <th scope="col" class="px-4 py-3 min-w-[190px] whitespace-nowrap text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Karyawan</th>
               <th scope="col" class="px-4 py-3 min-w-[150px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Pinjaman</th>
+              <th scope="col" class="px-4 py-3 min-w-[140px] whitespace-nowrap text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Sumber Dana</th>
               <th scope="col" class="px-4 py-3 min-w-[90px] whitespace-nowrap text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tenor</th>
               <th scope="col" class="px-4 py-3 min-w-[140px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Cicilan/Bulan</th>
               <th scope="col" class="px-4 py-3 min-w-[140px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Sisa Saldo</th>
@@ -243,8 +244,27 @@
                 <td class="whitespace-nowrap px-4 py-4 text-right text-xs font-semibold text-gray-900 dark:text-gray-100">
                   Rp {{ number_format($loan->loan_amount, 0, ',', '.') }}
                 </td>
+                <td class="whitespace-nowrap px-4 py-4 text-center text-xs">
+                  @if($loan->payment_source === 'syirkah_mandatory')
+                    <span class="inline-flex rounded-full bg-purple-100 dark:bg-purple-900/60 px-2 py-0.5 text-[11px] font-semibold text-purple-800 dark:text-purple-200">
+                      Syirkah Wajib
+                    </span>
+                  @elseif($loan->payment_source === 'syirkah_secondary')
+                    <span class="inline-flex rounded-full bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 text-[11px] font-semibold text-indigo-800 dark:text-indigo-200">
+                      Syirkah SSR
+                    </span>
+                  @elseif($loan->payment_source === 'syirkah_all')
+                    <span class="inline-flex rounded-full bg-violet-100 dark:bg-violet-900/60 px-2 py-0.5 text-[11px] font-semibold text-violet-800 dark:text-violet-200">
+                      Wajib + SSR
+                    </span>
+                  @else
+                    <span class="inline-flex rounded-full bg-sky-100 dark:bg-sky-900/60 px-2 py-0.5 text-[11px] font-semibold text-sky-800 dark:text-sky-200">
+                      Payroll
+                    </span>
+                  @endif
+                </td>
                 <td class="whitespace-nowrap px-4 py-4 text-center text-xs text-gray-800 dark:text-gray-200 font-medium">
-                  {{ $loan->tenor_months }} Bln
+                  {{ $loan->payment_source === 'payroll' ? $loan->tenor_months . ' Bln' : '-' }}
                 </td>
                 <td class="whitespace-nowrap px-4 py-4 text-right text-xs text-gray-700 dark:text-gray-300 font-medium">
                   Rp {{ number_format($loan->installment_amount, 0, ',', '.') }}
@@ -428,7 +448,7 @@
       <div class="grid grid-cols-1 gap-6">
         <div>
           <x-label for="user_id" value="Pilih Karyawan" />
-          <x-select id="user_id" class="mt-1 block w-full" wire:model="user_id">
+          <x-select id="user_id" class="mt-1 block w-full text-sm" wire:model.live="user_id">
             <option value="">-- Pilih Karyawan --</option>
             @foreach($users as $user)
               <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->nip }})</option>
@@ -438,25 +458,61 @@
         </div>
 
         <div>
+          <x-label for="payment_source" value="Sumber Pemotongan Dana Pinjaman" />
+          <x-select id="payment_source" class="mt-1 block w-full text-sm" wire:model.live="payment_source">
+            <option value="payroll">Potong Gaji di Payroll (Cicilan Bulanan sesuai Tenor)</option>
+            <option value="syirkah_mandatory">Potong Saldo Syirkah Wajib</option>
+            <option value="syirkah_secondary">Potong Saldo Syirkah Sukarela (SSR)</option>
+            <option value="syirkah_all">Potong Saldo Syirkah (Wajib + SSR)</option>
+          </x-select>
+          <x-input-error for="payment_source" class="mt-2" />
+        </div>
+
+        @if($user_id)
+          <div class="grid grid-cols-2 gap-3 p-3 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 rounded-xl text-xs">
+            <div>
+              <span class="text-gray-500 dark:text-gray-400 block">Saldo Syirkah Wajib:</span>
+              <span class="font-bold text-sky-900 dark:text-sky-200 text-sm">Rp {{ number_format($user_syirkah_mandatory, 0, ',', '.') }}</span>
+            </div>
+            <div>
+              <span class="text-gray-500 dark:text-gray-400 block">Saldo Syirkah SSR:</span>
+              <span class="font-bold text-sky-900 dark:text-sky-200 text-sm">Rp {{ number_format($user_syirkah_secondary, 0, ',', '.') }}</span>
+            </div>
+          </div>
+        @endif
+
+        <div>
           <x-label for="loan_amount" value="Total Nominal Pinjaman (Rp)" />
-          <x-input id="loan_amount" type="number" class="mt-1 block w-full" wire:model.live.debounce.500ms="loan_amount" placeholder="Contoh: 1000000" />
+          <x-input id="loan_amount" type="number" class="mt-1 block w-full text-sm" wire:model.live.debounce.500ms="loan_amount" placeholder="Contoh: 1000000" />
           <x-input-error for="loan_amount" class="mt-2" />
         </div>
 
-        <div>
-          <x-label for="tenor_months" value="Tenor (Bulan)" />
-          <x-input id="tenor_months" type="number" class="mt-1 block w-full" wire:model.live.debounce.500ms="tenor_months" placeholder="Berapa bulan dicicil" />
-          <x-input-error for="tenor_months" class="mt-2" />
-        </div>
+        @if($payment_source === 'payroll')
+          <div>
+            <x-label for="tenor_months" value="Tenor (Bulan)" />
+            <x-input id="tenor_months" type="number" class="mt-1 block w-full text-sm" wire:model.live.debounce.500ms="tenor_months" placeholder="Berapa bulan dicicil" />
+            <x-input-error for="tenor_months" class="mt-2" />
+          </div>
 
-        <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg dark:bg-gray-750 dark:border-gray-700">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Estimasi Cicilan per Bulan (Otomatis dipotong saat Payroll):</p>
-          <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">Rp {{ number_format($installment_amount, 0, ',', '.') }}</p>
-        </div>
+          <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl dark:bg-gray-750 dark:border-gray-700">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Estimasi Cicilan per Bulan (Otomatis dipotong saat Payroll):</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">Rp {{ number_format($installment_amount, 0, ',', '.') }}</p>
+          </div>
+        @else
+          <div class="p-3.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl text-xs text-purple-900 dark:text-purple-200 flex items-start gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <span class="font-bold">Pelunasan Langsung dari Saldo Syirkah:</span>
+              <p class="mt-0.5 text-purple-700 dark:text-purple-300">Nominal pinjaman akan otomatis dipotong langsung dari Saldo Syirkah karyawan saat disetujui (tanpa memotong gaji bulanan di payroll).</p>
+            </div>
+          </div>
+        @endif
 
         <div>
           <x-label for="description" value="Keterangan / Alasan" />
-          <x-input id="description" type="text" class="mt-1 block w-full" wire:model="description" placeholder="Contoh: Biaya pendidikan anak" />
+          <x-input id="description" type="text" class="mt-1 block w-full text-sm" wire:model="description" placeholder="Contoh: Biaya pendidikan anak" />
           <x-input-error for="description" class="mt-2" />
         </div>
       </div>

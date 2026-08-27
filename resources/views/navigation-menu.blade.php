@@ -144,7 +144,7 @@
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
               Riwayat Gaji
             </x-nav-link>
-            <x-nav-dropdown :active="request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.loans')" triggerClasses="text-nowrap">
+            <x-nav-dropdown :active="request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.loans') || request()->routeIs('payroll.flexible-deductions')" triggerClasses="text-nowrap">
               <x-slot name="trigger">
                 Koperasi & Syirkah
                 <x-heroicon-o-chevron-down class="ms-2 h-5 w-5 text-gray-400" />
@@ -155,6 +155,9 @@
                 </x-dropdown-link>
                 <x-dropdown-link href="{{ route('payroll.loans') }}" :active="request()->routeIs('payroll.loans')">
                   Pinjaman Karyawan
+                </x-dropdown-link>
+                <x-dropdown-link href="{{ route('payroll.flexible-deductions') }}" :active="request()->routeIs('payroll.flexible-deductions')">
+                  Potongan Fleksibel
                 </x-dropdown-link>
               </x-slot>
             </x-nav-dropdown>
@@ -426,6 +429,9 @@
           </x-responsive-nav-link>
           <x-responsive-nav-link href="{{ route('payroll.loans') }}" :active="request()->routeIs('payroll.loans')">
             Pinjaman Karyawan
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.flexible-deductions') }}" :active="request()->routeIs('payroll.flexible-deductions')">
+            Potongan Fleksibel
           </x-responsive-nav-link>
           <div class="px-4 text-xs text-gray-400 mt-2">Import & Export</div>
           <x-responsive-nav-link href="{{ route('payroll.import-export.employee-salaries') }}" :active="request()->routeIs('payroll.import-export.employee-salaries')">

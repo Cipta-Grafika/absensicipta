@@ -27,10 +27,22 @@
       <x-slot name="content">
         <div class="flex flex-col gap-6">
           <div>
+            <x-label for="status_filter" value="Status Karyawan" class="mb-1"></x-label>
+            <x-select id="status_filter" class="w-full" wire:model.live="status">
+              <option value="">Aktif & Bekerja (Default)</option>
+              <option value="all">Semua Status (Termasuk Resign/Keluar)</option>
+              <option value="active">Aktif</option>
+              <option value="suspend">Suspend</option>
+              <option value="resign">Resign</option>
+              <option value="fired">Dikeluarkan</option>
+            </x-select>
+          </div>
+
+          <div>
             <x-label for="division_filter" value="Divisi" class="mb-1"></x-label>
             <x-select id="division_filter" class="w-full" wire:model.live="division">
               <option value="">Semua Divisi</option>
-              @foreach (\App\Models\Division::all() as $div)
+              @foreach ($divisions as $div)
                 <option value="{{ $div->id }}">{{ $div->name }}</option>
               @endforeach
             </x-select>

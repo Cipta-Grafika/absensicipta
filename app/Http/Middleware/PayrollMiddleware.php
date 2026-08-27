@@ -29,6 +29,7 @@ class PayrollMiddleware
                 'payroll.saving-transactions',
                 'payroll.loans',
                 'payroll.savings',
+                'payroll.flexible-deductions',
                 'payroll.import-export.savings',
                 'payroll.import-export.saving-transactions',
             ];
