@@ -271,13 +271,26 @@
     </x-slot>
   </x-dialog-modal>
 
-  <!-- Modal Konfirmasi Hapus -->
-  <x-delete-modal 
-      :isOpen="$isDeleteModalOpen" 
-      title="Yakin ingin menghapus data gaji ini secara permanen?" 
-      deleteAction="deletePayroll" 
-      cancelAction="cancelDelete" 
-  />
+  <!-- Modal Konfirmasi Hapus Data Gaji -->
+  <x-confirmation-modal wire:model.live="isDeleteModalOpen">
+    <x-slot name="title">
+      Konfirmasi Hapus Data Gaji
+    </x-slot>
+
+    <x-slot name="content">
+      Apakah Anda yakin ingin menghapus data gaji ini secara permanen? Tindakan ini tidak dapat dibatalkan.
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-danger-button wire:click="deletePayroll" wire:loading.attr="disabled">
+        Ya, Hapus
+      </x-danger-button>
+
+      <x-secondary-button wire:click="cancelDelete" wire:loading.attr="disabled" class="ms-3">
+        Batal
+      </x-secondary-button>
+    </x-slot>
+  </x-confirmation-modal>
 
   <!-- Modal Detail Potongan -->
   <x-dialog-modal wire:model.live="showDeductionModal" maxWidth="lg">

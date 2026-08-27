@@ -116,9 +116,25 @@ class PayrollHistoryComponent extends Component
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
         
         if ($this->payrollIdToDelete) {
-            $payroll = Payroll::findOrFail($this->payrollIdToDelete);
-            $payroll->delete();
-            $this->banner('Data gaji berhasil dihapus.');
+            $payroll = Payroll::find($this->payrollIdToDelete);
+            if ($payroll) {
+                $empId = $payroll->employee_id;
+
+                \App\Models\LoanInstallment::where('payroll_id', $payroll->id)->delete();
+                \App\Models\SavingTransaction::where('reference_type', 'payroll')->where('reference_id', $payroll->id)->delete();
+                
+                $existingFlexIds = \App\Models\FlexibleDeduction::where('payroll_id', $payroll->id)->pluck('id');
+                if ($existingFlexIds->isNotEmpty()) {
+                    \App\Models\SavingTransaction::where('reference_type', 'flexible_deduction')->whereIn('reference_id', $existingFlexIds)->delete();
+                    \App\Models\FlexibleDeduction::whereIn('id', $existingFlexIds)->update(['is_applied' => false, 'payroll_id' => null, 'saving_transaction_id' => null]);
+                }
+
+                \App\Models\PayrollDetail::where('payroll_id', $payroll->id)->delete();
+                $payroll->delete();
+
+                \App\Services\SavingTransactionService::recalculateUserTransactions($empId);
+                $this->banner('Data gaji berhasil dihapus.');
+            }
         }
         
         $this->isDeleteModalOpen = false;

@@ -424,11 +424,24 @@
   </x-dialog-modal>
 
   <!-- Delete Confirmation Modal (Master Program) -->
-  <x-delete-modal 
-      :isOpen="$isConfirmingDeletion" 
-      title="Yakin ingin menghapus data syirkah ini secara permanen?" 
-      deleteAction="delete" 
-      cancelAction="cancelDelete" 
-  />
+  <x-confirmation-modal wire:model.live="isConfirmingDeletion">
+    <x-slot name="title">
+      Konfirmasi Hapus Data Syirkah
+    </x-slot>
+
+    <x-slot name="content">
+      Apakah Anda yakin ingin menghapus program syirkah ini secara permanen? Tindakan ini tidak dapat dibatalkan.
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-danger-button wire:click="delete" wire:loading.attr="disabled">
+        Ya, Hapus
+      </x-danger-button>
+
+      <x-secondary-button wire:click="cancelDelete" wire:loading.attr="disabled" class="ms-3">
+        Batal
+      </x-secondary-button>
+    </x-slot>
+  </x-confirmation-modal>
 </div>
 

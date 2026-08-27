@@ -1,6 +1,6 @@
 @props(['isOpen' => false, 'title' => 'Yakin ingin menghapus data ini secara permanen?', 'deleteAction' => 'delete', 'cancelAction' => 'cancelDelete'])
 
-<div x-data="{ show: @js((bool)$isOpen) }" x-init="$watch('show', value => { if(!value) $wire.call('{{ $cancelAction }}'); })">
+<div x-data="{ show: @js((bool)$isOpen) }" x-effect="show = @js((bool)$isOpen)" x-init="$watch('show', value => { if(!value) $wire.call('{{ $cancelAction }}'); })">
     <template x-teleport="body">
         <div x-show="show" class="fixed inset-0 z-[999999] flex items-center justify-center p-4 overflow-y-auto overflow-x-hidden" style="display: none;">
             <!-- BACKDROP GLASSMORPHISM -->
