@@ -26,6 +26,8 @@ class SavingTransaction extends Model
         'approved_by',
         'approval_date',
         'rejection_reason',
+        'created_at',
+        'updated_at',
     ];
 
     protected $casts = [

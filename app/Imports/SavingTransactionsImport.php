@@ -10,27 +10,95 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithValidation;
 use Illuminate\Support\Collection;
 
-class SavingTransactionsImport implements ToCollection, WithHeadingRow, WithValidation
+class SavingTransactionsImport implements ToCollection, WithHeadingRow
 {
+    /**
+     * Parse flexible date formats from Excel (serial numbers, d/m/y, d/m/Y, Y-m-d, etc.)
+     */
+    public static function parseFlexibleDate($rawDate): Carbon
+    {
+        if (empty($rawDate)) {
+            return now();
+        }
+
+        // 1. If it is an Excel numeric date timestamp
+        if (is_numeric($rawDate) && $rawDate > 1000) {
+            try {
+                return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($rawDate));
+            } catch (\Throwable $e) {}
+        }
+
+        $str = trim((string) $rawDate);
+
+        // 2. Common Indonesian & Excel formatted date strings
+        $formats = [
+            'd/m/y', 'd/m/Y', 'd-m-y', 'd-m-Y',
+            'Y-m-d', 'Y/m/d', 'Y.m.d', 'd.m.Y', 'd.m.y',
+            'j/n/y', 'j/n/Y', 'j-n-y', 'j-n-Y',
+            'Y-m-d H:i:s', 'Y-m-d H:i', 'd/m/Y H:i:s', 'd/m/Y H:i',
+            'd/m/y H:i:s', 'd/m/y H:i',
+        ];
+
+        foreach ($formats as $fmt) {
+            try {
+                $parsed = Carbon::createFromFormat($fmt, $str);
+                if ($parsed !== false && $parsed->year >= 1970 && $parsed->year <= 2100) {
+                    return $parsed;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // 3. Fallback to standard Carbon::parse
+        try {
+            return Carbon::parse($str);
+        } catch (\Throwable $e) {
+            return now();
+        }
+    }
+
+    /**
+     * Clean numeric string or float from Excel
+     */
+    public static function parseAmount($rawAmount): float
+    {
+        if (is_numeric($rawAmount)) {
+            return (float) $rawAmount;
+        }
+
+        if (empty($rawAmount)) {
+            return 0.0;
+        }
+
+        $clean = preg_replace('/[^\d]/', '', (string) $rawAmount);
+        return (float) ($clean ?: 0);
+    }
+
     public function collection(Collection $rows)
     {
         $affectedUserIds = [];
 
         DB::transaction(function () use ($rows, &$affectedUserIds) {
             $defaultSaving = Saving::first();
+            $rowNum = 1; // Row 1 is header
 
             foreach ($rows as $row) {
-                $nip = trim($row['nip'] ?? '');
-                $empName = trim($row['nama_karyawan'] ?? '');
-                $savingName = trim($row['nama_syirkah'] ?? '');
-                $rawDate = trim($row['tanggal'] ?? '');
-                $rawType = strtolower(trim($row['tipe_transaksi'] ?? 'deposit'));
-                $mandatory = (float) ($row['mutasi_wajib'] ?? 0);
-                $secondary = (float) ($row['mutasi_sukarela'] ?? 0);
-                $description = trim($row['keterangan'] ?? '');
+                $rowNum++;
+
+                $nip = trim((string) ($row['nip'] ?? ''));
+                $empName = trim((string) ($row['nama_karyawan'] ?? $row['nama'] ?? ''));
+                $savingName = trim((string) ($row['nama_syirkah'] ?? $row['syirkah'] ?? ''));
+                $rawDate = $row['tanggal'] ?? $row['date'] ?? null;
+                $rawType = strtolower(trim((string) ($row['tipe_transaksi'] ?? $row['tipe'] ?? 'deposit')));
+                $mandatory = self::parseAmount($row['mutasi_wajib'] ?? $row['wajib'] ?? 0);
+                $secondary = self::parseAmount($row['mutasi_sukarela'] ?? $row['sukarela'] ?? 0);
+                $description = trim((string) ($row['keterangan'] ?? ''));
+
+                // Skip trailing empty rows
+                if (empty($nip) && empty($empName) && empty($rawDate) && $mandatory == 0 && $secondary == 0) {
+                    continue;
+                }
 
                 if (empty($nip) && empty($empName)) {
                     continue;
@@ -42,32 +110,34 @@ class SavingTransactionsImport implements ToCollection, WithHeadingRow, WithVali
                     $user = User::where('nip', $nip)->first();
                 }
                 if (!$user && !empty($empName)) {
-                    $user = User::where('name', 'like', "%{$empName}%")->first();
+                    $user = User::where('name', $empName)
+                        ->orWhere('name', 'like', "%{$empName}%")
+                        ->orWhere(DB::raw('LOWER(name)'), strtolower($empName))
+                        ->first();
                 }
 
                 if (!$user) {
-                    continue;
+                    throw new \Exception("Baris {$rowNum}: Karyawan '" . ($empName ?: $nip) . "' tidak ditemukan dalam sistem.");
                 }
 
                 // Match Saving Program
                 $saving = null;
                 if (!empty($savingName)) {
-                    $saving = Saving::where('savings_name', 'like', "%{$savingName}%")->first();
+                    $saving = Saving::where('savings_name', $savingName)
+                        ->orWhere('savings_name', 'like', "%{$savingName}%")
+                        ->orWhere(DB::raw('LOWER(savings_name)'), strtolower($savingName))
+                        ->first();
                 }
                 if (!$saving) {
                     $saving = $defaultSaving;
                 }
 
                 if (!$saving) {
-                    continue;
+                    throw new \Exception("Baris {$rowNum}: Program Syirkah '" . ($savingName ?: 'Default') . "' tidak ditemukan.");
                 }
 
-                // Parse Date
-                try {
-                    $txDate = Carbon::parse($rawDate);
-                } catch (\Throwable $e) {
-                    $txDate = now();
-                }
+                // Parse Date flexibly
+                $txDate = self::parseFlexibleDate($rawDate);
 
                 // Determine transaction type
                 $txType = 'deposit';
@@ -81,7 +151,7 @@ class SavingTransactionsImport implements ToCollection, WithHeadingRow, WithVali
                     $txType = 'withdrawal';
                 }
 
-                // Look for existing identical transaction by user, date, description to overwrite
+                // Check existing identical transaction to overwrite
                 $dateStr = $txDate->format('Y-m-d');
                 $existingTx = SavingTransaction::where('user_id', $user->id)
                     ->where('savings_id', $saving->id)
@@ -94,19 +164,18 @@ class SavingTransactionsImport implements ToCollection, WithHeadingRow, WithVali
                     ->first();
 
                 if ($existingTx) {
-                    $existingTx->update([
-                        'transaction_type' => $txType,
-                        'mandatory_amount' => $mandatory,
-                        'secondary_amount' => $secondary,
-                        'status' => 'approved',
-                        'approved_by' => auth()->id() ?: $existingTx->approved_by,
-                        'approval_date' => $existingTx->approval_date ?: now(),
-                        'description' => $description ?: $existingTx->description,
-                        'created_at' => $txDate,
-                        'updated_at' => now(),
-                    ]);
+                    $existingTx->transaction_type = $txType;
+                    $existingTx->mandatory_amount = $mandatory;
+                    $existingTx->secondary_amount = $secondary;
+                    $existingTx->status = 'approved';
+                    $existingTx->approved_by = auth()->id() ?: $existingTx->approved_by;
+                    $existingTx->approval_date = $existingTx->approval_date ?: now();
+                    $existingTx->description = $description ?: $existingTx->description;
+                    $existingTx->created_at = $txDate;
+                    $existingTx->updated_at = now();
+                    $existingTx->save();
                 } else {
-                    SavingTransaction::create([
+                    $newTx = new SavingTransaction([
                         'user_id' => $user->id,
                         'savings_id' => $saving->id,
                         'transaction_type' => $txType,
@@ -118,9 +187,10 @@ class SavingTransactionsImport implements ToCollection, WithHeadingRow, WithVali
                         'approved_by' => auth()->id(),
                         'approval_date' => now(),
                         'description' => $description ?: 'Mutasi Syirkah Import',
-                        'created_at' => $txDate,
-                        'updated_at' => $txDate,
                     ]);
+                    $newTx->created_at = $txDate;
+                    $newTx->updated_at = $txDate;
+                    $newTx->save();
                 }
 
                 $affectedUserIds[$user->id] = true;
@@ -131,12 +201,5 @@ class SavingTransactionsImport implements ToCollection, WithHeadingRow, WithVali
                 SavingTransactionService::recalculateUserTransactions($userId);
             }
         });
-    }
-
-    public function rules(): array
-    {
-        return [
-            'tanggal' => ['required'],
-        ];
     }
 }

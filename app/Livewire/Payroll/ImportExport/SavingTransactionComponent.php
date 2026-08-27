@@ -161,7 +161,7 @@ class SavingTransactionComponent extends Component
             $this->banner(__('Data mutasi syirkah berhasil diimpor & saldo berjalan dihitung ulang.'));
             $this->reset(['file', 'mode', 'previewing']);
         } catch (\Throwable $e) {
-            $this->banner(__('Gagal mengimpor file: ') . $e->getMessage(), 'danger');
+            $this->dangerBanner(__('Gagal mengimpor file: ') . $e->getMessage());
         }
     }
 
