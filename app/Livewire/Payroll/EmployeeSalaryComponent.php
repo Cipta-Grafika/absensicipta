@@ -28,6 +28,7 @@ class EmployeeSalaryComponent extends Component
     public $late_deduction_rate = 0;
     public $annual_leave_quota = 12;
     public $savings_id = null;
+    public $custom_secondary_savings = null;
 
     protected $rules = [
         'employee_id' => 'required|exists:users,id',
@@ -41,6 +42,7 @@ class EmployeeSalaryComponent extends Component
         'late_deduction_rate' => 'nullable|numeric|min:0',
         'annual_leave_quota' => 'required|numeric|min:0',
         'savings_id' => 'nullable|exists:savings,id',
+        'custom_secondary_savings' => 'nullable|numeric|min:0',
     ];
 
     public function updatingSearch()
@@ -56,7 +58,7 @@ class EmployeeSalaryComponent extends Component
     public function openModal()
     {
         $this->resetValidation();
-        $this->reset(['employee_id', 'salary_type', 'working_days_per_month', 'basic_salary', 'overtime_rate', 'meal_allowance', 'transport_allowance', 'attendance_allowance', 'late_deduction_rate', 'annual_leave_quota', 'savings_id']);
+        $this->reset(['employee_id', 'salary_type', 'working_days_per_month', 'basic_salary', 'overtime_rate', 'meal_allowance', 'transport_allowance', 'attendance_allowance', 'late_deduction_rate', 'annual_leave_quota', 'savings_id', 'custom_secondary_savings']);
         $this->isModalOpen = true;
     }
 
@@ -83,8 +85,9 @@ class EmployeeSalaryComponent extends Component
             $this->late_deduction_rate = $salary->late_deduction_rate;
             $this->annual_leave_quota = $salary->annual_leave_quota ?? 12;
             $this->savings_id = $salary->savings_id;
+            $this->custom_secondary_savings = $salary->custom_secondary_savings;
         } else {
-            $this->reset(['salary_type', 'working_days_per_month', 'basic_salary', 'overtime_rate', 'meal_allowance', 'transport_allowance', 'attendance_allowance', 'late_deduction_rate', 'annual_leave_quota', 'savings_id']);
+            $this->reset(['salary_type', 'working_days_per_month', 'basic_salary', 'overtime_rate', 'meal_allowance', 'transport_allowance', 'attendance_allowance', 'late_deduction_rate', 'annual_leave_quota', 'savings_id', 'custom_secondary_savings']);
             $this->salary_type = 'monthly';
             $this->working_days_per_month = 25;
         }
@@ -109,6 +112,7 @@ class EmployeeSalaryComponent extends Component
                 'late_deduction_rate' => $this->late_deduction_rate ?? 0,
                 'annual_leave_quota' => $this->annual_leave_quota ?? 12,
                 'savings_id' => $this->savings_id ?: null,
+                'custom_secondary_savings' => ($this->custom_secondary_savings !== '' && $this->custom_secondary_savings !== null) ? $this->custom_secondary_savings : null,
             ]
         );
 

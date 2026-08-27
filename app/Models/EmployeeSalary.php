@@ -22,6 +22,17 @@ class EmployeeSalary extends Model
         'late_deduction_rate',
         'annual_leave_quota',
         'savings_id',
+        'custom_secondary_savings',
+    ];
+
+    protected $casts = [
+        'basic_salary' => 'float',
+        'overtime_rate' => 'float',
+        'meal_allowance' => 'float',
+        'transport_allowance' => 'float',
+        'attendance_allowance' => 'float',
+        'late_deduction_rate' => 'float',
+        'custom_secondary_savings' => 'float',
     ];
 
     public function employee()
@@ -32,5 +43,16 @@ class EmployeeSalary extends Model
     public function savings()
     {
         return $this->belongsTo(Saving::class, 'savings_id');
+    }
+
+    /**
+     * Get effective voluntary savings (custom override if present, else master saving default).
+     */
+    public function getEffectiveSecondarySavingsAttribute(): float
+    {
+        if ($this->custom_secondary_savings !== null) {
+            return (float) $this->custom_secondary_savings;
+        }
+        return (float) ($this->savings?->secondary_savings ?? 0);
     }
 }

@@ -434,7 +434,14 @@ class PayrollHistoryComponent extends Component
                     if ($salary->savings_id && $salary->savings && $total_paid_days >= 7) {
                         $savingProgram = $salary->savings;
                         $syirkah_mandatory = (int) round($savingProgram->mandatory_savings);
-                        $syirkah_secondary = (int) round($savingProgram->secondary_savings);
+                        
+                        // Use custom voluntary savings override if configured for this employee, otherwise fallback to master program default
+                        if ($salary->custom_secondary_savings !== null) {
+                            $syirkah_secondary = (int) round($salary->custom_secondary_savings);
+                        } else {
+                            $syirkah_secondary = (int) round($savingProgram->secondary_savings);
+                        }
+                        
                         $syirkah_deduction = $syirkah_mandatory + $syirkah_secondary;
                     }
 

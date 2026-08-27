@@ -199,15 +199,31 @@
 
         <div class="sm:col-span-2">
           <x-label for="savings_id" value="{{ __('Syirkah / Tabungan (Opsional)') }}" />
-          <select id="savings_id" wire:model="savings_id" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+          <select id="savings_id" wire:model.live="savings_id" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
             <option value="">-- Tidak Ada --</option>
             @foreach($savingsList as $s)
-              <option value="{{ $s->id }}">{{ $s->savings_name }} (Wajib: Rp{{ number_format($s->mandatory_savings, 0, ',', '.') }})</option>
+              <option value="{{ $s->id }}">{{ $s->savings_name }} (Wajib: Rp{{ number_format($s->mandatory_savings, 0, ',', '.') }}, Default Sukarela: Rp{{ number_format($s->secondary_savings, 0, ',', '.') }})</option>
             @endforeach
           </select>
           <p class="mt-1 text-xs text-gray-500">Pilih program syirkah yang diikuti oleh karyawan ini.</p>
           <x-input-error for="savings_id" class="mt-2" />
         </div>
+
+        @if($savings_id)
+        <div class="sm:col-span-2 p-3 bg-sky-50 dark:bg-sky-950/40 rounded-lg border border-sky-200 dark:border-sky-800">
+          <x-label for="custom_secondary_savings" value="{{ __('Custom Nominal Syirkah Sukarela (Override)') }}" class="text-sky-900 dark:text-sky-200 font-semibold" />
+          <div class="relative mt-1 rounded-md shadow-sm">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <span class="text-gray-500 sm:text-sm">Rp</span>
+            </div>
+            <x-input id="custom_secondary_savings" type="number" class="block w-full pl-10" wire:model="custom_secondary_savings" placeholder="Kosongkan untuk gunakan default master program" min="0" />
+          </div>
+          <p class="mt-1 text-[11px] text-sky-600 dark:text-sky-400">
+            *Biarkan kosong jika ingin mengikuti nominal sukarela default dari master syirkah. Isi nominal di sini untuk meng-override khusus karyawan ini.
+          </p>
+          <x-input-error for="custom_secondary_savings" class="mt-2" />
+        </div>
+        @endif
       </div>
     </x-slot>
 

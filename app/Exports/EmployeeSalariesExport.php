@@ -29,6 +29,7 @@ class EmployeeSalariesExport implements FromCollection, WithHeadings, WithMappin
             'late_deduction_rate',
             'annual_leave_quota',
             'savings_name',
+            'custom_secondary_savings',
         ];
     }
 
@@ -47,6 +48,7 @@ class EmployeeSalariesExport implements FromCollection, WithHeadings, WithMappin
             $salary->late_deduction_rate,
             $salary->annual_leave_quota,
             $salary->savings->savings_name ?? '',
+            $salary->custom_secondary_savings ?? '',
         ];
     }
 }

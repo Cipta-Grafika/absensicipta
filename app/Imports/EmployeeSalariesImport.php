@@ -42,6 +42,11 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
             }
         }
 
+        $customSecondarySavings = null;
+        if (isset($row['custom_secondary_savings']) && is_numeric($row['custom_secondary_savings'])) {
+            $customSecondarySavings = (float) $row['custom_secondary_savings'];
+        }
+
         $salary->forceFill([
             'salary_type' => $row['salary_type'],
             'working_days_per_month' => $row['working_days_per_month'],
@@ -53,6 +58,7 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
             'late_deduction_rate' => $row['late_deduction_rate'],
             'annual_leave_quota' => $row['annual_leave_quota'],
             'savings_id' => $savingsId,
+            'custom_secondary_savings' => $customSecondarySavings,
         ]);
 
         if ($this->save) {
@@ -83,6 +89,7 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
             'late_deduction_rate' => ['required', 'numeric'],
             'annual_leave_quota' => ['required', 'numeric'],
             'savings_name' => ['nullable', 'exists:savings,savings_name'],
+            'custom_secondary_savings' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 

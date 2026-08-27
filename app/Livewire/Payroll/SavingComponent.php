@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Payroll;
 
+use App\Models\EmployeeSalary;
 use App\Models\Saving;
+use App\Models\Division;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Laravel\Jetstream\InteractsWithBanner;
@@ -11,15 +13,38 @@ class SavingComponent extends Component
 {
     use WithPagination, InteractsWithBanner;
 
+    public $activeTab = 'master'; // 'master' | 'members'
     public $search = '';
+
+    // Member tab filters
+    public $memberSearch = '';
+    public $memberDivision = '';
+    public $overrideFilter = ''; // '' | 'custom' | 'default'
+
+    // Form fields for Master Saving
     public $isModalOpen = false;
     public $isConfirmingDeletion = false;
-
-    // Form fields
     public $saving_id;
     public $savings_name;
     public $mandatory_savings = 0;
     public $secondary_savings = 0;
+
+    // Form fields for Custom Sukarela Override Modal
+    public $isCustomSukarelaModalOpen = false;
+    public $selectedSalaryId = null;
+    public $selectedEmployeeName = '';
+    public $selectedEmployeeNip = '';
+    public $selectedSavingName = '';
+    public $selectedMasterSukarela = 0;
+    public $customSukarelaMode = 'default'; // 'default' | 'custom'
+    public $customSukarelaNominal = 0;
+
+    protected $queryString = [
+        'activeTab' => ['except' => 'master'],
+        'memberSearch' => ['except' => ''],
+        'memberDivision' => ['except' => ''],
+        'overrideFilter' => ['except' => ''],
+    ];
 
     protected function rules()
     {
@@ -41,10 +66,33 @@ class SavingComponent extends Component
         ];
     }
 
+    public function setTab($tab)
+    {
+        $this->activeTab = $tab;
+        $this->resetPage();
+    }
+
     public function updatingSearch()
     {
         $this->resetPage();
     }
+
+    public function updatingMemberSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingMemberDivision()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingOverrideFilter()
+    {
+        $this->resetPage();
+    }
+
+    // --- Master Saving Actions ---
 
     public function openModal()
     {
@@ -113,14 +161,109 @@ class SavingComponent extends Component
         $this->closeModal();
     }
 
+    // --- Custom Sukarela Override Actions ---
+
+    public function openCustomSukarelaModal($salaryId)
+    {
+        $salary = EmployeeSalary::with(['employee.division', 'savings'])->findOrFail($salaryId);
+        
+        $this->selectedSalaryId = $salary->id;
+        $this->selectedEmployeeName = $salary->employee->name ?? '-';
+        $this->selectedEmployeeNip = $salary->employee->nip ?? '-';
+        $this->selectedSavingName = $salary->savings->savings_name ?? 'Syirkah';
+        $this->selectedMasterSukarela = (float) ($salary->savings->secondary_savings ?? 0);
+
+        if ($salary->custom_secondary_savings !== null) {
+            $this->customSukarelaMode = 'custom';
+            $this->customSukarelaNominal = (float) $salary->custom_secondary_savings;
+        } else {
+            $this->customSukarelaMode = 'default';
+            $this->customSukarelaNominal = (float) $this->selectedMasterSukarela;
+        }
+
+        $this->isCustomSukarelaModalOpen = true;
+    }
+
+    public function closeCustomSukarelaModal()
+    {
+        $this->isCustomSukarelaModalOpen = false;
+        $this->selectedSalaryId = null;
+    }
+
+    public function saveCustomSukarela()
+    {
+        if (!$this->selectedSalaryId) return;
+
+        $salary = EmployeeSalary::findOrFail($this->selectedSalaryId);
+
+        if ($this->customSukarelaMode === 'custom') {
+            $salary->update([
+                'custom_secondary_savings' => max(0, (float) $this->customSukarelaNominal),
+            ]);
+            $this->banner("Nominal syirkah sukarela untuk {$this->selectedEmployeeName} berhasil di-custom menjadi Rp " . number_format($this->customSukarelaNominal, 0, ',', '.') . ".");
+        } else {
+            $salary->update([
+                'custom_secondary_savings' => null,
+            ]);
+            $this->banner("Nominal syirkah sukarela untuk {$this->selectedEmployeeName} dikembalikan mengikuti master program default (Rp " . number_format($this->selectedMasterSukarela, 0, ',', '.') . ").");
+        }
+
+        $this->closeCustomSukarelaModal();
+    }
+
+    public function resetCustomSukarelaToDefault($salaryId)
+    {
+        $salary = EmployeeSalary::with('employee')->findOrFail($salaryId);
+        $salary->update([
+            'custom_secondary_savings' => null,
+        ]);
+
+        $empName = $salary->employee->name ?? 'Karyawan';
+        $this->banner("Nominal syirkah sukarela {$empName} berhasil di-reset mengikuti default master program.");
+    }
+
     public function render()
     {
         $savings = Saving::where('savings_name', 'like', '%' . $this->search . '%')
             ->latest()
-            ->paginate(10);
+            ->paginate(10, ['*'], 'savings_page');
+
+        // Member salaries with Syirkah assigned
+        $membersQuery = EmployeeSalary::with(['employee.division', 'savings'])
+            ->whereNotNull('savings_id')
+            ->whereHas('employee', function ($q) {
+                $q->where('group', 'user')
+                  ->whereIn('status', ['active', 'suspend']);
+                if ($this->memberSearch) {
+                    $q->where(function ($sub) {
+                        $sub->where('name', 'like', '%' . $this->memberSearch . '%')
+                            ->orWhere('nip', 'like', '%' . $this->memberSearch . '%');
+                    });
+                }
+                if ($this->memberDivision) {
+                    $q->where('division_id', $this->memberDivision);
+                }
+            });
+
+        if ($this->overrideFilter === 'custom') {
+            $membersQuery->whereNotNull('custom_secondary_savings');
+        } elseif ($this->overrideFilter === 'default') {
+            $membersQuery->whereNull('custom_secondary_savings');
+        }
+
+        $memberSalaries = $membersQuery->paginate(15, ['*'], 'members_page');
+        $divisions = Division::orderBy('name')->get();
+
+        $totalMembers = EmployeeSalary::whereNotNull('savings_id')->count();
+        $customMembersCount = EmployeeSalary::whereNotNull('savings_id')->whereNotNull('custom_secondary_savings')->count();
 
         return view('livewire.payroll.saving-component', [
-            'savings' => $savings
+            'savings' => $savings,
+            'memberSalaries' => $memberSalaries,
+            'divisions' => $divisions,
+            'totalMembers' => $totalMembers,
+            'customMembersCount' => $customMembersCount,
         ])->layout('layouts.app');
     }
 }
+
