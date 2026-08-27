@@ -22,6 +22,18 @@ class SavingTransaction extends Model
         'reference_type',
         'reference_id',
         'description',
+        'status',
+        'approved_by',
+        'approval_date',
+        'rejection_reason',
+    ];
+
+    protected $casts = [
+        'approval_date' => 'datetime',
+        'mandatory_amount' => 'float',
+        'secondary_amount' => 'float',
+        'balance_mandatory' => 'float',
+        'balance_secondary' => 'float',
     ];
 
     protected static function booted()
@@ -43,11 +55,11 @@ class SavingTransaction extends Model
     {
         if (!$transaction->user_id || !$transaction->savings_id) return;
 
-        $depMan = self::where('user_id', $transaction->user_id)->where('savings_id', $transaction->savings_id)->where('transaction_type', 'deposit')->sum('mandatory_amount');
-        $wdMan = self::where('user_id', $transaction->user_id)->where('savings_id', $transaction->savings_id)->where('transaction_type', 'withdrawal')->sum('mandatory_amount');
+        $depMan = self::where('user_id', $transaction->user_id)->where('savings_id', $transaction->savings_id)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('mandatory_amount');
+        $wdMan = self::where('user_id', $transaction->user_id)->where('savings_id', $transaction->savings_id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('mandatory_amount');
         
-        $depSec = self::where('user_id', $transaction->user_id)->where('savings_id', $transaction->savings_id)->where('transaction_type', 'deposit')->sum('secondary_amount');
-        $wdSec = self::where('user_id', $transaction->user_id)->where('savings_id', $transaction->savings_id)->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+        $depSec = self::where('user_id', $transaction->user_id)->where('savings_id', $transaction->savings_id)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
+        $wdSec = self::where('user_id', $transaction->user_id)->where('savings_id', $transaction->savings_id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('secondary_amount');
 
         \App\Models\SavingSummary::updateOrCreate(
             [
@@ -55,8 +67,8 @@ class SavingTransaction extends Model
                 'savings_id' => $transaction->savings_id,
             ],
             [
-                'total_mandatory' => $depMan - $wdMan,
-                'total_secondary' => $depSec - $wdSec,
+                'total_mandatory' => max(0, $depMan - $wdMan),
+                'total_secondary' => max(0, $depSec - $wdSec),
             ]
         );
     }
@@ -69,5 +81,25 @@ class SavingTransaction extends Model
     public function masterSaving()
     {
         return $this->belongsTo(Saving::class, 'savings_id');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
     }
 }

@@ -51,7 +51,7 @@ class SavingTransactionService
                     $dup->delete();
                 }
 
-                // Update the main transaction with accurate values
+                // Update the main transaction with accurate values (preserve approval if already approved)
                 $mainTx->update([
                     'transaction_type' => 'deposit',
                     'mandatory_amount' => $mandatoryAmount,
@@ -65,7 +65,7 @@ class SavingTransactionService
 
                 $transaction = $mainTx;
             } else {
-                // Create single transaction
+                // Create single transaction with pending status awaiting Syirkah role approval
                 $transaction = SavingTransaction::create([
                     'user_id' => $userId,
                     'savings_id' => $savingsId,
@@ -75,12 +75,15 @@ class SavingTransactionService
                     'reference_type' => 'payroll',
                     'reference_id' => $payrollId,
                     'description' => $description,
+                    'status' => 'pending',
+                    'approved_by' => null,
+                    'approval_date' => null,
                     'created_at' => $periodDate,
                     'updated_at' => $periodDate,
                 ]);
             }
 
-            // Recalculate running balance chronologically
+            // Recalculate running balance chronologically (only includes approved transactions)
             self::recalculateUserTransactions($userId, $savingsId);
 
             return $transaction->fresh();
@@ -89,7 +92,7 @@ class SavingTransactionService
 
     /**
      * Chronologically recalculate running balances (balance_mandatory & balance_secondary)
-     * for a given user and savings program.
+     * for a given user and savings program. ONLY approved transactions contribute to the balance.
      */
     public static function recalculateUserTransactions(string $userId, ?string $savingsId = null): void
     {
@@ -103,40 +106,70 @@ class SavingTransactionService
         $runningSecondary = 0.0;
 
         foreach ($query->orderBy('created_at', 'asc')->orderBy('id', 'asc')->cursor() as $tx) {
-            if ($tx->transaction_type === 'deposit') {
-                $runningMandatory += (float) $tx->mandatory_amount;
-                $runningSecondary += (float) $tx->secondary_amount;
-            } elseif ($tx->transaction_type === 'withdrawal') {
-                $runningMandatory -= (float) $tx->mandatory_amount;
-                $runningSecondary -= (float) $tx->secondary_amount;
-            }
+            if ($tx->status === 'approved') {
+                if ($tx->transaction_type === 'deposit') {
+                    $runningMandatory += (float) $tx->mandatory_amount;
+                    $runningSecondary += (float) $tx->secondary_amount;
+                } elseif ($tx->transaction_type === 'withdrawal') {
+                    $runningMandatory -= (float) $tx->mandatory_amount;
+                    $runningSecondary -= (float) $tx->secondary_amount;
+                }
 
-            // Ensure balance doesn't drop below 0 due to edge cases
-            $runningMandatory = max(0.0, $runningMandatory);
-            $runningSecondary = max(0.0, $runningSecondary);
+                // Ensure balance doesn't drop below 0 due to edge cases
+                $runningMandatory = max(0.0, $runningMandatory);
+                $runningSecondary = max(0.0, $runningSecondary);
 
-            // Only issue SQL update if balances actually changed
-            if (abs((float) $tx->balance_mandatory - $runningMandatory) > 0.001 || abs((float) $tx->balance_secondary - $runningSecondary) > 0.001) {
-                DB::table('saving_transactions')
-                    ->where('id', $tx->id)
-                    ->update([
-                        'balance_mandatory' => $runningMandatory,
-                        'balance_secondary' => $runningSecondary,
-                    ]);
+                // Only issue SQL update if balances actually changed
+                if (abs((float) $tx->balance_mandatory - $runningMandatory) > 0.001 || abs((float) $tx->balance_secondary - $runningSecondary) > 0.001) {
+                    DB::table('saving_transactions')
+                        ->where('id', $tx->id)
+                        ->update([
+                            'balance_mandatory' => $runningMandatory,
+                            'balance_secondary' => $runningSecondary,
+                        ]);
+                }
+            } else {
+                // For pending or rejected transactions, keep balance as 0 or current running snapshot without incrementing
+                if ((float) $tx->balance_mandatory != 0.0 || (float) $tx->balance_secondary != 0.0) {
+                    DB::table('saving_transactions')
+                        ->where('id', $tx->id)
+                        ->update([
+                            'balance_mandatory' => 0.0,
+                            'balance_secondary' => 0.0,
+                        ]);
+                }
             }
         }
 
-        // Update SavingSummary
+        // Update SavingSummary strictly from approved transactions
         $distinctSavingsIds = $savingsId
             ? [$savingsId]
             : SavingTransaction::where('user_id', $userId)->pluck('savings_id')->unique();
 
         foreach ($distinctSavingsIds as $sId) {
-            $depMan = SavingTransaction::where('user_id', $userId)->where('savings_id', $sId)->where('transaction_type', 'deposit')->sum('mandatory_amount');
-            $wdMan = SavingTransaction::where('user_id', $userId)->where('savings_id', $sId)->where('transaction_type', 'withdrawal')->sum('mandatory_amount');
+            $depMan = SavingTransaction::where('user_id', $userId)
+                ->where('savings_id', $sId)
+                ->where('status', 'approved')
+                ->where('transaction_type', 'deposit')
+                ->sum('mandatory_amount');
 
-            $depSec = SavingTransaction::where('user_id', $userId)->where('savings_id', $sId)->where('transaction_type', 'deposit')->sum('secondary_amount');
-            $wdSec = SavingTransaction::where('user_id', $userId)->where('savings_id', $sId)->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+            $wdMan = SavingTransaction::where('user_id', $userId)
+                ->where('savings_id', $sId)
+                ->where('status', 'approved')
+                ->where('transaction_type', 'withdrawal')
+                ->sum('mandatory_amount');
+
+            $depSec = SavingTransaction::where('user_id', $userId)
+                ->where('savings_id', $sId)
+                ->where('status', 'approved')
+                ->where('transaction_type', 'deposit')
+                ->sum('secondary_amount');
+
+            $wdSec = SavingTransaction::where('user_id', $userId)
+                ->where('savings_id', $sId)
+                ->where('status', 'approved')
+                ->where('transaction_type', 'withdrawal')
+                ->sum('secondary_amount');
 
             SavingSummary::updateOrCreate(
                 [
@@ -149,6 +182,152 @@ class SavingTransactionService
                 ]
             );
         }
+    }
+
+    /**
+     * Approve a saving transaction by a user with role Syirkah/Superadmin.
+     */
+    public static function approveTransaction(string $transactionId, string $approverId): SavingTransaction
+    {
+        return DB::transaction(function () use ($transactionId, $approverId) {
+            $tx = SavingTransaction::lockForUpdate()->findOrFail($transactionId);
+            $tx->update([
+                'status' => 'approved',
+                'approved_by' => $approverId,
+                'approval_date' => now(),
+                'rejection_reason' => null,
+                'updated_at' => now(),
+            ]);
+
+            self::recalculateUserTransactions($tx->user_id, $tx->savings_id);
+
+            return $tx->fresh();
+        });
+    }
+
+    /**
+     * Reject a saving transaction by a user with role Syirkah/Superadmin.
+     */
+    public static function rejectTransaction(string $transactionId, string $approverId, ?string $reason = null): SavingTransaction
+    {
+        return DB::transaction(function () use ($transactionId, $approverId, $reason) {
+            $tx = SavingTransaction::lockForUpdate()->findOrFail($transactionId);
+            $tx->update([
+                'status' => 'rejected',
+                'approved_by' => $approverId,
+                'approval_date' => now(),
+                'rejection_reason' => $reason,
+                'updated_at' => now(),
+            ]);
+
+            self::recalculateUserTransactions($tx->user_id, $tx->savings_id);
+
+            return $tx->fresh();
+        });
+    }
+
+    /**
+     * Bulk approve multiple saving transactions.
+     */
+    public static function bulkApprove(array $transactionIds, string $approverId): int
+    {
+        if (empty($transactionIds)) return 0;
+
+        return DB::transaction(function () use ($transactionIds, $approverId) {
+            $affectedTransactions = SavingTransaction::whereIn('id', $transactionIds)->get();
+            $affectedUsers = [];
+
+            foreach ($affectedTransactions as $tx) {
+                $tx->update([
+                    'status' => 'approved',
+                    'approved_by' => $approverId,
+                    'approval_date' => now(),
+                    'rejection_reason' => null,
+                    'updated_at' => now(),
+                ]);
+                $affectedUsers[$tx->user_id] = $tx->savings_id;
+            }
+
+            foreach ($affectedUsers as $uId => $sId) {
+                self::recalculateUserTransactions($uId, $sId);
+            }
+
+            return $affectedTransactions->count();
+        });
+    }
+
+    /**
+     * Bulk reject multiple saving transactions.
+     */
+    public static function bulkReject(array $transactionIds, string $approverId, ?string $reason = null): int
+    {
+        if (empty($transactionIds)) return 0;
+
+        return DB::transaction(function () use ($transactionIds, $approverId, $reason) {
+            $affectedTransactions = SavingTransaction::whereIn('id', $transactionIds)->get();
+            $affectedUsers = [];
+
+            foreach ($affectedTransactions as $tx) {
+                $tx->update([
+                    'status' => 'rejected',
+                    'approved_by' => $approverId,
+                    'approval_date' => now(),
+                    'rejection_reason' => $reason,
+                    'updated_at' => now(),
+                ]);
+                $affectedUsers[$tx->user_id] = $tx->savings_id;
+            }
+
+            foreach ($affectedUsers as $uId => $sId) {
+                self::recalculateUserTransactions($uId, $sId);
+            }
+
+            return $affectedTransactions->count();
+        });
+    }
+
+    /**
+     * Delete a saving transaction permanently and recalculate balances.
+     */
+    public static function deleteTransaction(string $transactionId): bool
+    {
+        return DB::transaction(function () use ($transactionId) {
+            $tx = SavingTransaction::lockForUpdate()->find($transactionId);
+            if (!$tx) return false;
+
+            $userId = $tx->user_id;
+            $savingsId = $tx->savings_id;
+
+            $tx->delete();
+
+            self::recalculateUserTransactions($userId, $savingsId);
+
+            return true;
+        });
+    }
+
+    /**
+     * Bulk delete saving transactions permanently and recalculate balances.
+     */
+    public static function bulkDelete(array $transactionIds): int
+    {
+        if (empty($transactionIds)) return 0;
+
+        return DB::transaction(function () use ($transactionIds) {
+            $affectedTransactions = SavingTransaction::whereIn('id', $transactionIds)->get();
+            $affectedUsers = [];
+
+            foreach ($affectedTransactions as $tx) {
+                $affectedUsers[$tx->user_id] = $tx->savings_id;
+                $tx->delete();
+            }
+
+            foreach ($affectedUsers as $uId => $sId) {
+                self::recalculateUserTransactions($uId, $sId);
+            }
+
+            return $affectedTransactions->count();
+        });
     }
 
     /**

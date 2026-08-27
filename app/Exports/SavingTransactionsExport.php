@@ -87,6 +87,8 @@ class SavingTransactionsExport implements FromCollection, WithHeadings, WithMapp
             'mutasi_sukarela',
             'saldo_wajib',
             'saldo_sukarela',
+            'status',
+            'disetujui_oleh',
             'keterangan',
         ];
     }
@@ -103,6 +105,8 @@ class SavingTransactionsExport implements FromCollection, WithHeadings, WithMapp
             (float) $tx->secondary_amount,
             (float) $tx->balance_mandatory,
             (float) $tx->balance_secondary,
+            strtoupper($tx->status ?? 'APPROVED'),
+            $tx->approver?->name ?? '-',
             $tx->description ?? '-',
         ];
     }

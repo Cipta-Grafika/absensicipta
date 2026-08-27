@@ -19,7 +19,17 @@ class Loan extends Model
         'remaining_balance',
         'status',
         'approved_by',
+        'approval_date',
+        'rejection_reason',
         'description',
+    ];
+
+    protected $casts = [
+        'approval_date' => 'datetime',
+        'loan_amount' => 'float',
+        'installment_amount' => 'float',
+        'remaining_balance' => 'float',
+        'tenor_months' => 'integer',
     ];
 
     public function user()
@@ -35,5 +45,25 @@ class Loan extends Model
     public function installments()
     {
         return $this->hasMany(LoanInstallment::class);
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', ['approved', 'active']);
+    }
+
+    public function scopePaidOff($query)
+    {
+        return $query->where('status', 'paid_off');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
     }
 }

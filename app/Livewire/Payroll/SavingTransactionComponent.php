@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Saving;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class SavingTransactionComponent extends Component
 {
@@ -18,6 +19,11 @@ class SavingTransactionComponent extends Component
     public $month = '';
     public $type = '';
     public $division = '';
+    public $statusFilter = ''; // '', 'pending', 'approved', 'rejected'
+
+    // Bulk Actions State
+    public $selectedTransactions = [];
+    public $selectAll = false;
 
     // Modal Pencairan
     public $withdrawalModalOpen = false;
@@ -34,9 +40,211 @@ class SavingTransactionComponent extends Component
     public $edit_secondary_amount = 0;
     public $editingTransaction = null;
 
+    // Modal Reject
+    public $rejectModalOpen = false;
+    public $rejectTransactionId = null;
+    public $rejection_reason = '';
+    public $isBulkReject = false;
+
+    // Modal Delete Permanent
+    public $isDeleteModalOpen = false;
+    public $deleteTransactionId = null;
+    public $isBulkDelete = false;
+
+    protected $updatesQueryString = ['statusFilter', 'month', 'type', 'division'];
+
+    public function updatedSelectAll($value)
+    {
+        if ($value) {
+            $query = $this->buildQuery();
+            $this->selectedTransactions = $query->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } else {
+            $this->selectedTransactions = [];
+        }
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+        $this->selectedTransactions = [];
+        $this->selectAll = false;
+    }
+
+    public function updatingMonth()
+    {
+        $this->resetPage();
+        $this->selectedTransactions = [];
+        $this->selectAll = false;
+    }
+
+    public function updatingType()
+    {
+        $this->resetPage();
+        $this->selectedTransactions = [];
+        $this->selectAll = false;
+    }
+
+    public function updatingDivision()
+    {
+        $this->resetPage();
+        $this->selectedTransactions = [];
+        $this->selectAll = false;
+    }
+
+    public function updatingStatusFilter()
+    {
+        $this->resetPage();
+        $this->selectedTransactions = [];
+        $this->selectAll = false;
+    }
+
+    public function approve($transactionId)
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menyetujui mutasi.');
+        }
+
+        \App\Services\SavingTransactionService::approveTransaction($transactionId, Auth::id());
+        $this->dispatch('notify', 'Mutasi syirkah berhasil disetujui & saldo berhasil diperbarui.');
+    }
+
+    public function openRejectModal($transactionId)
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menolak mutasi.');
+        }
+
+        $this->rejectTransactionId = $transactionId;
+        $this->isBulkReject = false;
+        $this->rejection_reason = '';
+        $this->rejectModalOpen = true;
+    }
+
+    public function openBulkRejectModal()
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menolak mutasi.');
+        }
+
+        if (empty($this->selectedTransactions)) {
+            $this->dispatch('notify', 'Pilih minimal satu transaksi untuk ditolak.');
+            return;
+        }
+
+        $this->isBulkReject = true;
+        $this->rejectTransactionId = null;
+        $this->rejection_reason = '';
+        $this->rejectModalOpen = true;
+    }
+
+    public function closeRejectModal()
+    {
+        $this->rejectModalOpen = false;
+        $this->rejectTransactionId = null;
+        $this->rejection_reason = '';
+        $this->isBulkReject = false;
+    }
+
+    public function submitReject()
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menolak mutasi.');
+        }
+
+        if ($this->isBulkReject) {
+            $count = \App\Services\SavingTransactionService::bulkReject(
+                $this->selectedTransactions,
+                Auth::id(),
+                $this->rejection_reason ?: 'Ditolak oleh admin Syirkah'
+            );
+            $this->selectedTransactions = [];
+            $this->selectAll = false;
+            $this->dispatch('notify', "Sebanyak {$count} transaksi syirkah berhasil ditolak.");
+        } else {
+            \App\Services\SavingTransactionService::rejectTransaction(
+                $this->rejectTransactionId,
+                Auth::id(),
+                $this->rejection_reason ?: 'Ditolak oleh admin Syirkah'
+            );
+            $this->dispatch('notify', 'Mutasi syirkah berhasil ditolak.');
+        }
+
+        $this->closeRejectModal();
+    }
+
+    public function bulkApprove()
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menyetujui mutasi.');
+        }
+
+        if (empty($this->selectedTransactions)) {
+            $this->dispatch('notify', 'Pilih minimal satu transaksi untuk disetujui.');
+            return;
+        }
+
+        $count = \App\Services\SavingTransactionService::bulkApprove($this->selectedTransactions, Auth::id());
+        $this->selectedTransactions = [];
+        $this->selectAll = false;
+        $this->dispatch('notify', "Sebanyak {$count} transaksi syirkah berhasil disetujui & saldo berhasil diperbarui.");
+    }
+
+    public function openDeleteModal($transactionId)
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menghapus data mutasi.');
+        }
+
+        $this->deleteTransactionId = $transactionId;
+        $this->isBulkDelete = false;
+        $this->isDeleteModalOpen = true;
+    }
+
+    public function openBulkDeleteModal()
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menghapus data mutasi.');
+        }
+
+        if (empty($this->selectedTransactions)) {
+            $this->dispatch('notify', 'Pilih minimal satu transaksi untuk dihapus.');
+            return;
+        }
+
+        $this->isBulkDelete = true;
+        $this->deleteTransactionId = null;
+        $this->isDeleteModalOpen = true;
+    }
+
+    public function closeDeleteModal()
+    {
+        $this->isDeleteModalOpen = false;
+        $this->deleteTransactionId = null;
+        $this->isBulkDelete = false;
+    }
+
+    public function confirmDelete()
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menghapus data mutasi.');
+        }
+
+        if ($this->isBulkDelete) {
+            $count = \App\Services\SavingTransactionService::bulkDelete($this->selectedTransactions);
+            $this->selectedTransactions = [];
+            $this->selectAll = false;
+            $this->dispatch('notify', "Sebanyak {$count} data mutasi syirkah berhasil dihapus permanen & saldo berjalan dihitung ulang.");
+        } else {
+            \App\Services\SavingTransactionService::deleteTransaction($this->deleteTransactionId);
+            $this->dispatch('notify', 'Data mutasi syirkah berhasil dihapus permanen & saldo berjalan dihitung ulang.');
+        }
+
+        $this->closeDeleteModal();
+    }
+
     public function openEditNominalModal($transactionId)
     {
-        if (!auth()->user()?->isSyirkah) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
             abort(403, 'Akses Ditolak: Hanya group syirkah yang berhak mengedit nominal mutasi.');
         }
 
@@ -58,7 +266,7 @@ class SavingTransactionComponent extends Component
 
     public function updateNominal()
     {
-        if (!auth()->user()?->isSyirkah) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
             abort(403, 'Akses Ditolak: Hanya group syirkah yang berhak mengedit nominal mutasi.');
         }
 
@@ -84,31 +292,11 @@ class SavingTransactionComponent extends Component
             ]);
 
             // Recalculate running balance and summaries
-            \App\Services\SavingTransactionService::recalculateUserTransactions($tx->user_id);
+            \App\Services\SavingTransactionService::recalculateUserTransactions($tx->user_id, $tx->savings_id);
         });
 
         $this->closeEditNominalModal();
         $this->dispatch('notify', 'Nominal mutasi syirkah berhasil diperbarui.');
-    }
-
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingMonth()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingType()
-    {
-        $this->resetPage();
-    }
-
-    public function updatingDivision()
-    {
-        $this->resetPage();
     }
 
     public function openWithdrawalModal()
@@ -133,7 +321,7 @@ class SavingTransactionComponent extends Component
 
         DB::beginTransaction();
         try {
-            // Calculate true balance dynamically for maximum accuracy
+            // Calculate true balance dynamically from approved transactions
             $summary = \App\Models\SavingSummary::firstOrCreate(
                 ['user_id' => $this->withdrawal_user_id, 'savings_id' => $this->withdrawal_savings_id],
                 ['total_mandatory' => 0, 'total_secondary' => 0]
@@ -174,8 +362,10 @@ class SavingTransactionComponent extends Component
                 }
             }
 
-            $newBalanceMandatory = $balanceMandatory - $withdrawMandatory;
-            $newBalanceSecondary = $balanceSecondary - $withdrawSecondary;
+            $newBalanceMandatory = max(0, $balanceMandatory - $withdrawMandatory);
+            $newBalanceSecondary = max(0, $balanceSecondary - $withdrawSecondary);
+
+            $isDirectApproved = Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin;
 
             SavingTransaction::create([
                 'user_id' => $this->withdrawal_user_id,
@@ -183,12 +373,17 @@ class SavingTransactionComponent extends Component
                 'transaction_type' => 'withdrawal',
                 'mandatory_amount' => $withdrawMandatory,
                 'secondary_amount' => $withdrawSecondary,
-                'balance_mandatory' => $newBalanceMandatory,
-                'balance_secondary' => $newBalanceSecondary,
+                'balance_mandatory' => $isDirectApproved ? $newBalanceMandatory : 0,
+                'balance_secondary' => $isDirectApproved ? $newBalanceSecondary : 0,
+                'status' => $isDirectApproved ? 'approved' : 'pending',
+                'approved_by' => $isDirectApproved ? Auth::id() : null,
+                'approval_date' => $isDirectApproved ? now() : null,
                 'description' => $this->withdrawal_description ?: 'Pencairan Syirkah',
             ]);
 
-            \App\Services\SavingTransactionService::recalculateUserTransactions($this->withdrawal_user_id, $this->withdrawal_savings_id);
+            if ($isDirectApproved) {
+                \App\Services\SavingTransactionService::recalculateUserTransactions($this->withdrawal_user_id, $this->withdrawal_savings_id);
+            }
 
             DB::commit();
             $this->closeWithdrawalModal();
@@ -199,9 +394,9 @@ class SavingTransactionComponent extends Component
         }
     }
 
-    public function render()
+    private function buildQuery()
     {
-        $query = SavingTransaction::with(['user', 'masterSaving']);
+        $query = SavingTransaction::with(['user.division', 'masterSaving', 'approver']);
 
         if ($this->search) {
             $query->where(function($q) {
@@ -227,17 +422,27 @@ class SavingTransactionComponent extends Component
             $query->where('transaction_type', $this->type);
         }
 
+        if ($this->statusFilter) {
+            $query->where('status', $this->statusFilter);
+        }
+
         if ($this->division) {
             $query->whereHas('user', function($q) {
                 $q->where('division_id', $this->division);
             });
         }
 
+        return $query;
+    }
+
+    public function render()
+    {
+        $query = $this->buildQuery();
         $transactions = $query->latest()->paginate(15);
         $users = User::where('group', 'user')->whereIn('status', ['active', 'suspend'])->orderBy('name')->get();
         $savingsList = Saving::orderBy('savings_name')->get();
 
-        // Calculate dynamic true balance for summary
+        // Calculate dynamic true balance for summary from approved transactions
         $summaryQuery = \App\Models\SavingSummary::query();
         if ($this->search) {
             $summaryQuery->where(function($q) {
@@ -257,8 +462,12 @@ class SavingTransactionComponent extends Component
             });
         }
         
-        $totalWajib = $summaryQuery->sum('total_mandatory');
-        $totalSukarela = $summaryQuery->sum('total_secondary');
+        $totalWajib = (float) $summaryQuery->sum('total_mandatory');
+        $totalSukarela = (float) $summaryQuery->sum('total_secondary');
+
+        // Pending Counter
+        $pendingCount = SavingTransaction::where('status', 'pending')->count();
+        $pendingNominal = (float) SavingTransaction::where('status', 'pending')->sum(DB::raw('mandatory_amount + secondary_amount'));
 
         return view('livewire.payroll.saving-transaction-component', [
             'transactions' => $transactions,
@@ -266,6 +475,9 @@ class SavingTransactionComponent extends Component
             'savingsList' => $savingsList,
             'totalWajib' => $totalWajib,
             'totalSukarela' => $totalSukarela,
+            'pendingCount' => $pendingCount,
+            'pendingNominal' => $pendingNominal,
         ])->layout('layouts.app');
     }
 }
+
