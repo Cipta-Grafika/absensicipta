@@ -106,6 +106,9 @@
                 <x-dropdown-link href="{{ route('hr.import-export.attendances') }}" :active="request()->routeIs('hr.import-export.attendances')">
                   {{ __('Attendance') }}
                 </x-dropdown-link>
+                <x-dropdown-link href="{{ route('hr.import-export.overtimes') }}" :active="request()->routeIs('hr.import-export.overtimes')">
+                  Lembur
+                </x-dropdown-link>
                 <x-dropdown-link href="{{ route('hr.import-export.work-schedules') }}" :active="request()->routeIs('hr.import-export.work-schedules')">
                   Jadwal Rolling
                 </x-dropdown-link>
@@ -386,6 +389,9 @@
         </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('hr.import-export.attendances') }}" :active="request()->routeIs('hr.import-export.attendances')">
           Import & Export Absensi
+        </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('hr.import-export.overtimes') }}" :active="request()->routeIs('hr.import-export.overtimes')">
+          Import & Export Lembur
         </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('hr.import-export.work-schedules') }}" :active="request()->routeIs('hr.import-export.work-schedules')">
           Import & Export Jadwal Rolling

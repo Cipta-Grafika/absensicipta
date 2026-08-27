@@ -186,6 +186,12 @@
           <span>Absensi</span>
         </a>
 
+        @php $active = request()->routeIs('hr.import-export.overtimes'); @endphp
+        <a href="{{ route('hr.import-export.overtimes') }}"
+           class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
+          <span>Lembur</span>
+        </a>
+
         @php $active = request()->routeIs('hr.import-export.work-schedules'); @endphp
         <a href="{{ route('hr.import-export.work-schedules') }}"
            class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
@@ -432,6 +438,12 @@
               <a href="{{ route('hr.import-export.attendances') }}"
                  class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
                 <span>Absensi</span>
+              </a>
+
+              @php $active = request()->routeIs('hr.import-export.overtimes'); @endphp
+              <a href="{{ route('hr.import-export.overtimes') }}"
+                 class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
+                <span>Lembur</span>
               </a>
 
               @php $active = request()->routeIs('hr.import-export.work-schedules'); @endphp
