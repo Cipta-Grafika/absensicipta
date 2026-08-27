@@ -27,6 +27,7 @@ class WorkScheduleManagementComponent extends Component
 
     // Calendar & Bulk Date Schedule State
     public ?string $calendar_month = null;
+    public array $selected_calendar_dates = [];
     public ?string $selected_calendar_date = null;
     public string $selectedDateDisplay = '';
     public bool $bulkDateModalOpen = false;
@@ -66,6 +67,7 @@ class WorkScheduleManagementComponent extends Component
 
     public function updatingCalendarMonth(): void
     {
+        $this->selected_calendar_dates = [];
         $this->resetPage();
     }
 
@@ -240,23 +242,167 @@ class WorkScheduleManagementComponent extends Component
         $this->selectedId = null;
     }
 
+    /**
+     * Handle direct click on a date card in the calendar
+     * If user clicks a date directly, pre-select this date and open the modal immediately.
+     */
     public function handleCalendarDateClick(string $dateString): void
+    {
+        $formattedDate = Carbon::parse($dateString)->format('Y-m-d');
+        $this->selected_calendar_dates = [$formattedDate];
+        $this->openBulkDateModal();
+    }
+
+    /**
+     * Toggle a single date in the selected dates array
+     */
+    public function toggleDateSelection(string $dateString): void
+    {
+        $formattedDate = Carbon::parse($dateString)->format('Y-m-d');
+        if (in_array($formattedDate, $this->selected_calendar_dates)) {
+            $this->selected_calendar_dates = array_values(array_diff($this->selected_calendar_dates, [$formattedDate]));
+        } else {
+            $this->selected_calendar_dates[] = $formattedDate;
+            sort($this->selected_calendar_dates);
+        }
+    }
+
+    /**
+     * Toggle selection of all dates in the month for a given day of week (1 = Monday/Sen, ..., 7 = Sunday/Min)
+     */
+    public function toggleDayOfWeekSelection(int $dayOfWeekIso): void
+    {
+        $selectedMonth = $this->calendar_month ?: date('Y-m');
+        $calStart = Carbon::parse($selectedMonth)->startOfMonth();
+        $calEnd = Carbon::parse($selectedMonth)->endOfMonth();
+
+        $matchingDates = [];
+        $curr = $calStart->copy();
+        while ($curr->lte($calEnd)) {
+            if ($curr->dayOfWeekIso === $dayOfWeekIso) {
+                $matchingDates[] = $curr->format('Y-m-d');
+            }
+            $curr->addDay();
+        }
+
+        if (empty($matchingDates)) {
+            return;
+        }
+
+        $intersect = array_intersect($matchingDates, $this->selected_calendar_dates);
+        $allSelected = count($intersect) === count($matchingDates);
+
+        if ($allSelected) {
+            $this->selected_calendar_dates = array_values(array_diff($this->selected_calendar_dates, $matchingDates));
+        } else {
+            $this->selected_calendar_dates = array_values(array_unique(array_merge($this->selected_calendar_dates, $matchingDates)));
+            sort($this->selected_calendar_dates);
+        }
+    }
+
+    /**
+     * Toggle all valid dates within a specific week
+     */
+    public function toggleWeekSelection(array $weekDateStrings): void
+    {
+        $validDates = array_values(array_filter($weekDateStrings));
+        if (empty($validDates)) {
+            return;
+        }
+
+        $intersect = array_intersect($validDates, $this->selected_calendar_dates);
+        $allSelected = count($intersect) === count($validDates);
+
+        if ($allSelected) {
+            $this->selected_calendar_dates = array_values(array_diff($this->selected_calendar_dates, $validDates));
+        } else {
+            $this->selected_calendar_dates = array_values(array_unique(array_merge($this->selected_calendar_dates, $validDates)));
+            sort($this->selected_calendar_dates);
+        }
+    }
+
+    /**
+     * Toggle selection of all valid dates in the active month
+     */
+    public function toggleSelectAllMonth(array $allMonthDateStrings): void
+    {
+        $validDates = array_values(array_filter($allMonthDateStrings));
+        if (empty($validDates)) {
+            return;
+        }
+
+        $intersect = array_intersect($validDates, $this->selected_calendar_dates);
+        $allSelected = count($intersect) === count($validDates);
+
+        if ($allSelected) {
+            $this->selected_calendar_dates = [];
+        } else {
+            $this->selected_calendar_dates = $validDates;
+            sort($this->selected_calendar_dates);
+        }
+    }
+
+    /**
+     * Reset all selected dates
+     */
+    public function clearSelectedDates(): void
+    {
+        $this->selected_calendar_dates = [];
+    }
+
+    /**
+     * Remove a single date chip from the active selection
+     */
+    public function removeDateFromSelection(string $dateString): void
+    {
+        $formattedDate = Carbon::parse($dateString)->format('Y-m-d');
+        $this->selected_calendar_dates = array_values(array_diff($this->selected_calendar_dates, [$formattedDate]));
+
+        if (empty($this->selected_calendar_dates)) {
+            $this->bulkDateModalOpen = false;
+            return;
+        }
+
+        if (count($this->selected_calendar_dates) === 1) {
+            $this->selected_calendar_date = $this->selected_calendar_dates[0];
+            $this->selectedDateDisplay = Carbon::parse($this->selected_calendar_date)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+        } else {
+            $this->selected_calendar_date = null;
+            $this->selectedDateDisplay = count($this->selected_calendar_dates) . ' Tanggal Dipilih';
+        }
+    }
+
+    /**
+     * Open the bulk modal for the currently selected dates
+     */
+    public function openBulkDateModal(): void
     {
         $user = Auth::user();
         if ($user->isNotAdmin) {
             abort(403);
         }
 
-        $formattedDate = Carbon::parse($dateString)->format('Y-m-d');
-        $this->selected_calendar_date = $formattedDate;
-        $this->selectedDateDisplay = Carbon::parse($formattedDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
-
-        // Fetch existing schedules for this date (scoped to division for non-superadmin)
-        $existingQuery = WorkSchedule::where('date', $formattedDate);
-        if (!$user->isSuperadmin) {
-            $existingQuery->whereHas('user', fn($u) => $u->where('division_id', $user->division_id));
+        if (empty($this->selected_calendar_dates)) {
+            return;
         }
-        $existingSchedules = $existingQuery->get()->keyBy('user_id');
+
+        sort($this->selected_calendar_dates);
+
+        if (count($this->selected_calendar_dates) === 1) {
+            $this->selected_calendar_date = $this->selected_calendar_dates[0];
+            $this->selectedDateDisplay = Carbon::parse($this->selected_calendar_date)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+
+            // Fetch existing schedules for this single date (scoped to division for non-superadmin)
+            $existingQuery = WorkSchedule::where('date', $this->selected_calendar_date);
+            if (!$user->isSuperadmin) {
+                $existingQuery->whereHas('user', fn($u) => $u->where('division_id', $user->division_id));
+            }
+            $existingSchedules = $existingQuery->get()->keyBy('user_id');
+        } else {
+            $this->selected_calendar_date = null;
+            $this->selectedDateDisplay = count($this->selected_calendar_dates) . ' Tanggal Dipilih';
+            $existingSchedules = collect();
+        }
 
         $usersQuery = User::where('group', 'user')->whereIn('status', ['active', 'suspend']);
         if (!$user->isSuperadmin) {
@@ -279,6 +425,19 @@ class WorkScheduleManagementComponent extends Component
         $this->bulkDateModalOpen = true;
     }
 
+    /**
+     * Set working day status for all employees in the bulk modal
+     */
+    public function setAllBulkEmployeesStatus(int $status): void
+    {
+        foreach ($this->bulk_employee_data as $userId => $data) {
+            $this->bulk_employee_data[$userId]['is_working_day'] = $status;
+        }
+    }
+
+    /**
+     * Submit bulk schedule for all selected dates and selected employees
+     */
     public function submitBulkDateSchedule(): void
     {
         $user = Auth::user();
@@ -286,7 +445,8 @@ class WorkScheduleManagementComponent extends Component
             abort(403);
         }
 
-        if (!$this->selected_calendar_date) {
+        if (empty($this->selected_calendar_dates)) {
+            $this->addError('bulk_employee_data', 'Pilih minimal 1 tanggal roster.');
             return;
         }
 
@@ -312,27 +472,33 @@ class WorkScheduleManagementComponent extends Component
             return;
         }
 
-        $dateStr = $this->selected_calendar_date;
+        $datesToSave = $this->selected_calendar_dates;
 
-        DB::transaction(function () use ($selectedUserIds, $dateStr) {
-            foreach ($selectedUserIds as $userId) {
-                $data = $this->bulk_employee_data[$userId] ?? [];
-                WorkSchedule::updateOrCreate(
-                    [
-                        'date' => $dateStr,
-                        'user_id' => $userId,
-                    ],
-                    [
-                        'is_working_day' => isset($data['is_working_day']) ? (int)$data['is_working_day'] : 1,
-                        'note' => !empty($data['note']) && trim($data['note']) !== '' ? trim($data['note']) : null,
-                        'created_by' => Auth::id(),
-                    ]
-                );
+        DB::transaction(function () use ($selectedUserIds, $datesToSave) {
+            foreach ($datesToSave as $dateStr) {
+                foreach ($selectedUserIds as $userId) {
+                    $data = $this->bulk_employee_data[$userId] ?? [];
+                    WorkSchedule::updateOrCreate(
+                        [
+                            'date' => $dateStr,
+                            'user_id' => $userId,
+                        ],
+                        [
+                            'is_working_day' => isset($data['is_working_day']) ? (int)$data['is_working_day'] : 1,
+                            'note' => !empty($data['note']) && trim($data['note']) !== '' ? trim($data['note']) : null,
+                            'created_by' => Auth::id(),
+                        ]
+                    );
+                }
             }
         });
 
+        $dateCount = count($datesToSave);
+        $userCount = count($selectedUserIds);
+
         $this->bulkDateModalOpen = false;
-        $this->banner('Jadwal rolling untuk ' . $this->selectedDateDisplay . ' berhasil disimpan.');
+        $this->selected_calendar_dates = [];
+        $this->banner("Jadwal rolling berhasil disimpan untuk {$dateCount} tanggal ({$userCount} karyawan).");
     }
 
     public function render()
@@ -343,6 +509,24 @@ class WorkScheduleManagementComponent extends Component
         $calStart = Carbon::parse($selectedMonth)->startOfMonth();
         $calEnd = Carbon::parse($selectedMonth)->endOfMonth();
         $calDates = $calStart->range($calEnd)->toArray();
+
+        // Build weeks matrix for accurate week grouping and row-based checkboxes
+        $weeks = [];
+        $currentDate = $calStart->copy();
+        while ($currentDate->lte($calEnd)) {
+            $weekDays = [];
+            $startOfWeek = $currentDate->copy()->startOfWeek(Carbon::MONDAY);
+            for ($day = 1; $day <= 7; $day++) {
+                $dayDate = $startOfWeek->copy()->addDays($day - 1);
+                if ($dayDate->month === $calStart->month) {
+                    $weekDays[] = $dayDate;
+                } else {
+                    $weekDays[] = null;
+                }
+            }
+            $weeks[] = $weekDays;
+            $currentDate = $startOfWeek->copy()->addDays(7);
+        }
 
         // Query monthly schedules for calendar grid visualization
         $monthSchedulesQuery = WorkSchedule::with(['user.division'])
@@ -396,6 +580,7 @@ class WorkScheduleManagementComponent extends Component
             'calDates' => $calDates,
             'calStart' => $calStart,
             'calEnd' => $calEnd,
+            'weeks' => $weeks,
             'calendar_month' => $selectedMonth,
         ])->layout('layouts.app');
     }

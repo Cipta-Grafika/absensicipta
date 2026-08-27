@@ -29,34 +29,89 @@
               Kalender Jadwal Rolling {{ \Carbon\Carbon::parse($calendar_month)->isoFormat('MMMM YYYY') }}
             </h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Klik pada tanggal di bawah untuk menginput bulk jadwal rolling karyawan per hari
+              Klik box tanggal untuk input langsung, atau gunakan checkbox Minggu/Tanggal untuk input bulk sekaligus banyak tanggal.
             </p>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <x-label for="calendar_month_filter" value="Pilih Bulan" class="whitespace-nowrap text-xs font-semibold"></x-label>
             <x-input type="month" name="calendar_month_filter" id="calendar_month_filter" wire:model.live="calendar_month" class="text-xs py-1.5" />
           </div>
         </div>
 
-        <div class="mt-4 overflow-x-auto">
-          <div class="min-w-[650px]">
-            <!-- Days Header -->
-            <div class="mb-2 grid grid-cols-7 text-center text-xs font-bold text-gray-600 dark:text-gray-300">
-              <div class="py-1">Sen</div>
-              <div class="py-1">Sel</div>
-              <div class="py-1">Rab</div>
-              <div class="py-1">Kam</div>
-              <div class="py-1">Jum</div>
-              <div class="py-1">Sab</div>
-              <div class="py-1 text-red-500">Min</div>
+        <!-- Active Multi-Date Selection Action Bar (Appears when dates are checked) -->
+        @if(count($selected_calendar_dates) > 0)
+          <div class="mt-3 p-3 rounded-xl bg-gradient-to-r from-sky-50 via-indigo-50 to-blue-50 dark:from-sky-950/70 dark:via-indigo-950/50 dark:to-blue-950/70 border border-sky-200 dark:border-sky-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div class="flex items-center gap-2.5">
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-sky-600 text-xs font-bold text-white shadow-xs">
+                {{ count($selected_calendar_dates) }}
+              </span>
+              <div>
+                <div class="text-xs font-bold text-gray-900 dark:text-white">
+                  {{ count($selected_calendar_dates) }} Tanggal Dipilih
+                </div>
+                <div class="text-[11px] text-gray-500 dark:text-gray-400 truncate max-w-md">
+                  {{ collect($selected_calendar_dates)->map(fn($d) => \Carbon\Carbon::parse($d)->format('d M'))->implode(', ') }}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" wire:click="clearSelectedDates" class="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                Reset Pilihan
+              </button>
+              <button type="button" wire:click="openBulkDateModal" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-xs font-bold text-white shadow-sm transition">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Input Jadwal Rolling ({{ count($selected_calendar_dates) }} Tanggal)
+              </button>
+            </div>
+          </div>
+        @endif
+
+        <div class="mt-4 overflow-x-auto p-1.5 -m-1.5">
+          <div class="min-w-[650px] p-1">
+            <!-- 7-Column Days Header with Vertical Checkbox per Day of Week -->
+            @php
+              $dayLabels = [
+                1 => ['name' => 'Sen', 'isSun' => false],
+                2 => ['name' => 'Sel', 'isSun' => false],
+                3 => ['name' => 'Rab', 'isSun' => false],
+                4 => ['name' => 'Kam', 'isSun' => false],
+                5 => ['name' => 'Jum', 'isSun' => false],
+                6 => ['name' => 'Sab', 'isSun' => false],
+                7 => ['name' => 'Min', 'isSun' => true],
+              ];
+            @endphp
+            <div class="mb-2.5 grid grid-cols-7 gap-2 text-center text-xs font-bold">
+              @foreach ($dayLabels as $isoDay => $info)
+                @php
+                  $dayDates = collect($calDates)->filter(fn($d) => $d->dayOfWeekIso === $isoDay)->map(fn($d) => $d->format('Y-m-d'))->values()->toArray();
+                  $dayCount = count($dayDates);
+                  $daySelectedCount = count(array_intersect($dayDates, $selected_calendar_dates));
+                  $isDayAllSelected = $dayCount > 0 && $daySelectedCount === $dayCount;
+                @endphp
+                <label class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl transition cursor-pointer select-none border shadow-2xs
+                       {{ $isDayAllSelected 
+                          ? 'bg-sky-100 border-sky-400 text-sky-900 dark:bg-sky-950/90 dark:border-sky-500 dark:text-sky-200 dark:ring-1 dark:ring-sky-500/60' 
+                          : 'bg-white/80 hover:bg-gray-100/80 border-gray-200/90 text-gray-700 dark:bg-gray-800/90 dark:hover:bg-gray-750 dark:border-gray-700 dark:text-gray-300' }}"
+                       title="Pilih semua hari {{ $info['name'] }} di bulan ini">
+                  <input type="checkbox"
+                    wire:click="toggleDayOfWeekSelection({{ $isoDay }})"
+                    {{ $isDayAllSelected ? 'checked' : '' }}
+                    class="h-3.5 w-3.5 rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-900 cursor-pointer">
+                  <span class="text-xs font-bold {{ $info['isSun'] ? ($isDayAllSelected ? 'text-red-600 dark:text-red-400' : 'text-red-500 dark:text-red-400') : ($isDayAllSelected ? 'text-sky-900 dark:text-sky-200' : 'text-gray-700 dark:text-gray-300') }}">
+                    {{ $info['name'] }}
+                  </span>
+                </label>
+              @endforeach
             </div>
 
-            <!-- Dates Grid -->
-            <div class="grid grid-cols-7 gap-1.5">
+            <!-- Unified Single Month Dates Grid (grid-cols-7) -->
+            <div class="grid grid-cols-7 gap-2">
               <!-- Leading Empty Cells -->
               @if ($calStart->dayOfWeekIso > 1)
                 @foreach (range(1, $calStart->dayOfWeekIso - 1) as $i)
-                  <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
+                  <div class="h-16 rounded-xl bg-gray-100/30 dark:bg-gray-800/20 border border-transparent"></div>
                 @endforeach
               @endif
 
@@ -70,41 +125,45 @@
                   $workCount = $dateSchedules->filter(fn($s) => $s->is_working_day)->count();
                   $offCount = $dateSchedules->filter(fn($s) => !$s->is_working_day)->count();
                   $totalCount = $dateSchedules->count();
+                  $isSelected = in_array($dateStr, $selected_calendar_dates);
                 @endphp
 
                 <button type="button"
                   wire:click="handleCalendarDateClick('{{ $dateStr }}')"
                   x-data x-on:click="$el.blur()"
-                  class="group relative flex h-16 flex-col justify-between rounded-xl border p-2 text-left transition-all duration-150
-                         {{ $totalCount > 0 
-                            ? 'border-sky-200 bg-sky-50/60 dark:border-sky-800/80 dark:bg-sky-950/40 hover:border-sky-400 hover:shadow-md' 
-                            : 'border-gray-200 bg-white dark:border-gray-700/80 dark:bg-gray-800/80 hover:border-sky-300 hover:bg-gray-50 dark:hover:bg-gray-700/60' }}">
+                  class="group relative flex h-16 flex-col justify-between rounded-xl border p-2 text-left transition-all duration-150 cursor-pointer select-none
+                         {{ $isSelected 
+                            ? 'border-sky-500 ring-2 ring-sky-400/80 bg-sky-50/90 dark:bg-sky-950/80 dark:border-sky-500 dark:ring-sky-500/70 shadow-sm' 
+                            : ($totalCount > 0 
+                               ? 'border-sky-200 bg-sky-50/60 hover:border-sky-400 dark:border-sky-800/80 dark:bg-sky-950/40 dark:hover:border-sky-400 dark:hover:bg-sky-900/40 hover:shadow-md' 
+                               : 'border-gray-200 bg-white hover:border-sky-300 hover:bg-gray-50 dark:border-gray-700/80 dark:bg-gray-800/80 dark:hover:border-sky-400 dark:hover:bg-gray-750') }}">
+                  
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-extrabold {{ $isSunday ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' }}">
+                    <span class="text-xs font-extrabold {{ $isSunday ? 'text-red-500 dark:text-red-400' : ($isSelected ? 'text-sky-900 dark:text-sky-100' : 'text-gray-800 dark:text-gray-200') }}">
                       {{ $dateObj->format('d') }}
                     </span>
                     @if ($isToday)
-                      <span class="rounded bg-sky-500 px-1 py-0.2 text-[9px] font-bold text-white">Hari ini</span>
+                      <span class="rounded bg-sky-500 px-1 py-0.2 text-[9px] font-bold text-white shadow-2xs">Hari ini</span>
                     @elseif ($totalCount > 0)
-                      <span class="h-2 w-2 rounded-full bg-sky-500"></span>
+                      <span class="h-2 w-2 rounded-full bg-sky-500 dark:bg-sky-400" title="{{ $totalCount }} Roster"></span>
                     @endif
                   </div>
 
                   <div class="mt-1 flex flex-wrap gap-1">
                     @if($workCount > 0)
-                      <span class="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200" title="{{ $workCount }} Kerja">
+                      <span class="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/90 dark:text-emerald-300 dark:border dark:border-emerald-800" title="{{ $workCount }} Kerja">
                         <span class="sm:hidden">{{ $workCount }}</span>
                         <span class="hidden sm:inline">{{ $workCount }} Kerja</span>
                       </span>
                     @endif
                     @if($offCount > 0)
-                      <span class="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/80 dark:text-amber-200" title="{{ $offCount }} Libur">
+                      <span class="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/90 dark:text-amber-300 dark:border dark:border-amber-800" title="{{ $offCount }} Libur">
                         <span class="sm:hidden">{{ $offCount }}</span>
                         <span class="hidden sm:inline">{{ $offCount }} Libur</span>
                       </span>
                     @endif
                     @if($totalCount === 0)
-                      <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                      <span class="text-[10px] font-semibold {{ $isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-sky-600 dark:group-hover:text-sky-400' }}">
                         <span class="sm:hidden">+</span>
                         <span class="hidden sm:inline">+ Rolling</span>
                       </span>
@@ -116,7 +175,7 @@
               <!-- Trailing Empty Cells -->
               @if ($calEnd->dayOfWeekIso < 7)
                 @foreach (range($calEnd->dayOfWeekIso + 1, 7) as $i)
-                  <div class="h-16 rounded-lg bg-gray-100/50 dark:bg-gray-800/40 border border-transparent"></div>
+                  <div class="h-16 rounded-xl bg-gray-100/30 dark:bg-gray-800/20 border border-transparent"></div>
                 @endforeach
               @endif
             </div>
@@ -308,8 +367,8 @@
     </x-slot>
 
     <x-slot name="content">
-      @if ($selected_calendar_date)
-        <div class="mb-4 rounded-xl bg-sky-50 p-4 border border-sky-200 dark:bg-sky-950/50 dark:border-sky-800 flex items-center justify-between">
+      @if (count($selected_calendar_dates) === 1)
+        <div class="mb-4 rounded-xl bg-sky-50 p-4 border border-sky-200 dark:bg-sky-950/50 dark:border-sky-800 flex items-center justify-between shadow-2xs">
           <div>
             <span class="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider block">Tanggal Roster Rolling</span>
             <span class="text-base font-extrabold text-gray-900 dark:text-white mt-0.5 block">
@@ -319,6 +378,31 @@
           <span class="inline-flex items-center rounded-md bg-sky-100 dark:bg-sky-900/80 px-2.5 py-1 text-xs font-bold text-sky-700 dark:text-sky-300">
             Bulk Input Per Tanggal
           </span>
+        </div>
+      @elseif(count($selected_calendar_dates) > 1)
+        <div class="mb-4 rounded-xl bg-sky-50 p-4 border border-sky-200 dark:bg-sky-950/50 dark:border-sky-800 shadow-2xs">
+          <div class="flex items-center justify-between border-b border-sky-200/70 pb-2 dark:border-sky-800/70">
+            <div>
+              <span class="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider block">Tanggal Roster Rolling (Bulk Multi-Tanggal)</span>
+              <span class="text-base font-extrabold text-gray-900 dark:text-white mt-0.5 block">
+                {{ count($selected_calendar_dates) }} Tanggal Dipilih
+              </span>
+            </div>
+            <span class="inline-flex items-center rounded-md bg-indigo-100 dark:bg-indigo-900/80 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+              Bulk Input Multi-Tanggal
+            </span>
+          </div>
+          <div class="mt-2.5 flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pt-1">
+            @foreach($selected_calendar_dates as $dStr)
+              <span class="inline-flex items-center gap-1 rounded-lg bg-white/95 dark:bg-gray-800 px-2 py-0.5 text-xs font-bold text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-700 shadow-2xs">
+                <svg class="h-3 w-3 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {{ \Carbon\Carbon::parse($dStr)->locale('id')->isoFormat('ddd, DD MMM') }}
+                <button type="button" wire:click="removeDateFromSelection('{{ $dStr }}')" class="text-gray-400 hover:text-red-500 ml-1 font-bold text-xs" title="Hapus tanggal ini">✕</button>
+              </span>
+            @endforeach
+          </div>
         </div>
       @endif
 
@@ -340,29 +424,40 @@
         }
       }" class="space-y-3">
 
-        <!-- Search & Quick Actions Bar -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <!-- Search Field -->
+        <!-- Search & Quick Actions Stacked Layout -->
+        <div class="space-y-2.5">
+          <!-- Full-width Search Field with centered icon -->
           <div class="relative">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <input type="text" x-model="bulkSearch" placeholder="Cari nama karyawan / NIP..."
-              class="w-full rounded-lg border border-gray-300 bg-gray-50 py-2 pl-9 pr-3 text-xs font-medium text-gray-900 focus:border-sky-500 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400">
-            <svg class="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+              class="block w-full rounded-xl border border-gray-300 bg-gray-50/70 py-2.5 pl-9 pr-3 text-xs font-medium text-gray-900 focus:border-sky-500 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 transition">
           </div>
 
-          <!-- Select All & Summary -->
-          <div class="flex items-center justify-between rounded-lg bg-gray-100 px-3 py-1.5 border border-gray-200 dark:bg-gray-700/70 dark:border-gray-600">
-            <label class="inline-flex items-center text-xs font-semibold text-gray-700 dark:text-gray-200 cursor-pointer">
+          <!-- Bottom Full-width Action Bar: Select All on Left, Summary & Mass Status Buttons on Right -->
+          <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gray-100/90 px-3.5 py-2 border border-gray-200 dark:bg-gray-800/80 dark:border-gray-700 shadow-2xs">
+            <label class="inline-flex items-center text-xs font-semibold text-gray-700 dark:text-gray-200 cursor-pointer select-none">
               <input type="checkbox"
                 @change="toggleAllBulk($event, {{ json_encode($users->map(fn($u) => ['id' => (string)$u->id, 'name' => $u->name, 'nip' => $u->nip ?? ''])) }})"
-                class="rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-800">
-              <span class="ml-2">Pilih Semua Karyawan</span>
+                class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-800 cursor-pointer">
+              <span class="ml-2.5 font-bold">Pilih Semua Karyawan</span>
             </label>
 
-            <span class="text-xs font-bold text-sky-600 dark:text-sky-400">
-              <span x-text="Object.values($wire.bulk_employee_data || {}).filter(d => d.selected).length"></span> Karyawan Dipilih
-            </span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-sky-600 dark:text-sky-400">
+                <span x-text="Object.values($wire.bulk_employee_data || {}).filter(d => d.selected).length"></span> Karyawan Dipilih
+              </span>
+              <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+              <button type="button" wire:click="setAllBulkEmployeesStatus(1)" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200/90 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-xs font-bold text-emerald-800 dark:text-emerald-300 shadow-2xs transition" title="Set semua ke Masuk">
+                <span>✓</span> Masuk
+              </button>
+              <button type="button" wire:click="setAllBulkEmployeesStatus(0)" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200/90 dark:bg-amber-950/80 dark:hover:bg-amber-900 border border-amber-300 dark:border-amber-700 text-xs font-bold text-amber-800 dark:text-amber-300 shadow-2xs transition" title="Set semua ke Libur">
+                <span>✕</span> Libur
+              </button>
+            </div>
           </div>
         </div>
 
@@ -417,7 +512,7 @@
       </x-secondary-button>
 
       <x-button class="ml-2 !bg-sky-600 hover:!bg-sky-700" wire:click="submitBulkDateSchedule" wire:loading.attr="disabled">
-        Simpan Jadwal Rolling
+        Simpan Jadwal Rolling @if(count($selected_calendar_dates) > 1) ({{ count($selected_calendar_dates) }} Tanggal) @endif
       </x-button>
     </x-slot>
   </x-dialog-modal>
