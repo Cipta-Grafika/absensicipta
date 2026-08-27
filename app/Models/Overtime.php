@@ -60,7 +60,7 @@ class Overtime extends Model
         $hours = (float) ($this->duration_hours ?? $this->calculateDuration());
         if ($hours <= 0) return 0;
 
-        $payData = OvertimeRate::calculatePayForDuration($hours, $user);
+        $payData = OvertimeRate::calculatePayForDuration($hours, $user, $this->start_time, $this->end_time, $this->overtime_date ? $this->overtime_date->format('Y-m-d') : null);
         return $payData['total_pay'] > 0 ? $payData['total_pay'] : ($this->attributes['total_pay'] ?? 0);
     }
 
@@ -130,7 +130,7 @@ class Overtime extends Model
         $hours = (float) ($this->duration_hours ?? $this->calculateDuration());
         if ($hours <= 0) return 0;
 
-        $payData = OvertimeRate::calculatePayForDuration($hours, $user);
+        $payData = OvertimeRate::calculatePayForDuration($hours, $user, $this->start_time, $this->end_time, $this->overtime_date ? $this->overtime_date->format('Y-m-d') : null);
         if ($payData['total_pay'] > 0) {
             return $payData['total_pay'];
         }

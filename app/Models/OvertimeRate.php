@@ -18,6 +18,9 @@ class OvertimeRate extends Model
         'division_id',
         'employee_type',
         'meal_allowance',
+        'meal_min_start_time',
+        'meal_min_duration',
+        'meal_condition_type',
     ];
 
     protected $casts = [
@@ -25,6 +28,7 @@ class OvertimeRate extends Model
         'max_hours' => 'float',
         'rate_amount' => 'float',
         'meal_allowance' => 'float',
+        'meal_min_duration' => 'float',
     ];
 
     /**
@@ -90,9 +94,15 @@ class OvertimeRate extends Model
      * Calculate payment based on duration_hours and defined rate tiers using Progressive Tiering.
      * - Tiers are sorted by min_hours ASC.
      * - Hours within each tier step (e.g. 0-3 jam, 3-24 jam) are multiplied by that tier's rate.
-     * - Meal allowance is added flat (1x) from the highest reached tier that defines a meal_allowance.
+     * - Meal allowance is dynamically validated against start_time, duration, and conditions.
      */
-    public static function calculatePayForDuration(float $durationHours, ?User $user = null): array
+    public static function calculatePayForDuration(
+        float $durationHours, 
+        ?User $user = null, 
+        ?string $startTime = null, 
+        ?string $endTime = null, 
+        ?string $overtimeDate = null
+    ): array
     {
         if ($durationHours <= 0) {
             return [
@@ -165,9 +175,41 @@ class OvertimeRate extends Model
                             $totalHourlyOrFlatPay += ($hoursInThisStep * $rateAmount);
                         }
 
-                        // Highest reached tier with meal allowance
+                        // Evaluate dynamic meal allowance eligibility
                         if ((float)($rate->meal_allowance ?? 0.0) > 0) {
-                            $appliedMealAllowance = (float) $rate->meal_allowance;
+                            $isMealApplicable = true;
+
+                            // 1. Min duration check (if specified)
+                            if ($rate->meal_min_duration !== null && (float) $rate->meal_min_duration > 0) {
+                                if ($durationHours < (float) $rate->meal_min_duration) {
+                                    $isMealApplicable = false;
+                                }
+                            }
+
+                            // 2. Start time / time window check (if specified and startTime provided)
+                            if ($isMealApplicable && !empty($rate->meal_min_start_time) && !empty($startTime)) {
+                                $rateTime = substr(trim($rate->meal_min_start_time), 0, 5); // '17:00'
+                                $actualStart = substr(trim($startTime), 0, 5); // '17:00'
+
+                                if ($rate->meal_condition_type === 'crosses_time' && !empty($endTime)) {
+                                    $actualEnd = substr(trim($endTime), 0, 5);
+                                    // Crosses condition: started at/before target time and ended after target time, OR started >= target time
+                                    if (!($actualStart >= $rateTime || ($actualStart <= $rateTime && $actualEnd > $rateTime))) {
+                                        $isMealApplicable = false;
+                                    }
+                                } elseif ($rate->meal_condition_type === 'always') {
+                                    $isMealApplicable = true;
+                                } else {
+                                    // Default 'start_time_gte'
+                                    if ($actualStart < $rateTime) {
+                                        $isMealApplicable = false;
+                                    }
+                                }
+                            }
+
+                            if ($isMealApplicable) {
+                                $appliedMealAllowance = (float) $rate->meal_allowance;
+                            }
                         }
                     }
                 }

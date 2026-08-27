@@ -100,7 +100,7 @@ class OvertimesExport implements FromArray, WithHeadings, ShouldAutoSize, WithSt
             $durationHours = (float)($ot->duration_hours ?? $ot->calculateDuration());
             $totalPay = (float)($ot->total_pay ?? $ot->overtime_pay ?? 0);
 
-            $payCalc = OvertimeRate::calculatePayForDuration($durationHours, $emp);
+            $payCalc = OvertimeRate::calculatePayForDuration($durationHours, $emp, $ot->start_time, $ot->end_time, $ot->overtime_date ? $ot->overtime_date->format('Y-m-d') : null);
             $mealPay = (float)($payCalc['meal_allowance'] ?? 0);
             $rateAmount = (float)($ot->applied_rate_amount ?? $payCalc['applied_rate_amount'] ?? 0);
 

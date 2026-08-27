@@ -159,7 +159,7 @@ class OvertimeApprovalComponent extends Component
                 }
 
                 if ($newStatus === 'paid') {
-                    $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee);
+                    $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee, $overtime->start_time, $overtime->end_time, $overtime->overtime_date ? $overtime->overtime_date->format('Y-m-d') : null);
                     $overtime->update([
                         'status' => 'paid',
                         'approved_by' => $overtime->approved_by ?? Auth::id(),
@@ -169,7 +169,7 @@ class OvertimeApprovalComponent extends Component
                         'total_pay' => $payData['total_pay'],
                     ]);
                 } elseif ($newStatus === 'approved') {
-                    $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee);
+                    $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee, $overtime->start_time, $overtime->end_time, $overtime->overtime_date ? $overtime->overtime_date->format('Y-m-d') : null);
                     $overtime->update([
                         'status' => 'approved',
                         'approved_by' => Auth::id(),
@@ -316,7 +316,7 @@ class OvertimeApprovalComponent extends Component
             abort(403, 'Akses Ditolak: Anda hanya berhak menyetujui lembur divisi Anda.');
         }
 
-        $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee);
+        $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee, $overtime->start_time, $overtime->end_time, $overtime->overtime_date ? $overtime->overtime_date->format('Y-m-d') : null);
 
         $overtime->update([
             'status' => 'approved',

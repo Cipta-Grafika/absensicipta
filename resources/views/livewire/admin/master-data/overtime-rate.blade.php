@@ -57,8 +57,21 @@
             <td class="px-6 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
               <div>Rp {{ number_format($rate->rate_amount, 0, ',', '.') }} {{ $rate->rate_type === 'per_hour' ? '/ jam' : '' }}</div>
               @if(($rate->meal_allowance ?? 0) > 0)
-                <div class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
-                  + Uang Makan Rp {{ number_format($rate->meal_allowance, 0, ',', '.') }}
+                <div class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5 flex flex-col">
+                  <span>+ Uang Makan Rp {{ number_format($rate->meal_allowance, 0, ',', '.') }}</span>
+                  @if($rate->meal_min_start_time || $rate->meal_min_duration)
+                    <span class="text-[10px] font-medium text-amber-700/80 dark:text-amber-300/80">
+                      Syarat: 
+                      @if($rate->meal_min_start_time)
+                        Mulai ≥ {{ substr($rate->meal_min_start_time, 0, 5) }}
+                      @endif
+                      @if($rate->meal_min_duration)
+                        {{ $rate->meal_min_start_time ? ', ' : '' }}Min {{ $rate->meal_min_duration }} Jam
+                      @endif
+                    </span>
+                  @else
+                    <span class="text-[10px] font-normal text-gray-400 dark:text-gray-500">(Tanpa syarat jam)</span>
+                  @endif
                 </div>
               @endif
             </td>
@@ -158,10 +171,32 @@
 
           <div class="w-full">
             <x-label for="meal_allowance">Uang Makan Lembur (Opsional - Rp)</x-label>
-            <x-input id="meal_allowance" class="mt-1 block w-full" type="number" wire:model="form.meal_allowance" placeholder="0" />
+            <x-input id="meal_allowance" class="mt-1 block w-full" type="number" wire:model.live="form.meal_allowance" placeholder="0" />
             @error('form.meal_allowance')
               <x-input-error for="form.meal_allowance" class="mt-2" message="{{ $message }}" />
             @enderror
+          </div>
+        </div>
+
+        <!-- Conditional Meal Settings Subpanel -->
+        <div class="mt-3 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50">
+          <div class="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 mb-2">
+            <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Syarat Pemberian Uang Makan (Otomatis & Konfigurable)</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <x-label for="meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Syarat Jam Mulai Lembur</x-label>
+              <x-input id="meal_min_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_min_start_time" placeholder="17:00" />
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Misal: <strong>17:00</strong> (Uang makan hanya didapat jika lembur mulai jam 17:00 ke atas).</p>
+            </div>
+            <div>
+              <x-label for="meal_min_duration" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Min. Durasi Lembur (Jam)</x-label>
+              <x-input id="meal_min_duration" class="mt-1 block w-full text-xs" type="number" step="0.5" min="0" wire:model="form.meal_min_duration" placeholder="Contoh: 2" />
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Kosongkan jika mengikuti minimal jam tier rate di bawah.</p>
+            </div>
           </div>
         </div>
 
@@ -183,7 +218,7 @@
         </div>
         <p class="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
           <span class="font-bold text-sky-600 dark:text-sky-400">💡 Best-Practice Tier Range:</span>
-          Untuk tier berjenjang (misal Tier 1: 1 - 3 Jam & Tier 2: > 3 Jam s/d 24 Jam), sistem secara presisi memprioritaskan batas eksak (misal 3.0 jam masuk Tier 1, dan > 3.0 jam masuk Tier 2). Uang makan lembur (jika ada) ditambahkan <strong>flat (1x)</strong> per pengajuan lembur.
+          Untuk tier berjenjang (misal Tier 1: 1 - 3 Jam & Tier 2: > 3 Jam s/d 24 Jam), sistem secara presisi memprioritaskan batas eksak. Uang makan lembur (jika syarat terpenuhi) ditambahkan <strong>flat (1x)</strong> per pengajuan lembur.
         </p>
 
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
@@ -281,10 +316,32 @@
 
           <div class="w-full">
             <x-label for="edit_meal_allowance">Uang Makan Lembur (Opsional - Rp)</x-label>
-            <x-input id="edit_meal_allowance" class="mt-1 block w-full" type="number" wire:model="form.meal_allowance" placeholder="0" />
+            <x-input id="edit_meal_allowance" class="mt-1 block w-full" type="number" wire:model.live="form.meal_allowance" placeholder="0" />
             @error('form.meal_allowance')
               <x-input-error for="form.meal_allowance" class="mt-2" message="{{ $message }}" />
             @enderror
+          </div>
+        </div>
+
+        <!-- Conditional Meal Settings Subpanel (Edit) -->
+        <div class="mt-3 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50">
+          <div class="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 mb-2">
+            <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Syarat Pemberian Uang Makan (Otomatis & Konfigurable)</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <x-label for="edit_meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Syarat Jam Mulai Lembur</x-label>
+              <x-input id="edit_meal_min_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_min_start_time" placeholder="17:00" />
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Misal: <strong>17:00</strong> (Uang makan hanya didapat jika lembur mulai jam 17:00 ke atas).</p>
+            </div>
+            <div>
+              <x-label for="edit_meal_min_duration" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Min. Durasi Lembur (Jam)</x-label>
+              <x-input id="edit_meal_min_duration" class="mt-1 block w-full text-xs" type="number" step="0.5" min="0" wire:model="form.meal_min_duration" placeholder="Contoh: 2" />
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Kosongkan jika mengikuti minimal jam tier rate di bawah.</p>
+            </div>
           </div>
         </div>
 

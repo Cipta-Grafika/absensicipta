@@ -384,7 +384,7 @@
               @php
                 $emp = $ot->employee;
                 $dur = (float)($ot->duration_hours ?? $ot->calculateDuration());
-                $payCalc = \App\Models\OvertimeRate::calculatePayForDuration($dur, $emp);
+                $payCalc = \App\Models\OvertimeRate::calculatePayForDuration($dur, $emp, $ot->start_time, $ot->end_time, $ot->overtime_date ? \Carbon\Carbon::parse($ot->overtime_date)->format('Y-m-d') : null);
                 $meal = (float)($payCalc['meal_allowance'] ?? 0);
                 $tot = (float)($ot->total_pay ?? $ot->overtime_pay ?? 0);
               @endphp

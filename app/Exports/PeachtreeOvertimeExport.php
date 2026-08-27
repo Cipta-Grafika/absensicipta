@@ -189,7 +189,7 @@ class PeachtreeOvertimeExport implements FromArray, WithHeadings
             $totalPay = (float)($overtime->total_pay ?? $overtime->overtime_pay ?? 0);
 
             // Progressive calculation breakdown
-            $payCalc = OvertimeRate::calculatePayForDuration($durationHours, $emp);
+            $payCalc = OvertimeRate::calculatePayForDuration($durationHours, $emp, $overtime->start_time, $overtime->end_time, $overtime->overtime_date ? $overtime->overtime_date->format('Y-m-d') : null);
             $calculatedMeal = (float)($payCalc['meal_allowance'] ?? 0);
             $primaryRate = (float)($overtime->applied_rate_amount ?? $payCalc['applied_rate_amount'] ?? 15000);
 

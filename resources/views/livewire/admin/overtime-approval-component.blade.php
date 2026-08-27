@@ -304,7 +304,7 @@
             </td>
             <td class="px-2 py-4 text-sm font-bold text-emerald-600 dark:text-emerald-400 min-w-[140px]">
               @php
-                $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $approval->duration_hours, $approval->employee);
+                $payData = \App\Models\OvertimeRate::calculatePayForDuration((float) $approval->duration_hours, $approval->employee, $approval->start_time, $approval->end_time, $approval->overtime_date ? $approval->overtime_date->format('Y-m-d') : null);
                 $finalPay = $payData['total_pay'] > 0 ? $payData['total_pay'] : ($approval->total_pay ?? 0);
               @endphp
               <div>Rp {{ number_format($finalPay, 0, ',', '.') }}</div>
@@ -490,14 +490,22 @@
                       {{ \Carbon\Carbon::parse($item->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($item->end_time)->format('H:i') }}
                       <span class="text-xs font-bold text-sky-600 dark:text-sky-400">({{ $item->duration_hours }} Jam)</span>
                     </div>
-                    @if(!is_null($item->total_pay))
-                      <div class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">Rp {{ number_format($item->total_pay, 0, ',', '.') }}</div>
-                    @else
-                      @php
-                        $estPay = \App\Models\OvertimeRate::calculatePayForDuration((float) $item->duration_hours, $item->employee);
-                      @endphp
-                      <div class="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">(Est: Rp {{ number_format($estPay['total_pay'], 0, ',', '.') }})</div>
-                    @endif
+                    @php
+                      $estPay = \App\Models\OvertimeRate::calculatePayForDuration((float) $item->duration_hours, $item->employee, $item->start_time, $item->end_time, $item->overtime_date ? $item->overtime_date->format('Y-m-d') : null);
+                      $dispPay = !is_null($item->total_pay) ? $item->total_pay : $estPay['total_pay'];
+                    @endphp
+                    <div class="flex flex-col">
+                      @if(!is_null($item->total_pay))
+                        <div class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">Rp {{ number_format($dispPay, 0, ',', '.') }}</div>
+                      @else
+                        <div class="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">(Est: Rp {{ number_format($dispPay, 0, ',', '.') }})</div>
+                      @endif
+                      @if(($estPay['meal_allowance'] ?? 0) > 0)
+                        <div class="text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                          (+ Uang Makan Rp {{ number_format($estPay['meal_allowance'], 0, ',', '.') }})
+                        </div>
+                      @endif
+                    </div>
                     <div class="mt-1 text-[11px] text-gray-600 dark:text-gray-300 italic">"{{ Str::limit($item->reason, 80) }}"</div>
                   </td>
                   <td class="px-4 py-3 text-center min-w-[260px]">

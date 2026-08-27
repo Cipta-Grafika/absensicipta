@@ -235,14 +235,25 @@
                                         {{ $overtime->formatted_duration }}
                                     </td>
                                     <td class="px-4 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                                        @if(in_array($overtime->status, ['approved', 'paid']) && $overtime->overtime_pay > 0)
-                                            Rp {{ number_format($overtime->overtime_pay, 0, ',', '.') }}
-                                        @elseif($overtime->duration_hours > 0)
-                                            <span class="text-gray-500 dark:text-gray-400 font-normal">
-                                                ~ Rp {{ number_format($overtime->calculateEstimatedPay(), 0, ',', '.') }}
-                                            </span>
-                                        @else
-                                            -
+                                        @php
+                                            $payCalc = \App\Models\OvertimeRate::calculatePayForDuration((float) $overtime->duration_hours, $overtime->employee ?? auth()->user(), $overtime->start_time, $overtime->end_time, $overtime->overtime_date ? $overtime->overtime_date->format('Y-m-d') : null);
+                                            $displayPay = (in_array($overtime->status, ['approved', 'paid']) && $overtime->overtime_pay > 0) ? $overtime->overtime_pay : $payCalc['total_pay'];
+                                        @endphp
+                                        <div>
+                                            @if(in_array($overtime->status, ['approved', 'paid']))
+                                                Rp {{ number_format($displayPay, 0, ',', '.') }}
+                                            @elseif($overtime->duration_hours > 0)
+                                                <span class="text-gray-500 dark:text-gray-400 font-normal">
+                                                    ~ Rp {{ number_format($displayPay, 0, ',', '.') }}
+                                                </span>
+                                            @else
+                                                -
+                                            @endif
+                                        </div>
+                                        @if(($payCalc['meal_allowance'] ?? 0) > 0)
+                                            <div class="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
+                                                (+ Uang Makan Rp {{ number_format($payCalc['meal_allowance'], 0, ',', '.') }})
+                                            </div>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-sm truncate max-w-[200px]" title="{{ $overtime->reason }}">
@@ -347,14 +358,25 @@
                         @endif
 
                         <div class="col-span-2 border-t border-gray-200 dark:border-gray-700 pt-3">
+                            @php
+                                $detailPay = \App\Models\OvertimeRate::calculatePayForDuration((float) $selectedOvertime->duration_hours, $selectedOvertime->employee ?? auth()->user(), $selectedOvertime->start_time, $selectedOvertime->end_time, $selectedOvertime->overtime_date ? \Carbon\Carbon::parse($selectedOvertime->overtime_date)->format('Y-m-d') : null);
+                                $detailFinal = (in_array($selectedOvertime->status, ['approved', 'paid']) && $selectedOvertime->overtime_pay > 0) ? $selectedOvertime->overtime_pay : $detailPay['total_pay'];
+                            @endphp
                             <span class="text-xs text-gray-500 dark:text-gray-400 block font-medium">Bayaran Lembur</span>
-                            <span class="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                                @if(in_array($selectedOvertime->status, ['approved', 'paid']) && $selectedOvertime->overtime_pay > 0)
-                                    Rp {{ number_format($selectedOvertime->overtime_pay, 0, ',', '.') }}
-                                @else
-                                    ~ Rp {{ number_format($selectedOvertime->calculateEstimatedPay(), 0, ',', '.') }} (Estimasi)
+                            <div class="flex flex-wrap items-baseline gap-2 mt-0.5">
+                                <span class="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                                    @if(in_array($selectedOvertime->status, ['approved', 'paid']))
+                                        Rp {{ number_format($detailFinal, 0, ',', '.') }}
+                                    @else
+                                        ~ Rp {{ number_format($detailFinal, 0, ',', '.') }} (Estimasi)
+                                    @endif
+                                </span>
+                                @if(($detailPay['meal_allowance'] ?? 0) > 0)
+                                    <span class="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                                        Termasuk Uang Makan: +Rp {{ number_format($detailPay['meal_allowance'], 0, ',', '.') }}
+                                    </span>
                                 @endif
-                            </span>
+                            </div>
                         </div>
                     </div>
 
