@@ -27,38 +27,6 @@ class PayrollHistoryComponent extends Component
     public $selectedDeductions = [];
     public $selectedIncomes = [];
 
-    #[\Livewire\Attributes\Computed]
-    public function selectedDeductions()
-    {
-        if (!$this->selectedPayrollId) return [];
-        $payroll = \App\Models\Payroll::with(['details'])->find($this->selectedPayrollId);
-        return $payroll ? $payroll->details->where('type', 'deduction')->toArray() : [];
-    }
-
-    #[\Livewire\Attributes\Computed]
-    public function selectedIncomes()
-    {
-        if (!$this->selectedPayrollId) return [];
-        $payroll = \App\Models\Payroll::with(['details'])->find($this->selectedPayrollId);
-        if (!$payroll) return [];
-
-        $incomes = [];
-        if ($payroll->basic_salary_earned > 0) {
-            $incomes[] = [
-                'name' => 'Gaji Pokok',
-                'amount' => $payroll->basic_salary_earned
-            ];
-        }
-        $earnings = $payroll->details->where('type', 'earning');
-        foreach ($earnings as $earning) {
-            $incomes[] = [
-                'name' => $earning->name,
-                'amount' => $earning->amount
-            ];
-        }
-        return $incomes;
-    }
-
     protected $queryString = [];
 
     public function mount()
@@ -247,11 +215,30 @@ class PayrollHistoryComponent extends Component
                     ->get()
                     ->groupBy('user_id');
 
+                // Clean up any existing payroll and related records for the regenerated month to ensure full overwrite and no duplicates
                 $allExistingPayrolls = Payroll::whereIn('employee_id', $employeeIds)
                     ->where('period_month', $this->generate_period_month)
                     ->lockForUpdate()
-                    ->get()
-                    ->keyBy('employee_id');
+                    ->get();
+
+                $existingPayrollIds = $allExistingPayrolls->pluck('id');
+                if ($existingPayrollIds->isNotEmpty()) {
+                    \App\Models\LoanInstallment::whereIn('payroll_id', $existingPayrollIds)->delete();
+                    \App\Models\SavingTransaction::where('reference_type', 'payroll')->whereIn('reference_id', $existingPayrollIds)->delete();
+                    
+                    $existingFlexIds = \App\Models\FlexibleDeduction::whereIn('payroll_id', $existingPayrollIds)->pluck('id');
+                    if ($existingFlexIds->isNotEmpty()) {
+                        \App\Models\SavingTransaction::where('reference_type', 'flexible_deduction')->whereIn('reference_id', $existingFlexIds)->delete();
+                        \App\Models\FlexibleDeduction::whereIn('id', $existingFlexIds)->update(['is_applied' => false, 'payroll_id' => null, 'saving_transaction_id' => null]);
+                    }
+
+                    \App\Models\PayrollDetail::whereIn('payroll_id', $existingPayrollIds)->delete();
+                    Payroll::whereIn('id', $existingPayrollIds)->delete();
+
+                    foreach ($employeeIds as $empId) {
+                        \App\Services\SavingTransactionService::recalculateUserTransactions($empId);
+                    }
+                }
 
                 // Build bulk schedule context for all employees in period
                 $scheduleContext = \App\Services\AttendanceScheduleService::buildContext($employees, $this->generate_start_date, $this->generate_end_date);
@@ -260,20 +247,6 @@ class PayrollHistoryComponent extends Component
 
                 foreach ($employees as $emp) {
                     $generatedCount++;
-                    // Check if payroll already exists for this period (PERF-01 + BL-02)
-                    $existing = $allExistingPayrolls->get($emp->id);
-                    
-                    if ($existing && $existing->status != 'draft') {
-                        continue; // Skip if already approved or paid
-                    }
-
-                    if ($existing) {
-                        \App\Models\LoanInstallment::where('payroll_id', $existing->id)->delete();
-                        \App\Models\SavingTransaction::where('reference_type', 'payroll')->where('reference_id', $existing->id)->delete();
-                        \App\Models\FlexibleDeduction::where('payroll_id', $existing->id)->update(['is_applied' => false, 'payroll_id' => null]);
-                        \App\Models\PayrollDetail::where('payroll_id', $existing->id)->delete();
-                        $existing->delete();
-                    }
 
                     $salary = $emp->salary;
 
@@ -391,34 +364,46 @@ class PayrollHistoryComponent extends Component
                     $total_allowance = (int) round($meal_allowance + $transport_allowance + $attendance_allowance);
                     $total_overtime_pay = 0; // Overtime pay is not added to net salary as per business rule
 
-                    // Fixed Income for deductions reference
+                    // Fixed Income for deductions reference (standard 25 working days base)
                     $fixed_income = (int) round($salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance);
-                    $days_divisor = $salary->working_days_per_month ?? 25;
-                    
-                    if ($actual_working_days > 0 && $actual_working_days < $days_divisor) {
-                        $days_divisor = $actual_working_days;
-                    }
-                    
-                    $daily_rate_approx = $days_divisor > 0 ? (int) round($fixed_income / $days_divisor) : 0;
+                    $days_divisor = $salary->working_days_per_month ?: 25;
+                    $daily_rate_approx = (float) ($fixed_income / $days_divisor);
 
                     // Standard Deductions - BL-01 Fix: Explicit integer rounding
                     $late_deduction = (int) round($total_late_minutes * $salary->late_deduction_per_minute);
                     $imp_deduction = ($days_divisor > 0) ? (int) round($total_unreplaced_imp_minutes * ($fixed_income / ($days_divisor * 8 * 60))) : 0;
-                    
-                    // Advanced Deductions (Capped at days_divisor to prevent >100% deductions)
-                    $effective_absent = min($total_absent, max(1, $days_divisor));
-                    $absent_deduction = (int) round($daily_rate_approx * $effective_absent);
-                    
-                    $effective_excused = min($total_excused, max(1, $days_divisor));
+
+                    // Absent Deduction Rule:
+                    // If employee has ZERO attendance/paid days ($total_paid_days == 0): Full salary deduction (100% deduction, Net = 0)
+                    if ($total_paid_days == 0) {
+                        $absent_deduction = $fixed_income;
+                    } elseif ($total_absent > 0) {
+                        if ($total_paid_days >= $days_divisor) {
+                            // Attended full 25+ days, but has some Alfa days in the month
+                            // Deduct exactly the number of Alfa days
+                            $effective_absent = min($total_absent, $days_divisor);
+                            $absent_deduction = (int) round($daily_rate_approx * $effective_absent);
+                        } else {
+                            // Attended less than 25 days:
+                            // Guaranteed to earn paid days ($total_paid_days * $daily_rate_approx)
+                            // Deduct unpaid days out of 25 working days
+                            $unpaid_working_days = max(1, $days_divisor - $total_paid_days);
+                            $absent_deduction = (int) round($daily_rate_approx * $unpaid_working_days);
+                        }
+                    } else {
+                        $absent_deduction = 0;
+                    }
+
+                    $effective_excused = min($total_excused, $days_divisor);
                     $excused_deduction = ($days_divisor > 0) ? (int) round(($effective_excused / ($days_divisor * 2)) * $fixed_income + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
-                    
-                    $effective_sick = min($total_sick, max(1, $days_divisor));
+
+                    $effective_sick = min($total_sick, $days_divisor);
                     $sick_deduction = ($days_divisor > 0) ? (int) round(($effective_sick / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
-                    
-                    $effective_cuti = min($penalized_cuti_days, max(1, $days_divisor));
+
+                    $effective_cuti = min($penalized_cuti_days, $days_divisor);
                     $cuti_deduction = ($days_divisor > 0) ? (int) round(($effective_cuti / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
-                    
-                    $effective_wfh = min($total_wfh, max(1, $days_divisor));
+
+                    $effective_wfh = min($total_wfh, $days_divisor);
                     if ($emp->count_wfo) {
                         $wfh_deduction = 0;
                     } else {
@@ -482,6 +467,12 @@ class PayrollHistoryComponent extends Component
                         if ($flex->deduction_source === 'payroll') {
                             $flex_deduction_total += (int) round($flex->amount);
                         }
+                    }
+
+                    // If zero attendance, ensure absent deduction + other deductions match exact total gross without exceeding
+                    if ($total_paid_days == 0) {
+                        $other_deductions = $syirkah_deduction + $loan_deduction + $flex_deduction_total;
+                        $absent_deduction = max(0, $fixed_income - $other_deductions);
                     }
 
                     $total_gross = $basic_salary_earned + $total_allowance + $total_overtime_pay;
@@ -569,7 +560,7 @@ class PayrollHistoryComponent extends Component
                                 'period_month' => $this->generate_period_month,
                                 'reference_type' => 'flexible_deduction',
                                 'reference_id' => $flex->id,
-                                'notes' => 'Potongan ' . ($flex->program->name ?? 'Fleksibel') . ' via ' . $flex->deduction_source_label,
+                                'description' => 'Potongan ' . ($flex->program->name ?? 'Fleksibel') . ' via ' . $flex->deduction_source_label,
                                 'approved_by' => \Illuminate\Support\Facades\Auth::id(),
                                 'approved_at' => now(),
                             ]);
@@ -608,7 +599,12 @@ class PayrollHistoryComponent extends Component
                         $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'earning', 'name' => "Lembur ({$compactOvertimeStr})", 'amount' => 0, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     }
 
-                    if ($absent_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Alpa ($total_absent Hari)", 'amount' => $absent_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($absent_deduction > 0) {
+                        $absentLabel = ($total_paid_days == 0)
+                            ? "Potongan Alpa (Full $total_absent Hari)"
+                            : "Potongan Alpa ($total_absent Hari)";
+                        $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => $absentLabel, 'amount' => $absent_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    }
                     if ($late_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Terlambat ($total_late_minutes Menit)", 'amount' => $late_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     if ($excused_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Izin ($total_excused Hari)", 'amount' => $excused_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     if ($sick_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Sakit ($total_sick Hari)", 'amount' => $sick_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
@@ -622,7 +618,13 @@ class PayrollHistoryComponent extends Component
                 // Batch insert all PayrollDetails in chunks for maximum performance
                 if (!empty($allPayrollDetailsToInsert)) {
                     foreach (array_chunk($allPayrollDetailsToInsert, 500) as $chunk) {
-                        \App\Models\PayrollDetail::insert($chunk);
+                        $preparedChunk = array_map(function ($row) {
+                            if (!isset($row['id'])) {
+                                $row['id'] = (string) \Illuminate\Support\Str::ulid();
+                            }
+                            return $row;
+                        }, $chunk);
+                        \App\Models\PayrollDetail::insert($preparedChunk);
                     }
                 }
             });
@@ -646,10 +648,71 @@ class PayrollHistoryComponent extends Component
 
     public function showDeductions($payrollId)
     {
-        $payroll = \App\Models\Payroll::with('employee')->find($payrollId);
+        $payroll = \App\Models\Payroll::with(['employee', 'details'])->find($payrollId);
         if ($payroll) {
             $this->selectedPayrollId = $payrollId;
             $this->selectedPayrollEmployeeName = $payroll->employee->name ?? 'Karyawan';
+            
+            $deductions = [];
+            if ($payroll->details->isNotEmpty()) {
+                foreach ($payroll->details->where('type', 'deduction') as $d) {
+                    $deductions[] = [
+                        'name' => $d->name,
+                        'amount' => (float) $d->amount,
+                    ];
+                }
+            }
+
+            // Fallback for older/migrated payroll records if details table was empty
+            if (empty($deductions) && $payroll->total_deduction > 0) {
+                // Check if there are Syirkah transactions for this payroll
+                $syirkahTx = \App\Models\SavingTransaction::where('reference_type', 'payroll')->where('reference_id', $payroll->id)->first();
+                if ($syirkahTx) {
+                    $deductions[] = [
+                        'name' => 'Potongan Syirkah',
+                        'amount' => (float) ($syirkahTx->mandatory_amount + $syirkahTx->secondary_amount),
+                    ];
+                }
+
+                // Check loans
+                $loanInst = \App\Models\LoanInstallment::where('payroll_id', $payroll->id)->get();
+                foreach ($loanInst as $li) {
+                    $deductions[] = [
+                        'name' => 'Cicilan Pinjaman',
+                        'amount' => (float) $li->amount_paid,
+                    ];
+                }
+
+                // Check flexible deductions
+                $flexDeds = \App\Models\FlexibleDeduction::where('payroll_id', $payroll->id)->with('program')->get();
+                foreach ($flexDeds as $fd) {
+                    if ($fd->deduction_source === 'payroll') {
+                        $deductions[] = [
+                            'name' => 'Potongan: ' . ($fd->program->name ?? 'Fleksibel'),
+                            'amount' => (float) $fd->amount,
+                        ];
+                    }
+                }
+
+                // Remaining deduction is attendance deductions (Alpa, Terlambat, Sakit, Izin, etc.)
+                $currentSum = array_sum(array_column($deductions, 'amount'));
+                $remaining = max(0, $payroll->total_deduction - $currentSum);
+                if ($remaining > 0) {
+                    $descParts = [];
+                    if ($payroll->total_absent > 0) $descParts[] = "Alpa {$payroll->total_absent} hari";
+                    if ($payroll->total_late_minutes > 0) $descParts[] = "Terlambat {$payroll->total_late_minutes} mnt";
+                    if ($payroll->total_sick > 0) $descParts[] = "Sakit {$payroll->total_sick} hari";
+                    if ($payroll->total_excused > 0) $descParts[] = "Izin {$payroll->total_excused} hari";
+                    
+                    $label = !empty($descParts) ? 'Potongan Kehadiran (' . implode(', ', $descParts) . ')' : 'Potongan Kehadiran & Lainnya';
+                    $deductions[] = [
+                        'name' => $label,
+                        'amount' => (float) $remaining,
+                    ];
+                }
+            }
+
+            $this->selectedDeductions = $deductions;
             $this->showDeductionModal = true;
         }
     }
@@ -658,14 +721,49 @@ class PayrollHistoryComponent extends Component
     {
         $this->showDeductionModal = false;
         $this->selectedPayrollId = null;
+        $this->selectedDeductions = [];
     }
 
     public function showIncomes($payrollId)
     {
-        $payroll = \App\Models\Payroll::with('employee')->find($payrollId);
+        $payroll = \App\Models\Payroll::with(['employee', 'details'])->find($payrollId);
         if ($payroll) {
             $this->selectedPayrollId = $payrollId;
             $this->selectedPayrollEmployeeName = $payroll->employee->name ?? 'Karyawan';
+            
+            $incomes = [];
+            if ($payroll->basic_salary_earned > 0) {
+                $incomes[] = [
+                    'name' => 'Gaji Pokok',
+                    'amount' => (float) $payroll->basic_salary_earned,
+                ];
+            }
+
+            if ($payroll->details->isNotEmpty()) {
+                foreach ($payroll->details->where('type', 'earning') as $d) {
+                    $incomes[] = [
+                        'name' => $d->name,
+                        'amount' => (float) $d->amount,
+                    ];
+                }
+            }
+
+            if (empty($incomes) || (count($incomes) === 1 && $payroll->total_allowance > 0)) {
+                if ($payroll->total_allowance > 0 && !collect($incomes)->contains('name', 'Total Tunjangan')) {
+                    $incomes[] = [
+                        'name' => 'Total Tunjangan',
+                        'amount' => (float) $payroll->total_allowance,
+                    ];
+                }
+                if ($payroll->total_overtime_pay > 0 && !collect($incomes)->contains('name', 'Uang Lembur')) {
+                    $incomes[] = [
+                        'name' => 'Uang Lembur',
+                        'amount' => (float) $payroll->total_overtime_pay,
+                    ];
+                }
+            }
+
+            $this->selectedIncomes = $incomes;
             $this->showIncomeModal = true;
         }
     }
@@ -674,6 +772,7 @@ class PayrollHistoryComponent extends Component
     {
         $this->showIncomeModal = false;
         $this->selectedPayrollId = null;
+        $this->selectedIncomes = [];
     }
 
     public function render()

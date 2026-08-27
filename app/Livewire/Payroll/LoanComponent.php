@@ -239,7 +239,7 @@ class LoanComponent extends Component
                         'period_month' => now()->format('Y-m'),
                         'reference_type' => 'loan',
                         'reference_id' => $loan->id,
-                        'notes' => 'Pelunasan Pinjaman via ' . $loan->payment_source_label,
+                        'description' => 'Pelunasan Pinjaman via ' . $loan->payment_source_label,
                         'approved_by' => Auth::id(),
                         'approved_at' => now(),
                     ]);
