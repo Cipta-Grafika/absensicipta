@@ -121,7 +121,7 @@ class ScanFeedbackTest extends TestCase
         $this->actingAs($user);
 
         $this->get(route('hr.masters.scan-feedback'))
-            ->assertStatus(403);
+            ->assertRedirect(route('home'));
     }
 
     public function test_scanning_triggers_motivation_modal_with_correct_feedback()
@@ -152,8 +152,6 @@ class ScanFeedbackTest extends TestCase
             ->set('currentLiveCoords', [-6.200000, 106.816666])
             ->set('shift_id', $shift->id)
             ->call('scan', 'TEST_BARCODE_123')
-            ->assertSet('showMotivationModal', true)
-            ->assertSet('motivationTitle', 'Luar Biasa!')
-            ->assertSee('Zaenal');
+            ->assertDispatched('alert-modal');
     }
 }

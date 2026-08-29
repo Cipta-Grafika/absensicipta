@@ -178,8 +178,12 @@
     <div class="grid grid-cols-2 gap-2.5 sm:gap-4">
       <!-- CARD JAM MASUK -->
       <div
+        x-data="{ submitting: false }"
         @if($canManualCheckIn)
           wire:click="manualCheckIn"
+          @click="if (submitting) return; submitting = true; setTimeout(() => submitting = false, 3000);"
+          wire:loading.class="pointer-events-none opacity-60 cursor-wait"
+          wire:target="manualCheckIn, manualCheckOut"
           title="Klik untuk Absen Masuk (Verifikasi GPS Radius Barcode Kantor)"
         @endif
         class="col-span-1 relative flex flex-col justify-between rounded-xl p-2.5 sm:p-4 transition-all duration-200
@@ -244,8 +248,12 @@
 
       <!-- CARD JAM KELUAR -->
       <div
+        x-data="{ submitting: false }"
         @if($canManualCheckOut)
           wire:click="manualCheckOut"
+          @click="if (submitting) return; submitting = true; setTimeout(() => submitting = false, 3000);"
+          wire:loading.class="pointer-events-none opacity-60 cursor-wait"
+          wire:target="manualCheckIn, manualCheckOut"
           title="Klik untuk Absen Keluar (Verifikasi GPS Radius Barcode Kantor)"
         @elseif($isCheckOutLockedUntilWindow)
           title="{{ !$hasShift ? 'Pilih shift terlebih dahulu sebelum melakukan presensi.' : 'Absen Keluar belum dibuka. Dapat diakses mulai pukul ' . $checkOutUnlockTime . ' (1 jam sebelum shift berakhir).' }}"

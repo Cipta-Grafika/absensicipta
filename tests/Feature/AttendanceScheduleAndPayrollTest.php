@@ -315,7 +315,7 @@ class AttendanceScheduleAndPayrollTest extends TestCase
 
     public function test_holiday_management_component_crud(): void
     {
-        $admin = User::factory()->create(['group' => 'admin']);
+        $admin = User::factory()->create(['group' => 'superadmin']);
         $division = Division::create(['name' => 'Design']);
         $emp = User::factory()->create(['group' => 'user']);
 
