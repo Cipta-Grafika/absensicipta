@@ -176,12 +176,15 @@ class SavingTransactionComponent extends Component
             ->orderBy('created_at', 'desc')
             ->orderBy('id', 'desc');
 
-        if ($this->year) {
+        if ($this->month) {
+            try {
+                $date = Carbon::parse($this->month);
+                $query->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month);
+            } catch (\Exception $e) {}
+        } elseif ($this->year) {
             $query->whereYear('created_at', $this->year);
         }
-        if ($this->month) {
-            $query->where('period_month', $this->month);
-        }
+
         if ($this->start_date && $this->end_date) {
             $query->whereBetween('created_at', [$this->start_date . ' 00:00:00', $this->end_date . ' 23:59:59']);
         }
@@ -205,6 +208,8 @@ class SavingTransactionComponent extends Component
             'users' => User::onlyWorkingEmployee()
                 ->orderBy('name')
                 ->get(),
+            'mode' => $this->mode,
+            'previewing' => $this->previewing,
         ]);
     }
 }
