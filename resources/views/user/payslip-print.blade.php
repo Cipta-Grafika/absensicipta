@@ -259,48 +259,83 @@
                     // Prepare Deductions
                     $deductionRows = [];
                     $deductions = $payroll->details->where('type', 'deduction');
-                    
-                    $lateMinuteDetail = $deductions->first(function($d) { return stripos($d->name, 'Keterlambatan') !== false || stripos($d->name, 'Telat') !== false; });
-                    $latePenaltyDetail = $deductions->first(function($d) { return stripos($d->name, 'Penalti Sering Terlambat') !== false; });
-                    
-                    $totalLateAmount = ($lateMinuteDetail ? $lateMinuteDetail->amount : 0) + ($latePenaltyDetail ? $latePenaltyDetail->amount : 0);
-                    $lateMinutes = abs($payroll->total_late_minutes ?: 0);
-                    $lateLabel = "Telat ({$lateMinutes} menit)";
+                    $coveredIds = [];
 
-                    $absensiDetail = $deductions->first(function($d) { return stripos($d->name, 'Mangkir') !== false || stripos($d->name, 'Absensi') !== false; });
+                    // 1. Absensi (Alpa / Mangkir / Absensi)
+                    $absensiDetails = $deductions->filter(function($d) {
+                        return stripos($d->name, 'Alpa') !== false 
+                            || stripos($d->name, 'Mangkir') !== false 
+                            || stripos($d->name, 'Absen') !== false;
+                    });
+                    foreach ($absensiDetails as $d) {
+                        $coveredIds[] = $d->id;
+                    }
+                    $totalAbsensiAmount = $absensiDetails->sum('amount');
                     $absensiLabel = 'Absensi' . ($payroll->total_absent > 0 ? " ({$payroll->total_absent} Hari)" : '');
 
-                    $impDetail = $deductions->first(function($d) { return stripos($d->name, 'IMP') !== false; });
-                    $impLabel = 'IMP' . ($payroll->total_unreplaced_imp_hours > 0 ? " ({$payroll->total_unreplaced_imp_hours} Jam)" : '');
+                    // 2. Telat (Terlambat / Keterlambatan / Telat / Penalti Terlambat)
+                    $lateDetails = $deductions->filter(function($d) {
+                        return stripos($d->name, 'Terlambat') !== false 
+                            || stripos($d->name, 'Keterlambatan') !== false 
+                            || stripos($d->name, 'Telat') !== false;
+                    });
+                    foreach ($lateDetails as $d) {
+                        $coveredIds[] = $d->id;
+                    }
+                    $totalLateAmount = $lateDetails->sum('amount');
+                    $lateMinutes = abs($payroll->total_late_minutes ?: 0);
+                    $lateLabel = "Telat" . ($lateMinutes > 0 ? " ({$lateMinutes} menit)" : '');
 
-                    $syirkahDetail = $deductions->first(function($d) { return stripos($d->name, 'Syirkah') !== false; });
-                    
-                    $cutiDetail = $deductions->first(function($d) { return stripos($d->name, 'Cuti Beruntun') !== false || stripos($d->name, 'Penalti Cuti') !== false; });
+                    // 3. IMP
+                    $impDetails = $deductions->filter(function($d) {
+                        return stripos($d->name, 'IMP') !== false;
+                    });
+                    foreach ($impDetails as $d) {
+                        $coveredIds[] = $d->id;
+                    }
+                    $totalImpAmount = $impDetails->sum('amount');
+                    $impLabel = 'IMP' . ($payroll->total_unreplaced_imp_hours > 0 ? " (" . round($payroll->total_unreplaced_imp_hours, 2) . " Jam)" : '');
+
+                    // 4. Syirkah
+                    $syirkahDetails = $deductions->filter(function($d) {
+                        return stripos($d->name, 'Syirkah') !== false;
+                    });
+                    foreach ($syirkahDetails as $d) {
+                        $coveredIds[] = $d->id;
+                    }
+                    $totalSyirkahAmount = $syirkahDetails->sum('amount');
+
+                    // 5. Penalti Cuti
+                    $cutiDetails = $deductions->filter(function($d) {
+                        return stripos($d->name, 'Cuti') !== false;
+                    });
+                    foreach ($cutiDetails as $d) {
+                        $coveredIds[] = $d->id;
+                    }
+                    $totalCutiAmount = $cutiDetails->sum('amount');
                     $cutiLabel = 'Penalti Cuti' . ($payroll->penalized_cuti_days > 0 ? " ({$payroll->penalized_cuti_days} Hari)" : '');
 
-                    $pphDetail = $deductions->first(function($d) { return stripos($d->name, 'PPh 21') !== false; });
-                    
-                    $deductionRows[] = ['name' => $absensiLabel, 'amount' => $absensiDetail ? $absensiDetail->amount : 0];
-                    $deductionRows[] = ['name' => $lateLabel, 'amount' => $totalLateAmount];
-                    $deductionRows[] = ['name' => $impLabel, 'amount' => $impDetail ? $impDetail->amount : 0];
-                    $deductionRows[] = ['name' => 'Syirkah', 'amount' => $syirkahDetail ? $syirkahDetail->amount : 0];
-                    if ($cutiDetail && $cutiDetail->amount > 0) {
-                        $deductionRows[] = ['name' => $cutiLabel, 'amount' => $cutiDetail->amount];
+                    // 6. PPh 21
+                    $pphDetails = $deductions->filter(function($d) {
+                        return stripos($d->name, 'PPh') !== false || stripos($d->name, 'Pajak') !== false;
+                    });
+                    foreach ($pphDetails as $d) {
+                        $coveredIds[] = $d->id;
                     }
-                    $deductionRows[] = ['name' => 'PPh 21', 'amount' => $pphDetail ? $pphDetail->amount : 0];
-                    
-                    $coveredNames = array_filter([
-                        $lateMinuteDetail?->name, 
-                        $latePenaltyDetail?->name, 
-                        $absensiDetail?->name, 
-                        $impDetail?->name, 
-                        $syirkahDetail?->name, 
-                        $cutiDetail?->name, 
-                        $pphDetail?->name
-                    ]);
+                    $totalPphAmount = $pphDetails->sum('amount');
 
-                    foreach($deductions as $d) {
-                        if (!in_array($d->name, $coveredNames)) {
+                    $deductionRows[] = ['name' => $absensiLabel, 'amount' => $totalAbsensiAmount];
+                    $deductionRows[] = ['name' => $lateLabel, 'amount' => $totalLateAmount];
+                    $deductionRows[] = ['name' => $impLabel, 'amount' => $totalImpAmount];
+                    $deductionRows[] = ['name' => 'Syirkah', 'amount' => $totalSyirkahAmount];
+                    if ($totalCutiAmount > 0 || $payroll->penalized_cuti_days > 0) {
+                        $deductionRows[] = ['name' => $cutiLabel, 'amount' => $totalCutiAmount];
+                    }
+                    $deductionRows[] = ['name' => 'PPh 21', 'amount' => $totalPphAmount];
+
+                    // 7. Dynamic remaining deductions (e.g. Pinjaman, Potongan Khusus/BCA, WFH, Sakit, Izin)
+                    foreach ($deductions as $d) {
+                        if (!in_array($d->id, $coveredIds)) {
                             $cleanName = str_ireplace(['Potongan WFH/WFA', 'Potongan Sakit', 'Potongan Izin'], ['WFH/A', 'Sakit', 'Izin'], $d->name);
                             $deductionRows[] = ['name' => $cleanName, 'amount' => $d->amount];
                         }

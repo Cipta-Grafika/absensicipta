@@ -149,14 +149,30 @@
         </div>
       </div>
 
-    <!-- 3. CARD POTONGAN (TOP BANNER) -->
-    <div class="flex items-center gap-3 rounded-lg bg-red-200 px-4 py-3 text-gray-800 dark:bg-red-900 dark:text-white border border-red-300 dark:border-red-800 shadow-xs">
-      <x-heroicon-o-exclamation-triangle class="h-6 w-6 shrink-0 text-red-600 dark:text-red-300 opacity-90" />
-      <div>
-        <h4 class="text-base font-semibold sm:text-lg">Potongan</h4>
-        <div class="font-bold text-red-700 dark:text-red-200 text-xs sm:text-sm md:text-base">
-          Rp {{ number_format($realtimeDeduction ?? 0, 0, ',', '.') }}
+    <!-- 3. CARD POTONGAN (TOP BANNER - CLICKABLE FOR DETAILS) -->
+    <div 
+      wire:click="openDeductionDetailModal"
+      title="Klik untuk melihat rincian detail potongan bulan ini"
+      class="group relative flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-red-100 via-rose-100 to-red-100 dark:from-red-950/80 dark:via-rose-950/70 dark:to-red-950/80 px-4 py-3 text-gray-800 dark:text-white border border-red-300 dark:border-red-800 shadow-xs cursor-pointer hover:shadow-md hover:border-red-400 dark:hover:border-red-700 hover:scale-[1.005] active:scale-[0.99] transition-all duration-200">
+      <div class="flex items-center gap-3">
+        <div class="rounded-lg bg-red-500/15 dark:bg-red-500/20 p-2 text-red-600 dark:text-red-400 shrink-0 group-hover:scale-110 transition-transform">
+          <x-heroicon-o-exclamation-triangle class="h-5 w-5 sm:h-6 sm:w-6" />
         </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h4 class="text-sm font-bold sm:text-base text-gray-900 dark:text-white">Potongan Bulan Ini</h4>
+            <span class="inline-flex items-center rounded-full bg-red-600/10 dark:bg-red-400/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:text-red-300">
+              Lihat Detail
+            </span>
+          </div>
+          <div class="font-extrabold text-red-700 dark:text-red-400 text-sm sm:text-base font-mono tracking-tight">
+            Rp {{ number_format($realtimeDeduction ?? 0, 0, ',', '.') }}
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 group-hover:translate-x-0.5 transition-transform shrink-0">
+        <span class="hidden sm:inline">Rincian</span>
+        <x-heroicon-o-chevron-right class="h-4 w-4" />
       </div>
     </div>
 
@@ -388,6 +404,85 @@
         </div>
       </button>
     </div>
+
+    <!-- MODAL DETAIL POTONGAN USER -->
+    <x-dialog-modal wire:model.live="showDeductionDetailModal" maxWidth="lg">
+      <x-slot name="title">
+        <div class="flex items-center gap-2">
+          <div class="rounded-lg bg-red-100 dark:bg-red-900/50 p-1.5 text-red-600 dark:text-red-400">
+            <x-heroicon-o-calculator class="h-5 w-5" />
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-gray-900 dark:text-white">Rincian Potongan Anda</h3>
+            <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Periode: {{ $deductionPeriod ?: date('F Y') }}</p>
+          </div>
+        </div>
+      </x-slot>
+
+      <x-slot name="content">
+        @if(!empty($userDeductionDetails) && count($userDeductionDetails) > 0)
+          <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs">
+            <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th scope="col" class="py-2.5 pl-4 pr-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                    Jenis Potongan
+                  </th>
+                  <th scope="col" class="px-3 py-2.5 text-right text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                    Nominal
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                @foreach($userDeductionDetails as $item)
+                  <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-800/50 transition-colors">
+                    <td class="py-3 pl-4 pr-3 text-sm text-gray-900 dark:text-gray-100">
+                      <div class="font-semibold">{{ $item['name'] }}</div>
+                      @if(!empty($item['detail']))
+                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $item['detail'] }}</div>
+                      @endif
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-3 text-right text-sm font-bold font-mono text-red-600 dark:text-red-400">
+                      Rp {{ number_format($item['amount'], 0, ',', '.') }}
+                    </td>
+                  </tr>
+                @endforeach
+              </tbody>
+              <tfoot class="bg-red-50/70 dark:bg-red-950/40 border-t-2 border-red-200 dark:border-red-900">
+                <tr>
+                  <th scope="row" class="py-3 pl-4 pr-3 text-left text-sm font-extrabold text-gray-900 dark:text-white">
+                    Total Estimasi Potongan
+                  </th>
+                  <td class="whitespace-nowrap px-3 py-3 text-right text-sm font-extrabold font-mono text-red-700 dark:text-red-300">
+                    Rp {{ number_format($userTotalDeduction ?? 0, 0, ',', '.') }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="mt-3 rounded-lg bg-sky-50 dark:bg-sky-950/40 p-2.5 text-xs text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-start gap-2">
+            <x-heroicon-s-information-circle class="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+            <p>
+              Perhitungan potongan ini dihitung secara realtime berdasarkan presensi berjalan bulan ini dan disesuaikan saat proses penggajian (payroll) final.
+            </p>
+          </div>
+        @else
+          <div class="text-center py-6">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 mb-2">
+              <x-heroicon-o-check-badge class="h-6 w-6" />
+            </div>
+            <h4 class="text-sm font-bold text-gray-900 dark:text-white">Tidak Ada Potongan</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Luar biasa! Anda tidak memiliki potongan kehadiran atau pinjaman di bulan ini.</p>
+          </div>
+        @endif
+      </x-slot>
+
+      <x-slot name="footer">
+        <x-secondary-button wire:click="closeDeductionDetailModal" wire:loading.attr="disabled">
+          {{ __('Tutup') }}
+        </x-secondary-button>
+      </x-slot>
+    </x-dialog-modal>
 
     @livewire('user.apply-leave-modal-component')
 
