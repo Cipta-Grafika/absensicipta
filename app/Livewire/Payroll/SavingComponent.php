@@ -232,8 +232,7 @@ class SavingComponent extends Component
         $membersQuery = EmployeeSalary::with(['employee.division', 'savings'])
             ->whereNotNull('savings_id')
             ->whereHas('employee', function ($q) {
-                $q->where('group', 'user')
-                  ->whereIn('status', ['active', 'suspend']);
+                $q->onlyWorkingEmployee();
                 if ($this->memberSearch) {
                     $q->where(function ($sub) {
                         $sub->where('name', 'like', '%' . $this->memberSearch . '%')
@@ -254,8 +253,8 @@ class SavingComponent extends Component
         $memberSalaries = $membersQuery->paginate(15, ['*'], 'members_page');
         $divisions = Division::orderBy('name')->get();
 
-        $totalMembers = EmployeeSalary::whereNotNull('savings_id')->count();
-        $customMembersCount = EmployeeSalary::whereNotNull('savings_id')->whereNotNull('custom_secondary_savings')->count();
+        $totalMembers = EmployeeSalary::whereNotNull('savings_id')->whereHas('employee', fn($q) => $q->onlyWorkingEmployee())->count();
+        $customMembersCount = EmployeeSalary::whereNotNull('savings_id')->whereNotNull('custom_secondary_savings')->whereHas('employee', fn($q) => $q->onlyWorkingEmployee())->count();
 
         return view('livewire.payroll.saving-component', [
             'savings' => $savings,

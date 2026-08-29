@@ -65,7 +65,7 @@ class PaymentMethodComponent extends Component
     public function edit(string $userId)
     {
         $this->resetValidation();
-        $user = User::with(['paymentMethod', 'division', 'jobTitle'])->findOrFail($userId);
+        $user = User::onlyEmployee()->with(['paymentMethod', 'division', 'jobTitle'])->findOrFail($userId);
         
         $this->selectedUser = $user;
         $this->user_id = $user->id;
@@ -89,8 +89,10 @@ class PaymentMethodComponent extends Component
     {
         $this->validate();
 
+        $user = User::onlyEmployee()->findOrFail($this->user_id);
+
         PaymentMethod::updateOrCreate(
-            ['user_id' => $this->user_id],
+            ['user_id' => $user->id],
             [
                 'payment_name' => $this->payment_name,
                 'bank_account' => $this->bank_account,
@@ -123,18 +125,15 @@ class PaymentMethodComponent extends Component
     {
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
 
-        $employees = User::where('group', '!=', 'superadmin')
+        $employees = User::onlyEmployee()
             ->when($this->status, function ($query) {
                 if ($this->status === 'all') {
                     return $query;
                 }
                 return $query->where('status', $this->status);
             }, function ($query) {
-                // By default display all registered working employees
-                return $query->where(function ($q) {
-                    $q->whereNull('status')
-                      ->orWhereNotIn('status', ['fired', 'resign']);
-                });
+                // By default display only active and suspend working employees
+                return $query->whereIn('status', ['active', 'suspend']);
             })
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {

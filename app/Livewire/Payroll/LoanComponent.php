@@ -153,6 +153,8 @@ class LoanComponent extends Component
 
         $this->validate($rules);
 
+        $user = User::onlyWorkingEmployee()->findOrFail($this->user_id);
+
         // Validate syirkah balance sufficiency
         if ($this->payment_source === 'syirkah_mandatory' && $this->loan_amount > $this->user_syirkah_mandatory) {
             $this->addError('loan_amount', 'Nominal pinjaman melebihi Saldo Syirkah Wajib karyawan (Rp ' . number_format($this->user_syirkah_mandatory, 0, ',', '.') . ').');
@@ -433,7 +435,10 @@ class LoanComponent extends Component
 
     private function buildQuery()
     {
-        $query = Loan::with(['user.division', 'approver', 'installments']);
+        $query = Loan::with(['user.division', 'approver', 'installments'])
+            ->whereHas('user', function($q) {
+                $q->onlyEmployee();
+            });
 
         if ($this->search) {
             $query->whereHas('user', function($q) {
@@ -463,16 +468,18 @@ class LoanComponent extends Component
     {
         $query = $this->buildQuery();
         $loans = $query->latest()->paginate(15);
-        $users = User::where('group', 'user')->whereIn('status', ['active', 'suspend'])->orderBy('name')->get();
+        $users = User::onlyWorkingEmployee()
+            ->orderBy('name')
+            ->get();
 
-        // Statistics
-        $pendingCount = Loan::where('status', 'pending')->count();
-        $pendingNominal = (float) Loan::where('status', 'pending')->sum('loan_amount');
+        // Statistics filtered for regular employees
+        $pendingCount = Loan::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'pending')->count();
+        $pendingNominal = (float) Loan::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'pending')->sum('loan_amount');
 
-        $activeCount = Loan::whereIn('status', ['approved', 'active'])->count();
-        $activeBalance = (float) Loan::whereIn('status', ['approved', 'active'])->sum('remaining_balance');
+        $activeCount = Loan::whereHas('user', fn($q) => $q->onlyEmployee())->whereIn('status', ['approved', 'active'])->count();
+        $activeBalance = (float) Loan::whereHas('user', fn($q) => $q->onlyEmployee())->whereIn('status', ['approved', 'active'])->sum('remaining_balance');
 
-        $paidOffCount = Loan::where('status', 'paid_off')->count();
+        $paidOffCount = Loan::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'paid_off')->count();
 
         return view('livewire.payroll.loan-component', [
             'loans' => $loans,

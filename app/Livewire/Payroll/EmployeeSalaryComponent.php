@@ -80,9 +80,10 @@ class EmployeeSalaryComponent extends Component
     public function edit($employee_id)
     {
         $this->resetValidation();
-        $salary = EmployeeSalary::where('employee_id', $employee_id)->first();
+        $employee = User::onlyEmployee()->findOrFail($employee_id);
+        $salary = EmployeeSalary::where('employee_id', $employee->id)->first();
         
-        $this->employee_id = $employee_id;
+        $this->employee_id = $employee->id;
 
         if ($salary) {
             $this->salary_type = $salary->salary_type;
@@ -109,8 +110,10 @@ class EmployeeSalaryComponent extends Component
     {
         $this->validate();
 
+        $employee = User::onlyEmployee()->findOrFail($this->employee_id);
+
         EmployeeSalary::updateOrCreate(
-            ['employee_id' => $this->employee_id],
+            ['employee_id' => $employee->id],
             [
                 'salary_type' => $this->salary_type,
                 'working_days_per_month' => $this->salary_type == 'monthly' ? $this->working_days_per_month : 25,
@@ -134,18 +137,15 @@ class EmployeeSalaryComponent extends Component
     {
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
 
-        $employees = User::where('group', '!=', 'superadmin')
+        $employees = User::onlyEmployee()
             ->when($this->status, function ($query) {
                 if ($this->status === 'all') {
                     return $query;
                 }
                 return $query->where('status', $this->status);
             }, function ($query) {
-                // By default display all registered working employees
-                return $query->where(function ($q) {
-                    $q->whereNull('status')
-                      ->orWhereNotIn('status', ['fired', 'resign']);
-                });
+                // By default display only active and suspend working employees
+                return $query->whereIn('status', ['active', 'suspend']);
             })
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {

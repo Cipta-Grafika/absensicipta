@@ -23,7 +23,7 @@ class PaymentMethodsImport implements ToModel, WithHeadingRow, WithValidation, S
             return null; // Skip if NIP is missing
         }
 
-        $user = User::where('nip', $nip)->first();
+        $user = User::onlyWorkingEmployee()->where('nip', $nip)->first();
         if (!$user) {
             return null; // Skip if user not found
         }

@@ -20,9 +20,16 @@ class PayrollHistoryComponent extends Component
     public $generate_period_month;
     public $generate_start_date;
     public $generate_end_date;
+    public $generate_target = 'all'; // 'all' or 'specific'
+    public $selected_employee_ids = [];
     public $selectedPayrollId = null;
     public $selectedPayrollEmployeeName = '';
     public $isGenerating = false;
+
+    // Bulk Action Properties
+    public $selectedPayrolls = [];
+    public $selectAll = false;
+    public $isBulkDeleteModalOpen = false;
 
     public $selectedDeductions = [];
     public $selectedIncomes = [];
@@ -53,21 +60,85 @@ class PayrollHistoryComponent extends Component
     public function updatingSearch()
     {
         $this->resetPage();
+        $this->resetSelection();
     }
     
     public function updatingMonth()
     {
         $this->resetPage();
+        $this->resetSelection();
     }
 
     public function updatingStatus()
     {
         $this->resetPage();
+        $this->resetSelection();
     }
 
     public function updatingDivision()
     {
         $this->resetPage();
+        $this->resetSelection();
+    }
+
+    public function resetSelection()
+    {
+        $this->selectedPayrolls = [];
+        $this->selectAll = false;
+    }
+
+    public function resetFilters()
+    {
+        $this->month = '';
+        $this->status = '';
+        $this->division = '';
+        $this->search = '';
+        $this->resetPage();
+        $this->resetSelection();
+    }
+
+    public function clearSearch()
+    {
+        $this->search = '';
+        $this->resetPage();
+    }
+
+    public function updatedSelectAll($value)
+    {
+        if ($value) {
+            $this->selectedPayrolls = $this->getPayrollQuery()->paginate(15)->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        } else {
+            $this->selectedPayrolls = [];
+        }
+    }
+
+    public function selectAllAvailableEmployees()
+    {
+        $this->selected_employee_ids = \App\Models\User::onlyWorkingEmployee()
+            ->whereHas('salary')
+            ->pluck('id')
+            ->map(fn($id) => (string)$id)
+            ->toArray();
+    }
+
+    public function deselectAllAvailableEmployees()
+    {
+        $this->selected_employee_ids = [];
+    }
+
+    public function toggleAllEmployees()
+    {
+        $allIds = \App\Models\User::onlyWorkingEmployee()
+            ->whereHas('salary')
+            ->pluck('id')
+            ->map(fn($id) => (string)$id)
+            ->toArray();
+
+        if (count($this->selected_employee_ids) === count($allIds) && count($allIds) > 0) {
+            $this->selected_employee_ids = [];
+        } else {
+            $this->selected_employee_ids = $allIds;
+        }
     }
 
     public $isDeleteModalOpen = false;
@@ -78,6 +149,8 @@ class PayrollHistoryComponent extends Component
     #[\Livewire\Attributes\On('open-generate-modal')]
     public function openGenerateModal()
     {
+        $this->generate_target = 'all';
+        $this->selected_employee_ids = [];
         $this->isGenerateModalOpen = true;
     }
 
@@ -97,6 +170,77 @@ class PayrollHistoryComponent extends Component
         ]);
         
         $this->banner('Status gaji berhasil diubah menjadi Paid (Telah Dibayar).');
+    }
+
+    public function openBulkDeleteModal()
+    {
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        if (empty($this->selectedPayrolls)) {
+            session()->flash('flash.banner', 'Pilih minimal satu data gaji untuk dihapus.');
+            session()->flash('flash.bannerStyle', 'danger');
+            return;
+        }
+        $this->isBulkDeleteModalOpen = true;
+    }
+
+    public function cancelBulkDelete()
+    {
+        $this->isBulkDeleteModalOpen = false;
+    }
+
+    public function bulkDeletePayrolls()
+    {
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        if (!empty($this->selectedPayrolls)) {
+            $payrolls = Payroll::whereIn('id', $this->selectedPayrolls)->get();
+            if ($payrolls->isNotEmpty()) {
+                $payrollIds = $payrolls->pluck('id')->toArray();
+                $empIds = $payrolls->pluck('employee_id')->unique()->toArray();
+
+                \App\Models\LoanInstallment::whereIn('payroll_id', $payrollIds)->delete();
+                \App\Models\SavingTransaction::where('reference_type', 'payroll')->whereIn('reference_id', $payrollIds)->delete();
+
+                $existingFlexIds = \App\Models\FlexibleDeduction::whereIn('payroll_id', $payrollIds)->pluck('id');
+                if ($existingFlexIds->isNotEmpty()) {
+                    \App\Models\SavingTransaction::where('reference_type', 'flexible_deduction')->whereIn('reference_id', $existingFlexIds)->delete();
+                    \App\Models\FlexibleDeduction::whereIn('id', $existingFlexIds)->update(['is_applied' => false, 'payroll_id' => null, 'saving_transaction_id' => null]);
+                }
+
+                \App\Models\PayrollDetail::whereIn('payroll_id', $payrollIds)->delete();
+                $count = Payroll::whereIn('id', $payrollIds)->delete();
+
+                foreach ($empIds as $empId) {
+                    \App\Services\SavingTransactionService::recalculateUserTransactions($empId);
+                }
+
+                $this->banner("{$count} data gaji terpilih berhasil dihapus secara permanen.");
+            }
+            $this->resetSelection();
+        }
+        $this->isBulkDeleteModalOpen = false;
+    }
+
+    public function bulkMarkAsPaid()
+    {
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        if (empty($this->selectedPayrolls)) {
+            session()->flash('flash.banner', 'Pilih minimal satu data gaji untuk ditandai Paid.');
+            session()->flash('flash.bannerStyle', 'danger');
+            return;
+        }
+
+        $count = Payroll::whereIn('id', $this->selectedPayrolls)->where('status', 'draft')->update([
+            'status' => 'paid',
+            'payment_date' => now(),
+        ]);
+
+        if ($count > 0) {
+            $this->banner("{$count} data gaji terpilih berhasil diubah statusnya menjadi Paid.");
+        } else {
+            session()->flash('flash.banner', 'Tidak ada data berstatus Draft di antara data yang dipilih.');
+            session()->flash('flash.bannerStyle', 'danger');
+        }
+        $this->resetSelection();
     }
     
     public function confirmDelete($id)
@@ -168,10 +312,20 @@ class PayrollHistoryComponent extends Component
 
     public function generatePayroll()
     {
-        $this->validate([
+        $rules = [
             'generate_period_month' => 'required|date_format:Y-m',
             'generate_start_date' => 'required|date',
             'generate_end_date' => 'required|date|after_or_equal:generate_start_date',
+            'generate_target' => 'required|in:all,specific',
+        ];
+
+        if ($this->generate_target === 'specific') {
+            $rules['selected_employee_ids'] = 'required|array|min:1';
+        }
+
+        $this->validate($rules, [
+            'selected_employee_ids.required' => 'Pilih minimal 1 karyawan untuk diproses gajinya.',
+            'selected_employee_ids.min' => 'Pilih minimal 1 karyawan untuk diproses gajinya.',
         ]);
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
 
@@ -189,18 +343,21 @@ class PayrollHistoryComponent extends Component
         try {
             $generatedCount = 0;
             \Illuminate\Support\Facades\DB::transaction(function () use (&$generatedCount) {
-                // Get active employees who have a salary setup
-                $employees = \App\Models\User::where('group', '!=', 'superadmin')
-                    ->where(function ($q) {
-                        $q->whereNull('status')
-                          ->orWhereNotIn('status', ['fired', 'resign']);
-                    })
+                // Get active/suspend working employees who have a salary setup
+                $employeesQuery = \App\Models\User::onlyWorkingEmployee()
                     ->whereHas('salary')
-                    ->with(['salary.savings'])
-                    ->get();
+                    ->with(['salary.savings']);
+
+                if ($this->generate_target === 'specific') {
+                    $employeesQuery->whereIn('id', $this->selected_employee_ids);
+                }
+
+                $employees = $employeesQuery->get();
 
                 if ($employees->isEmpty()) {
-                    throw new \Exception("Tidak ada karyawan aktif yang memiliki pengaturan gaji.");
+                    throw new \Exception($this->generate_target === 'specific'
+                        ? "Karyawan terpilih tidak memiliki pengaturan gaji aktif."
+                        : "Tidak ada karyawan aktif yang memiliki pengaturan gaji.");
                 }
 
                 $employeeIds = $employees->pluck('id')->toArray();
@@ -366,9 +523,29 @@ class PayrollHistoryComponent extends Component
                     $attendance_allowance = 0;
                     
                     if ($salary->salary_type == 'daily') {
-                        $basic_salary_earned = (int) round($salary->basic_salary * $total_paid_days);
-                        $meal_allowance = (int) round($salary->meal_allowance * $total_paid_days);
-                        $transport_allowance = (int) round($salary->transport_allowance * $total_paid_days);
+                        $standard_working_days = (int) ($salary->working_days_per_month ?: 25);
+                        
+                        // Perhitungan Hari Dibayar Gaji Harian (Pembulatan Basis Standar 25 Hari):
+                        // 1. Kehadiran 0 hari: 0 hari dibayar
+                        // 2. Kehadiran parsial / baru masuk (< 15 hari hadir): dihitung murni kehadiran aktual ($total_paid_days)
+                        // 3. Kehadiran normal (>= 15 hari hadir):
+                        //    - Full 1 bulan (0 Alpa): dibulatkan menjadi 25 hari terbayar (berapapun total hari kerja kalender bulan tsb, misal 24, 26, atau 27 hari)
+                        //    - Terdapat Alpa: hari terbayar = max(0, min($standard_working_days, $standard_working_days - $total_absent))
+                        if ($total_paid_days == 0) {
+                            $effective_daily_paid_days = 0;
+                        } elseif ($total_paid_days < 15) {
+                            $effective_daily_paid_days = $total_paid_days;
+                        } else {
+                            if ($total_absent == 0) {
+                                $effective_daily_paid_days = $standard_working_days;
+                            } else {
+                                $effective_daily_paid_days = max(0, min($standard_working_days, $standard_working_days - $total_absent));
+                            }
+                        }
+
+                        $basic_salary_earned = (int) round($salary->basic_salary * $effective_daily_paid_days);
+                        $meal_allowance = (int) round($salary->meal_allowance * $effective_daily_paid_days);
+                        $transport_allowance = (int) round($salary->transport_allowance * $effective_daily_paid_days);
                         $attendance_allowance = (int) round($salary->attendance_allowance);
                     } else { // monthly
                         $basic_salary_earned = (int) round($salary->basic_salary);
@@ -791,11 +968,13 @@ class PayrollHistoryComponent extends Component
         $this->selectedIncomes = [];
     }
 
-    public function render()
+    public function getPayrollQuery()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
-
-        $query = Payroll::with('employee')->orderBy('created_at', 'desc');
+        $query = Payroll::with('employee')
+            ->whereHas('employee', function ($q) {
+                $q->onlyEmployee();
+            })
+            ->orderBy('created_at', 'desc');
 
         if ($this->month) {
             $query->where('period_month', $this->month);
@@ -818,10 +997,24 @@ class PayrollHistoryComponent extends Component
             $query->where('status', $this->status);
         }
 
-        $payrolls = $query->paginate(15);
+        return $query;
+    }
+
+    public function render()
+    {
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+
+        $payrolls = $this->getPayrollQuery()->paginate(15);
+
+        $availableEmployees = \App\Models\User::onlyWorkingEmployee()
+            ->whereHas('salary')
+            ->with(['division', 'jobTitle'])
+            ->orderBy('name')
+            ->get();
 
         return view('livewire.payroll.payroll-history-component', [
             'payrolls' => $payrolls,
+            'availableEmployees' => $availableEmployees,
         ])->layout('layouts.app');
     }
 }

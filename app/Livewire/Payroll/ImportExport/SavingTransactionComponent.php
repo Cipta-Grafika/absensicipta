@@ -170,6 +170,9 @@ class SavingTransactionComponent extends Component
         abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin, 403);
 
         $query = SavingTransaction::with(['user.division', 'masterSaving'])
+            ->whereHas('user', function ($q) {
+                $q->onlyEmployee();
+            })
             ->orderBy('created_at', 'desc')
             ->orderBy('id', 'desc');
 
@@ -177,8 +180,7 @@ class SavingTransactionComponent extends Component
             $query->whereYear('created_at', $this->year);
         }
         if ($this->month) {
-            $date = Carbon::parse($this->month);
-            $query->whereYear('created_at', $date->year)->whereMonth('created_at', $date->month);
+            $query->where('period_month', $this->month);
         }
         if ($this->start_date && $this->end_date) {
             $query->whereBetween('created_at', [$this->start_date . ' 00:00:00', $this->end_date . ' 23:59:59']);
@@ -200,7 +202,9 @@ class SavingTransactionComponent extends Component
         return view('livewire.payroll.import-export.saving-transaction', [
             'transactions' => $transactions,
             'divisions' => Division::orderBy('name')->get(),
-            'users' => User::where('group', 'user')->whereIn('status', ['active', 'suspend'])->orderBy('name')->get(),
+            'users' => User::onlyWorkingEmployee()
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 }

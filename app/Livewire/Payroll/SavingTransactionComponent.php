@@ -319,6 +319,8 @@ class SavingTransactionComponent extends Component
             'withdrawal_type' => 'required|in:mandatory,secondary,both',
         ]);
 
+        $user = User::onlyWorkingEmployee()->findOrFail($this->withdrawal_user_id);
+
         DB::beginTransaction();
         try {
             // Calculate true balance dynamically from approved transactions
@@ -396,7 +398,10 @@ class SavingTransactionComponent extends Component
 
     private function buildQuery()
     {
-        $query = SavingTransaction::with(['user.division', 'masterSaving', 'approver']);
+        $query = SavingTransaction::with(['user.division', 'masterSaving', 'approver'])
+            ->whereHas('user', function($q) {
+                $q->onlyEmployee();
+            });
 
         if ($this->search) {
             $query->where(function($q) {
@@ -439,12 +444,14 @@ class SavingTransactionComponent extends Component
     {
         $query = $this->buildQuery();
         $transactions = $query->latest()->paginate(15);
-        $users = User::where('group', 'user')->whereIn('status', ['active', 'suspend'])->orderBy('name')->get();
+        $users = User::onlyWorkingEmployee()
+            ->orderBy('name')
+            ->get();
         $savingsList = Saving::orderBy('savings_name')->get();
 
         // Calculate dynamic true balance directly from approved transactions (Single Source of Truth)
-        $approvedDepositQuery = SavingTransaction::where('status', 'approved')->where('transaction_type', 'deposit');
-        $approvedWithdrawalQuery = SavingTransaction::where('status', 'approved')->where('transaction_type', 'withdrawal');
+        $approvedDepositQuery = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'approved')->where('transaction_type', 'deposit');
+        $approvedWithdrawalQuery = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'approved')->where('transaction_type', 'withdrawal');
 
         if ($this->search) {
             $searchFilter = function($q) {
@@ -474,8 +481,8 @@ class SavingTransactionComponent extends Component
         $totalSukarela = max(0.0, (float) $approvedDepositQuery->sum('secondary_amount') - (float) $approvedWithdrawalQuery->sum('secondary_amount'));
 
         // Pending Counter
-        $pendingCount = SavingTransaction::where('status', 'pending')->count();
-        $pendingNominal = (float) SavingTransaction::where('status', 'pending')->sum(DB::raw('mandatory_amount + secondary_amount'));
+        $pendingCount = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'pending')->count();
+        $pendingNominal = (float) SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'pending')->sum(DB::raw('mandatory_amount + secondary_amount'));
 
         return view('livewire.payroll.saving-transaction-component', [
             'transactions' => $transactions,

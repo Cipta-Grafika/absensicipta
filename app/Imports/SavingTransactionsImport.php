@@ -104,15 +104,18 @@ class SavingTransactionsImport implements ToCollection, WithHeadingRow
                     continue;
                 }
 
-                // Match User
+                // Match User (only regular employees with group 'user' and active/suspend status)
                 $user = null;
                 if (!empty($nip)) {
-                    $user = User::where('nip', $nip)->first();
+                    $user = User::onlyWorkingEmployee()->where('nip', $nip)->first();
                 }
                 if (!$user && !empty($empName)) {
-                    $user = User::where('name', $empName)
-                        ->orWhere('name', 'like', "%{$empName}%")
-                        ->orWhere(DB::raw('LOWER(name)'), strtolower($empName))
+                    $user = User::onlyWorkingEmployee()
+                        ->where(function ($q) use ($empName) {
+                            $q->where('name', $empName)
+                              ->orWhere('name', 'like', "%{$empName}%")
+                              ->orWhere(DB::raw('LOWER(name)'), strtolower($empName));
+                        })
                         ->first();
                 }
 

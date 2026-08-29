@@ -180,6 +180,16 @@ class User extends Authenticatable
         return $this->group === 'syirkah';
     }
 
+    final public function getIsEmployeeAttribute(): bool
+    {
+        return $this->group === 'user';
+    }
+
+    public function scopeOnlyEmployee($query)
+    {
+        return $query->where('group', 'user');
+    }
+
     public function education()
     {
         return $this->belongsTo(Education::class);
@@ -241,5 +251,14 @@ class User extends Authenticatable
     public function scopeWorkingEmployees($query)
     {
         return $query->whereIn('status', ['active', 'suspend']);
+    }
+
+    /**
+     * Scope query to only include regular employees (group = 'user') with active/suspend status.
+     * Excludes inactive, resign, fired, and admin roles.
+     */
+    public function scopeOnlyWorkingEmployee($query)
+    {
+        return $query->where('group', 'user')->whereIn('status', ['active', 'suspend']);
     }
 }

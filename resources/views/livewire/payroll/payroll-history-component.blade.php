@@ -4,12 +4,12 @@
       Riwayat Gaji
     </h2>
     <div class="flex items-center gap-2">
-      <button type="button" x-data @click.prevent="if(confirm('Anda yakin ingin mengubah semua status Draft bulan ini menjadi Paid?')) { Livewire.dispatch('mark-all-as-paid') }" class="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-semibold text-xs shadow-md shadow-emerald-500/20 transition-all duration-150">
+      <x-button type="button" class="!bg-emerald-600 hover:!bg-emerald-700 active:!bg-emerald-800 focus:!bg-emerald-700 focus:!ring-emerald-500" x-data @click.prevent="if(confirm('Anda yakin ingin mengubah semua status Draft bulan ini menjadi Paid?')) { Livewire.dispatch('mark-all-as-paid') }">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
         </svg>
         <span class="hidden sm:inline">Mark All as Paid</span>
-      </button>
+      </x-button>
 
       <x-button type="button" x-data @click.prevent="Livewire.dispatch('open-generate-modal')">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
@@ -31,7 +31,7 @@
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Payroll</x-slot>
       <x-slot name="actions">
-        <button type="button" wire:click="$set('month', ''); $set('status', ''); $set('division', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
+        <button type="button" wire:click="resetFilters" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
@@ -79,7 +79,7 @@
             </div>
             <x-input type="text" class="block w-full pl-10 pr-10" name="search_employee" id="search_employee" autocomplete="off" wire:model.live.debounce.300ms="search" placeholder="Cari Karyawan..." />
             @if ($search)
-              <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+              <button type="button" wire:click="clearSearch" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -89,10 +89,52 @@
         </div>
       </div>
 
+      <!-- BULK ACTION BAR -->
+      @if(!empty($selectedPayrolls))
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 p-3.5 shadow-sm text-xs sm:text-sm">
+          <div class="flex items-center gap-2.5 font-semibold text-sky-900 dark:text-sky-200">
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500 text-white shadow-2xs">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <span><strong>{{ count($selectedPayrolls) }}</strong> data gaji dipilih</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" 
+                    wire:click="bulkMarkAsPaid" 
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-all cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Mark as Paid ({{ count($selectedPayrolls) }})
+            </button>
+            <button type="button" 
+                    wire:click="openBulkDeleteModal" 
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-all cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+              Hapus Bulk ({{ count($selectedPayrolls) }})
+            </button>
+            <button type="button" 
+                    wire:click="resetSelection" 
+                    class="inline-flex items-center gap-1 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 transition-all cursor-pointer">
+              Batal
+            </button>
+          </div>
+        </div>
+      @endif
+
       <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
         <table class="w-full min-w-[1000px] divide-y divide-gray-200 text-left text-xs text-gray-700 dark:divide-gray-700 dark:text-gray-200">
           <thead class="bg-gray-50 uppercase text-gray-700 dark:bg-gray-900 dark:text-gray-300">
             <tr>
+              <th scope="col" class="w-10 px-3 py-3 text-center">
+                <input type="checkbox" wire:model.live="selectAll" class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-800 cursor-pointer" title="Pilih Semua di Halaman Ini">
+              </th>
               <th scope="col" class="min-w-[15rem] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Periode & Karyawan</th>
               @foreach (['H', 'A', 'T', 'L', 'IMP', 'S', 'I', 'C', 'W'] as $_st)
                 <th scope="col" class="w-12 min-w-[3rem] border border-gray-300 p-0 text-center text-xs font-bold text-gray-500 dark:border-gray-600 dark:text-gray-300" title="{{ $_st }}">
@@ -107,7 +149,10 @@
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
             @forelse ($payrolls as $pr)
-              <tr>
+              <tr class="{{ in_array($pr->id, $selectedPayrolls) ? 'bg-sky-50/70 dark:bg-sky-950/40' : '' }} hover:bg-gray-50/80 dark:hover:bg-gray-750 transition-colors">
+                <td class="w-10 px-3 py-4 text-center">
+                  <input type="checkbox" value="{{ $pr->id }}" wire:model.live="selectedPayrolls" class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-800 cursor-pointer">
+                </td>
                 <td class="px-3 py-4 whitespace-nowrap">
                   <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ \Carbon\Carbon::parse($pr->period_month)->format('F Y') }}</div>
                   <div class="mt-1 flex items-center">
@@ -215,7 +260,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="14" class="px-3 py-4 text-center text-sm text-gray-500">Tidak ada data penggajian.</td>
+                <td colspan="15" class="px-3 py-4 text-center text-sm text-gray-500">Tidak ada data penggajian.</td>
               </tr>
             @endforelse
           </tbody>
@@ -230,7 +275,7 @@
   </div>
 
   <!-- Modal Buat Gaji Baru -->
-  <x-dialog-modal wire:model.live="isGenerateModalOpen">
+  <x-dialog-modal wire:model.live="isGenerateModalOpen" maxWidth="3xl">
     <x-slot name="title">
       {{ __('Buat Gaji Baru') }}
     </x-slot>
@@ -256,6 +301,120 @@
             <x-input-error for="generate_end_date" class="mt-2" />
           </div>
         </div>
+
+        <div class="space-y-3 pt-2">
+          <x-label value="Target Karyawan Penggajian" class="font-semibold text-sm" />
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="relative flex items-start p-3.5 rounded-2xl border cursor-pointer transition-all {{ $generate_target === 'all' ? 'border-sky-500 bg-sky-50/70 dark:bg-sky-950/40 ring-2 ring-sky-500/80 shadow-sm' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750' }}">
+              <input type="radio" value="all" wire:model.live="generate_target" class="mt-0.5 h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 dark:border-gray-600">
+              <div class="ml-3">
+                <span class="block text-xs font-bold text-gray-900 dark:text-gray-100">Semua Karyawan</span>
+                <span class="block text-2xs text-gray-500 dark:text-gray-400 mt-0.5">Generate untuk seluruh karyawan aktif yang memiliki master gaji</span>
+              </div>
+            </label>
+
+            <label class="relative flex items-start p-3.5 rounded-2xl border cursor-pointer transition-all {{ $generate_target === 'specific' ? 'border-sky-500 bg-sky-50/70 dark:bg-sky-950/40 ring-2 ring-sky-500/80 shadow-sm' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750' }}">
+              <input type="radio" value="specific" wire:model.live="generate_target" class="mt-0.5 h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 dark:border-gray-600">
+              <div class="ml-3">
+                <span class="block text-xs font-bold text-gray-900 dark:text-gray-100">Pilih Karyawan Spesifik</span>
+                <span class="block text-2xs text-gray-500 dark:text-gray-400 mt-0.5">Hanya proses karyawan tertentu tanpa mengubah gaji karyawan lain</span>
+              </div>
+            </label>
+          </div>
+
+          @if($generate_target === 'specific')
+            <div x-data="{ empSearch: '' }" class="space-y-3 pt-1">
+              
+              <!-- Search & Quick Actions Stacked Layout -->
+              <div class="space-y-2.5">
+                <!-- Full-width Search Field with centered icon -->
+                <div class="relative">
+                  <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input type="text" x-model="empSearch" placeholder="Cari nama karyawan / NIP..."
+                    class="block w-full rounded-xl border border-gray-300 bg-gray-50/70 py-2.5 pl-9 pr-3 text-xs font-medium text-gray-900 focus:border-sky-500 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 transition">
+                </div>
+
+                <!-- Action Bar: Select All on Left, Summary on Right -->
+                <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gray-100/90 px-3.5 py-2 border border-gray-200 dark:bg-gray-800/80 dark:border-gray-700 shadow-2xs">
+                  <label class="inline-flex items-center text-xs font-semibold text-gray-700 dark:text-gray-200 cursor-pointer select-none">
+                    <input type="checkbox"
+                      wire:click="toggleAllEmployees"
+                      @checked(count($selected_employee_ids) === $availableEmployees->count() && $availableEmployees->count() > 0)
+                      class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-800 cursor-pointer">
+                    <span class="ml-2.5 font-bold">Pilih Semua Karyawan</span>
+                  </label>
+
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-sky-600 dark:text-sky-400">
+                      {{ count($selected_employee_ids) }} Karyawan Dipilih
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Scrollable Employee Table Container -->
+              <div class="max-h-72 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-inner">
+                <table class="w-full text-left text-xs divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead class="bg-gray-50 dark:bg-gray-800/90 text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider sticky top-0 z-10">
+                    <tr>
+                      <th class="p-3 w-10 text-center">#</th>
+                      <th class="p-3">Nama Karyawan</th>
+                      <th class="p-3 w-40">Divisi & Jabatan</th>
+                      <th class="p-3 w-44 text-right">Master Gaji Pokok</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                    @forelse ($availableEmployees as $u)
+                      <tr x-show="!empSearch || '{{ strtolower(addslashes($u->name . ' ' . ($u->nip ?? ''))) }}'.includes(empSearch.toLowerCase())"
+                          class="hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors {{ in_array($u->id, $selected_employee_ids) ? 'bg-sky-50/60 dark:bg-sky-950/30' : '' }}">
+                        <td class="p-3 text-center">
+                          <input type="checkbox"
+                            value="{{ $u->id }}"
+                            wire:model.live="selected_employee_ids"
+                            class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-800 cursor-pointer">
+                        </td>
+                        <td class="p-3">
+                          <div class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <img class="h-6 w-6 rounded-full object-cover shrink-0" src="{{ $u->profile_photo_url }}" alt="">
+                            <span>{{ $u->name }}</span>
+                          </div>
+                          <div class="text-[11px] text-gray-400 ml-8">{{ $u->nip ?? '-' }}</div>
+                        </td>
+                        <td class="p-3">
+                          <div class="font-bold text-gray-900 dark:text-gray-100">{{ $u->division->name ?? 'Tanpa Divisi' }}</div>
+                          <div class="text-[11px] text-gray-400">{{ $u->jobTitle->name ?? '-' }}</div>
+                        </td>
+                        <td class="p-3 text-right">
+                          @if($u->salary)
+                            <div class="font-bold text-emerald-600 dark:text-emerald-400">
+                              Rp {{ number_format($u->salary->basic_salary, 0, ',', '.') }}
+                            </div>
+                            <div class="text-[10px] text-gray-400 capitalize">{{ $u->type }}</div>
+                          @else
+                            <span class="inline-flex rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 px-2 py-0.5 text-[10px] font-semibold">Belum Diatur</span>
+                          @endif
+                        </td>
+                      </tr>
+                    @empty
+                      <tr>
+                        <td colspan="4" class="p-6 text-center text-xs text-gray-500">
+                          Tidak ada data karyawan aktif dengan master gaji.
+                        </td>
+                      </tr>
+                    @endforelse
+                  </tbody>
+                </table>
+              </div>
+
+              <x-input-error for="selected_employee_ids" class="mt-1" />
+            </div>
+          @endif
+        </div>
       </form>
     </x-slot>
 
@@ -265,7 +424,13 @@
       </x-secondary-button>
 
       <x-button class="ms-3 bg-blue-600 hover:bg-blue-700" wire:click="generatePayroll" wire:loading.attr="disabled">
-        <span wire:loading.remove wire:target="generatePayroll">Generate Payroll Sekarang</span>
+        <span wire:loading.remove wire:target="generatePayroll">
+          @if($generate_target === 'specific')
+            Generate ({{ count($selected_employee_ids) }} Karyawan)
+          @else
+            Generate Semua Payroll
+          @endif
+        </span>
         <span wire:loading wire:target="generatePayroll">Memproses...</span>
       </x-button>
     </x-slot>
@@ -287,6 +452,27 @@
       </x-danger-button>
 
       <x-secondary-button wire:click="cancelDelete" wire:loading.attr="disabled" class="ms-3">
+        Batal
+      </x-secondary-button>
+    </x-slot>
+  </x-confirmation-modal>
+
+  <!-- Modal Konfirmasi Hapus Bulk Gaji -->
+  <x-confirmation-modal wire:model.live="isBulkDeleteModalOpen">
+    <x-slot name="title">
+      Konfirmasi Hapus Bulk Data Gaji
+    </x-slot>
+
+    <x-slot name="content">
+      Apakah Anda yakin ingin menghapus permanen <strong>{{ count($selectedPayrolls) }}</strong> data gaji yang dipilih? Seluruh rincian pemasukan, potongan, dan riwayat mutasi terkait akan dihapus/direset. Tindakan ini tidak dapat dibatalkan.
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-danger-button wire:click="bulkDeletePayrolls" wire:loading.attr="disabled">
+        Ya, Hapus ({{ count($selectedPayrolls) }}) Terpilih
+      </x-danger-button>
+
+      <x-secondary-button wire:click="cancelBulkDelete" wire:loading.attr="disabled" class="ms-3">
         Batal
       </x-secondary-button>
     </x-slot>

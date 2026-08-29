@@ -25,7 +25,10 @@ class SavingsHistoryComponent extends Component
 
     public function render()
     {
-        $query = SavingsHistory::with(['user', 'savings']);
+        $query = SavingsHistory::with(['user', 'savings'])
+            ->whereHas('user', function ($q) {
+                $q->onlyEmployee();
+            });
 
         if ($this->search) {
             $query->where(function($q) {

@@ -21,11 +21,11 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
         $user = null;
 
         if (!empty($row['employee_nip'])) {
-            $user = User::where('nip', $row['employee_nip'])->first();
+            $user = User::onlyWorkingEmployee()->where('nip', $row['employee_nip'])->first();
         }
 
         if (!$user && !empty($row['employee_name'])) {
-            $user = User::whereRaw('LOWER(name) = ?', [strtolower($row['employee_name'])])->first();
+            $user = User::onlyWorkingEmployee()->whereRaw('LOWER(name) = ?', [strtolower($row['employee_name'])])->first();
         }
 
         if (!$user) {

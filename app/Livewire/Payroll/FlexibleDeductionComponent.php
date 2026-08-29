@@ -164,7 +164,7 @@ class FlexibleDeductionComponent extends Component
             return;
         }
 
-        $user = User::with(['division', 'jobTitle'])->findOrFail($userId);
+        $user = User::onlyWorkingEmployee()->with(['division', 'jobTitle'])->findOrFail($userId);
         $this->selectedEmployee = $user;
         $this->deduction_user_id = $user->id;
 
@@ -274,8 +274,7 @@ class FlexibleDeductionComponent extends Component
             'batch_source' => 'required|in:payroll,syirkah_mandatory,syirkah_secondary,syirkah_all',
         ]);
 
-        $users = User::where('group', 'user')
-            ->whereIn('status', ['active', 'suspend'])
+        $users = User::onlyWorkingEmployee()
             ->when($this->division, function ($q) {
                 $q->where('division_id', $this->division);
             })
@@ -349,17 +348,14 @@ class FlexibleDeductionComponent extends Component
         }
 
         // Fetch master employees with their flexible deduction for selected program & month
-        $employees = User::where('group', '!=', 'superadmin')
+        $employees = User::onlyEmployee()
             ->when($this->status, function ($query) {
                 if ($this->status === 'all') {
                     return $query;
                 }
                 return $query->where('status', $this->status);
             }, function ($query) {
-                return $query->where(function ($q) {
-                    $q->whereNull('status')
-                      ->orWhereNotIn('status', ['fired', 'resign']);
-                });
+                return $query->whereIn('status', ['active', 'suspend']);
             })
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
