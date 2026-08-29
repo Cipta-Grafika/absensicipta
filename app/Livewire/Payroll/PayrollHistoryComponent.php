@@ -571,18 +571,8 @@ class PayrollHistoryComponent extends Component
                     if ($total_paid_days == 0) {
                         $absent_deduction = $fixed_income;
                     } elseif ($total_absent > 0) {
-                        if ($total_paid_days >= $days_divisor) {
-                            // Attended full 25+ days, but has some Alfa days in the month
-                            // Deduct exactly the number of Alfa days
-                            $effective_absent = min($total_absent, $days_divisor);
-                            $absent_deduction = (int) round($daily_rate_approx * $effective_absent);
-                        } else {
-                            // Attended less than 25 days:
-                            // Guaranteed to earn paid days ($total_paid_days * $daily_rate_approx)
-                            // Deduct unpaid days out of 25 working days
-                            $unpaid_working_days = max(1, $days_divisor - $total_paid_days);
-                            $absent_deduction = (int) round($daily_rate_approx * $unpaid_working_days);
-                        }
+                        $effective_absent = min($total_absent, $days_divisor);
+                        $absent_deduction = (int) round($daily_rate_approx * $effective_absent);
                     } else {
                         $absent_deduction = 0;
                     }
