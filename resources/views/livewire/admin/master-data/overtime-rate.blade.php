@@ -59,14 +59,14 @@
               @if(($rate->meal_allowance ?? 0) > 0)
                 <div class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5 flex flex-col">
                   <span>+ Uang Makan Rp {{ number_format($rate->meal_allowance, 0, ',', '.') }}</span>
-                  @if($rate->meal_min_start_time || $rate->meal_min_duration)
+                  @if($rate->meal_min_start_time || $rate->meal_max_start_time || $rate->meal_min_duration)
                     <span class="text-[10px] font-medium text-amber-700/80 dark:text-amber-300/80">
                       Syarat: 
-                      @if($rate->meal_min_start_time)
-                        Mulai ≥ {{ substr($rate->meal_min_start_time, 0, 5) }}
+                      @if($rate->meal_min_start_time || $rate->meal_max_start_time)
+                        Mulai: {{ substr($rate->meal_min_start_time ?? '17:00', 0, 5) }} - {{ substr($rate->meal_max_start_time ?? '18:00', 0, 5) }}
                       @endif
                       @if($rate->meal_min_duration)
-                        {{ $rate->meal_min_start_time ? ', ' : '' }}Min {{ $rate->meal_min_duration }} Jam
+                        {{ ($rate->meal_min_start_time || $rate->meal_max_start_time) ? ', ' : '' }}Min {{ $rate->meal_min_duration }} Jam
                       @endif
                     </span>
                   @else
@@ -186,16 +186,21 @@
             </svg>
             <span>Syarat Pemberian Uang Makan (Otomatis & Konfigurable)</span>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <x-label for="meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Syarat Jam Mulai Lembur</x-label>
+              <x-label for="meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Mulai Dari</x-label>
               <x-input id="meal_min_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_min_start_time" placeholder="17:00" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Misal: <strong>17:00</strong> (Uang makan hanya didapat jika lembur mulai jam 17:00 ke atas).</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Mulai dari jam (misal <strong>17:00</strong>).</p>
             </div>
             <div>
-              <x-label for="meal_min_duration" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Min. Durasi Lembur (Jam)</x-label>
+              <x-label for="meal_max_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Mulai Sampai</x-label>
+              <x-input id="meal_max_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_max_start_time" placeholder="18:00" />
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Batas akhir mulai (misal <strong>18:00</strong>).</p>
+            </div>
+            <div>
+              <x-label for="meal_min_duration" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Min. Durasi (Jam)</x-label>
               <x-input id="meal_min_duration" class="mt-1 block w-full text-xs" type="number" step="0.5" min="0" wire:model="form.meal_min_duration" placeholder="Contoh: 2" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Kosongkan jika mengikuti minimal jam tier rate di bawah.</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Opsional (mengikuti tier min. jam).</p>
             </div>
           </div>
         </div>
@@ -331,16 +336,21 @@
             </svg>
             <span>Syarat Pemberian Uang Makan (Otomatis & Konfigurable)</span>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <x-label for="edit_meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Syarat Jam Mulai Lembur</x-label>
+              <x-label for="edit_meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Mulai Dari</x-label>
               <x-input id="edit_meal_min_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_min_start_time" placeholder="17:00" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Misal: <strong>17:00</strong> (Uang makan hanya didapat jika lembur mulai jam 17:00 ke atas).</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Mulai dari jam (misal <strong>17:00</strong>).</p>
             </div>
             <div>
-              <x-label for="edit_meal_min_duration" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Min. Durasi Lembur (Jam)</x-label>
+              <x-label for="edit_meal_max_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Mulai Sampai</x-label>
+              <x-input id="edit_meal_max_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_max_start_time" placeholder="18:00" />
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Batas akhir mulai (misal <strong>18:00</strong>).</p>
+            </div>
+            <div>
+              <x-label for="edit_meal_min_duration" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Min. Durasi (Jam)</x-label>
               <x-input id="edit_meal_min_duration" class="mt-1 block w-full text-xs" type="number" step="0.5" min="0" wire:model="form.meal_min_duration" placeholder="Contoh: 2" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Kosongkan jika mengikuti minimal jam tier rate di bawah.</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Opsional (mengikuti tier min. jam).</p>
             </div>
           </div>
         </div>

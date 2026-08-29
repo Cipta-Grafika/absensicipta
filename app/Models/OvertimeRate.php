@@ -19,6 +19,7 @@ class OvertimeRate extends Model
         'employee_type',
         'meal_allowance',
         'meal_min_start_time',
+        'meal_max_start_time',
         'meal_min_duration',
         'meal_condition_type',
     ];
@@ -186,22 +187,23 @@ class OvertimeRate extends Model
                                 }
                             }
 
-                            // 2. Start time / time window check (if specified and startTime provided)
-                            if ($isMealApplicable && !empty($rate->meal_min_start_time) && !empty($startTime)) {
-                                $rateTime = substr(trim($rate->meal_min_start_time), 0, 5); // '17:00'
-                                $actualStart = substr(trim($startTime), 0, 5); // '17:00'
+                            // 2. Start time / time window check (if startTime provided)
+                            if ($isMealApplicable && !empty($startTime)) {
+                                $actualStart = substr(trim($startTime), 0, 5); // e.g. '17:00', '18:00', '19:00'
+                                $rateMinTime = !empty($rate->meal_min_start_time) ? substr(trim($rate->meal_min_start_time), 0, 5) : '17:00';
+                                $rateMaxTime = !empty($rate->meal_max_start_time) ? substr(trim($rate->meal_max_start_time), 0, 5) : '18:00';
 
                                 if ($rate->meal_condition_type === 'crosses_time' && !empty($endTime)) {
                                     $actualEnd = substr(trim($endTime), 0, 5);
-                                    // Crosses condition: started at/before target time and ended after target time, OR started >= target time
-                                    if (!($actualStart >= $rateTime || ($actualStart <= $rateTime && $actualEnd > $rateTime))) {
+                                    // Crosses condition: started at/before target window and ended after target window, OR started within window
+                                    if (!($actualStart <= $rateMaxTime && ($actualEnd > $rateMinTime || $actualStart >= $rateMinTime))) {
                                         $isMealApplicable = false;
                                     }
                                 } elseif ($rate->meal_condition_type === 'always') {
                                     $isMealApplicable = true;
                                 } else {
-                                    // Default 'start_time_gte'
-                                    if ($actualStart < $rateTime) {
+                                    // Default: Must start within the designated evening window (e.g. 17:00 - 18:00)
+                                    if ($actualStart < $rateMinTime || $actualStart > $rateMaxTime) {
                                         $isMealApplicable = false;
                                     }
                                 }

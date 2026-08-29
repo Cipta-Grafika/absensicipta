@@ -19,6 +19,7 @@ class OvertimeRateForm extends Form
     public $employee_type = 'all';
     public $meal_allowance = 0;
     public $meal_min_start_time = null;
+    public $meal_max_start_time = null;
     public $meal_min_duration = null;
     public $meal_condition_type = 'start_time_gte';
 
@@ -35,6 +36,7 @@ class OvertimeRateForm extends Form
 
         $this->meal_min_duration   = (is_numeric($this->meal_min_duration) && $this->meal_min_duration !== '') ? (float) $this->meal_min_duration : null;
         $this->meal_min_start_time = !empty($this->meal_min_start_time) ? trim($this->meal_min_start_time) : null;
+        $this->meal_max_start_time = !empty($this->meal_max_start_time) ? trim($this->meal_max_start_time) : null;
         $this->meal_condition_type = !empty($this->meal_condition_type) ? $this->meal_condition_type : 'start_time_gte';
     }
 
@@ -50,6 +52,7 @@ class OvertimeRateForm extends Form
             'employee_type' => ['nullable', 'string'],
             'meal_allowance' => ['nullable', 'numeric', 'min:0'],
             'meal_min_start_time' => ['nullable', 'string'],
+            'meal_max_start_time' => ['nullable', 'string'],
             'meal_min_duration' => ['nullable', 'numeric', 'min:0'],
             'meal_condition_type' => ['nullable', 'string', 'in:start_time_gte,crosses_time,always'],
         ];
@@ -67,6 +70,7 @@ class OvertimeRateForm extends Form
         $this->employee_type = $rate->employee_type ?? 'all';
         $this->meal_allowance = $rate->meal_allowance ?? 0;
         $this->meal_min_start_time = $rate->meal_min_start_time ? substr($rate->meal_min_start_time, 0, 5) : null;
+        $this->meal_max_start_time = $rate->meal_max_start_time ? substr($rate->meal_max_start_time, 0, 5) : null;
         $this->meal_min_duration = $rate->meal_min_duration;
         $this->meal_condition_type = $rate->meal_condition_type ?? 'start_time_gte';
         return $this;
@@ -95,6 +99,7 @@ class OvertimeRateForm extends Form
             'employee_type'       => $this->employee_type,
             'meal_allowance'      => $this->meal_allowance,
             'meal_min_start_time' => $this->meal_min_start_time,
+            'meal_max_start_time' => $this->meal_max_start_time,
             'meal_min_duration'   => $this->meal_min_duration,
             'meal_condition_type' => $this->meal_condition_type,
         ]);
@@ -128,6 +133,7 @@ class OvertimeRateForm extends Form
             'employee_type'       => $this->employee_type,
             'meal_allowance'      => $this->meal_allowance,
             'meal_min_start_time' => $this->meal_min_start_time,
+            'meal_max_start_time' => $this->meal_max_start_time,
             'meal_min_duration'   => $this->meal_min_duration,
             'meal_condition_type' => $this->meal_condition_type,
         ]);
