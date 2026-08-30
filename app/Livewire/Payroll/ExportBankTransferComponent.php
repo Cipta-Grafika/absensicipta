@@ -112,6 +112,7 @@ class ExportBankTransferComponent extends Component
         $this->selected_payrolls = $payrolls->pluck('id')->toArray();
     }
 
+    #[\Livewire\Attributes\On('trigger-export-bank')]
     public function export()
     {
         abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSuperadmin, 403);

@@ -25,13 +25,9 @@
           Unduh Format Template MAT
         </a>
 
-        <x-button type="button" wire:click="export" wire:loading.attr="disabled" class="!bg-sky-600 hover:!bg-sky-700 active:!bg-sky-800 focus:!ring-sky-500 shadow-md shadow-sky-500/20">
-          <svg wire:loading.remove wire:target="export" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
+        <x-button type="button" x-data @click.prevent="Livewire.dispatch('trigger-export-bank')" class="!bg-sky-600 hover:!bg-sky-700 active:!bg-sky-800 focus:!ring-sky-500 shadow-md shadow-sky-500/20">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-          <svg wire:loading wire:target="export" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <span>Export Excel XLSX</span>
         </x-button>

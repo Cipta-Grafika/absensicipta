@@ -971,6 +971,7 @@ class PayrollHistoryComponent extends Component
         $this->selectedIncomes = [];
     }
 
+    #[\Livewire\Attributes\On('open-export-bank-modal')]
     public function openExportBankModal()
     {
         $latestMonth = $this->month ?: (\App\Models\Payroll::orderBy('period_month', 'desc')->value('period_month') ?: date('Y-m'));
