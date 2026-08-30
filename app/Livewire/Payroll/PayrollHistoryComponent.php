@@ -443,7 +443,7 @@ class PayrollHistoryComponent extends Component
                     // Fetch Attendances from batch Collection
                     $attendances = $allAttendances->get($emp->id, collect());
 
-                    $total_paid_days = $attendances->whereIn('status', ['present', 'late', 'wfh', 'imp'])->count();
+                    $total_paid_days = $attendances->whereIn('status', ['present', 'late', 'wfh', 'imp', 'leave', 'special-leaves'])->count();
                     $total_present = $attendances->whereIn('status', ['present', 'late'])->count();
                     
                     // Dynamic Absent Calculation (using AttendanceScheduleService as single source of truth)
@@ -475,19 +475,23 @@ class PayrollHistoryComponent extends Component
                     $penalized_cuti_days = 0;
                     $late_days_count = 0;
                     $actual_working_days = 0;
+                    $todayDate = now()->startOfDay();
 
                     for ($d = $start_period->copy(); $d->lte($end_period); $d->addDay()) {
+                        $isFutureDate = $d->startOfDay()->gt($todayDate);
+
                         if ($scheduleContext->isWorkingDay($emp, $d)) {
                             $actual_working_days++;
                             $records = $attendancesByDate->get($d->format('Y-m-d'), collect());
                             $hasValidRecord = $records->whereNotIn('status', ['absent', 'dayoff'])->isNotEmpty();
                             $isExplicitDayOff = $records->where('status', 'dayoff')->isNotEmpty();
 
-                            if (!$hasValidRecord && !$isExplicitDayOff) {
+                            // Future dates that have not yet occurred must never be counted as missing/alpa
+                            if (!$isFutureDate && !$hasValidRecord && !$isExplicitDayOff) {
                                 $missing_absent_days++;
                             }
                             
-                            // Check Cuti Beruntun
+                            // Check Cuti Beruntun (hanya cuti reguler > 2 hari beruntun kena penalti)
                             $is_cuti = $records->where('status', 'leave')->isNotEmpty();
                             if ($is_cuti) {
                                 $consecutive_cuti++;

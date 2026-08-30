@@ -358,4 +358,79 @@ class AttendanceScheduleAndPayrollTest extends TestCase
             ->set('search', 'UniqueNote123')
             ->assertSee('Searchable Employee');
     }
+
+    public function test_employee_with_full_schedule_and_leave_has_zero_absent(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        $emp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'off_days' => [], // Uses roster schedules
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $emp->id,
+            'salary_type' => 'daily',
+            'basic_salary' => 60000,
+            'meal_allowance' => 0,
+            'transport_allowance' => 0,
+            'attendance_allowance' => 0,
+            'working_days_per_month' => 25,
+        ]);
+
+        // OFF days matching screenshot: 01, 09, 15, 17, 23, 25, 29
+        $offDays = ['2026-08-01', '2026-08-09', '2026-08-15', '2026-08-17', '2026-08-23', '2026-08-25', '2026-08-29'];
+        foreach ($offDays as $offDate) {
+            WorkSchedule::create([
+                'user_id' => $emp->id,
+                'date' => $offDate,
+                'is_working_day' => false,
+            ]);
+        }
+
+        // Present days matching screenshot (22 days):
+        $presentDays = [
+            '2026-08-02', '2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08',
+            '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14',
+            '2026-08-16', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22',
+            '2026-08-26', '2026-08-27', '2026-08-28',
+            '2026-08-30'
+        ];
+        foreach ($presentDays as $pDate) {
+            \App\Models\Attendance::create([
+                'user_id' => $emp->id,
+                'date' => $pDate,
+                'status' => 'present',
+            ]);
+        }
+
+        // Leave day on 2026-08-24
+        \App\Models\Attendance::create([
+            'user_id' => $emp->id,
+            'date' => '2026-08-24',
+            'status' => 'special-leaves',
+        ]);
+
+        // Note: 2026-08-31 has no attendance record (future / hyphen)
+
+        $this->actingAs($payrollAdmin);
+
+        // Generate payroll for August 2026 (1 to 31 Aug)
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-08')
+            ->set('generate_start_date', '2026-08-01')
+            ->set('generate_end_date', '2026-08-31')
+            ->call('generatePayroll');
+
+        $payroll = Payroll::where('employee_id', $emp->id)->where('period_month', '2026-08')->first();
+
+        $this->assertNotNull($payroll);
+        // Total absent must be 0 (31 Aug in the future is not counted as absent)
+        $this->assertEquals(0, $payroll->total_absent);
+        // Total present should be 22
+        $this->assertEquals(22, $payroll->total_present);
+        // Effective paid days should be rounded to standard 25 days since 0 absent and >= 15 paid days
+        $this->assertEquals(25 * 60000, $payroll->basic_salary_earned);
+        $this->assertEquals(25 * 60000, $payroll->net_salary);
+    }
 }
