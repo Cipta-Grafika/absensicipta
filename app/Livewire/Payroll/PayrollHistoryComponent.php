@@ -34,6 +34,16 @@ class PayrollHistoryComponent extends Component
     public $selectedDeductions = [];
     public $selectedIncomes = [];
 
+    // Export Bank Transfer Properties
+    public bool $isExportBankModalOpen = false;
+    public string $export_bank_month = '';
+    public string $export_bank_type = 'BCA';
+    public string $export_transaction_date = '';
+    public string $export_bank_remark = '';
+    public bool $export_only_with_account = false;
+    public array $export_selected_payrolls = [];
+    public bool $export_select_all = true;
+
     protected $queryString = [];
 
     public function mount()
@@ -41,6 +51,9 @@ class PayrollHistoryComponent extends Component
         $this->generate_period_month = date('Y-m');
         $this->generate_start_date = date('Y-m-01');
         $this->generate_end_date = date('Y-m-t');
+        $this->export_bank_month = date('Y-m');
+        $this->export_transaction_date = date('Y-m-d');
+        $this->export_bank_remark = 'Gaji ' . date('M Y');
     }
 
     public function updatedGeneratePeriodMonth($value)
@@ -958,6 +971,114 @@ class PayrollHistoryComponent extends Component
         $this->selectedIncomes = [];
     }
 
+    public function openExportBankModal()
+    {
+        $latestMonth = $this->month ?: (\App\Models\Payroll::orderBy('period_month', 'desc')->value('period_month') ?: date('Y-m'));
+        $this->export_bank_month = $latestMonth;
+        $this->export_transaction_date = date('Y-m-d');
+        $this->export_bank_type = 'BCA';
+        
+        try {
+            $parsed = \Carbon\Carbon::parse($this->export_bank_month . '-01');
+            $this->export_bank_remark = 'Gaji ' . $parsed->translatedFormat('M Y');
+        } catch (\Exception $e) {
+            $this->export_bank_remark = 'Gaji ' . date('M Y');
+        }
+
+        $this->loadExportPayrollSelection();
+        $this->isExportBankModalOpen = true;
+    }
+
+    public function closeExportBankModal()
+    {
+        $this->isExportBankModalOpen = false;
+    }
+
+    public function updatedExportBankMonth()
+    {
+        try {
+            $parsed = \Carbon\Carbon::parse($this->export_bank_month . '-01');
+            $this->export_bank_remark = 'Gaji ' . $parsed->translatedFormat('M Y');
+        } catch (\Exception $e) {}
+
+        $this->loadExportPayrollSelection();
+    }
+
+    public function updatedExportOnlyWithAccount()
+    {
+        $this->loadExportPayrollSelection();
+    }
+
+    public function updatedExportSelectAll($value)
+    {
+        if ($value) {
+            $this->loadExportPayrollSelection();
+        } else {
+            $this->export_selected_payrolls = [];
+        }
+    }
+
+    public function loadExportPayrollSelection()
+    {
+        $query = Payroll::with(['employee.paymentMethod', 'employee.division', 'employee.jobTitle'])
+            ->whereHas('employee', function ($q) {
+                $q->onlyEmployee();
+            })
+            ->where('period_month', $this->export_bank_month)
+            ->where('net_salary', '>', 0);
+
+        $payrolls = $query->join('users', 'payrolls.employee_id', '=', 'users.id')
+            ->select('payrolls.*')
+            ->orderBy('users.created_at', 'asc')
+            ->orderBy('users.id', 'asc')
+            ->get();
+
+        if ($this->export_only_with_account) {
+            $payrolls = $payrolls->filter(function ($p) {
+                return !empty($p->employee?->paymentMethod?->bank_account);
+            });
+        }
+
+        $this->export_selected_payrolls = $payrolls->pluck('id')->toArray();
+    }
+
+    public function exportBankTransfer()
+    {
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+
+        $this->validate([
+            'export_bank_month' => 'required|date_format:Y-m',
+            'export_transaction_date' => 'required|date',
+            'export_bank_type' => 'required|string',
+            'export_bank_remark' => 'nullable|string|max:18',
+        ]);
+
+        if (empty($this->export_selected_payrolls)) {
+            $this->loadExportPayrollSelection();
+        }
+
+        if (empty($this->export_selected_payrolls)) {
+            $this->dangerBanner(__('Tidak ada data payroll pada periode ' . $this->export_bank_month . ' untuk diekspor. Pastikan payroll sudah diproses terlebih dahulu.'));
+            return;
+        }
+
+        $export = new \App\Exports\BcaMatPayrollExport(
+            $this->export_bank_month,
+            $this->export_transaction_date,
+            $this->export_bank_type,
+            $this->export_bank_remark,
+            $this->export_selected_payrolls,
+            $this->export_only_with_account
+        );
+
+        $dateStr = \Carbon\Carbon::parse($this->export_transaction_date)->format('dmY');
+        $filename = sprintf('PAYROLL-%s_%s_%s.xlsx', strtoupper($this->export_bank_type), $this->export_bank_month, $dateStr);
+
+        $this->isExportBankModalOpen = false;
+
+        return $export->download($filename);
+    }
+
     public function getPayrollQuery()
     {
         $query = Payroll::with('employee')
@@ -1002,9 +1123,44 @@ class PayrollHistoryComponent extends Component
             ->orderBy('name')
             ->get();
 
+        $exportPayrolls = collect();
+        $exportFormattedDatePrefix = '';
+        if ($this->isExportBankModalOpen) {
+            $exportQuery = Payroll::with(['employee.paymentMethod', 'employee.division', 'employee.jobTitle'])
+                ->whereHas('employee', function ($q) {
+                    $q->onlyEmployee();
+                })
+                ->where('period_month', $this->export_bank_month)
+                ->where('net_salary', '>', 0);
+
+            $exportPayrolls = $exportQuery->join('users', 'payrolls.employee_id', '=', 'users.id')
+                ->select('payrolls.*')
+                ->orderBy('users.created_at', 'asc')
+                ->orderBy('users.id', 'asc')
+                ->get();
+
+            if ($this->export_only_with_account) {
+                $exportPayrolls = $exportPayrolls->filter(function ($p) {
+                    return !empty($p->employee?->paymentMethod?->bank_account);
+                });
+            }
+
+            $exportFormattedDatePrefix = \Carbon\Carbon::parse($this->export_transaction_date ?: date('Y-m-d'))->format('dmY');
+        }
+
         return view('livewire.payroll.payroll-history-component', [
             'payrolls' => $payrolls,
             'availableEmployees' => $availableEmployees,
+            'exportPayrolls' => $exportPayrolls,
+            'exportFormattedDatePrefix' => $exportFormattedDatePrefix,
+            'selectedPayrolls' => $this->selectedPayrolls,
+            'export_selected_payrolls' => $this->export_selected_payrolls,
+            'export_select_all' => $this->export_select_all,
+            'export_bank_month' => $this->export_bank_month,
+            'export_bank_type' => $this->export_bank_type,
+            'export_transaction_date' => $this->export_transaction_date,
+            'export_bank_remark' => $this->export_bank_remark,
+            'export_only_with_account' => $this->export_only_with_account,
         ])->layout('layouts.app');
     }
 }

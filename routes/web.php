@@ -166,11 +166,12 @@ Route::middleware([
         Route::get('/loans', \App\Livewire\Payroll\LoanComponent::class)->name('loans');
         Route::get('/flexible-deductions', \App\Livewire\Payroll\FlexibleDeductionComponent::class)->name('flexible-deductions');
 
-        // Import/Export
+        Route::get('/export-bank', \App\Livewire\Payroll\ExportBankTransferComponent::class)->name('export-bank');
         Route::get('/import-export/employee-salaries', [\App\Http\Controllers\Payroll\ImportExportController::class, 'employeeSalaries'])->name('import-export.employee-salaries');
         Route::get('/import-export/payment-methods', [\App\Http\Controllers\Payroll\ImportExportController::class, 'paymentMethods'])->name('import-export.payment-methods');
         Route::get('/import-export/savings', [\App\Http\Controllers\Payroll\ImportExportController::class, 'savings'])->name('import-export.savings');
         Route::get('/import-export/saving-transactions', [\App\Http\Controllers\Payroll\ImportExportController::class, 'savingTransactions'])->name('import-export.saving-transactions');
+        Route::get('/import-export/bank-transfers', \App\Livewire\Payroll\ExportBankTransferComponent::class)->name('import-export.bank-transfers');
     });
 
     // User Group (for Payslips)

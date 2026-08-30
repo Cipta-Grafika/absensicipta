@@ -179,6 +179,10 @@
                 <x-dropdown-link href="{{ route('payroll.import-export.saving-transactions') }}" :active="request()->routeIs('payroll.import-export.saving-transactions')">
                   Mutasi Syirkah
                 </x-dropdown-link>
+                <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                <x-dropdown-link href="{{ route('payroll.export-bank') }}" :active="request()->routeIs('payroll.export-bank') || request()->routeIs('payroll.import-export.bank-transfers')">
+                  <span class="font-semibold text-sky-600 dark:text-sky-400">Export Transfer Bank (BCA)</span>
+                </x-dropdown-link>
               </x-slot>
             </x-nav-dropdown>
           @endif
@@ -445,6 +449,9 @@
           </x-responsive-nav-link>
           <x-responsive-nav-link href="{{ route('payroll.import-export.saving-transactions') }}" :active="request()->routeIs('payroll.import-export.saving-transactions')">
             Mutasi Syirkah
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.export-bank') }}" :active="request()->routeIs('payroll.export-bank') || request()->routeIs('payroll.import-export.bank-transfers')">
+            <span class="font-semibold text-sky-600 dark:text-sky-400">Export Transfer Bank (BCA)</span>
           </x-responsive-nav-link>
         </div>
       @endif

@@ -17,6 +17,13 @@
         </svg>
         <span class="hidden sm:inline">Proses</span>
       </x-button>
+      <x-button type="button" class="!bg-sky-600 hover:!bg-sky-700 active:!bg-sky-800 focus:!ring-sky-500 shadow-md shadow-sky-500/20" wire:click="openExportBankModal">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+        </svg>
+        <span class="hidden sm:inline">Export Transfer Bank</span>
+      </x-button>
+
       <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">
         <x-heroicon-o-funnel class="mr-1.5 h-4 w-4 text-sky-500" />
         Filter
@@ -575,6 +582,140 @@
       <x-secondary-button wire:click="closeIncomeModal" wire:loading.attr="disabled">
         {{ __('Tutup') }}
       </x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- Modal Export Transfer Bank (BCA MAT) -->
+  <x-dialog-modal wire:model.live="isExportBankModalOpen" maxWidth="4xl">
+    <x-slot name="title">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white">Export Transfer Bank (BCA MAT)</h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Format resmi Multi Auto Transfer (MAT) Bank BCA sesuai standar payroll.</p>
+        </div>
+        <a href="{{ asset('excel/template_mat_bca.xlsx') }}" download class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1 h-3.5 w-3.5 text-emerald-500">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Unduh Template
+        </a>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      <div class="space-y-4">
+        <!-- Configuration Form -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div>
+            <x-label for="export_bank_month" value="Periode Payroll" class="mb-1 text-xs font-semibold" />
+            <x-input type="month" id="export_bank_month" class="w-full text-xs" wire:model.live="export_bank_month" />
+          </div>
+
+          <div>
+            <x-label for="export_bank_type" value="Opsi Bank" class="mb-1 text-xs font-semibold" />
+            <x-select id="export_bank_type" class="w-full text-xs" wire:model.live="export_bank_type">
+              <option value="BCA">BCA (Multi Auto Transfer)</option>
+              <option value="LLG">LLG (Antar Bank)</option>
+              <option value="RTG">RTGS (Antar Bank)</option>
+            </x-select>
+          </div>
+
+          <div>
+            <x-label for="export_transaction_date" value="Tanggal Eksekusi Transfer" class="mb-1 text-xs font-semibold" />
+            <x-input type="date" id="export_transaction_date" class="w-full text-xs" wire:model.live="export_transaction_date" />
+          </div>
+
+          <div>
+            <x-label for="export_bank_remark" value="Keterangan (Max 18 Karakter)" class="mb-1 text-xs font-semibold" />
+            <x-input type="text" id="export_bank_remark" maxlength="18" placeholder="Misal: Gaji Ags 2026" class="w-full text-xs" wire:model.live="export_bank_remark" />
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" wire:model.live="export_only_with_account" class="rounded border-gray-300 text-sky-600 shadow-sm focus:ring-sky-500 dark:border-gray-700 dark:bg-gray-900 dark:focus:ring-sky-600">
+            <span class="ml-2 text-xs text-gray-700 dark:text-gray-300 font-medium">Hanya sertakan karyawan yang memiliki No. Rekening</span>
+          </label>
+
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            Terpilih: <strong class="text-sky-600 dark:text-sky-400">{{ count($export_selected_payrolls) }}</strong> dari <strong>{{ $exportPayrolls->count() }}</strong> karyawan | Total Transfer: <strong class="text-emerald-600 dark:text-emerald-400">Rp {{ number_format($exportPayrolls->whereIn('id', $export_selected_payrolls)->sum('net_salary'), 0, ',', '.') }}</strong>
+          </div>
+        </div>
+
+        <!-- Preview Table -->
+        <div class="overflow-x-auto max-h-72 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
+            <thead class="bg-gray-50 dark:bg-gray-900/80 sticky top-0 z-10">
+              <tr>
+                <th scope="col" class="w-10 px-3 py-2 text-center">
+                  <input type="checkbox" wire:model.live="export_select_all" class="rounded border-gray-300 text-sky-600 shadow-sm focus:ring-sky-500 dark:border-gray-700 dark:bg-gray-900">
+                </th>
+                <th scope="col" class="px-2 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Transaction ID</th>
+                <th scope="col" class="px-2 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">No. Rekening (Credited Acc)</th>
+                <th scope="col" class="px-2 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Nama Penerima</th>
+                <th scope="col" class="px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-300">Nominal (Amount)</th>
+                <th scope="col" class="px-2 py-2 text-center font-semibold text-gray-600 dark:text-gray-300">Rekening</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
+              @php $pSeq = 1; @endphp
+              @forelse ($exportPayrolls as $ep)
+                @php
+                  $epHasAcc = !empty($ep->employee?->paymentMethod?->bank_account);
+                  $epTxId = sprintf('%s-%03d', $exportFormattedDatePrefix, $pSeq);
+                  $epReceiver = strtoupper($ep->employee?->paymentMethod?->account_name ?: ($ep->employee?->name ?? ''));
+                @endphp
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 {{ !$epHasAcc ? 'bg-amber-50/30 dark:bg-amber-950/10' : '' }}">
+                  <td class="px-3 py-2 text-center">
+                    <input type="checkbox" value="{{ $ep->id }}" wire:model.live="export_selected_payrolls" class="rounded border-gray-300 text-sky-600 shadow-sm focus:ring-sky-500 dark:border-gray-700 dark:bg-gray-900">
+                  </td>
+                  <td class="px-2 py-2 font-mono font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">{{ $epTxId }}</td>
+                  <td class="px-2 py-2 font-mono {{ $epHasAcc ? 'text-gray-900 dark:text-white' : 'text-amber-500 italic' }} whitespace-nowrap">
+                    {{ $epHasAcc ? $ep->employee->paymentMethod->bank_account : 'Kosong' }}
+                  </td>
+                  <td class="px-2 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">{{ $epReceiver }}</td>
+                  <td class="px-2 py-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                    Rp {{ number_format($ep->net_salary, 2, ',', '.') }}
+                  </td>
+                  <td class="px-2 py-2 text-center whitespace-nowrap">
+                    @if ($epHasAcc)
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">Siap</span>
+                    @else
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">Belum Ada</span>
+                    @endif
+                  </td>
+                </tr>
+                @php $pSeq++; @endphp
+              @empty
+                <tr>
+                  <td colspan="6" class="px-4 py-8 text-center text-xs text-gray-500 dark:text-gray-400">
+                    Tidak ada data payroll pada periode <strong>{{ $export_bank_month }}</strong>.
+                  </td>
+                </tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-between w-full">
+        <a href="{{ route('payroll.export-bank') }}?month={{ $export_bank_month }}" class="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline">
+          Buka Halaman Penuh Export Bank &rarr;
+        </a>
+        <div class="flex items-center gap-2">
+          <x-secondary-button wire:click="closeExportBankModal" wire:loading.attr="disabled">
+            {{ __('Batal') }}
+          </x-secondary-button>
+          <x-button type="button" wire:click="exportBankTransfer" wire:loading.attr="disabled" class="!bg-sky-600 hover:!bg-sky-700 active:!bg-sky-800">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+            {{ __('Download Excel BCA MAT') }}
+          </x-button>
+        </div>
+      </div>
     </x-slot>
   </x-dialog-modal>
 </div>
