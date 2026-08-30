@@ -43,6 +43,8 @@ class PayrollHistoryComponent extends Component
     public bool $export_only_with_account = false;
     public array $export_selected_payrolls = [];
     public bool $export_select_all = true;
+    public int $export_cust_type = 1;
+    public int $export_cust_residence = 1;
 
     protected $queryString = [];
 
@@ -54,6 +56,8 @@ class PayrollHistoryComponent extends Component
         $this->export_bank_month = date('Y-m');
         $this->export_transaction_date = date('Y-m-d');
         $this->export_bank_remark = 'Gaji ' . date('M Y');
+        $this->export_cust_type = 1;
+        $this->export_cust_residence = 1;
     }
 
     public function updatedGeneratePeriodMonth($value)
@@ -1052,6 +1056,8 @@ class PayrollHistoryComponent extends Component
             'export_transaction_date' => 'required|date',
             'export_bank_type' => 'required|string',
             'export_bank_remark' => 'nullable|string|max:18',
+            'export_cust_type' => 'required|in:1,2,3',
+            'export_cust_residence' => 'required|in:1,2',
         ]);
 
         if (empty($this->export_selected_payrolls)) {
@@ -1069,7 +1075,9 @@ class PayrollHistoryComponent extends Component
             $this->export_bank_type,
             $this->export_bank_remark,
             $this->export_selected_payrolls,
-            $this->export_only_with_account
+            $this->export_only_with_account,
+            (int) $this->export_cust_type,
+            (int) $this->export_cust_residence
         );
 
         $dateStr = \Carbon\Carbon::parse($this->export_transaction_date)->format('dmY');
@@ -1162,6 +1170,8 @@ class PayrollHistoryComponent extends Component
             'export_transaction_date' => $this->export_transaction_date,
             'export_bank_remark' => $this->export_bank_remark,
             'export_only_with_account' => $this->export_only_with_account,
+            'export_cust_type' => $this->export_cust_type,
+            'export_cust_residence' => $this->export_cust_residence,
         ])->layout('layouts.app');
     }
 }

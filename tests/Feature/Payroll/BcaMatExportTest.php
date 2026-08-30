@@ -50,6 +50,14 @@ class BcaMatExportTest extends TestCase
             // Check number format for amount
             $format = $sheet->getStyle('G2')->getNumberFormat()->getFormatCode();
             $this->assertStringContainsString('#,##0.00', $format);
+
+            // Check NIP format is text @
+            $nipFormat = $sheet->getStyle('H2')->getNumberFormat()->getFormatCode();
+            $this->assertEquals('@', $nipFormat);
+
+            // Check Cust Type and Residence are 1
+            $this->assertEquals(1, $sheet->getCell('L2')->getValue());
+            $this->assertEquals(1, $sheet->getCell('M2')->getValue());
         }
     }
 

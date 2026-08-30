@@ -22,6 +22,8 @@ class ExportBankTransferComponent extends Component
     public bool $only_with_account = false;
     public ?int $division_id = null;
     public string $status_filter = '';
+    public int $export_cust_type = 1;
+    public int $export_cust_residence = 1;
 
     public array $selected_payrolls = [];
     public bool $select_all = true;
@@ -33,6 +35,8 @@ class ExportBankTransferComponent extends Component
         $latestMonth = Payroll::orderBy('period_month', 'desc')->value('period_month') ?: date('Y-m');
         $this->month = request()->query('month', $latestMonth);
         $this->transaction_date = date('Y-m-d');
+        $this->export_cust_type = 1;
+        $this->export_cust_residence = 1;
         
         try {
             $parsed = Carbon::parse($this->month . '-01');
@@ -122,6 +126,8 @@ class ExportBankTransferComponent extends Component
             'transaction_date' => 'required|date',
             'bank_type' => 'required|string',
             'remark' => 'nullable|string|max:18',
+            'export_cust_type' => 'required|in:1,2,3',
+            'export_cust_residence' => 'required|in:1,2',
         ]);
 
         if (empty($this->selected_payrolls)) {
@@ -139,7 +145,9 @@ class ExportBankTransferComponent extends Component
             $this->bank_type,
             $this->remark,
             $this->selected_payrolls,
-            $this->only_with_account
+            $this->only_with_account,
+            (int) $this->export_cust_type,
+            (int) $this->export_cust_residence
         );
 
         $dateStr = Carbon::parse($this->transaction_date)->format('dmY');
@@ -208,6 +216,8 @@ class ExportBankTransferComponent extends Component
             'status_filter' => $this->status_filter,
             'selected_payrolls' => $this->selected_payrolls,
             'select_all' => $this->select_all,
+            'export_cust_type' => $this->export_cust_type,
+            'export_cust_residence' => $this->export_cust_residence,
         ])->layout('layouts.app');
     }
 }

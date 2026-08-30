@@ -605,7 +605,7 @@
     <x-slot name="content">
       <div class="space-y-4">
         <!-- Configuration Form -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
           <div>
             <x-label for="export_bank_month" value="Periode Payroll" class="mb-1 text-xs font-semibold" />
             <x-input type="month" id="export_bank_month" class="w-full text-xs" wire:model.live="export_bank_month" />
@@ -628,6 +628,23 @@
           <div>
             <x-label for="export_bank_remark" value="Keterangan (Max 18 Karakter)" class="mb-1 text-xs font-semibold" />
             <x-input type="text" id="export_bank_remark" maxlength="18" placeholder="Misal: Gaji Ags 2026" class="w-full text-xs" wire:model.live="export_bank_remark" />
+          </div>
+
+          <div>
+            <x-label for="export_cust_type" value="Receiver Cust. Type" class="mb-1 text-xs font-semibold" />
+            <x-select id="export_cust_type" class="w-full text-xs" wire:model.live="export_cust_type">
+              <option value="1">1 - Perorangan (Default)</option>
+              <option value="2">2 - Perusahaan</option>
+              <option value="3">3 - Pemerintah</option>
+            </x-select>
+          </div>
+
+          <div>
+            <x-label for="export_cust_residence" value="Receiver Cust. Residence" class="mb-1 text-xs font-semibold" />
+            <x-select id="export_cust_residence" class="w-full text-xs" wire:model.live="export_cust_residence">
+              <option value="1">1 - Residence / Penduduk (Default)</option>
+              <option value="2">2 - Non Residence / Bukan Penduduk</option>
+            </x-select>
           </div>
         </div>
 
@@ -653,6 +670,7 @@
                 <th scope="col" class="px-2 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Transaction ID</th>
                 <th scope="col" class="px-2 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">No. Rekening (Credited Acc)</th>
                 <th scope="col" class="px-2 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Nama Penerima</th>
+                <th scope="col" class="px-2 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">NIP</th>
                 <th scope="col" class="px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-300">Nominal (Amount)</th>
                 <th scope="col" class="px-2 py-2 text-center font-semibold text-gray-600 dark:text-gray-300">Rekening</th>
               </tr>
@@ -674,6 +692,7 @@
                     {{ $epHasAcc ? $ep->employee->paymentMethod->bank_account : 'Kosong' }}
                   </td>
                   <td class="px-2 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">{{ $epReceiver }}</td>
+                  <td class="px-2 py-2 font-mono text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $ep->employee?->nip ?? '-' }}</td>
                   <td class="px-2 py-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                     Rp {{ number_format($ep->net_salary, 2, ',', '.') }}
                   </td>

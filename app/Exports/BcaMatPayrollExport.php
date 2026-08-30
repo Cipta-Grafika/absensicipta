@@ -21,6 +21,8 @@ class BcaMatPayrollExport
     public string $remark;
     public ?array $selectedPayrollIds;
     public bool $onlyWithAccount;
+    public int $custType;
+    public int $custResidence;
 
     public function __construct(
         string $periodMonth,
@@ -28,7 +30,9 @@ class BcaMatPayrollExport
         string $bankType = 'BCA',
         string $remark = '',
         ?array $selectedPayrollIds = null,
-        bool $onlyWithAccount = false
+        bool $onlyWithAccount = false,
+        int $custType = 1,
+        int $custResidence = 1
     ) {
         $this->periodMonth = $periodMonth;
         $this->transactionDate = $transactionDate ?: date('Y-m-d');
@@ -36,6 +40,8 @@ class BcaMatPayrollExport
         $this->remark = $remark;
         $this->selectedPayrollIds = $selectedPayrollIds;
         $this->onlyWithAccount = $onlyWithAccount;
+        $this->custType = $custType ?: 1;
+        $this->custResidence = $custResidence ?: 1;
     }
 
     /**
@@ -108,8 +114,8 @@ class BcaMatPayrollExport
             // Amount (Net Salary) as float/number
             $amount = (float) $payroll->net_salary;
 
-            // NIP (max 18 chars)
-            $nip = $employee?->nip ? mb_substr((string)$employee->nip, 0, 18) : null;
+            // NIP (max 18 chars) - strictly set as text
+            $nipStr = $employee?->nip ? mb_substr(trim((string)$employee->nip), 0, 18) : '';
 
             // Remark (max 18 chars)
             $remarkVal = $this->remark ? mb_substr($this->remark, 0, 18) : null;
@@ -140,8 +146,9 @@ class BcaMatPayrollExport
             $sheet->setCellValue('G' . $currentRow, $amount);
             $sheet->getStyle('G' . $currentRow)->getNumberFormat()->setFormatCode('_(* #,##0.00_);_(* \(#,##0.00\);_(* "-"??_);_(@_)');
 
-            // Col H: NIP
-            $sheet->setCellValue('H' . $currentRow, $nip);
+            // Col H: NIP (strictly text)
+            $sheet->setCellValueExplicit('H' . $currentRow, $nipStr, DataType::TYPE_STRING);
+            $sheet->getStyle('H' . $currentRow)->getNumberFormat()->setFormatCode('@');
 
             // Col I: Remark
             $sheet->setCellValue('I' . $currentRow, $remarkVal);
@@ -152,11 +159,13 @@ class BcaMatPayrollExport
             // Col K: Receiver Swift Code (null for BCA)
             $sheet->setCellValue('K' . $currentRow, null);
 
-            // Col L: Receiver Cust Type (null for BCA)
-            $sheet->setCellValue('L' . $currentRow, null);
+            // Col L: Receiver Cust Type (1 = Perorangan, 2 = Perusahaan, 3 = Pemerintah)
+            $sheet->setCellValue('L' . $currentRow, (int) $this->custType);
+            $sheet->getStyle('L' . $currentRow)->getNumberFormat()->setFormatCode('0');
 
-            // Col M: Receiver Cust Residence (null for BCA)
-            $sheet->setCellValue('M' . $currentRow, null);
+            // Col M: Receiver Cust Residence (1 = Residence / Penduduk, 2 = Non Residence / Bukan Penduduk)
+            $sheet->setCellValue('M' . $currentRow, (int) $this->custResidence);
+            $sheet->getStyle('M' . $currentRow)->getNumberFormat()->setFormatCode('0');
 
             // Apply styling on row cells
             for ($col = 'A'; $col <= 'M'; $col++) {

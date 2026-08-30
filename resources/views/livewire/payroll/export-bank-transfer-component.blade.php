@@ -98,7 +98,7 @@
           Pengaturan Parameter Export BCA MAT
         </h3>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <!-- Periode Bulan -->
           <div>
             <x-label for="month" value="Periode Payroll" class="mb-1" />
@@ -130,6 +130,25 @@
               <span class="text-[11px] text-gray-400">Tampil di mutasi rekening</span>
               <span class="text-[11px] text-gray-400">{{ strlen($remark) }}/18</span>
             </div>
+          </div>
+
+          <!-- Receiver Cust. Type -->
+          <div>
+            <x-label for="export_cust_type" value="Receiver Cust. Type" class="mb-1" />
+            <x-select id="export_cust_type" class="w-full" wire:model.live="export_cust_type">
+              <option value="1">1 - Perorangan (Default)</option>
+              <option value="2">2 - Perusahaan</option>
+              <option value="3">3 - Pemerintah</option>
+            </x-select>
+          </div>
+
+          <!-- Receiver Cust. Residence -->
+          <div>
+            <x-label for="export_cust_residence" value="Receiver Cust. Residence" class="mb-1" />
+            <x-select id="export_cust_residence" class="w-full" wire:model.live="export_cust_residence">
+              <option value="1">1 - Residence / Penduduk (Default)</option>
+              <option value="2">2 - Non Residence / Bukan Penduduk</option>
+            </x-select>
           </div>
         </div>
 
