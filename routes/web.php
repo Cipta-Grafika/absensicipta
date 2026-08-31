@@ -162,6 +162,7 @@ Route::middleware([
         Route::get('/taxes', \App\Livewire\Payroll\TaxMasterComponent::class)->name('taxes');
         Route::get('/payment-methods', \App\Livewire\Payroll\PaymentMethodComponent::class)->name('payment-methods');
         Route::get('/history', \App\Livewire\Payroll\PayrollHistoryComponent::class)->name('history');
+        Route::get('/payslips/{id}/print', [\App\Http\Controllers\User\PayslipPrintController::class, 'print'])->name('payslip.print');
         Route::get('/savings', \App\Livewire\Payroll\SavingComponent::class)->name('savings');
         Route::get('/saving-transactions', \App\Livewire\Payroll\SavingTransactionComponent::class)->name('saving-transactions');
         Route::get('/loans', \App\Livewire\Payroll\LoanComponent::class)->name('loans');

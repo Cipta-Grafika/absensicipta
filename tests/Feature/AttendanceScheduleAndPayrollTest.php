@@ -687,10 +687,53 @@ class AttendanceScheduleAndPayrollTest extends TestCase
         $this->assertStringContainsString(number_format($expectedBpjs, 0, ',', ','), $html);
         $this->assertStringContainsString(number_format($expectedPph, 0, ',', ','), $html);
 
+        // Mark as paid so employee can print
+        $payroll->update(['status' => 'paid', 'payment_date' => '2026-08-31']);
+
         // Test Print / PDF download response
         $this->actingAs($emp);
         $response = $this->get(route('user.payslip.print', $payroll->id));
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_payroll_user_can_download_draft_payslip_but_employee_requires_paid_status(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        $emp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'birth_date' => '1995-08-25',
+        ]);
+
+        $payroll = Payroll::create([
+            'employee_id' => $emp->id,
+            'period_month' => '2026-08',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-31',
+            'basic_salary_earned' => 3000000,
+            'total_allowance' => 500000,
+            'total_overtime_pay' => 0,
+            'total_deduction' => 0,
+            'net_salary' => 3500000,
+            'status' => 'draft', // DRAFT status!
+        ]);
+
+        // 1. Payroll admin can download draft payslip via payroll.payslip.print
+        $this->actingAs($payrollAdmin);
+        $resPayroll = $this->get(route('payroll.payslip.print', $payroll->id));
+        $resPayroll->assertStatus(200);
+        $resPayroll->assertHeader('Content-Type', 'application/pdf');
+
+        // 2. Regular employee CANNOT download draft payslip (404/not found because not paid yet)
+        $this->actingAs($emp);
+        $resEmpDraft = $this->get(route('user.payslip.print', $payroll->id));
+        $resEmpDraft->assertStatus(404);
+
+        // 3. Once marked as paid, employee CAN download it
+        $payroll->update(['status' => 'paid', 'payment_date' => now()]);
+        $resEmpPaid = $this->get(route('user.payslip.print', $payroll->id));
+        $resEmpPaid->assertStatus(200);
+        $resEmpPaid->assertHeader('Content-Type', 'application/pdf');
     }
 }
