@@ -47,6 +47,16 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
             $customSecondarySavings = (float) $row['custom_secondary_savings'];
         }
 
+        $bpjs = 0;
+        if (isset($row['bpjs']) && is_numeric($row['bpjs'])) {
+            $bpjs = (float) $row['bpjs'];
+        }
+
+        $pph21 = 0;
+        if (isset($row['pph21']) && is_numeric($row['pph21'])) {
+            $pph21 = (float) $row['pph21'];
+        }
+
         $salary->forceFill([
             'salary_type' => $row['salary_type'],
             'working_days_per_month' => $row['working_days_per_month'],
@@ -57,6 +67,8 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
             'attendance_allowance' => $row['attendance_allowance'],
             'late_deduction_rate' => $row['late_deduction_rate'],
             'annual_leave_quota' => $row['annual_leave_quota'],
+            'bpjs' => $bpjs,
+            'pph21' => $pph21,
             'savings_id' => $savingsId,
             'custom_secondary_savings' => $customSecondarySavings,
         ]);
@@ -88,6 +100,8 @@ class EmployeeSalariesImport implements ToModel, WithHeadingRow, WithValidation,
             'attendance_allowance' => ['required', 'numeric'],
             'late_deduction_rate' => ['required', 'numeric'],
             'annual_leave_quota' => ['required', 'numeric'],
+            'bpjs' => ['nullable', 'numeric', 'min:0'],
+            'pph21' => ['nullable', 'numeric', 'min:0'],
             'savings_name' => ['nullable', 'exists:savings,savings_name'],
             'custom_secondary_savings' => ['nullable', 'numeric', 'min:0'],
         ];

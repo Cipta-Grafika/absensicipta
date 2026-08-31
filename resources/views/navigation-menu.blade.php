@@ -124,7 +124,7 @@
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
               Dashboard
             </x-nav-link>
-            <x-nav-dropdown :active="request()->routeIs('payroll.employee-salaries') || request()->routeIs('payroll.payment-methods') || request()->routeIs('payroll.savings')" triggerClasses="text-nowrap">
+            <x-nav-dropdown :active="request()->routeIs('payroll.employee-salaries') || request()->routeIs('payroll.taxes') || request()->routeIs('payroll.payment-methods') || request()->routeIs('payroll.savings')" triggerClasses="text-nowrap">
               <x-slot name="trigger">
                 Master Data
                 <x-heroicon-o-chevron-down class="ms-2 h-5 w-5 text-gray-400" />
@@ -132,6 +132,9 @@
               <x-slot name="content">
                 <x-dropdown-link href="{{ route('payroll.employee-salaries') }}" :active="request()->routeIs('payroll.employee-salaries')">
                   Master Gaji
+                </x-dropdown-link>
+                <x-dropdown-link href="{{ route('payroll.taxes') }}" :active="request()->routeIs('payroll.taxes')">
+                  Master Pajak PPh 21
                 </x-dropdown-link>
                 <x-dropdown-link href="{{ route('payroll.payment-methods') }}" :active="request()->routeIs('payroll.payment-methods')">
                   Metode Pembayaran
@@ -417,6 +420,9 @@
           </x-responsive-nav-link>
           <x-responsive-nav-link href="{{ route('payroll.employee-salaries') }}" :active="request()->routeIs('payroll.employee-salaries')">
             Master Gaji
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.taxes') }}" :active="request()->routeIs('payroll.taxes')">
+            Master Pajak PPh 21
           </x-responsive-nav-link>
           <x-responsive-nav-link href="{{ route('payroll.payment-methods') }}" :active="request()->routeIs('payroll.payment-methods')">
             Metode Pembayaran

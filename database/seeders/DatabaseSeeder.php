@@ -41,5 +41,6 @@ class DatabaseSeeder extends Seeder
         }
         Barcode::factory(1)->create(['name' => 'Barcode 1']);
         Shift::factory(2)->create();
+        (new TaxMasterSeeder)->run();
     }
 }

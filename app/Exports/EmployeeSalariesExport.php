@@ -28,6 +28,8 @@ class EmployeeSalariesExport implements FromCollection, WithHeadings, WithMappin
             'attendance_allowance',
             'late_deduction_rate',
             'annual_leave_quota',
+            'bpjs',
+            'pph21',
             'savings_name',
             'custom_secondary_savings',
         ];
@@ -47,6 +49,8 @@ class EmployeeSalariesExport implements FromCollection, WithHeadings, WithMappin
             $salary->attendance_allowance,
             $salary->late_deduction_rate,
             $salary->annual_leave_quota,
+            $salary->bpjs ?? 0,
+            $salary->pph21 ?? 0,
             $salary->savings->savings_name ?? '',
             $salary->custom_secondary_savings ?? '',
         ];

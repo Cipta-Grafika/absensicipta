@@ -499,4 +499,113 @@ class AttendanceScheduleAndPayrollTest extends TestCase
         $this->assertEquals(21 * 70000, $payroll->net_salary);
         $this->assertEquals(0, $payroll->total_deduction);
     }
+
+    public function test_special_leave_consecutive_days_greater_than_two_deducts_correctly(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        $emp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'off_days' => ['sunday'],
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $emp->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 2500000,
+            'meal_allowance' => 0,
+            'transport_allowance' => 500000,
+            'attendance_allowance' => 1100000,
+            'working_days_per_month' => 25,
+        ]);
+
+        // 3 consecutive special-leaves (days 1, 3, 4 of August - since 2 is Sunday)
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-01', 'status' => 'special-leaves']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-03', 'status' => 'special-leaves']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-04', 'status' => 'special-leaves']); // 3rd consecutive -> penalized
+
+        // Rest of August (5 to 31 except Sundays) present
+        $dates = [
+            '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08',
+            '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15',
+            '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22',
+            '2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29',
+            '2026-08-31'
+        ];
+        foreach ($dates as $pDate) {
+            \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => $pDate, 'status' => 'present']);
+        }
+
+        $this->actingAs($payrollAdmin);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-08')
+            ->set('generate_start_date', '2026-08-01')
+            ->set('generate_end_date', '2026-08-31')
+            ->call('generatePayroll');
+
+        $payroll = Payroll::where('employee_id', $emp->id)->where('period_month', '2026-08')->first();
+
+        $this->assertNotNull($payroll);
+        $this->assertEquals(1, $payroll->penalized_cuti_days);
+        $this->assertEquals(0, $payroll->total_absent);
+
+        // Expected cuti deduction: (1 / 25) * (500000 + 1100000) = 64000
+        $expectedDeduction = (int) round((1 / 25) * (500000 + 1100000));
+        $this->assertEquals(64000, $expectedDeduction);
+        $this->assertEquals($expectedDeduction, $payroll->total_deduction);
+        $this->assertEquals(4100000 - 64000, $payroll->net_salary);
+    }
+
+    public function test_intern_part_time_and_pkl_calculates_pure_daily_attendance_earnings(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        
+        // 1. Intern with 24 days actual presence
+        $intern = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'type' => 'intern', // magang
+            'off_days' => ['sunday'],
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $intern->id,
+            'salary_type' => 'daily',
+            'basic_salary' => 60000,
+            'meal_allowance' => 0,
+            'transport_allowance' => 0,
+            'attendance_allowance' => 0,
+            'working_days_per_month' => 25,
+        ]);
+
+        // Create exactly 24 present attendance records
+        $dates24 = [
+            '2026-08-01', '2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08',
+            '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15',
+            '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22',
+            '2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28'
+        ];
+        foreach ($dates24 as $d) {
+            \App\Models\Attendance::create(['user_id' => $intern->id, 'date' => $d, 'status' => 'present']);
+        }
+
+        $this->actingAs($payrollAdmin);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-08')
+            ->set('generate_start_date', '2026-08-01')
+            ->set('generate_end_date', '2026-08-31')
+            ->call('generatePayroll');
+
+        $payroll = Payroll::where('employee_id', $intern->id)->where('period_month', '2026-08')->first();
+
+        $this->assertNotNull($payroll);
+        $this->assertEquals(24, $payroll->total_present);
+        
+        // Exact pure daily calculation: 24 days * 60.000 = 1.440.000 (NOT rounded to 25)
+        $this->assertEquals(24 * 60000, $payroll->basic_salary_earned);
+        $this->assertEquals(24 * 60000, $payroll->net_salary);
+        $this->assertEquals(0, $payroll->total_deduction);
+    }
 }

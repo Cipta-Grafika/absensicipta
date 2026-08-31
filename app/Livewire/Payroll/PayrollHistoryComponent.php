@@ -464,7 +464,7 @@ class PayrollHistoryComponent extends Component
                             ->where('date', $prev_check_date->format('Y-m-d'))
                             ->first();
 
-                        if ($prev_att && $prev_att->status === 'leave') {
+                        if ($prev_att && in_array($prev_att->status, ['leave', 'special-leaves'])) {
                             $consecutive_cuti++;
                             $prev_check_date->subDay();
                         } else {
@@ -491,8 +491,8 @@ class PayrollHistoryComponent extends Component
                                 $missing_absent_days++;
                             }
                             
-                            // Check Cuti Beruntun (hanya cuti reguler > 2 hari beruntun kena penalti)
-                            $is_cuti = $records->where('status', 'leave')->isNotEmpty();
+                            // Check Cuti Beruntun (Cuti reguler & Cuti Khusus > 2 hari beruntun kena penalti)
+                            $is_cuti = $records->whereIn('status', ['leave', 'special-leaves'])->isNotEmpty();
                             if ($is_cuti) {
                                 $consecutive_cuti++;
                                 if ($consecutive_cuti > 2) {
@@ -549,21 +549,29 @@ class PayrollHistoryComponent extends Component
                         // Total hari tidak masuk kerja untuk pekerja harian (Alpa + Izin + Sakit + Cuti kena penalti)
                         $total_unworked_days = $total_absent + $total_excused + $total_sick + $penalized_cuti_days;
 
-                        // Perhitungan Hari Dibayar Gaji Harian (Pembulatan Basis Standar 25 Hari):
-                        // 1. Kehadiran 0 hari: 0 hari dibayar
-                        // 2. Kehadiran parsial / baru masuk (< 15 hari hadir): dihitung murni kehadiran aktual ($total_paid_days)
-                        // 3. Kehadiran normal (>= 15 hari hadir):
-                        //    - Full 1 bulan (0 hari tidak masuk): dibulatkan menjadi 25 hari terbayar (berapapun total hari kerja kalender bulan tsb, misal 22, 24, 26, atau 27 hari)
-                        //    - Terdapat hari tidak masuk (Alpa/Izin/Sakit): hari terbayar = max(0, min($standard_working_days, $standard_working_days - $total_unworked_days))
-                        if ($total_paid_days == 0) {
-                            $effective_daily_paid_days = 0;
-                        } elseif ($total_paid_days < 15) {
+                        $isPureDailyType = in_array(strtolower($emp->type ?? ''), ['intern', 'part-time', 'pkl', 'magang', 'freelance', 'volunteer']);
+
+                        if ($isPureDailyType) {
+                            // Untuk magang (intern), part-time, dan pkl: bayaran harian murni sesuai kehadiran aktual ($total_paid_days)
+                            // Misal: 24 hari hadir tanpa absent -> tetap dihitung murni 24 hari kerja terbayar (misal 60.000 x 24)
                             $effective_daily_paid_days = $total_paid_days;
                         } else {
-                            if ($total_unworked_days == 0) {
-                                $effective_daily_paid_days = $standard_working_days;
+                            // Perhitungan Hari Dibayar Gaji Harian Reguler (Pembulatan Basis Standar 25 Hari):
+                            // 1. Kehadiran 0 hari: 0 hari dibayar
+                            // 2. Kehadiran parsial / baru masuk (< 15 hari hadir): dihitung murni kehadiran aktual ($total_paid_days)
+                            // 3. Kehadiran normal (>= 15 hari hadir):
+                            //    - Full 1 bulan (0 hari tidak masuk): dibulatkan menjadi 25 hari terbayar
+                            //    - Terdapat hari tidak masuk (Alpa/Izin/Sakit): hari terbayar = max(0, min($standard_working_days, $standard_working_days - $total_unworked_days))
+                            if ($total_paid_days == 0) {
+                                $effective_daily_paid_days = 0;
+                            } elseif ($total_paid_days < 15) {
+                                $effective_daily_paid_days = $total_paid_days;
                             } else {
-                                $effective_daily_paid_days = max(0, min($standard_working_days, $standard_working_days - $total_unworked_days));
+                                if ($total_unworked_days == 0) {
+                                    $effective_daily_paid_days = $standard_working_days;
+                                } else {
+                                    $effective_daily_paid_days = max(0, min($standard_working_days, $standard_working_days - $total_unworked_days));
+                                }
                             }
                         }
 

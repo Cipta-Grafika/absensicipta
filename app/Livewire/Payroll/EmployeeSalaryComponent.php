@@ -29,6 +29,9 @@ class EmployeeSalaryComponent extends Component
     public $attendance_allowance = 0;
     public $late_deduction_rate = 0;
     public $annual_leave_quota = 12;
+    public $bpjs = 0;
+    public $pph21 = 0;
+    public $tax_master_id = null;
     public $savings_id = null;
     public $custom_secondary_savings = null;
 
@@ -45,6 +48,9 @@ class EmployeeSalaryComponent extends Component
             'attendance_allowance' => 'nullable|numeric|min:0',
             'late_deduction_rate' => 'nullable|numeric|min:0',
             'annual_leave_quota' => 'required|numeric|min:0',
+            'bpjs' => 'nullable|numeric|min:0',
+            'pph21' => 'nullable|numeric|min:0',
+            'tax_master_id' => 'nullable|exists:tax_masters,id',
             'savings_id' => 'nullable|exists:savings,id',
             'custom_secondary_savings' => 'nullable|numeric|min:0',
         ];
@@ -68,7 +74,7 @@ class EmployeeSalaryComponent extends Component
     public function openModal()
     {
         $this->resetValidation();
-        $this->reset(['employee_id', 'salary_type', 'working_days_per_month', 'basic_salary', 'overtime_rate', 'meal_allowance', 'transport_allowance', 'attendance_allowance', 'late_deduction_rate', 'annual_leave_quota', 'savings_id', 'custom_secondary_savings']);
+        $this->reset(['employee_id', 'salary_type', 'working_days_per_month', 'basic_salary', 'overtime_rate', 'meal_allowance', 'transport_allowance', 'attendance_allowance', 'late_deduction_rate', 'annual_leave_quota', 'bpjs', 'pph21', 'tax_master_id', 'savings_id', 'custom_secondary_savings']);
         $this->isModalOpen = true;
     }
 
@@ -95,11 +101,15 @@ class EmployeeSalaryComponent extends Component
             $this->attendance_allowance = $salary->attendance_allowance;
             $this->late_deduction_rate = $salary->late_deduction_rate;
             $this->annual_leave_quota = $salary->annual_leave_quota ?? 12;
+            $this->bpjs = $salary->bpjs ?? 0;
+            $this->pph21 = $salary->pph21 ?? 0;
+            $this->tax_master_id = $salary->tax_master_id;
             $this->savings_id = $salary->savings_id;
             $this->custom_secondary_savings = $salary->custom_secondary_savings;
         } else {
-            $this->reset(['salary_type', 'working_days_per_month', 'basic_salary', 'overtime_rate', 'meal_allowance', 'transport_allowance', 'attendance_allowance', 'late_deduction_rate', 'annual_leave_quota', 'savings_id', 'custom_secondary_savings']);
-            $this->salary_type = 'monthly';
+            $this->reset(['salary_type', 'working_days_per_month', 'basic_salary', 'overtime_rate', 'meal_allowance', 'transport_allowance', 'attendance_allowance', 'late_deduction_rate', 'annual_leave_quota', 'bpjs', 'pph21', 'tax_master_id', 'savings_id', 'custom_secondary_savings']);
+            $isPureDailyType = in_array(strtolower($employee->type ?? ''), ['intern', 'part-time', 'pkl', 'magang', 'freelance', 'volunteer']);
+            $this->salary_type = $isPureDailyType ? 'daily' : 'monthly';
             $this->working_days_per_month = 25;
         }
 
@@ -124,6 +134,9 @@ class EmployeeSalaryComponent extends Component
                 'attendance_allowance' => $this->attendance_allowance ?? 0,
                 'late_deduction_rate' => $this->late_deduction_rate ?? 0,
                 'annual_leave_quota' => $this->annual_leave_quota ?? 12,
+                'bpjs' => ($this->bpjs !== '' && $this->bpjs !== null) ? (float) $this->bpjs : 0,
+                'pph21' => ($this->pph21 !== '' && $this->pph21 !== null) ? (float) $this->pph21 : 0,
+                'tax_master_id' => $this->tax_master_id ?: null,
                 'savings_id' => $this->savings_id ?: null,
                 'custom_secondary_savings' => ($this->custom_secondary_savings !== '' && $this->custom_secondary_savings !== null) ? $this->custom_secondary_savings : null,
             ]
@@ -157,16 +170,19 @@ class EmployeeSalaryComponent extends Component
             ->when($this->division, function ($query) {
                 $query->where('division_id', $this->division);
             })
-            ->with(['salary', 'division', 'jobTitle'])
+            ->with(['salary.savings', 'salary.taxMaster', 'division', 'jobTitle'])
             ->orderBy('name')
             ->paginate(15);
 
-        $savingsList = \App\Models\Saving::all();
+        $divisions = Division::all();
+        $savingsList = \App\Models\Saving::orderBy('savings_name')->get();
+        $taxMastersList = \App\Models\TaxMaster::orderBy('min_gross_income', 'asc')->get();
 
         return view('livewire.payroll.employee-salary-component', [
             'employees' => $employees,
-            'divisions' => Division::orderBy('name')->get(),
+            'divisions' => $divisions,
             'savingsList' => $savingsList,
+            'taxMastersList' => $taxMastersList,
         ])->layout('layouts.app');
     }
 }

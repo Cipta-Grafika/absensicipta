@@ -21,6 +21,9 @@ class EmployeeSalary extends Model
         'attendance_allowance',
         'late_deduction_rate',
         'annual_leave_quota',
+        'bpjs',
+        'pph21',
+        'tax_master_id',
         'savings_id',
         'custom_secondary_savings',
     ];
@@ -32,6 +35,8 @@ class EmployeeSalary extends Model
         'transport_allowance' => 'float',
         'attendance_allowance' => 'float',
         'late_deduction_rate' => 'float',
+        'bpjs' => 'float',
+        'pph21' => 'float',
         'custom_secondary_savings' => 'float',
     ];
 
@@ -43,6 +48,11 @@ class EmployeeSalary extends Model
     public function savings()
     {
         return $this->belongsTo(Saving::class, 'savings_id');
+    }
+
+    public function taxMaster()
+    {
+        return $this->belongsTo(TaxMaster::class, 'tax_master_id');
     }
 
     /**

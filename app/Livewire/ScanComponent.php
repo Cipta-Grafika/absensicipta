@@ -807,7 +807,7 @@ class ScanComponent extends Component
                     $missing_absent_days++;
                 }
 
-                if ($records->where('status', 'leave')->isNotEmpty()) {
+                if ($records->whereIn('status', ['leave', 'special-leaves'])->isNotEmpty()) {
                     $consecutive_cuti++;
                     if ($consecutive_cuti > 2) {
                         $penalized_cuti_days++;

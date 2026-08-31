@@ -121,6 +121,14 @@
                       <li>Transport: Rp{{ number_format($emp->salary->transport_allowance, 0, ',', '.') }}</li>
                       <li>Kehadiran: Rp{{ number_format($emp->salary->attendance_allowance, 0, ',', '.') }}</li>
                       <li>Lembur/Jam: Rp{{ number_format($emp->salary->overtime_rate, 0, ',', '.') }}</li>
+                      @if(($emp->salary->bpjs ?? 0) > 0)
+                        <li class="text-rose-600 dark:text-rose-400 font-medium">BPJS: Rp{{ number_format($emp->salary->bpjs, 0, ',', '.') }}</li>
+                      @endif
+                      @if($emp->salary->taxMaster)
+                        <li class="text-indigo-600 dark:text-indigo-400 font-medium">PPh 21: {{ $emp->salary->taxMaster->name }}</li>
+                      @elseif(($emp->salary->pph21 ?? 0) > 0)
+                        <li class="text-rose-600 dark:text-rose-400 font-medium">PPh 21: Rp{{ number_format($emp->salary->pph21, 0, ',', '.') }}</li>
+                      @endif
                       <li>Syirkah: {{ $emp->salary->savings ? $emp->salary->savings->savings_name : 'Tidak Ada' }}</li>
                     </ul>
                   @else
@@ -206,6 +214,32 @@
           <x-label for="overtime_rate" value="{{ __('Rate Lembur / Jam (Rp)') }}" />
           <x-input id="overtime_rate" type="number" class="mt-1 block w-full" wire:model="overtime_rate" />
           <x-input-error for="overtime_rate" class="mt-2" />
+        </div>
+
+        <div>
+          <x-label for="bpjs" value="{{ __('Potongan BPJS (Rp)') }}" />
+          <x-input id="bpjs" type="number" class="mt-1 block w-full" wire:model="bpjs" placeholder="0" min="0" />
+          <p class="mt-1 text-xs text-gray-500">Nominal potongan BPJS bulanan kustom. Kosongkan / 0 jika tidak ada.</p>
+          <x-input-error for="bpjs" class="mt-2" />
+        </div>
+
+        <div>
+          <x-label for="pph21" value="{{ __('Potongan PPh 21 Custom (Rp)') }}" />
+          <x-input id="pph21" type="number" class="mt-1 block w-full" wire:model="pph21" placeholder="0" min="0" />
+          <p class="mt-1 text-xs text-gray-500">Nominal potongan PPh 21 manual jika tidak memakai master tarif.</p>
+          <x-input-error for="pph21" class="mt-2" />
+        </div>
+
+        <div class="sm:col-span-2">
+          <x-label for="tax_master_id" value="{{ __('Kategori Pajak PPh 21 (TER / Tarif Efektif)') }}" />
+          <select id="tax_master_id" wire:model.live="tax_master_id" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+            <option value="">-- Tidak Ada / Non-PPH 21 --</option>
+            @foreach($taxMastersList as $t)
+              <option value="{{ $t->id }}">{{ $t->name }}</option>
+            @endforeach
+          </select>
+          <p class="mt-1 text-xs text-gray-500">Pilih kategori Tarif Efektif Rata-rata (TER) PPh 21 dari Master Pajak untuk karyawan ini.</p>
+          <x-input-error for="tax_master_id" class="mt-2" />
         </div>
 
 
