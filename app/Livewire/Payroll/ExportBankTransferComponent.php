@@ -102,7 +102,9 @@ class ExportBankTransferComponent extends Component
         }
 
         $payrolls = $query->join('users', 'payrolls.employee_id', '=', 'users.id')
+            ->leftJoin('divisions', 'users.division_id', '=', 'divisions.id')
             ->select('payrolls.*')
+            ->orderByRaw('COALESCE(divisions.name, \'ZZZ\') ASC')
             ->orderBy('users.created_at', 'asc')
             ->orderBy('users.id', 'asc')
             ->get();
@@ -178,7 +180,9 @@ class ExportBankTransferComponent extends Component
         }
 
         $payrolls = $query->join('users', 'payrolls.employee_id', '=', 'users.id')
+            ->leftJoin('divisions', 'users.division_id', '=', 'divisions.id')
             ->select('payrolls.*')
+            ->orderByRaw('COALESCE(divisions.name, \'ZZZ\') ASC')
             ->orderBy('users.created_at', 'asc')
             ->orderBy('users.id', 'asc')
             ->get();

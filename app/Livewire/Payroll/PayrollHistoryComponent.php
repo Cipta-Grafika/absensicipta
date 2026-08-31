@@ -478,7 +478,7 @@ class PayrollHistoryComponent extends Component
                     $todayDate = now()->startOfDay();
 
                     for ($d = $start_period->copy(); $d->lte($end_period); $d->addDay()) {
-                        $isFutureDate = $d->startOfDay()->gt($todayDate);
+                        $isPastDate = $d->startOfDay()->lt($todayDate);
 
                         if ($scheduleContext->isWorkingDay($emp, $d)) {
                             $actual_working_days++;
@@ -486,8 +486,8 @@ class PayrollHistoryComponent extends Component
                             $hasValidRecord = $records->whereNotIn('status', ['absent', 'dayoff'])->isNotEmpty();
                             $isExplicitDayOff = $records->where('status', 'dayoff')->isNotEmpty();
 
-                            // Future dates that have not yet occurred must never be counted as missing/alpa
-                            if (!$isFutureDate && !$hasValidRecord && !$isExplicitDayOff) {
+                            // Only dates strictly in the past (yesterday and earlier) without records are counted as missing/alpa
+                            if ($isPastDate && !$hasValidRecord && !$isExplicitDayOff) {
                                 $missing_absent_days++;
                             }
                             
@@ -546,21 +546,24 @@ class PayrollHistoryComponent extends Component
                     if ($salary->salary_type == 'daily') {
                         $standard_working_days = (int) ($salary->working_days_per_month ?: 25);
                         
+                        // Total hari tidak masuk kerja untuk pekerja harian (Alpa + Izin + Sakit + Cuti kena penalti)
+                        $total_unworked_days = $total_absent + $total_excused + $total_sick + $penalized_cuti_days;
+
                         // Perhitungan Hari Dibayar Gaji Harian (Pembulatan Basis Standar 25 Hari):
                         // 1. Kehadiran 0 hari: 0 hari dibayar
                         // 2. Kehadiran parsial / baru masuk (< 15 hari hadir): dihitung murni kehadiran aktual ($total_paid_days)
                         // 3. Kehadiran normal (>= 15 hari hadir):
-                        //    - Full 1 bulan (0 Alpa): dibulatkan menjadi 25 hari terbayar (berapapun total hari kerja kalender bulan tsb, misal 24, 26, atau 27 hari)
-                        //    - Terdapat Alpa: hari terbayar = max(0, min($standard_working_days, $standard_working_days - $total_absent))
+                        //    - Full 1 bulan (0 hari tidak masuk): dibulatkan menjadi 25 hari terbayar (berapapun total hari kerja kalender bulan tsb, misal 22, 24, 26, atau 27 hari)
+                        //    - Terdapat hari tidak masuk (Alpa/Izin/Sakit): hari terbayar = max(0, min($standard_working_days, $standard_working_days - $total_unworked_days))
                         if ($total_paid_days == 0) {
                             $effective_daily_paid_days = 0;
                         } elseif ($total_paid_days < 15) {
                             $effective_daily_paid_days = $total_paid_days;
                         } else {
-                            if ($total_absent == 0) {
+                            if ($total_unworked_days == 0) {
                                 $effective_daily_paid_days = $standard_working_days;
                             } else {
-                                $effective_daily_paid_days = max(0, min($standard_working_days, $standard_working_days - $total_absent));
+                                $effective_daily_paid_days = max(0, min($standard_working_days, $standard_working_days - $total_unworked_days));
                             }
                         }
 
@@ -599,7 +602,7 @@ class PayrollHistoryComponent extends Component
                     }
 
                     $effective_excused = min($total_excused, $days_divisor);
-                    $excused_deduction = ($days_divisor > 0) ? (int) round(($effective_excused / ($days_divisor * 2)) * $fixed_income + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
+                    $excused_deduction = ($days_divisor > 0) ? (int) round(($effective_excused / ($days_divisor * 2)) * $salary->basic_salary + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
 
                     $effective_sick = min($total_sick, $days_divisor);
                     $sick_deduction = ($days_divisor > 0) ? (int) round(($effective_sick / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
@@ -1037,7 +1040,9 @@ class PayrollHistoryComponent extends Component
             ->where('net_salary', '>', 0);
 
         $payrolls = $query->join('users', 'payrolls.employee_id', '=', 'users.id')
+            ->leftJoin('divisions', 'users.division_id', '=', 'divisions.id')
             ->select('payrolls.*')
+            ->orderByRaw('COALESCE(divisions.name, \'ZZZ\') ASC')
             ->orderBy('users.created_at', 'asc')
             ->orderBy('users.id', 'asc')
             ->get();
@@ -1147,7 +1152,9 @@ class PayrollHistoryComponent extends Component
                 ->where('net_salary', '>', 0);
 
             $exportPayrolls = $exportQuery->join('users', 'payrolls.employee_id', '=', 'users.id')
+                ->leftJoin('divisions', 'users.division_id', '=', 'divisions.id')
                 ->select('payrolls.*')
+                ->orderByRaw('COALESCE(divisions.name, \'ZZZ\') ASC')
                 ->orderBy('users.created_at', 'asc')
                 ->orderBy('users.id', 'asc')
                 ->get();

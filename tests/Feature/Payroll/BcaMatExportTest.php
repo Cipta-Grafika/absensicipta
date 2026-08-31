@@ -98,4 +98,91 @@ class BcaMatExportTest extends TestCase
         $response = $this->get(route('payroll.export-bank'));
         $response->assertStatus(403);
     }
+
+    public function test_bca_mat_export_orders_by_division_then_oldest_employee()
+    {
+        $divOnline = \App\Models\Division::firstOrCreate(['name' => 'Online']);
+        $divGraha = \App\Models\Division::firstOrCreate(['name' => 'Graha']);
+
+        // Create 2 employees in Online (newer created first, older created second)
+        $empOnlineNewer = User::factory()->create([
+            'name' => 'Online Newer Employee',
+            'group' => 'user',
+            'status' => 'active',
+            'division_id' => $divOnline->id,
+            'created_at' => now()->subDays(10),
+        ]);
+        $empOnlineOlder = User::factory()->create([
+            'name' => 'Online Older Employee',
+            'group' => 'user',
+            'status' => 'active',
+            'division_id' => $divOnline->id,
+            'created_at' => now()->subDays(50),
+        ]);
+
+        // Create 2 employees in Graha (newer created first, older created second)
+        $empGrahaNewer = User::factory()->create([
+            'name' => 'Graha Newer Employee',
+            'group' => 'user',
+            'status' => 'active',
+            'division_id' => $divGraha->id,
+            'created_at' => now()->subDays(20),
+        ]);
+        $empGrahaOlder = User::factory()->create([
+            'name' => 'Graha Older Employee',
+            'group' => 'user',
+            'status' => 'active',
+            'division_id' => $divGraha->id,
+            'created_at' => now()->subDays(100),
+        ]);
+
+        // Create payrolls for month 2026-09
+        $prGrahaOlder = Payroll::create([
+            'employee_id' => $empGrahaOlder->id,
+            'period_month' => '2026-09',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+            'net_salary' => 2000000,
+            'status' => 'draft',
+        ]);
+        $prGrahaNewer = Payroll::create([
+            'employee_id' => $empGrahaNewer->id,
+            'period_month' => '2026-09',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+            'net_salary' => 2100000,
+            'status' => 'draft',
+        ]);
+        $prOnlineOlder = Payroll::create([
+            'employee_id' => $empOnlineOlder->id,
+            'period_month' => '2026-09',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+            'net_salary' => 2200000,
+            'status' => 'draft',
+        ]);
+        $prOnlineNewer = Payroll::create([
+            'employee_id' => $empOnlineNewer->id,
+            'period_month' => '2026-09',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+            'net_salary' => 2300000,
+            'status' => 'draft',
+        ]);
+
+        $export = new BcaMatPayrollExport('2026-09', '2026-09-30', 'BCA', 'Gaji Sep 2026');
+        $payrolls = $export->getPayrolls();
+
+        // Expected order:
+        // 1. Graha (G comes before O) -> Graha Older first, then Graha Newer
+        // 2. Online -> Online Older first, then Online Newer
+        $employeeNamesInOrder = $payrolls->pluck('employee.name')->toArray();
+
+        $this->assertEquals([
+            'Graha Older Employee',
+            'Graha Newer Employee',
+            'Online Older Employee',
+            'Online Newer Employee',
+        ], $employeeNamesInOrder);
+    }
 }

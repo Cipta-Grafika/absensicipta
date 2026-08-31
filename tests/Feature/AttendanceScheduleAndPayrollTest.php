@@ -433,4 +433,70 @@ class AttendanceScheduleAndPayrollTest extends TestCase
         $this->assertEquals(25 * 60000, $payroll->basic_salary_earned);
         $this->assertEquals(25 * 60000, $payroll->net_salary);
     }
+
+    public function test_daily_employee_with_sick_and_permit_reduces_paid_days_correctly(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        $emp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'off_days' => ['sunday'],
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $emp->id,
+            'salary_type' => 'daily',
+            'basic_salary' => 70000,
+            'meal_allowance' => 0,
+            'transport_allowance' => 0,
+            'attendance_allowance' => 0,
+            'working_days_per_month' => 25,
+        ]);
+
+        // Days: 22 Present, 2 Sick, 2 Excused
+        // 1-22 Aug present (excluding Sundays 2, 9, 16, 23, 30)
+        $presentDates = [
+            '2026-08-01', '2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08',
+            '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15',
+            '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22',
+            '2026-08-24', '2026-08-25', '2026-08-26'
+        ];
+        foreach ($presentDates as $pDate) {
+            \App\Models\Attendance::create([
+                'user_id' => $emp->id,
+                'date' => $pDate,
+                'status' => 'present',
+            ]);
+        }
+
+        // 2 Sick days
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-27', 'status' => 'sick']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-28', 'status' => 'sick']);
+
+        // 2 Excused days
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-29', 'status' => 'excused']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-31', 'status' => 'excused']);
+
+        $this->actingAs($payrollAdmin);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-08')
+            ->set('generate_start_date', '2026-08-01')
+            ->set('generate_end_date', '2026-08-31')
+            ->call('generatePayroll');
+
+        $payroll = Payroll::where('employee_id', $emp->id)->where('period_month', '2026-08')->first();
+
+        $this->assertNotNull($payroll);
+        $this->assertEquals(0, $payroll->total_absent);
+        $this->assertEquals(2, $payroll->total_sick);
+        $this->assertEquals(2, $payroll->total_excused);
+        $this->assertEquals(22, $payroll->total_present);
+
+        // Effective paid days = 25 - (0 Alpa + 2 Sick + 2 Excused) = 21 days!
+        // Basic salary earned = 21 * 70.000 = 1.470.000
+        $this->assertEquals(21 * 70000, $payroll->basic_salary_earned);
+        $this->assertEquals(21 * 70000, $payroll->net_salary);
+        $this->assertEquals(0, $payroll->total_deduction);
+    }
 }

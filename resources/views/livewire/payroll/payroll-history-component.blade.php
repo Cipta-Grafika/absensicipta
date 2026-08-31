@@ -691,7 +691,10 @@
                   <td class="px-2 py-2 font-mono {{ $epHasAcc ? 'text-gray-900 dark:text-white' : 'text-amber-500 italic' }} whitespace-nowrap">
                     {{ $epHasAcc ? $ep->employee->paymentMethod->bank_account : 'Kosong' }}
                   </td>
-                  <td class="px-2 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">{{ $epReceiver }}</td>
+                  <td class="px-2 py-2 text-left whitespace-nowrap">
+                    <span class="font-semibold text-gray-900 dark:text-white block">{{ $epReceiver }}</span>
+                    <span class="text-[10px] font-normal text-gray-500 dark:text-gray-400 block">{{ $ep->employee?->division?->name ?? 'Tanpa Divisi' }}</span>
+                  </td>
                   <td class="px-2 py-2 font-mono text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $ep->employee?->nip ?? '-' }}</td>
                   <td class="px-2 py-2 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                     Rp {{ number_format($ep->net_salary, 2, ',', '.') }}

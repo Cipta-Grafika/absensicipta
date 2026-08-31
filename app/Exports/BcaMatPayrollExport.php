@@ -45,7 +45,7 @@ class BcaMatPayrollExport
     }
 
     /**
-     * Get the query/collection of payrolls sorted by employee creation date (oldest to newest).
+     * Get the query/collection of payrolls grouped by division and sorted by employee creation date (oldest to newest).
      */
     public function getPayrolls(): Collection
     {
@@ -60,9 +60,11 @@ class BcaMatPayrollExport
             $query->whereIn('payrolls.id', $this->selectedPayrollIds);
         }
 
-        // Join users to strictly sort by oldest employee first (users.created_at asc, users.id asc)
+        // Join users and divisions to group by division, then strictly sort from oldest to newest employee
         return $query->join('users', 'payrolls.employee_id', '=', 'users.id')
+            ->leftJoin('divisions', 'users.division_id', '=', 'divisions.id')
             ->select('payrolls.*')
+            ->orderByRaw('COALESCE(divisions.name, \'ZZZ\') ASC')
             ->orderBy('users.created_at', 'asc')
             ->orderBy('users.id', 'asc')
             ->get();

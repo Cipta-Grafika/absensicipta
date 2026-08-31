@@ -864,7 +864,7 @@ class ScanComponent extends Component
         $absent_deduction = $daily_rate_approx * $effective_absent;
 
         $effective_excused = min($total_excused, max(1, $days_divisor));
-        $excused_deduction = ($days_divisor > 0) ? ($effective_excused / ($days_divisor * 2)) * $fixed_income + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+        $excused_deduction = ($days_divisor > 0) ? ($effective_excused / ($days_divisor * 2)) * ($salary->basic_salary ?? 0) + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
 
         $effective_sick = min($total_sick, max(1, $days_divisor));
         $sick_deduction = ($days_divisor > 0) ? ($effective_sick / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
