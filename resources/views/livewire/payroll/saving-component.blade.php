@@ -162,12 +162,12 @@
             </div>
 
             <!-- Divisi Dropdown -->
-            <select wire:model.live="memberDivision" class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
+            <x-select wire:model.live="memberDivision" class="text-xs">
               <option value="">Semua Divisi</option>
               @foreach($divisions as $div)
                 <option value="{{ $div->id }}">{{ $div->name }}</option>
               @endforeach
-            </select>
+            </x-select>
           </div>
 
           <!-- Search Bar -->

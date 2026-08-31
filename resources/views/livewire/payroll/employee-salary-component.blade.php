@@ -168,10 +168,10 @@
         <div class="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <x-label for="salary_type" value="{{ __('Tipe Gaji') }}" />
-            <select id="salary_type" wire:model.live="salary_type" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+            <x-select id="salary_type" wire:model.live="salary_type" class="mt-1 block w-full">
               <option value="monthly">Bulanan (Monthly)</option>
               <option value="daily">Harian (Daily)</option>
-            </select>
+            </x-select>
             <x-input-error for="salary_type" class="mt-2" />
           </div>
 
@@ -232,25 +232,24 @@
 
         <div class="sm:col-span-2">
           <x-label for="tax_master_id" value="{{ __('Kategori Pajak PPh 21 (TER / Tarif Efektif)') }}" />
-          <select id="tax_master_id" wire:model.live="tax_master_id" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+          <x-select id="tax_master_id" wire:model.live="tax_master_id" class="mt-1 block w-full">
             <option value="">-- Tidak Ada / Non-PPH 21 --</option>
             @foreach($taxMastersList as $t)
               <option value="{{ $t->id }}">{{ $t->name }}</option>
             @endforeach
-          </select>
+          </x-select>
           <p class="mt-1 text-xs text-gray-500">Pilih kategori Tarif Efektif Rata-rata (TER) PPh 21 dari Master Pajak untuk karyawan ini.</p>
           <x-input-error for="tax_master_id" class="mt-2" />
         </div>
 
-
         <div class="sm:col-span-2">
           <x-label for="savings_id" value="{{ __('Syirkah / Tabungan (Opsional)') }}" />
-          <select id="savings_id" wire:model.live="savings_id" class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm">
+          <x-select id="savings_id" wire:model.live="savings_id" class="mt-1 block w-full">
             <option value="">-- Tidak Ada --</option>
             @foreach($savingsList as $s)
               <option value="{{ $s->id }}">{{ $s->savings_name }} (Wajib: Rp{{ number_format($s->mandatory_savings, 0, ',', '.') }}, Default Sukarela: Rp{{ number_format($s->secondary_savings, 0, ',', '.') }})</option>
             @endforeach
-          </select>
+          </x-select>
           <p class="mt-1 text-xs text-gray-500">Pilih program syirkah yang diikuti oleh karyawan ini.</p>
           <x-input-error for="savings_id" class="mt-2" />
         </div>

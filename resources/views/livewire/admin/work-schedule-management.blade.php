@@ -541,10 +541,10 @@
 
         <div class="mt-4">
           <x-label for="is_working_day" value="Status Roster" />
-          <select id="is_working_day" wire:model="is_working_day" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+          <x-select id="is_working_day" wire:model="is_working_day" class="mt-1 block w-full">
             <option value="1">Hari Kerja (Masuk)</option>
             <option value="0">Hari Libur (Day Off)</option>
-          </select>
+          </x-select>
           <x-input-error for="is_working_day" class="mt-1" />
         </div>
 
@@ -635,12 +635,12 @@
       <x-slot name="content">
         <div>
           <x-label for="edit_user_id" value="Karyawan" />
-          <select id="edit_user_id" wire:model="edit_user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+          <x-select id="edit_user_id" wire:model="edit_user_id" class="mt-1 block w-full">
             <option value="">Pilih Karyawan</option>
             @foreach ($users as $u)
               <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->division->name ?? 'Tanpa Divisi' }})</option>
             @endforeach
-          </select>
+          </x-select>
           <x-input-error for="edit_user_id" class="mt-1" />
         </div>
 
@@ -653,10 +653,10 @@
 
           <div>
             <x-label for="edit_is_working_day" value="Status Roster" />
-            <select id="edit_is_working_day" wire:model="edit_is_working_day" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <x-select id="edit_is_working_day" wire:model="edit_is_working_day" class="mt-1 block w-full">
               <option value="1">Hari Kerja (Masuk)</option>
               <option value="0">Hari Libur (Day Off)</option>
-            </select>
+            </x-select>
             <x-input-error for="edit_is_working_day" class="mt-1" />
           </div>
         </div>

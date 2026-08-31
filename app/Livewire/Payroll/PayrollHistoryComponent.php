@@ -223,6 +223,12 @@ class PayrollHistoryComponent extends Component
                     \App\Models\FlexibleDeduction::whereIn('id', $existingFlexIds)->update(['is_applied' => false, 'payroll_id' => null, 'saving_transaction_id' => null]);
                 }
 
+                $existingErrorIds = \App\Models\ErrorDeduction::whereIn('payroll_id', $payrollIds)->pluck('id');
+                if ($existingErrorIds->isNotEmpty()) {
+                    \App\Models\SavingTransaction::where('reference_type', 'error_deduction')->whereIn('reference_id', $existingErrorIds)->delete();
+                    \App\Models\ErrorDeduction::whereIn('id', $existingErrorIds)->update(['is_applied' => false, 'status' => 'approved', 'payroll_id' => null, 'saving_transaction_id' => null]);
+                }
+
                 \App\Models\PayrollDetail::whereIn('payroll_id', $payrollIds)->delete();
                 $count = Payroll::whereIn('id', $payrollIds)->delete();
 
@@ -288,6 +294,12 @@ class PayrollHistoryComponent extends Component
                 if ($existingFlexIds->isNotEmpty()) {
                     \App\Models\SavingTransaction::where('reference_type', 'flexible_deduction')->whereIn('reference_id', $existingFlexIds)->delete();
                     \App\Models\FlexibleDeduction::whereIn('id', $existingFlexIds)->update(['is_applied' => false, 'payroll_id' => null, 'saving_transaction_id' => null]);
+                }
+
+                $existingErrorIds = \App\Models\ErrorDeduction::where('payroll_id', $payroll->id)->pluck('id');
+                if ($existingErrorIds->isNotEmpty()) {
+                    \App\Models\SavingTransaction::where('reference_type', 'error_deduction')->whereIn('reference_id', $existingErrorIds)->delete();
+                    \App\Models\ErrorDeduction::whereIn('id', $existingErrorIds)->update(['is_applied' => false, 'status' => 'approved', 'payroll_id' => null, 'saving_transaction_id' => null]);
                 }
 
                 \App\Models\PayrollDetail::where('payroll_id', $payroll->id)->delete();
@@ -405,6 +417,13 @@ class PayrollHistoryComponent extends Component
                     ->get()
                     ->groupBy('user_id');
 
+                $allErrorDeductions = \App\Models\ErrorDeduction::whereIn('user_id', $employeeIds)
+                    ->where('period_month', $this->generate_period_month)
+                    ->where('amount', '>', 0)
+                    ->whereIn('status', ['pending', 'approved', 'processed'])
+                    ->get()
+                    ->groupBy('user_id');
+
                 // Clean up any existing payroll and related records for the regenerated month to ensure full overwrite and no duplicates
                 $allExistingPayrolls = Payroll::whereIn('employee_id', $employeeIds)
                     ->where('period_month', $this->generate_period_month)
@@ -420,6 +439,12 @@ class PayrollHistoryComponent extends Component
                     if ($existingFlexIds->isNotEmpty()) {
                         \App\Models\SavingTransaction::where('reference_type', 'flexible_deduction')->whereIn('reference_id', $existingFlexIds)->delete();
                         \App\Models\FlexibleDeduction::whereIn('id', $existingFlexIds)->update(['is_applied' => false, 'payroll_id' => null, 'saving_transaction_id' => null]);
+                    }
+
+                    $existingErrorIds = \App\Models\ErrorDeduction::whereIn('payroll_id', $existingPayrollIds)->pluck('id');
+                    if ($existingErrorIds->isNotEmpty()) {
+                        \App\Models\SavingTransaction::where('reference_type', 'error_deduction')->whereIn('reference_id', $existingErrorIds)->delete();
+                        \App\Models\ErrorDeduction::whereIn('id', $existingErrorIds)->update(['is_applied' => false, 'status' => 'approved', 'payroll_id' => null, 'saving_transaction_id' => null]);
                     }
 
                     \App\Models\PayrollDetail::whereIn('payroll_id', $existingPayrollIds)->delete();
@@ -684,6 +709,15 @@ class PayrollHistoryComponent extends Component
                         }
                     }
 
+                    // Error Deductions Logic (Log Potongan Error Produksi / Kerusakan)
+                    $emp_error_deductions = $allErrorDeductions->get($emp->id, collect());
+                    $error_deduction_total = 0;
+                    foreach ($emp_error_deductions as $err) {
+                        if ($err->deduction_source === 'payroll') {
+                            $error_deduction_total += (int) round($err->amount);
+                        }
+                    }
+
                     // Total Gross (Penghasilan Bruto)
                     $total_gross = $basic_salary_earned + $total_allowance + $total_overtime_pay;
 
@@ -705,11 +739,11 @@ class PayrollHistoryComponent extends Component
 
                     // If zero attendance, ensure absent deduction + other deductions match exact total gross without exceeding
                     if ($total_paid_days == 0) {
-                        $other_deductions = $syirkah_deduction + $loan_deduction + $flex_deduction_total + $bpjs_deduction + $pph21_deduction;
+                        $other_deductions = $syirkah_deduction + $loan_deduction + $flex_deduction_total + $error_deduction_total + $bpjs_deduction + $pph21_deduction;
                         $absent_deduction = max(0, $fixed_income - $other_deductions);
                     }
 
-                    $total_deduction = (int) round($absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction + $flex_deduction_total + $bpjs_deduction + $pph21_deduction);
+                    $total_deduction = (int) round($absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction + $flex_deduction_total + $error_deduction_total + $bpjs_deduction + $pph21_deduction);
                     $total_deduction = min($total_deduction, $total_gross);
                     $net_salary = max(0, $total_gross - $total_deduction);
 
@@ -812,6 +846,64 @@ class PayrollHistoryComponent extends Component
                                 'type' => 'deduction',
                                 'name' => 'Potongan: ' . ($flex->program->name ?? 'Fleksibel'),
                                 'amount' => (int) round($flex->amount),
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+                    }
+
+                    // Process Error Deductions (Log Potongan Error Produksi / Kerusakan)
+                    foreach ($emp_error_deductions as $err) {
+                        $savingTx = null;
+                        if (in_array($err->deduction_source, ['syirkah_mandatory', 'syirkah_secondary', 'syirkah_all'])) {
+                            $savingProgram = $salary->savings ?? \App\Models\Saving::first();
+                            if ($savingProgram) {
+                                $mandAmount = 0;
+                                $secAmount = 0;
+
+                                if ($err->deduction_source === 'syirkah_mandatory') {
+                                    $mandAmount = (float) $err->amount;
+                                } elseif ($err->deduction_source === 'syirkah_secondary') {
+                                    $secAmount = (float) $err->amount;
+                                } elseif ($err->deduction_source === 'syirkah_all') {
+                                    $depSec = (float) \App\Models\SavingTransaction::where('user_id', $emp->id)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
+                                    $wdSec = (float) \App\Models\SavingTransaction::where('user_id', $emp->id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+                                    $availSec = max(0.0, $depSec - $wdSec);
+                                    $secAmount = min((float) $err->amount, $availSec);
+                                    $mandAmount = max(0.0, (float) $err->amount - $secAmount);
+                                }
+
+                                $savingTx = \App\Models\SavingTransaction::create([
+                                    'user_id' => $emp->id,
+                                    'savings_id' => $savingProgram->id,
+                                    'transaction_type' => 'withdrawal',
+                                    'mandatory_amount' => $mandAmount,
+                                    'secondary_amount' => $secAmount,
+                                    'status' => 'approved',
+                                    'period_month' => $this->generate_period_month,
+                                    'reference_type' => 'error_deduction',
+                                    'reference_id' => $err->id,
+                                    'description' => 'Potongan Error: ' . $err->error_title . ' via ' . $err->deduction_source_label,
+                                    'approved_by' => \Illuminate\Support\Facades\Auth::id(),
+                                    'approved_at' => now(),
+                                ]);
+                                \App\Services\SavingTransactionService::recalculateUserTransactions($emp->id);
+                            }
+                        }
+
+                        $err->update([
+                            'status' => 'processed',
+                            'is_applied' => true,
+                            'payroll_id' => $payroll->id,
+                            'saving_transaction_id' => $savingTx?->id,
+                        ]);
+
+                        if ($err->deduction_source === 'payroll') {
+                            $allPayrollDetailsToInsert[] = [
+                                'payroll_id' => $payroll->id,
+                                'type' => 'deduction',
+                                'name' => 'Potongan Error: ' . $err->error_title,
+                                'amount' => (int) round($err->amount),
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ];
@@ -930,6 +1022,25 @@ class PayrollHistoryComponent extends Component
                             'amount' => (float) $fd->amount,
                         ];
                     }
+                }
+
+                // Check error deductions
+                $errorDeds = \App\Models\ErrorDeduction::where('payroll_id', $payroll->id)->get();
+                foreach ($errorDeds as $ed) {
+                    if ($ed->deduction_source === 'payroll') {
+                        $deductions[] = [
+                            'name' => 'Potongan Error: ' . $ed->error_title,
+                            'amount' => (float) $ed->amount,
+                        ];
+                    }
+                }
+
+                // Check BPJS from salary
+                if (($payroll->employee->salary->bpjs ?? 0) > 0) {
+                    $deductions[] = [
+                        'name' => 'Potongan BPJS',
+                        'amount' => (float) $payroll->employee->salary->bpjs,
+                    ];
                 }
 
                 // Remaining deduction is attendance deductions (Alpa, Terlambat, Sakit, Izin, etc.)

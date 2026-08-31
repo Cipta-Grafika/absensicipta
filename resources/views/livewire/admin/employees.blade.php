@@ -373,13 +373,13 @@
           </div>
           <div class="w-full">
             <x-label for="status">Status</x-label>
-            <select id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-indigo-600 dark:focus:ring-indigo-600" wire:model="form.status">
+            <x-select id="status" class="mt-1 block w-full" wire:model="form.status">
                 <option value="active">Aktif</option>
                 <option value="inactive">Tidak Aktif</option>
                 <option value="resign">Mengundurkan Diri (resign)</option>
                 <option value="suspend">Diskors (suspend)</option>
                 <option value="fired">Dipecat (fired)</option>
-            </select>
+            </x-select>
             @error('form.status')
               <x-input-error for="form.status" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -631,13 +631,13 @@
           </div>
           <div class="w-full">
             <x-label for="status">Status</x-label>
-            <select id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-indigo-600 dark:focus:ring-indigo-600" wire:model="form.status">
+            <x-select id="status" class="mt-1 block w-full" wire:model="form.status">
                 <option value="active">Aktif</option>
                 <option value="inactive">Tidak Aktif</option>
                 <option value="resign">Mengundurkan Diri (resign)</option>
                 <option value="suspend">Diskors (suspend)</option>
                 <option value="fired">Dipecat (fired)</option>
-            </select>
+            </x-select>
             @error('form.status')
               <x-input-error for="form.status" class="mt-2" message="{{ $message }}" />
             @enderror

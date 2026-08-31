@@ -322,23 +322,23 @@
 
         <div class="mt-4">
           <x-label for="cal_type" value="Pilih Jenis / Tipe Libur" />
-          <select id="cal_type" wire:model.live="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-sky-500 focus:ring-sky-500">
+          <x-select id="cal_type" wire:model.live="type" class="mt-1 block w-full">
             <option value="general">Nasional / Umum (Seluruh Karyawan)</option>
             <option value="division">Khusus Divisi tertentu</option>
             <option value="custom">Custom Multi-User (Pilih Karyawan Terpilih)</option>
-          </select>
+          </x-select>
           <x-input-error for="type" class="mt-1" />
         </div>
 
         @if ($type === 'division')
           <div class="mt-4">
             <x-label for="cal_division_id" value="Pilih Divisi" />
-            <select id="cal_division_id" wire:model="division_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-sky-500 focus:ring-sky-500">
+            <x-select id="cal_division_id" wire:model="division_id" class="mt-1 block w-full">
               <option value="">-- Pilih Divisi --</option>
               @foreach ($divisions as $div)
                 <option value="{{ $div->id }}">{{ $div->name }}</option>
               @endforeach
-            </select>
+            </x-select>
             <x-input-error for="division_id" class="mt-1" />
           </div>
         @endif
@@ -441,11 +441,11 @@
 
           <div>
             <x-label for="type" value="Tipe Libur" />
-            <select id="type" wire:model.live="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-sky-500 focus:ring-sky-500">
+            <x-select id="type" wire:model.live="type" class="mt-1 block w-full">
               <option value="general">Nasional / Umum (Seluruh Karyawan)</option>
               <option value="division">Khusus Divisi tertentu</option>
               <option value="custom">Custom Multi-User (Rolling User)</option>
-            </select>
+            </x-select>
             <x-input-error for="type" class="mt-1" />
           </div>
         </div>
@@ -453,12 +453,12 @@
         @if ($type === 'division')
           <div class="mt-4">
             <x-label for="division_id" value="Pilih Divisi" />
-            <select id="division_id" wire:model="division_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-sky-500 focus:ring-sky-500">
+            <x-select id="division_id" wire:model="division_id" class="mt-1 block w-full">
               <option value="">-- Pilih Divisi --</option>
               @foreach ($divisions as $div)
                 <option value="{{ $div->id }}">{{ $div->name }}</option>
               @endforeach
-            </select>
+            </x-select>
             <x-input-error for="division_id" class="mt-1" />
           </div>
         @endif
@@ -561,11 +561,11 @@
 
           <div>
             <x-label for="edit_type" value="Tipe Libur" />
-            <select id="edit_type" wire:model.live="type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-sky-500 focus:ring-sky-500">
+            <x-select id="edit_type" wire:model.live="type" class="mt-1 block w-full">
               <option value="general">Nasional / Umum (Seluruh Karyawan)</option>
               <option value="division">Khusus Divisi tertentu</option>
               <option value="custom">Custom Multi-User (Rolling User)</option>
-            </select>
+            </x-select>
             <x-input-error for="type" class="mt-1" />
           </div>
         </div>
@@ -573,12 +573,12 @@
         @if ($type === 'division')
           <div class="mt-4">
             <x-label for="edit_division_id" value="Pilih Divisi" />
-            <select id="edit_division_id" wire:model="division_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-sky-500 focus:ring-sky-500">
+            <x-select id="edit_division_id" wire:model="division_id" class="mt-1 block w-full">
               <option value="">-- Pilih Divisi --</option>
               @foreach ($divisions as $div)
                 <option value="{{ $div->id }}">{{ $div->name }}</option>
               @endforeach
-            </select>
+            </x-select>
             <x-input-error for="division_id" class="mt-1" />
           </div>
         @endif

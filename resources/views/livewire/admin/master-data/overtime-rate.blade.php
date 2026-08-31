@@ -151,8 +151,7 @@
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
             <x-label for="employee_type">Tipe Karyawan</x-label>
-            <select id="employee_type" wire:model="form.employee_type"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <x-select id="employee_type" wire:model="form.employee_type" class="mt-1 block w-full">
               <option value="all">Semua Tipe Karyawan</option>
               <option value="full-time">Full-time</option>
               <option value="contract">Kontrak (Contract)</option>
@@ -163,7 +162,7 @@
               <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
               <option value="outsourcing">Outsourcing</option>
               <option value="volunteer">Volunteer</option>
-            </select>
+            </x-select>
             @error('form.employee_type')
               <x-input-error for="form.employee_type" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -229,11 +228,10 @@
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
             <x-label for="rate_type">Tipe Bayaran</x-label>
-            <select id="rate_type" wire:model="form.rate_type"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <x-select id="rate_type" wire:model="form.rate_type" class="mt-1 block w-full">
               <option value="per_hour">Per Jam (Jumlah Jam x Nominal)</option>
               <option value="flat_package">Paket Flat (Nominal Tetap)</option>
-            </select>
+            </x-select>
             @error('form.rate_type')
               <x-input-error for="form.rate_type" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -251,13 +249,12 @@
         <div class="mt-4">
           @if(auth()->user()->isSuperadmin)
             <x-label for="division_id">Divisi Scope</x-label>
-            <select id="division_id" wire:model="form.division_id"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <x-select id="division_id" wire:model="form.division_id" class="mt-1 block w-full">
               <option value="">Global (Semua Divisi)</option>
               @foreach ($divisions as $division)
                 <option value="{{ $division->id }}">{{ $division->name }}</option>
               @endforeach
-            </select>
+            </x-select>
             @error('form.division_id')
               <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -301,8 +298,7 @@
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
             <x-label for="edit_employee_type">Tipe Karyawan</x-label>
-            <select id="edit_employee_type" wire:model="form.employee_type"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <x-select id="edit_employee_type" wire:model="form.employee_type" class="mt-1 block w-full">
               <option value="all">Semua Tipe Karyawan</option>
               <option value="full-time">Full-time</option>
               <option value="contract">Kontrak (Contract)</option>
@@ -313,7 +309,7 @@
               <option value="pkl">PKL (Praktik Kerja Lapangan)</option>
               <option value="outsourcing">Outsourcing</option>
               <option value="volunteer">Volunteer</option>
-            </select>
+            </x-select>
             @error('form.employee_type')
               <x-input-error for="form.employee_type" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -375,11 +371,10 @@
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
             <x-label for="edit_rate_type">Tipe Bayaran</x-label>
-            <select id="edit_rate_type" wire:model="form.rate_type"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <x-select id="edit_rate_type" wire:model="form.rate_type" class="mt-1 block w-full">
               <option value="per_hour">Per Jam (Jumlah Jam x Nominal)</option>
               <option value="flat_package">Paket Flat (Nominal Tetap)</option>
-            </select>
+            </x-select>
             @error('form.rate_type')
               <x-input-error for="form.rate_type" class="mt-2" message="{{ $message }}" />
             @enderror
@@ -397,13 +392,12 @@
         <div class="mt-4">
           @if(auth()->user()->isSuperadmin)
             <x-label for="edit_division_id">Divisi Scope</x-label>
-            <select id="edit_division_id" wire:model="form.division_id"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <x-select id="edit_division_id" wire:model="form.division_id" class="mt-1 block w-full">
               <option value="">Global (Semua Divisi)</option>
               @foreach ($divisions as $division)
                 <option value="{{ $division->id }}">{{ $division->name }}</option>
               @endforeach
-            </select>
+            </x-select>
             @error('form.division_id')
               <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
             @enderror

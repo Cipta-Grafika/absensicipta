@@ -989,6 +989,21 @@ class ScanComponent extends Component
                     'amount' => (float) $salary->pph21,
                 ];
             }
+
+            // Check pending/approved error deductions for current month
+            $activeErrorDeds = \App\Models\ErrorDeduction::where('user_id', $user->id)
+                ->where('period_month', date('Y-m'))
+                ->where('deduction_source', 'payroll')
+                ->whereIn('status', ['pending', 'approved'])
+                ->get();
+
+            foreach ($activeErrorDeds as $ed) {
+                $items[] = [
+                    'name' => 'Potongan Error: ' . $ed->error_title,
+                    'detail' => 'Kesalahan Produksi / Log Error',
+                    'amount' => (float) $ed->amount,
+                ];
+            }
         }
 
         $total_deduction = (float) array_sum(array_column($items, 'amount'));

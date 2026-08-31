@@ -245,6 +245,11 @@ class User extends Authenticatable
         return $this->hasMany(FlexibleDeduction::class);
     }
 
+    public function errorDeductions()
+    {
+        return $this->hasMany(ErrorDeduction::class);
+    }
+
     /**
      * Scope query to only include working employees (active or suspend).
      */
