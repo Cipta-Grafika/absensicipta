@@ -16,7 +16,7 @@
         <x-heroicon-o-funnel class="mr-1.5 h-4 w-4 text-sky-500" />
         Filter
       </x-secondary-button>
-      <x-button wire:click="openCreateModal" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800">
+      <x-button type="button" x-data @click.prevent="$dispatch('open-create-modal')" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800">
         <x-heroicon-o-plus class="mr-1.5 h-4 w-4" />
         Tambah Tarif
       </x-button>
@@ -24,7 +24,7 @@
   </div>
 </x-slot>
 
-<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-create-modal.window="$wire.openCreateModal()">
   <div class="w-full sm:px-6 lg:px-8">
     <x-filter-sidebar maxWidth="sm">
       <x-slot name="title">Filter Pajak</x-slot>
@@ -300,3 +300,11 @@
     </x-slot>
   </x-confirmation-modal>
 </div>
+
+<script>
+  window.addEventListener('open-create-modal', event => {
+    if (window.Livewire) {
+      @this.openCreateModal();
+    }
+  });
+</script>

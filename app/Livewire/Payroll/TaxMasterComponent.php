@@ -65,6 +65,7 @@ class TaxMasterComponent extends Component
         $this->resetPage();
     }
 
+    #[\Livewire\Attributes\On('open-create-modal')]
     public function openCreateModal()
     {
         $this->resetValidation();

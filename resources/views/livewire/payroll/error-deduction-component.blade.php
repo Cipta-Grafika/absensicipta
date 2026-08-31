@@ -16,7 +16,7 @@
         <x-heroicon-o-funnel class="mr-1.5 h-4 w-4 text-sky-500" />
         Filter
       </x-secondary-button>
-      <x-button wire:click="openCreateModal" class="bg-rose-600 hover:bg-rose-700 active:bg-rose-800 focus:ring-rose-500">
+      <x-button type="button" x-data @click.prevent="$dispatch('open-create-modal')" class="bg-rose-600 hover:bg-rose-700 active:bg-rose-800 focus:ring-rose-500">
         <x-heroicon-o-plus class="mr-1.5 h-4 w-4" />
         Tambah Log Error
       </x-button>
@@ -24,7 +24,7 @@
   </div>
 </x-slot>
 
-<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-create-modal.window="$wire.openCreateModal()">
   <div class="w-full sm:px-6 lg:px-8">
     <!-- Filter Sidebar Drawer -->
     <x-filter-sidebar maxWidth="sm">
@@ -159,6 +159,10 @@
             </div>
             <x-input type="text" class="block w-full pl-9 text-xs sm:text-sm !py-1.5" wire:model.live.debounce.300ms="search" placeholder="Cari nama, NIP, judul error..." />
           </div>
+          <x-button type="button" wire:click="openCreateModal" class="bg-rose-600 hover:bg-rose-700 active:bg-rose-800 focus:ring-rose-500 !py-1.5 text-xs whitespace-nowrap">
+            <x-heroicon-o-plus class="mr-1 h-3.5 w-3.5" />
+            Tambah Error
+          </x-button>
         </div>
       </div>
 
@@ -428,3 +432,11 @@
     </x-slot>
   </x-confirmation-modal>
 </div>
+
+<script>
+  window.addEventListener('open-create-modal', event => {
+    if (window.Livewire) {
+      @this.openCreateModal();
+    }
+  });
+</script>

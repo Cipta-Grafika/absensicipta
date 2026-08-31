@@ -127,6 +127,7 @@ class ErrorDeductionComponent extends Component
         $this->employee_syirkah_secondary = max(0, $depositSecondary - $withdrawalSecondary);
     }
 
+    #[\Livewire\Attributes\On('open-create-modal')]
     public function openCreateModal()
     {
         $this->resetValidation();
