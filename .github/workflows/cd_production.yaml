@@ -55,13 +55,16 @@ jobs:
             php artisan view:cache
             php artisan cache:clear
             
-            # 5. Jalankan Migrasi Database
+            # 5. Jalankan Migrasi & Seeder Database
             # PERHATIAN PENTING: Di environment production, Laravel WAJIB menggunakan flag --force.
             # Flag --force di Laravel TIDAK menghapus atau me-reset database Anda!
             # --force hanya berarti "Lewati pertanyaan konfirmasi 'Are you sure?'". 
-            # Tanpa --force, script ini akan dibatalkan otomatis oleh Laravel dan migrasi GAGAL dijalankan.
+            # Tanpa --force, script ini akan dibatalkan otomatis oleh Laravel dan migrasi/seeder GAGAL dijalankan.
             echo "Running database migrations..."
             php artisan migrate --force --no-interaction
+            
+            echo "Running database seeders..."
+            php artisan db:seed --class=TaxMasterSeeder --force --no-interaction
             
             # 6. Restart Queue Worker dan Scheduler (via PM2)
             echo "Restarting background jobs..."
