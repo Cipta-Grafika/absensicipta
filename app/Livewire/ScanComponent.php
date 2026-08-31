@@ -856,8 +856,13 @@ class ScanComponent extends Component
             $total_unreplaced_imp_minutes += $unreplaced;
         }
 
-        $late_rate = $salary->late_deduction_per_minute ?? $salary->late_deduction_rate ?? 0;
-        $late_deduction = $total_late_minutes * $late_rate;
+        $isCiptaFood = strcasecmp(trim($user->division?->name ?? ''), 'Cipta Food') === 0;
+        if ($isCiptaFood) {
+            $late_deduction = (float) ($late_days_count * 10000);
+        } else {
+            $late_rate = $salary->late_deduction_per_minute ?? $salary->late_deduction_rate ?? 0;
+            $late_deduction = $total_late_minutes * $late_rate;
+        }
         $imp_deduction = ($days_divisor > 0) ? $total_unreplaced_imp_minutes * ($fixed_income / ($days_divisor * 8 * 60)) : 0;
 
         $effective_absent = min($total_absent, max(1, $days_divisor));
@@ -900,7 +905,7 @@ class ScanComponent extends Component
         if ($late_deduction > 0) {
             $items[] = [
                 'name' => 'Potongan Keterlambatan',
-                'detail' => $total_late_minutes . ' menit',
+                'detail' => $isCiptaFood ? ($late_days_count . ' hari (Flat Rp 10.000 / hari)') : ($total_late_minutes . ' menit'),
                 'amount' => (float) round($late_deduction, 0),
             ];
         }

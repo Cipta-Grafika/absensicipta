@@ -541,10 +541,11 @@ class PayrollHistoryComponent extends Component
                     $total_late_minutes = 0;
                     foreach ($attendances->where('status', 'late') as $att) {
                         if ($att->shift && $att->time_in) {
-                            $timeIn = \Carbon\Carbon::parse($att->time_in);
-                            $shiftStart = \Carbon\Carbon::parse($att->shift->start_time);
+                            $datePrefix = $att->date ? \Carbon\Carbon::parse($att->date)->format('Y-m-d') : now()->format('Y-m-d');
+                            $timeIn = \Carbon\Carbon::parse($datePrefix . ' ' . \Carbon\Carbon::parse($att->time_in)->format('H:i:s'));
+                            $shiftStart = \Carbon\Carbon::parse($datePrefix . ' ' . \Carbon\Carbon::parse($att->shift->start_time)->format('H:i:s'));
                             if ($timeIn->greaterThan($shiftStart)) {
-                                $total_late_minutes += $timeIn->diffInMinutes($shiftStart);
+                                $total_late_minutes += (int) abs($timeIn->diffInMinutes($shiftStart));
                             }
                         }
                     }
@@ -620,7 +621,14 @@ class PayrollHistoryComponent extends Component
                     $daily_rate_approx = (float) ($fixed_income / $days_divisor);
 
                     // Standard Deductions - BL-01 Fix: Explicit integer rounding
-                    $late_deduction = (int) round($total_late_minutes * $salary->late_deduction_per_minute);
+                    // Khusus divisi "Cipta Food": potongan telat/late adalah Rp 10.000 flat per hari telat
+                    $isCiptaFood = strcasecmp(trim($emp->division?->name ?? ''), 'Cipta Food') === 0;
+                    if ($isCiptaFood) {
+                        $late_deduction = (int) ($late_days_count * 10000);
+                    } else {
+                        $lateRate = $salary->late_deduction_rate ?? $salary->late_deduction_per_minute ?? 0;
+                        $late_deduction = (int) round($total_late_minutes * $lateRate);
+                    }
                     $imp_deduction = ($days_divisor > 0) ? (int) round($total_unreplaced_imp_minutes * ($fixed_income / ($days_divisor * 8 * 60))) : 0;
 
                     // Absent Deduction Rule:
@@ -930,7 +938,12 @@ class PayrollHistoryComponent extends Component
                             : "Potongan Alpa ($total_absent Hari)";
                         $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => $absentLabel, 'amount' => $absent_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     }
-                    if ($late_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Terlambat ($total_late_minutes Menit)", 'amount' => $late_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($late_deduction > 0) {
+                        $lateLabel = $isCiptaFood
+                            ? "Potongan Terlambat ({$late_days_count} Hari @ Rp 10.000)"
+                            : "Potongan Terlambat ($total_late_minutes Menit)";
+                        $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => $lateLabel, 'amount' => $late_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    }
                     if ($excused_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Izin ($total_excused Hari)", 'amount' => $excused_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     if ($sick_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Sakit ($total_sick Hari)", 'amount' => $sick_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     if ($cuti_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Cuti >2 Hr ($penalized_cuti_days Hari)", 'amount' => $cuti_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];

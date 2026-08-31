@@ -283,8 +283,14 @@
                         $coveredIds[] = $d->id;
                     }
                     $totalLateAmount = $lateDetails->sum('amount');
+                    $isCiptaFood = strcasecmp(trim($payroll->employee?->division?->name ?? ''), 'Cipta Food') === 0;
                     $lateMinutes = abs($payroll->total_late_minutes ?: 0);
-                    $lateLabel = "Telat" . ($lateMinutes > 0 ? " ({$lateMinutes} menit)" : '');
+                    if ($isCiptaFood && $totalLateAmount > 0) {
+                        $lateDaysCount = (int) round($totalLateAmount / 10000);
+                        $lateLabel = "Telat ({$lateDaysCount} Hari @ 10rb)";
+                    } else {
+                        $lateLabel = "Telat" . ($lateMinutes > 0 ? " ({$lateMinutes} menit)" : '');
+                    }
 
                     // 3. IMP
                     $impDetails = $deductions->filter(function($d) {

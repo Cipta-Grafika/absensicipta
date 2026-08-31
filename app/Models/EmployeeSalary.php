@@ -65,4 +65,9 @@ class EmployeeSalary extends Model
         }
         return (float) ($this->savings?->secondary_savings ?? 0);
     }
+
+    public function getLateDeductionPerMinuteAttribute(): float
+    {
+        return (float) ($this->late_deduction_rate ?? 0);
+    }
 }

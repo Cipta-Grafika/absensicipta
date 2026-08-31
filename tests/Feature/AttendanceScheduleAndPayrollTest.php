@@ -736,4 +736,115 @@ class AttendanceScheduleAndPayrollTest extends TestCase
         $resEmpPaid->assertStatus(200);
         $resEmpPaid->assertHeader('Content-Type', 'application/pdf');
     }
+
+    public function test_cipta_food_division_employee_has_flat_10000_late_deduction_per_day(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        
+        $ciptaFoodDivision = \App\Models\Division::create(['name' => 'Cipta Food']);
+        $otherDivision = \App\Models\Division::create(['name' => 'Percetakan']);
+
+        $shift = \App\Models\Shift::create([
+            'name' => 'Shift Food',
+            'start_time' => '08:00:00',
+            'end_time' => '17:00:00',
+        ]);
+
+        $foodEmp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'division_id' => $ciptaFoodDivision->id,
+            'off_days' => ['sunday'],
+        ]);
+
+        $otherEmp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'division_id' => $otherDivision->id,
+            'off_days' => ['sunday'],
+        ]);
+
+        // Monthly salary with Rp 300/min late deduction rate
+        EmployeeSalary::create([
+            'employee_id' => $foodEmp->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 3000000,
+            'meal_allowance' => 0,
+            'transport_allowance' => 0,
+            'attendance_allowance' => 0,
+            'late_deduction_rate' => 300, // 300 per minute
+            'working_days_per_month' => 25,
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $otherEmp->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 3000000,
+            'meal_allowance' => 0,
+            'transport_allowance' => 0,
+            'attendance_allowance' => 0,
+            'late_deduction_rate' => 300, // 300 per minute
+            'working_days_per_month' => 25,
+        ]);
+
+        // 25 working days. Both employees are late on 2 days (day 1: 30 min, day 2: 30 min => total 60 min over 2 days)
+        for ($day = 1; $day <= 31; $day++) {
+            $dateStr = sprintf('2026-08-%02d', $day);
+            $isWork = ($day <= 25);
+            WorkSchedule::create(['user_id' => $foodEmp->id, 'date' => $dateStr, 'is_working_day' => $isWork]);
+            WorkSchedule::create(['user_id' => $otherEmp->id, 'date' => $dateStr, 'is_working_day' => $isWork]);
+
+            if ($isWork) {
+                $isLate = in_array($day, [1, 2]);
+                $timeIn = $isLate ? '08:30:00' : '08:00:00';
+                $status = $isLate ? 'late' : 'present';
+
+                \App\Models\Attendance::create([
+                    'user_id' => $foodEmp->id,
+                    'shift_id' => $shift->id,
+                    'date' => $dateStr,
+                    'time_in' => $timeIn,
+                    'time_out' => '17:00:00',
+                    'status' => $status,
+                ]);
+
+                \App\Models\Attendance::create([
+                    'user_id' => $otherEmp->id,
+                    'shift_id' => $shift->id,
+                    'date' => $dateStr,
+                    'time_in' => $timeIn,
+                    'time_out' => '17:00:00',
+                    'status' => $status,
+                ]);
+            }
+        }
+
+        $this->actingAs($payrollAdmin);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-08')
+            ->set('generate_start_date', '2026-08-01')
+            ->set('generate_end_date', '2026-08-31')
+            ->call('generatePayroll');
+
+        $foodPayroll = Payroll::where('employee_id', $foodEmp->id)->where('period_month', '2026-08')->first();
+        $otherPayroll = Payroll::where('employee_id', $otherEmp->id)->where('period_month', '2026-08')->first();
+
+        $this->assertNotNull($foodPayroll);
+        $this->assertNotNull($otherPayroll);
+
+        // Food employee: 2 late days = 2 * Rp 10.000 = Rp 20.000 deduction
+        $this->assertEquals(20000, (int) $foodPayroll->total_deduction);
+        $this->assertEquals(2980000, (int) $foodPayroll->net_salary);
+        $lateDetailFood = $foodPayroll->details->where('type', 'deduction')->first();
+        $this->assertStringContainsString('2 Hari @ Rp 10.000', $lateDetailFood->name);
+        $this->assertEquals(20000, (int) $lateDetailFood->amount);
+
+        // Other employee: 60 minutes * Rp 300 = Rp 18.000 deduction
+        $this->assertEquals(18000, (int) $otherPayroll->total_deduction);
+        $this->assertEquals(2982000, (int) $otherPayroll->net_salary);
+        $lateDetailOther = $otherPayroll->details->where('type', 'deduction')->first();
+        $this->assertStringContainsString('60 Menit', $lateDetailOther->name);
+        $this->assertEquals(18000, (int) $lateDetailOther->amount);
+    }
 }
