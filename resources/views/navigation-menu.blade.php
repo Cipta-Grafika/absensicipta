@@ -209,6 +209,9 @@
             <x-nav-link href="{{ route('user.payslips') }}" :active="request()->routeIs('user.payslips')">
               Slip Gaji
             </x-nav-link>
+            <x-nav-link href="{{ route('user.syirkah') }}" :active="request()->routeIs('user.syirkah')">
+              Syirkah
+            </x-nav-link>
           @endif
         </div>
       </div>
@@ -483,6 +486,9 @@
         </x-responsive-nav-link>
         <x-responsive-nav-link href="{{ route('user.payslips') }}" :active="request()->routeIs('user.payslips')">
           Slip Gaji
+        </x-responsive-nav-link>
+        <x-responsive-nav-link href="{{ route('user.syirkah') }}" :active="request()->routeIs('user.syirkah')">
+          Syirkah
         </x-responsive-nav-link>
       @endif
     </div>

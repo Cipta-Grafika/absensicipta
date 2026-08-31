@@ -196,7 +196,21 @@
           <span class="text-[11px] leading-none tracking-tight">Gaji</span>
         </a>
 
-        <!-- 4. LEMBUR -->
+        <!-- 4. SYIRKAH -->
+        @php $active = request()->routeIs('user.syirkah') || request()->routeIs('syirkah*'); @endphp
+        <a href="{{ route('user.syirkah') }}" class="group relative flex flex-1 flex-col items-center justify-center h-full py-1 text-center transition-all duration-150 {{ $active ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200' }}">
+          <span class="absolute top-0 h-1 w-7 rounded-b-full bg-sky-500 dark:bg-sky-400 shadow-xs shadow-sky-500/50 transition-all duration-200 origin-center {{ $active ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0' }}"></span>
+          <div class="h-7 w-7 flex items-center justify-center mb-0.5 rounded-xl transition-all duration-150 {{ $active ? 'bg-sky-500/10 dark:bg-sky-400/20 scale-105' : '' }}">
+            @if($active)
+              <x-heroicon-s-building-library class="h-5 w-5 text-sky-600 dark:text-sky-400" />
+            @else
+              <x-heroicon-o-building-library class="h-5 w-5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
+            @endif
+          </div>
+          <span class="text-[11px] leading-none tracking-tight">Syirkah</span>
+        </a>
+
+        <!-- 5. LEMBUR -->
         @php $active = request()->routeIs('user.overtimes') || request()->routeIs('user.overtime*'); @endphp
         <a href="{{ route('user.overtimes') }}" class="group relative flex flex-1 flex-col items-center justify-center h-full py-1 text-center transition-all duration-150 {{ $active ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200' }}">
           <span class="absolute top-0 h-1 w-7 rounded-b-full bg-sky-500 dark:bg-sky-400 shadow-xs shadow-sky-500/50 transition-all duration-200 origin-center {{ $active ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0' }}"></span>
@@ -210,7 +224,7 @@
           <span class="text-[11px] leading-none tracking-tight">Lembur</span>
         </a>
 
-        <!-- 5. GANTI JAM -->
+        <!-- 6. GANTI JAM -->
         @php $active = request()->routeIs('user.replacement-hours') || request()->routeIs('user.replacement*'); @endphp
         <a href="{{ route('user.replacement-hours') }}" class="group relative flex flex-1 flex-col items-center justify-center h-full py-1 text-center transition-all duration-150 {{ $active ? 'text-sky-600 dark:text-sky-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200' }}">
           <span class="absolute top-0 h-1 w-7 rounded-b-full bg-sky-500 dark:bg-sky-400 shadow-xs shadow-sky-500/50 transition-all duration-200 origin-center {{ $active ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0' }}"></span>

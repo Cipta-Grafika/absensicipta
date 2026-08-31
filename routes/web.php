@@ -44,6 +44,10 @@ Route::middleware([
         Route::get('/replacement-hours', \App\Livewire\User\ReplacementHourComponent::class)
             ->name('user.replacement-hours');
 
+        Route::get('/syirkah', \App\Livewire\User\SyirkahHistoryComponent::class)
+            ->name('user.syirkah');
+        Route::get('/user/syirkah', fn () => redirect()->route('user.syirkah'));
+
         Route::get('/user/payslips/{id}/print', [\App\Http\Controllers\User\PayslipPrintController::class, 'print'])
             ->name('user.payslip.print');
     });

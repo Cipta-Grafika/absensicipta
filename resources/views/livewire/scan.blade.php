@@ -339,32 +339,40 @@
       </div>
     </div>
 
-    <!-- 5. NAVIGATION BUTTONS: ABSENSI, SLIP GAJI, LEMBUR & GANTI JAM (Hidden on mobile - available in bottom nav bar) -->
-    <div class="hidden md:grid grid-cols-2 gap-3 pt-2">
+    <!-- 5. NAVIGATION BUTTONS: ABSENSI, SLIP GAJI, SYIRKAH, LEMBUR & GANTI JAM (Hidden on mobile - available in bottom nav bar) -->
+    <div class="hidden md:grid grid-cols-5 gap-3 pt-2">
       <a href="{{ route('attendance-history') }}" class="col-span-1 cursor-pointer">
         <div
-          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-blue-600 dark:bg-blue-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-blue-700 dark:hover:bg-blue-500 md:gap-2 active:scale-95">
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-blue-600 dark:bg-blue-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-blue-700 dark:hover:bg-blue-500 active:scale-95">
           <x-heroicon-o-clock class="h-5 w-5 text-white shrink-0" />
           <span class="whitespace-nowrap">Absensi</span>
         </div>
       </a>
       <a href="{{ route('user.payslips') }}" class="col-span-1 cursor-pointer">
         <div
-          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-emerald-600 dark:bg-emerald-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-emerald-700 dark:hover:bg-emerald-500 md:gap-2 active:scale-95">
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-emerald-600 dark:bg-emerald-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-emerald-700 dark:hover:bg-emerald-500 active:scale-95">
           <x-heroicon-o-document-text class="h-5 w-5 text-white shrink-0" />
           <span class="whitespace-nowrap">Slip Gaji</span>
         </div>
       </a>
+      <a href="{{ route('user.syirkah') }}" class="col-span-1 cursor-pointer">
+        <div
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-teal-600 dark:bg-teal-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-teal-700 dark:hover:bg-teal-500 active:scale-95"
+          style="background-color: #0d9488;">
+          <x-heroicon-o-building-library class="h-5 w-5 text-white shrink-0" />
+          <span class="whitespace-nowrap">Syirkah</span>
+        </div>
+      </a>
       <a href="{{ route('user.overtimes') }}" class="col-span-1 cursor-pointer">
         <div
-          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-purple-600 dark:bg-purple-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-purple-700 dark:hover:bg-purple-500 md:gap-2 active:scale-95">
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-purple-600 dark:bg-purple-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-purple-700 dark:hover:bg-purple-500 active:scale-95">
           <x-heroicon-o-fire class="h-5 w-5 text-white shrink-0" />
           <span class="whitespace-nowrap">Lembur</span>
         </div>
       </a>
       <a href="{{ route('user.replacement-hours') }}" class="col-span-1 cursor-pointer">
         <div
-          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-amber-600 dark:bg-amber-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-amber-700 dark:hover:bg-amber-500 md:gap-2 active:scale-95">
+          class="flex flex-row items-center justify-center gap-2 rounded-xl bg-amber-600 dark:bg-amber-600 px-3 py-3 text-center font-bold text-white shadow-sm transition-all duration-100 hover:bg-amber-700 dark:hover:bg-amber-500 active:scale-95">
           <x-heroicon-o-arrow-path class="h-5 w-5 text-white shrink-0" />
           <span class="whitespace-nowrap">Ganti Jam</span>
         </div>
