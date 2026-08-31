@@ -363,7 +363,7 @@ class PayrollHistoryComponent extends Component
                 // Get active/suspend working employees who have a salary setup
                 $employeesQuery = \App\Models\User::onlyWorkingEmployee()
                     ->whereHas('salary')
-                    ->with(['salary.savings']);
+                    ->with(['salary.savings', 'salary.taxMaster']);
 
                 if ($this->generate_target === 'specific') {
                     $employeesQuery->whereIn('id', $this->selected_employee_ids);
@@ -684,14 +684,32 @@ class PayrollHistoryComponent extends Component
                         }
                     }
 
+                    // Total Gross (Penghasilan Bruto)
+                    $total_gross = $basic_salary_earned + $total_allowance + $total_overtime_pay;
+
+                    // BPJS Deduction Logic (Dari Master Gaji)
+                    $bpjs_deduction = 0;
+                    if (($salary->bpjs ?? 0) > 0 && $total_paid_days > 0) {
+                        $bpjs_deduction = (int) round($salary->bpjs);
+                    }
+
+                    // PPh 21 Deduction Logic (Dari Master Pajak TER atau Override Kustom)
+                    $pph21_deduction = 0;
+                    if ($total_paid_days > 0) {
+                        if ($salary->taxMaster && $salary->taxMaster->rate_percentage > 0) {
+                            $pph21_deduction = (int) round(($salary->taxMaster->rate_percentage / 100) * $total_gross);
+                        } elseif (($salary->pph21 ?? 0) > 0) {
+                            $pph21_deduction = (int) round($salary->pph21);
+                        }
+                    }
+
                     // If zero attendance, ensure absent deduction + other deductions match exact total gross without exceeding
                     if ($total_paid_days == 0) {
-                        $other_deductions = $syirkah_deduction + $loan_deduction + $flex_deduction_total;
+                        $other_deductions = $syirkah_deduction + $loan_deduction + $flex_deduction_total + $bpjs_deduction + $pph21_deduction;
                         $absent_deduction = max(0, $fixed_income - $other_deductions);
                     }
 
-                    $total_gross = $basic_salary_earned + $total_allowance + $total_overtime_pay;
-                    $total_deduction = (int) round($absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction + $flex_deduction_total);
+                    $total_deduction = (int) round($absent_deduction + $late_deduction + $imp_deduction + $excused_deduction + $sick_deduction + $cuti_deduction + $wfh_deduction + $late_penalty_deduction + $syirkah_deduction + $loan_deduction + $flex_deduction_total + $bpjs_deduction + $pph21_deduction);
                     $total_deduction = min($total_deduction, $total_gross);
                     $net_salary = max(0, $total_gross - $total_deduction);
 
@@ -828,6 +846,11 @@ class PayrollHistoryComponent extends Component
                     if ($late_penalty_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Penalti Terlambat >3x", 'amount' => $late_penalty_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     if ($imp_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan IMP Tdk Diganti ($total_unreplaced_imp_minutes Mnt)", 'amount' => $imp_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
                     if ($syirkah_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan Syirkah", 'amount' => $syirkah_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($bpjs_deduction > 0) $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => "Potongan BPJS", 'amount' => $bpjs_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    if ($pph21_deduction > 0) {
+                        $pphLabel = 'Potongan PPh 21' . ($salary->taxMaster ? " ({$salary->taxMaster->formatted_rate})" : '');
+                        $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => $pphLabel, 'amount' => $pph21_deduction, 'created_at' => $nowTs, 'updated_at' => $nowTs];
+                    }
                 }
 
                 // Batch insert all PayrollDetails in chunks for maximum performance

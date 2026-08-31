@@ -608,4 +608,89 @@ class AttendanceScheduleAndPayrollTest extends TestCase
         $this->assertEquals(24 * 60000, $payroll->net_salary);
         $this->assertEquals(0, $payroll->total_deduction);
     }
+
+    public function test_bpjs_and_pph21_deductions_calculated_and_recorded_in_payroll(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        $emp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'off_days' => ['sunday'],
+        ]);
+
+        $taxTier = \App\Models\TaxMaster::create([
+            'category' => 'TER A',
+            'code' => 'TER_A_02',
+            'name' => 'TER A Tier 2 (0.25%)',
+            'min_gross_income' => 5400001,
+            'max_gross_income' => 5650000,
+            'rate_percentage' => 0.25,
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $emp->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 4000000,
+            'meal_allowance' => 500000,
+            'transport_allowance' => 500000,
+            'attendance_allowance' => 500000, // Total gross = 5.500.000 (fits in Tier 2: 0.25%)
+            'working_days_per_month' => 25,
+            'bpjs' => 150000,
+            'tax_master_id' => $taxTier->id,
+        ]);
+
+        // Present all working days of August 2026 (26 days)
+        $dates = [
+            '2026-08-01', '2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08',
+            '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15',
+            '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22',
+            '2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29',
+            '2026-08-31'
+        ];
+        foreach ($dates as $pDate) {
+            \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => $pDate, 'status' => 'present']);
+        }
+
+        $this->actingAs($payrollAdmin);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-08')
+            ->set('generate_start_date', '2026-08-01')
+            ->set('generate_end_date', '2026-08-31')
+            ->call('generatePayroll');
+
+        $payroll = Payroll::with('details')->where('employee_id', $emp->id)->where('period_month', '2026-08')->first();
+
+        $this->assertNotNull($payroll);
+        // Gross income = 4.000.000 + 1.500.000 = 5.500.000
+        $gross = 5500000;
+        // PPh 21 = 0.25% * 5.500.000 = 13.750
+        $expectedPph = (int) round((0.25 / 100) * $gross); // 13750
+        $expectedBpjs = 150000;
+        $expectedTotalDeduction = $expectedBpjs + $expectedPph; // 163750
+
+        $this->assertEquals($expectedTotalDeduction, $payroll->total_deduction);
+        $this->assertEquals($gross - $expectedTotalDeduction, $payroll->net_salary);
+
+        // Check details table
+        $bpjsDetail = $payroll->details->where('type', 'deduction')->filter(fn($d) => str_contains($d->name, 'BPJS'))->first();
+        $this->assertNotNull($bpjsDetail);
+        $this->assertEquals($expectedBpjs, $bpjsDetail->amount);
+
+        $pphDetail = $payroll->details->where('type', 'deduction')->filter(fn($d) => str_contains($d->name, 'PPh 21'))->first();
+        $this->assertNotNull($pphDetail);
+        $this->assertEquals($expectedPph, $pphDetail->amount);
+
+        // Test HTML Payslip rendering contains real deduction values
+        $html = view('user.payslip-print', ['payroll' => $payroll])->render();
+        $this->assertStringContainsString('Potongan', $html);
+        $this->assertStringContainsString(number_format($expectedBpjs, 0, ',', ','), $html);
+        $this->assertStringContainsString(number_format($expectedPph, 0, ',', ','), $html);
+
+        // Test Print / PDF download response
+        $this->actingAs($emp);
+        $response = $this->get(route('user.payslip.print', $payroll->id));
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+    }
 }

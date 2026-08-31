@@ -315,7 +315,16 @@
                     $totalCutiAmount = $cutiDetails->sum('amount');
                     $cutiLabel = 'Penalti Cuti' . ($payroll->penalized_cuti_days > 0 ? " ({$payroll->penalized_cuti_days} Hari)" : '');
 
-                    // 6. PPh 21
+                    // 6. BPJS
+                    $bpjsDetails = $deductions->filter(function($d) {
+                        return stripos($d->name, 'BPJS') !== false;
+                    });
+                    foreach ($bpjsDetails as $d) {
+                        $coveredIds[] = $d->id;
+                    }
+                    $totalBpjsAmount = $bpjsDetails->sum('amount');
+
+                    // 7. PPh 21
                     $pphDetails = $deductions->filter(function($d) {
                         return stripos($d->name, 'PPh') !== false || stripos($d->name, 'Pajak') !== false;
                     });
@@ -331,6 +340,7 @@
                     if ($totalCutiAmount > 0 || $payroll->penalized_cuti_days > 0) {
                         $deductionRows[] = ['name' => $cutiLabel, 'amount' => $totalCutiAmount];
                     }
+                    $deductionRows[] = ['name' => 'BPJS', 'amount' => $totalBpjsAmount];
                     $deductionRows[] = ['name' => 'PPh 21', 'amount' => $totalPphAmount];
 
                     // 7. Dynamic remaining deductions (e.g. Pinjaman, Potongan Khusus/BCA, WFH, Sakit, Izin)

@@ -19,7 +19,7 @@ class PayslipPrintController extends Controller
         $user = auth()->user();
         $payrollQuery = Payroll::with(['employee.division', 'employee.jobTitle', 'employee.paymentMethod', 'details']);
 
-        if (!$user->isAdmin) {
+        if (!$user->isAdmin && !$user->isPayroll) {
             $payrollQuery->where('employee_id', $user->id);
         }
 

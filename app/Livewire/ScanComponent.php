@@ -964,6 +964,31 @@ class ScanComponent extends Component
                     ];
                 }
             }
+        } else {
+            if (($salary->bpjs ?? 0) > 0) {
+                $items[] = [
+                    'name' => 'Potongan BPJS',
+                    'detail' => 'Potongan Tetap Bulanan',
+                    'amount' => (float) $salary->bpjs,
+                ];
+            }
+            if ($salary->taxMaster && $salary->taxMaster->rate_percentage > 0) {
+                $approxGross = $fixed_income;
+                $pphEst = round(($salary->taxMaster->rate_percentage / 100) * $approxGross);
+                if ($pphEst > 0) {
+                    $items[] = [
+                        'name' => 'Potongan PPh 21 (' . $salary->taxMaster->formatted_rate . ')',
+                        'detail' => 'Estimasi PPh 21 TER',
+                        'amount' => (float) $pphEst,
+                    ];
+                }
+            } elseif (($salary->pph21 ?? 0) > 0) {
+                $items[] = [
+                    'name' => 'Potongan PPh 21',
+                    'detail' => 'Potongan Tetap Bulanan',
+                    'amount' => (float) $salary->pph21,
+                ];
+            }
         }
 
         $total_deduction = (float) array_sum(array_column($items, 'amount'));
