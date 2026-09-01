@@ -35,7 +35,23 @@ class OvertimeApprovalComponent extends Component
     public $isDeleteModalOpen = false;
     public $overtimeToDelete = null;
 
+    // Detail Modal State
+    public bool $isDetailModalOpen = false;
+    public ?int $selectedOvertimeId = null;
+
     protected $updatesQueryString = ['statusFilter'];
+
+    public function showDetail(int $id): void
+    {
+        $this->selectedOvertimeId = $id;
+        $this->isDetailModalOpen = true;
+    }
+
+    public function closeDetailModal(): void
+    {
+        $this->isDetailModalOpen = false;
+        $this->selectedOvertimeId = null;
+    }
 
     public function mount(): void
     {
@@ -293,6 +309,11 @@ class OvertimeApprovalComponent extends Component
         $perPageVal = $this->perPage === 'all' ? 999999 : (int) $this->perPage;
         $approvals = $query->paginate($perPageVal);
 
+        $selectedOvertime = null;
+        if ($this->isDetailModalOpen && $this->selectedOvertimeId) {
+            $selectedOvertime = Overtime::with(['employee.division', 'employee.jobTitle', 'employee.salary', 'approver'])->find($this->selectedOvertimeId);
+        }
+
         return view('livewire.admin.overtime-approval-component', [
             'approvals' => $approvals,
             'monthOvertimes' => $monthOvertimes,
@@ -301,6 +322,7 @@ class OvertimeApprovalComponent extends Component
             'calStart' => $calStart,
             'calEnd' => $calEnd,
             'calendar_month' => $selectedMonth,
+            'selectedOvertime' => $selectedOvertime,
         ])->layout('layouts.app');
     }
 
@@ -429,8 +451,13 @@ class OvertimeApprovalComponent extends Component
         
         $empId = $overtime->employee_id;
         $oDate = $overtime->overtime_date;
+        $deletedId = $overtime->id;
         $overtime->delete();
         
+        if ($this->selectedOvertimeId === $deletedId) {
+            $this->closeDetailModal();
+        }
+
         $this->syncDraftPayrollOvertime($empId, $oDate);
         $this->cancelDelete();
         $this->banner('Data pengajuan lembur berhasil dihapus.');
