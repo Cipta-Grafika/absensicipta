@@ -773,6 +773,10 @@
             </div>
           </div>
 
+          @php
+            $breakdownTiers = $payData['breakdown'] ?? [];
+          @endphp
+
           <!-- 3. Rincian & Akumulasi Nominal Bayaran Lembur -->
           <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-2xs">
             <div class="px-4 py-3 bg-gray-50 dark:bg-gray-800/90 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -780,50 +784,92 @@
                 <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Rincian Nominal Bayaran Lembur</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Rincian Kalkulasi & Akumulasi Tarif Lembur</span>
               </div>
-              <span class="text-[11px] text-gray-500 dark:text-gray-400">
-                Tarif: <strong>Rp {{ number_format($appliedRate, 0, ',', '.') }}</strong>/jam
+              <span class="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                {{ count($breakdownTiers) > 1 ? count($breakdownTiers) . ' Tingkatan Tarif' : '1 Tingkatan Tarif' }}
               </span>
             </div>
 
-            <div class="p-4 space-y-2.5 text-xs">
-              <!-- Baris 1: Upah Pokok Lembur -->
-              <div class="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-700/60">
-                <div class="text-gray-600 dark:text-gray-300">
-                  <span>Upah Lembur Pokok</span>
-                  <span class="text-gray-400">({{ $selectedOvertime->duration_hours }} Jam &times; Rp {{ number_format($appliedRate, 0, ',', '.') }})</span>
+            <div class="p-4 space-y-3 text-xs">
+              <!-- Tier Breakdown List -->
+              <div class="space-y-2">
+                <div class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Kalkulasi Upah Pokok Berjenjang (Tier Rate):
                 </div>
-                <div class="font-semibold text-gray-900 dark:text-white text-sm">
+
+                @if(!empty($breakdownTiers))
+                  <div class="space-y-1.5">
+                    @foreach($breakdownTiers as $idx => $tier)
+                      <div class="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/60 border border-gray-200/70 dark:border-gray-700/60">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                          <span class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-[10px] font-bold text-sky-700 dark:text-sky-300 shrink-0">
+                            {{ $idx + 1 }}
+                          </span>
+                          <div class="min-w-0">
+                            <div class="font-semibold text-gray-800 dark:text-gray-200 truncate">
+                              {{ $tier['name'] }}
+                              <span class="font-normal text-[11px] text-gray-500 dark:text-gray-400">({{ $tier['tier_range_name'] }})</span>
+                            </div>
+                            <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                              {{ $tier['hours'] }} Jam &times; Rp {{ number_format($tier['rate_amount'], 0, ',', '.') }}@if(($tier['rate_type'] ?? '') === 'flat_package') <span class="text-indigo-600 dark:text-indigo-400 font-medium">(Paket Flat)</span>@else/jam @endif
+                            </div>
+                          </div>
+                        </div>
+                        <div class="font-bold text-gray-900 dark:text-white text-xs sm:text-sm shrink-0 ml-3">
+                          Rp {{ number_format($tier['subtotal'], 0, ',', '.') }}
+                        </div>
+                      </div>
+                    @endforeach
+                  </div>
+                @else
+                  <div class="flex items-center justify-between py-1.5 px-3 rounded-lg bg-gray-50 dark:bg-gray-900/60 border border-gray-200/70 dark:border-gray-700/60">
+                    <div class="text-gray-700 dark:text-gray-300">
+                      <span>Upah Lembur Pokok</span>
+                      <span class="text-gray-400 text-[11px]">({{ $selectedOvertime->duration_hours }} Jam &times; Rp {{ number_format($appliedRate, 0, ',', '.') }})</span>
+                    </div>
+                    <div class="font-semibold text-gray-900 dark:text-white">
+                      Rp {{ number_format($baseHourlyPay, 0, ',', '.') }}
+                    </div>
+                  </div>
+                @endif
+              </div>
+
+              <!-- Subtotal Upah Lembur Pokok -->
+              <div class="flex items-center justify-between py-2 border-t border-gray-200/80 dark:border-gray-700/80 text-xs">
+                <div class="font-semibold text-gray-700 dark:text-gray-300">
+                  Subtotal Upah Pokok Lembur <span class="font-normal text-gray-500">({{ $selectedOvertime->duration_hours }} Jam)</span>
+                </div>
+                <div class="font-bold text-gray-900 dark:text-white text-sm">
                   Rp {{ number_format($baseHourlyPay, 0, ',', '.') }}
                 </div>
               </div>
 
-              <!-- Baris 2: Uang Makan Lembur -->
-              <div class="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-700/60">
-                <div class="text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
-                  <span>Uang Makan Lembur</span>
+              <!-- Baris Uang Makan Lembur -->
+              <div class="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-700/60 text-xs">
+                <div class="text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <span class="font-semibold">Uang Makan Lembur</span>
                   @if($mealAllowance > 0)
-                    <span class="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.2 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                    <span class="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300">
                       Memenuhi Syarat
                     </span>
                   @else
                     <span class="text-gray-400 text-[11px]">(Tidak memenuhi syarat)</span>
                   @endif
                 </div>
-                <div class="font-semibold {{ $mealAllowance > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400' }} text-sm">
+                <div class="font-bold {{ $mealAllowance > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400' }} text-sm">
                   Rp {{ number_format($mealAllowance, 0, ',', '.') }}
                 </div>
               </div>
 
-              <!-- Baris 3: Total Akumulasi Bayaran (Highlighted) -->
+              <!-- Total Akumulasi Bayaran (Highlighted) -->
               <div class="mt-3 p-4 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between">
                 <div>
                   <div class="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-200">
                     Total Akumulasi Bayaran Lembur
                   </div>
                   <div class="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
-                    Akumulasi upah pokok + uang makan lembur
+                    Akumulasi upah pokok lembur + uang makan
                   </div>
                 </div>
                 <div class="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">

@@ -119,12 +119,27 @@ class OvertimeComponent extends Component
         ])->layout('layouts.app');
     }
 
+    public function showDetail($id)
+    {
+        $overtime = Overtime::with(['employee.division', 'employee.jobTitle', 'employee.salary', 'approver'])
+            ->where('employee_id', Auth::id())
+            ->find($id);
+
+        if ($overtime) {
+            $this->selectedOvertime = $overtime;
+            $this->activeCalendarDate = $overtime->overtime_date ? Carbon::parse($overtime->overtime_date)->format('Y-m-d') : null;
+            $this->selectedDateDisplay = $overtime->overtime_date ? Carbon::parse($overtime->overtime_date)->locale('id')->isoFormat('dddd, DD MMMM YYYY') : '';
+            $this->isDetailModalOpen = true;
+        }
+    }
+
     public function handleDateClick($dateString)
     {
         $user = Auth::user();
         $formattedDate = Carbon::parse($dateString)->format('Y-m-d');
 
-        $existing = Overtime::where('employee_id', $user->id)
+        $existing = Overtime::with(['employee.division', 'employee.jobTitle', 'employee.salary', 'approver'])
+            ->where('employee_id', $user->id)
             ->where('overtime_date', $formattedDate)
             ->first();
 

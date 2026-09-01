@@ -109,7 +109,10 @@ class OvertimeRate extends Model
             return [
                 'applied_rate_amount' => 0.0,
                 'meal_allowance' => 0.0,
+                'total_hourly_pay' => 0.0,
                 'total_pay' => 0.0,
+                'breakdown' => [],
+                'meal_eligible' => false,
             ];
         }
 
@@ -152,6 +155,7 @@ class OvertimeRate extends Model
             $appliedMealAllowance = 0.0;
             $primaryRateAmount = 0.0;
             $previousMaxHours = 0.0;
+            $breakdownTiers = [];
 
             foreach ($candidateRates as $index => $rate) {
                 $minH = (float) $rate->min_hours;
@@ -170,11 +174,31 @@ class OvertimeRate extends Model
                             $primaryRateAmount = $rateAmount;
                         }
 
+                        $subtotal = 0.0;
                         if ($rate->rate_type === 'flat_package') {
+                            $subtotal = $rateAmount;
                             $totalHourlyOrFlatPay += $rateAmount;
                         } else {
-                            $totalHourlyOrFlatPay += ($hoursInThisStep * $rateAmount);
+                            $subtotal = ($hoursInThisStep * $rateAmount);
+                            $totalHourlyOrFlatPay += $subtotal;
                         }
+
+                        $tierRangeName = ($stepStart == 0 ? "Jam ke-1 s/d " . (int)$stepEnd : "Jam ke-" . ((int)$stepStart + 1) . " s/d " . (int)$stepEnd);
+                        if ($rate->name) {
+                            $tierRangeName = $rate->name . " (" . $tierRangeName . ")";
+                        }
+
+                        $breakdownTiers[] = [
+                            'tier_id' => $rate->id,
+                            'name' => $rate->name ?: 'Tier ' . ($index + 1),
+                            'tier_range_name' => $tierRangeName,
+                            'step_start' => $stepStart,
+                            'step_end' => $stepEnd,
+                            'hours' => $hoursInThisStep,
+                            'rate_amount' => $rateAmount,
+                            'rate_type' => $rate->rate_type,
+                            'subtotal' => $subtotal,
+                        ];
 
                         // Evaluate dynamic meal allowance eligibility
                         if ((float)($rate->meal_allowance ?? 0.0) > 0) {
@@ -225,7 +249,20 @@ class OvertimeRate extends Model
                 $overflowHours = $durationHours - $previousMaxHours;
                 $highestRateAmount = (float) $highestRate->rate_amount;
                 if ($highestRate->rate_type !== 'flat_package') {
-                    $totalHourlyOrFlatPay += ($overflowHours * $highestRateAmount);
+                    $overflowSubtotal = ($overflowHours * $highestRateAmount);
+                    $totalHourlyOrFlatPay += $overflowSubtotal;
+
+                    $breakdownTiers[] = [
+                        'tier_id' => $highestRate->id,
+                        'name' => ($highestRate->name ?: 'Tier Lanjutan') . " (> {$previousMaxHours} Jam)",
+                        'tier_range_name' => "Jam ke-" . ((int)$previousMaxHours + 1) . " dst",
+                        'step_start' => $previousMaxHours,
+                        'step_end' => $durationHours,
+                        'hours' => $overflowHours,
+                        'rate_amount' => $highestRateAmount,
+                        'rate_type' => $highestRate->rate_type,
+                        'subtotal' => $overflowSubtotal,
+                    ];
                 }
             }
 
@@ -234,7 +271,10 @@ class OvertimeRate extends Model
             return [
                 'applied_rate_amount' => $primaryRateAmount > 0 ? $primaryRateAmount : (float) ($highestRate->rate_amount ?? 0),
                 'meal_allowance' => $appliedMealAllowance,
+                'total_hourly_pay' => round($totalHourlyOrFlatPay, 2),
                 'total_pay' => $totalPay,
+                'breakdown' => $breakdownTiers,
+                'meal_eligible' => $appliedMealAllowance > 0,
             ];
         }
 
@@ -244,10 +284,27 @@ class OvertimeRate extends Model
             $fallbackRate = (float) $user->salary->overtime_rate;
         }
 
+        $fallbackSubtotal = round($durationHours * $fallbackRate, 2);
+
         return [
             'applied_rate_amount' => $fallbackRate,
             'meal_allowance' => 0.0,
-            'total_pay' => round($durationHours * $fallbackRate, 2),
+            'total_hourly_pay' => $fallbackSubtotal,
+            'total_pay' => $fallbackSubtotal,
+            'breakdown' => [
+                [
+                    'tier_id' => null,
+                    'name' => 'Tarif Dasar Karyawan',
+                    'tier_range_name' => "1 - {$durationHours} Jam",
+                    'step_start' => 0.0,
+                    'step_end' => $durationHours,
+                    'hours' => $durationHours,
+                    'rate_amount' => $fallbackRate,
+                    'rate_type' => 'hourly',
+                    'subtotal' => $fallbackSubtotal,
+                ]
+            ],
+            'meal_eligible' => false,
         ];
     }
 }
