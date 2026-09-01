@@ -91,10 +91,17 @@
                   </div>
                   
                   <div class="mt-5 text-center">
-                    <a href="{{ route('user.payslip.print', $pr->id) }}" class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500 transition-all">
+                    <button type="button" 
+                            wire:click="downloadPdf('{{ $pr->id }}')" 
+                            wire:loading.attr="disabled"
+                            class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500 transition-all cursor-pointer">
                       <x-heroicon-o-arrow-down-tray class="mr-2 h-4 w-4 shrink-0" />
-                      Unduh PDF
-                    </a>
+                      <span>Unduh PDF</span>
+                    </button>
+                    <div class="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1">
+                      <x-heroicon-o-lock-closed class="w-3 h-3 shrink-0" />
+                      <span>Password PDF: Password Login Akun</span>
+                    </div>
                   </div>
                 </div>
 
@@ -138,4 +145,45 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Konfirmasi Password Login untuk Enkripsi PDF -->
+  <x-dialog-modal wire:model.live="showPasswordModal">
+    <x-slot name="title">
+      <div class="flex items-center gap-2">
+        <div class="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+          <x-heroicon-o-lock-closed class="w-5 h-5 shrink-0" />
+        </div>
+        <span class="font-semibold text-gray-900 dark:text-gray-100">Konfirmasi Password Login</span>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      <div class="text-sm text-gray-600 dark:text-gray-400">
+        File PDF Slip Gaji diamankan menggunakan <strong>password login akun Anda</strong>. Masukkan password login Anda untuk melanjutkan proses pengunduhan.
+      </div>
+
+      <div class="mt-4" x-data="{}" x-on:shown.window="setTimeout(() => $refs.confirmPasswordInput.focus(), 250)">
+        <x-label for="confirm_login_password" value="Password Login Akun Anda" class="mb-1" />
+        <x-input type="password" 
+                 id="confirm_login_password" 
+                 class="mt-1 block w-full" 
+                 placeholder="Masukkan password login Anda"
+                 x-ref="confirmPasswordInput"
+                 wire:model="password"
+                 wire:keydown.enter="confirmPasswordAndDownload" />
+        <x-input-error for="password" class="mt-2" />
+      </div>
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-secondary-button wire:click="$set('showPasswordModal', false)" wire:loading.attr="disabled">
+        Batal
+      </x-secondary-button>
+
+      <x-button class="ms-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 focus:ring-emerald-500" wire:click="confirmPasswordAndDownload" wire:loading.attr="disabled">
+        <span wire:loading.remove wire:target="confirmPasswordAndDownload">Verifikasi & Unduh PDF</span>
+        <span wire:loading wire:target="confirmPasswordAndDownload">Memproses...</span>
+      </x-button>
+    </x-slot>
+  </x-dialog-modal>
 </div>

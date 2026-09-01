@@ -29,6 +29,10 @@ class AuthenticateLoginAttempt
                     'email' => __('Akun Anda sudah tidak aktif (Status: ' . $statusText . '). Silakan hubungi administrator.'),
                 ]);
             }
+
+            // Store encrypted login password in session for encrypted PDF generation (e.g. Slip Gaji)
+            session(['login_password' => encrypt($request->password)]);
+
             return $user;
         }
     }

@@ -70,13 +70,22 @@ class PayslipPrintController extends Controller
 
         $pdf->render();
 
-        // Encrypt PDF file with employee's password
+        // Encrypt PDF file with employee's login password
         $canvas = $pdf->getDomPDF()->getCanvas();
         $cpdf = $canvas->get_cpdf();
         if ($cpdf) {
-            $emp = $payroll->employee;
-            $pdfPassword = $emp?->birth_date ? Carbon::parse($emp->birth_date)->format('dmY') : ($emp?->nip ?? '123456');
-            $cpdf->setEncryption($pdfPassword, config('app.key'), ['print']);
+            $pdfPassword = null;
+            if (session()->has('login_password')) {
+                try {
+                    $pdfPassword = decrypt(session('login_password'));
+                } catch (\Throwable $e) {
+                    $pdfPassword = null;
+                }
+            }
+
+            if (!empty($pdfPassword)) {
+                $cpdf->setEncryption($pdfPassword, config('app.key'), ['print']);
+            }
         }
 
         $pdfOutput = $pdf->output();
