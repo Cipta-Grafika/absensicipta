@@ -1,4 +1,5 @@
 import './bootstrap';
+import './pwa';
 
 import TomSelect from 'tom-select';
 window.TomSelect = TomSelect;

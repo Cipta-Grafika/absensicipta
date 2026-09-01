@@ -12,6 +12,17 @@
   <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=1.0.1" type="image/x-icon">
   <link rel="preload" href="{{ asset('hris.svg') }}" as="image" type="image/svg+xml">
 
+  <!-- PWA Manifest & Meta Tags -->
+  <link rel="manifest" href="{{ asset('manifest.json') }}">
+  <meta name="theme-color" content="#0284c7">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Absensi Cipta">
+  <link rel="apple-touch-icon" href="{{ asset('icons/apple-touch-icon.png') }}">
+  <link rel="apple-touch-icon" sizes="152x152" href="{{ asset('icons/icon-152x152.png') }}">
+  <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('icons/icon-192x192.png') }}">
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -159,6 +170,8 @@
       </footer>
     @endunless
   </div>
+
+  <x-pwa-install-prompt />
 
   @stack('modals')
 
