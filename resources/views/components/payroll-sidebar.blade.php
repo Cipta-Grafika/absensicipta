@@ -149,6 +149,15 @@
            class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
           <span>Mutasi Syirkah</span>
         </a>
+
+        @if (!Auth::user()?->isSyirkah)
+        <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+        @php $active = request()->routeIs('payroll.export-bank') || request()->routeIs('payroll.import-export.bank-transfers'); @endphp
+        <a href="{{ route('payroll.export-bank') }}"
+           class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
+          <span class="font-semibold text-sky-600 dark:text-sky-400">Export Transfer Bank (BCA)</span>
+        </a>
+        @endif
       </div>
     </div>
 
@@ -269,6 +278,12 @@
                  class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
                 <span>Pinjaman Karyawan</span>
               </a>
+
+              @php $active = request()->routeIs('payroll.flexible-deductions'); @endphp
+              <a href="{{ route('payroll.flexible-deductions') }}"
+                 class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
+                <span>Potongan Fleksibel</span>
+              </a>
             </div>
           </div>
 
@@ -330,6 +345,7 @@
             </button>
 
             <div x-show="openImport" x-collapse x-cloak class="mt-1 ml-4 pl-3 border-l-2 border-gray-200 dark:border-gray-700 space-y-1">
+              @if (!Auth::user()?->isSyirkah)
               @php $active = request()->routeIs('payroll.import-export.employee-salaries'); @endphp
               <a href="{{ route('payroll.import-export.employee-salaries') }}"
                  class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
@@ -341,6 +357,7 @@
                  class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
                 <span>Metode Pembayaran</span>
               </a>
+              @endif
 
               @php $active = request()->routeIs('payroll.import-export.savings'); @endphp
               <a href="{{ route('payroll.import-export.savings') }}"
@@ -353,6 +370,15 @@
                  class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
                 <span>Mutasi Syirkah</span>
               </a>
+
+              @if (!Auth::user()?->isSyirkah)
+              <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+              @php $active = request()->routeIs('payroll.export-bank') || request()->routeIs('payroll.import-export.bank-transfers'); @endphp
+              <a href="{{ route('payroll.export-bank') }}"
+                 class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
+                <span class="font-semibold text-sky-600 dark:text-sky-400">Export Transfer Bank (BCA)</span>
+              </a>
+              @endif
             </div>
           </div>
 

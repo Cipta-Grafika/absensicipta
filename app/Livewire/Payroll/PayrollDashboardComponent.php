@@ -13,7 +13,7 @@ class PayrollDashboardComponent extends Component
 
     public function render()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
 
         $currentMonth = $this->month ?: date('Y-m');
         $date = Carbon::createFromFormat('Y-m', $currentMonth);

@@ -1,6 +1,6 @@
 <!-- FIXED MOBILE BOTTOM NAVIGATION BAR (FLOATING GLASS DOCK) -->
 @auth
-  @if(request()->routeIs('payroll.*') || (auth()->user()->isPayroll && !request()->routeIs('hr.*') && !request()->routeIs('home') && !request()->routeIs('attendance-history') && !request()->routeIs('user.*')))
+  @if(request()->routeIs('payroll.*') || ((auth()->user()->isPayroll || auth()->user()->isOwner) && !request()->routeIs('hr.*') && !request()->routeIs('home') && !request()->routeIs('attendance-history') && !request()->routeIs('user.*')))
     <!-- PAYROLL MOBILE BOTTOM BAR -->
     <nav class="fixed bottom-0 left-0 right-0 inset-x-0 w-full max-w-full z-50 block md:hidden border-t border-sky-200/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl shadow-2xl shadow-black/15 select-none transition-colors" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
       <div class="flex items-center h-16 max-w-md w-full mx-auto relative px-1">

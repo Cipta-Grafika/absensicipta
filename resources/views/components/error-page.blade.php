@@ -6,8 +6,10 @@
         $user = Auth::user();
         if ($user->isSuperadmin || $user->isAdmin) {
             $homeUrl = route('hr.dashboard');
-        } elseif ($user->isPayroll) {
+        } elseif ($user->isPayroll || $user->isOwner) {
             $homeUrl = route('payroll.dashboard');
+        } elseif ($user->isSyirkah) {
+            $homeUrl = route('payroll.saving-transactions');
         } else {
             $homeUrl = route('home');
         }

@@ -193,7 +193,7 @@ class LoanComponent extends Component
 
     public function approveLoan($loanId)
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menyetujui pinjaman.');
         }
 
@@ -275,7 +275,7 @@ class LoanComponent extends Component
 
     public function openRejectModal($loanId)
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menolak pinjaman.');
         }
 
@@ -287,7 +287,7 @@ class LoanComponent extends Component
 
     public function openBulkRejectModal()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menolak pinjaman.');
         }
 
@@ -312,7 +312,7 @@ class LoanComponent extends Component
 
     public function submitRejectLoan()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menolak pinjaman.');
         }
 
@@ -343,7 +343,7 @@ class LoanComponent extends Component
 
     public function bulkApprove()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menyetujui pinjaman.');
         }
 
@@ -365,7 +365,7 @@ class LoanComponent extends Component
 
     public function openDeleteModal($loanId)
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menghapus data pinjaman.');
         }
 
@@ -376,7 +376,7 @@ class LoanComponent extends Component
 
     public function openBulkDeleteModal()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menghapus data pinjaman.');
         }
 
@@ -399,7 +399,7 @@ class LoanComponent extends Component
 
     public function confirmDeleteLoan()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin) {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk menghapus data pinjaman.');
         }
 

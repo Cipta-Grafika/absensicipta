@@ -24,7 +24,7 @@ Route::middleware([
 ])->group(function () {
     Route::get('/', function () {
         if (Auth::user()->isAdmin) return redirect('/hr');
-        if (Auth::user()->isPayroll) return redirect('/payroll');
+        if (Auth::user()->isPayroll || Auth::user()->isOwner) return redirect('/payroll');
         if (Auth::user()->isSyirkah) return redirect('/payroll/saving-transactions');
         return redirect('/home');
     });

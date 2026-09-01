@@ -100,8 +100,8 @@ class SavingTransactionComponent extends Component
 
     public function approve($transactionId)
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menyetujui mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin / Owner yang berhak menyetujui mutasi.');
         }
 
         \App\Services\SavingTransactionService::approveTransaction($transactionId, Auth::id());
@@ -110,8 +110,8 @@ class SavingTransactionComponent extends Component
 
     public function openRejectModal($transactionId)
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menolak mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin / Owner yang berhak menolak mutasi.');
         }
 
         $this->rejectTransactionId = $transactionId;
@@ -122,8 +122,8 @@ class SavingTransactionComponent extends Component
 
     public function openBulkRejectModal()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menolak mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin / Owner yang berhak menolak mutasi.');
         }
 
         if (empty($this->selectedTransactions)) {
@@ -147,8 +147,8 @@ class SavingTransactionComponent extends Component
 
     public function submitReject()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menolak mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin / Owner yang berhak menolak mutasi.');
         }
 
         if ($this->isBulkReject) {
@@ -174,8 +174,8 @@ class SavingTransactionComponent extends Component
 
     public function bulkApprove()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menyetujui mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin / Owner yang berhak menyetujui mutasi.');
         }
 
         if (empty($this->selectedTransactions)) {
@@ -191,8 +191,8 @@ class SavingTransactionComponent extends Component
 
     public function openDeleteModal($transactionId)
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menghapus data mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin / Owner yang berhak menghapus data mutasi.');
         }
 
         $this->deleteTransactionId = $transactionId;
@@ -202,8 +202,8 @@ class SavingTransactionComponent extends Component
 
     public function openBulkDeleteModal()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menghapus data mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin / Owner yang berhak menghapus data mutasi.');
         }
 
         if (empty($this->selectedTransactions)) {
@@ -225,8 +225,8 @@ class SavingTransactionComponent extends Component
 
     public function confirmDelete()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin yang berhak menghapus data mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya user dengan role Syirkah / Superadmin / Owner yang berhak menghapus data mutasi.');
         }
 
         if ($this->isBulkDelete) {
@@ -244,8 +244,8 @@ class SavingTransactionComponent extends Component
 
     public function openEditNominalModal($transactionId)
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya group syirkah yang berhak mengedit nominal mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya group syirkah / superadmin / owner yang berhak mengedit nominal mutasi.');
         }
 
         $tx = SavingTransaction::with(['user', 'masterSaving'])->findOrFail($transactionId);
@@ -266,8 +266,8 @@ class SavingTransactionComponent extends Component
 
     public function updateNominal()
     {
-        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin) {
-            abort(403, 'Akses Ditolak: Hanya group syirkah yang berhak mengedit nominal mutasi.');
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Hanya group syirkah / superadmin / owner yang berhak mengedit nominal mutasi.');
         }
 
         $this->validate([
@@ -367,7 +367,7 @@ class SavingTransactionComponent extends Component
             $newBalanceMandatory = max(0, $balanceMandatory - $withdrawMandatory);
             $newBalanceSecondary = max(0, $balanceSecondary - $withdrawSecondary);
 
-            $isDirectApproved = Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin;
+            $isDirectApproved = Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner;
 
             SavingTransaction::create([
                 'user_id' => $this->withdrawal_user_id,

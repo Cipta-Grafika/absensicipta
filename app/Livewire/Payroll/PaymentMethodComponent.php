@@ -123,7 +123,7 @@ class PaymentMethodComponent extends Component
 
     public function render()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
 
         $employees = User::onlyEmployee()
             ->when($this->status, function ($query) {

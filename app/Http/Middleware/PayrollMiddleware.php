@@ -20,7 +20,7 @@ class PayrollMiddleware
             abort(403);
         }
 
-        if ($user->isPayroll || $user->isSuperadmin) {
+        if ($user->isPayroll || $user->isSuperadmin || $user->isOwner) {
             return $next($request);
         }
 

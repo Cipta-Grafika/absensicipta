@@ -5,7 +5,7 @@
       <div class="flex">
         <!-- Logo -->
         <div class="flex shrink-0 items-center">
-          <a href="{{ Auth::user()->isAdmin ? route('hr.dashboard') : (Auth::user()->isPayroll ? route('payroll.dashboard') : (Auth::user()->isSyirkah ? route('payroll.saving-transactions') : route('home'))) }}" class="block h-14 w-14">
+          <a href="{{ Auth::user()->isAdmin ? route('hr.dashboard') : ((Auth::user()->isPayroll || Auth::user()->isOwner) ? route('payroll.dashboard') : (Auth::user()->isSyirkah ? route('payroll.saving-transactions') : route('home'))) }}" class="block h-14 w-14">
             <x-application-mark class="block h-full w-full object-contain" />
           </a>
         </div>
@@ -120,7 +120,7 @@
               </x-slot>
             </x-nav-dropdown>
           @endif
-          @if (Auth::user()->isPayroll && !request()->routeIs('payroll.*'))
+          @if ((Auth::user()->isPayroll || Auth::user()->isOwner) && !request()->routeIs('payroll.*'))
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
               Dashboard
             </x-nav-link>
@@ -192,7 +192,7 @@
               </x-slot>
             </x-nav-dropdown>
           @endif
-          @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll && !Auth::user()->isSyirkah)
+          @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll && !Auth::user()->isOwner && !Auth::user()->isSyirkah)
             <x-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
               {{ __('Home') }}
             </x-nav-link>
@@ -418,7 +418,7 @@
           </x-responsive-nav-link>
         @endif
       @endif
-      @if (Auth::user()->isPayroll && !request()->routeIs('payroll.*'))
+      @if ((Auth::user()->isPayroll || Auth::user()->isOwner) && !request()->routeIs('payroll.*'))
         <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
           <div class="px-4 text-xs text-gray-400">Payroll</div>
           <x-responsive-nav-link href="{{ route('payroll.dashboard') }}" :active="request()->routeIs('payroll.dashboard')">
@@ -470,7 +470,7 @@
           </x-responsive-nav-link>
         </div>
       @endif
-      @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll)
+      @if (!Auth::user()->isAdmin && !Auth::user()->isPayroll && !Auth::user()->isOwner)
         <x-responsive-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
           {{ __('Home') }}
         </x-responsive-nav-link>

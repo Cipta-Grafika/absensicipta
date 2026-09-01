@@ -34,7 +34,7 @@ class SavingTransactionComponent extends Component
 
     public function mount()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         $this->year = (int) date('Y');
         $this->month = date('Y-m');
@@ -42,7 +42,7 @@ class SavingTransactionComponent extends Component
 
     public function export()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         $filename = 'Export_Mutasi_Syirkah_' . date('Ymd_His') . '.xlsx';
         return Excel::download(
@@ -61,7 +61,7 @@ class SavingTransactionComponent extends Component
 
     public function preview()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         if ($this->mode === 'export') {
             $this->previewing = false;
@@ -75,7 +75,7 @@ class SavingTransactionComponent extends Component
 
     public function downloadTemplate()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         $sampleUser = User::where('group', 'user')->first();
         $sampleSaving = Saving::first();
@@ -150,7 +150,7 @@ class SavingTransactionComponent extends Component
 
     public function import()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         $this->validate([
             'file' => ['required', 'mimes:xlsx,xls,csv', 'max:5120'],
@@ -167,7 +167,7 @@ class SavingTransactionComponent extends Component
 
     public function render()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         $query = SavingTransaction::with(['user.division', 'masterSaving'])
             ->whereHas('user', function ($q) {

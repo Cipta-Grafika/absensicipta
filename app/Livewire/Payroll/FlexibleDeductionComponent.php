@@ -327,7 +327,7 @@ class FlexibleDeductionComponent extends Component
 
     public function render()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSyirkah || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSyirkah || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
 
         $programs = FlexibleDeductionProgram::where('period_month', $this->selected_period_month)
             ->orderBy('created_at', 'desc')

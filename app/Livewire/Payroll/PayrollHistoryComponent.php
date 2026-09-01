@@ -178,7 +178,7 @@ class PayrollHistoryComponent extends Component
 
     public function markAsPaid($id)
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
         
         $payroll = Payroll::findOrFail($id);
         $payroll->update([
@@ -191,7 +191,7 @@ class PayrollHistoryComponent extends Component
 
     public function openBulkDeleteModal()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
         if (empty($this->selectedPayrolls)) {
             session()->flash('flash.banner', 'Pilih minimal satu data gaji untuk dihapus.');
             session()->flash('flash.bannerStyle', 'danger');
@@ -207,7 +207,7 @@ class PayrollHistoryComponent extends Component
 
     public function bulkDeletePayrolls()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
         if (!empty($this->selectedPayrolls)) {
             $payrolls = Payroll::whereIn('id', $this->selectedPayrolls)->get();
             if ($payrolls->isNotEmpty()) {
@@ -245,7 +245,7 @@ class PayrollHistoryComponent extends Component
 
     public function bulkMarkAsPaid()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
         if (empty($this->selectedPayrolls)) {
             session()->flash('flash.banner', 'Pilih minimal satu data gaji untuk ditandai Paid.');
             session()->flash('flash.bannerStyle', 'danger');
@@ -280,7 +280,7 @@ class PayrollHistoryComponent extends Component
 
     public function deletePayroll()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
         
         if ($this->payrollIdToDelete) {
             $payroll = Payroll::find($this->payrollIdToDelete);
@@ -317,7 +317,7 @@ class PayrollHistoryComponent extends Component
     #[\Livewire\Attributes\On('mark-all-as-paid')]
     public function markAllAsPaid()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
         
         $query = Payroll::where('status', 'draft');
         
@@ -356,7 +356,7 @@ class PayrollHistoryComponent extends Component
             'selected_employee_ids.required' => 'Pilih minimal 1 karyawan untuk diproses gajinya.',
             'selected_employee_ids.min' => 'Pilih minimal 1 karyawan untuk diproses gajinya.',
         ]);
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
 
         $throttleKey = 'payroll_generate_' . auth()->id();
         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 3)) {
@@ -1213,7 +1213,7 @@ class PayrollHistoryComponent extends Component
 
     public function exportBankTransfer()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
 
         $this->validate([
             'export_bank_month' => 'required|date_format:Y-m',
@@ -1286,7 +1286,7 @@ class PayrollHistoryComponent extends Component
 
     public function render()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
 
         $payrolls = $this->getPayrollQuery()->paginate(15);
 

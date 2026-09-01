@@ -31,7 +31,7 @@ class FortifyServiceProvider extends ServiceProvider
                     return redirect('/hr');
                 }
 
-                if (Auth::user() && Auth::user()->isPayroll) {
+                if (Auth::user() && (Auth::user()->isPayroll || Auth::user()->isOwner)) {
                     return redirect('/payroll');
                 }
 

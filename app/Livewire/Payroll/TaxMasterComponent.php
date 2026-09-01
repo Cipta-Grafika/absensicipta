@@ -168,7 +168,7 @@ class TaxMasterComponent extends Component
 
     public function render()
     {
-        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin, 403);
+        abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
 
         $query = TaxMaster::withCount('employeeSalaries')
             ->when($this->categoryFilter, function ($q) {

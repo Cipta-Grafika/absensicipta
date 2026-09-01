@@ -165,7 +165,7 @@
             </svg>
             <span><strong>{{ count($selectedTransactions) }}</strong> transaksi dipilih</span>
           </div>
-          @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin)
+          @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
             <div class="flex flex-wrap items-center gap-2">
               <button type="button" 
                       wire:click="bulkApprove" 
@@ -201,7 +201,7 @@
         <table class="w-full min-w-[1300px] divide-y divide-gray-200 text-left text-xs text-gray-700 dark:divide-gray-700 dark:text-gray-200">
           <thead class="bg-gray-50 uppercase text-gray-700 dark:bg-gray-900 dark:text-gray-300">
             <tr>
-              @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin)
+              @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
                 <th scope="col" class="w-10 px-3 py-3 text-center">
                   <input type="checkbox" wire:model.live="selectAll" class="rounded border-gray-300 text-sky-600 shadow-xs focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-offset-gray-800">
                 </th>
@@ -222,7 +222,7 @@
           <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
             @forelse($transactions as $trx)
               <tr class="{{ in_array($trx->id, $selectedTransactions) ? 'bg-sky-50/60 dark:bg-sky-950/30' : '' }} hover:bg-gray-50/80 dark:hover:bg-gray-750 transition-colors">
-                @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin)
+                @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
                   <td class="px-3 py-4 text-center">
                     <input type="checkbox" value="{{ $trx->id }}" wire:model.live="selectedTransactions" class="rounded border-gray-300 text-sky-600 shadow-xs focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-offset-gray-800">
                   </td>
@@ -253,7 +253,7 @@
                         <span class="text-[9px] text-gray-400 dark:text-gray-500 italic">Edited</span>
                       @endif
                     </div>
-                    @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin)
+                    @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
                       <button type="button" 
                               wire:click="openEditNominalModal('{{ $trx->id }}')" 
                               title="Edit Nominal Mutasi Wajib"
@@ -273,7 +273,7 @@
                         <span class="text-[9px] text-gray-400 dark:text-gray-500 italic">Edited</span>
                       @endif
                     </div>
-                    @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin)
+                    @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
                       <button type="button" 
                               wire:click="openEditNominalModal('{{ $trx->id }}')" 
                               title="Edit Nominal Mutasi Sukarela"
@@ -329,7 +329,7 @@
                 </td>
                 <td class="whitespace-nowrap px-4 py-4 text-center text-xs font-medium">
                   <div class="inline-flex items-center justify-center gap-1.5">
-                    @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin)
+                    @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
                       @if($trx->status == 'pending')
                         <button type="button" 
                                 wire:click="approve('{{ $trx->id }}')" 
@@ -366,7 +366,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="{{ (Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin) ? 12 : 11 }}" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colspan="{{ (Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner) ? 12 : 11 }}" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                   <div class="flex flex-col items-center justify-center gap-1">
                     <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -516,7 +516,7 @@
   </x-dialog-modal>
 
   <!-- Modal Edit Nominal Mutasi (Khusus Syirkah Group) -->
-  @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin)
+  @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
     <x-dialog-modal wire:model.live="editNominalModalOpen" maxWidth="lg">
       <x-slot name="title">
         Edit Nominal Mutasi Syirkah

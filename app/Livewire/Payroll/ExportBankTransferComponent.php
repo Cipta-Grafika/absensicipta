@@ -30,7 +30,7 @@ class ExportBankTransferComponent extends Component
 
     public function mount()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         $latestMonth = Payroll::orderBy('period_month', 'desc')->value('period_month') ?: date('Y-m');
         $this->month = request()->query('month', $latestMonth);
@@ -121,7 +121,7 @@ class ExportBankTransferComponent extends Component
     #[\Livewire\Attributes\On('trigger-export-bank')]
     public function export()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         $this->validate([
             'month' => 'required|date_format:Y-m',
@@ -160,7 +160,7 @@ class ExportBankTransferComponent extends Component
 
     public function render()
     {
-        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSuperadmin, 403);
+        abort_unless(Auth::user()?->isPayroll || Auth::user()?->isSuperadmin || Auth::user()?->isOwner, 403);
 
         $query = Payroll::with(['employee.paymentMethod', 'employee.division', 'employee.jobTitle'])
             ->whereHas('employee', function ($q) {
