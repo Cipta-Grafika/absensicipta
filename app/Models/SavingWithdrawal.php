@@ -19,10 +19,17 @@ class SavingWithdrawal extends Model
         'mandatory_amount',
         'secondary_amount',
         'total_amount',
+        'approved_mandatory_amount',
+        'approved_secondary_amount',
+        'approved_total_amount',
         'status',
         'reason',
+        'admin_note',
+        'owner_note',
         'approved_by',
         'approved_at',
+        'owner_approved_by',
+        'owner_approved_at',
         'paid_by',
         'paid_at',
         'rejection_reason',
@@ -33,7 +40,11 @@ class SavingWithdrawal extends Model
         'mandatory_amount' => 'float',
         'secondary_amount' => 'float',
         'total_amount' => 'float',
+        'approved_mandatory_amount' => 'float',
+        'approved_secondary_amount' => 'float',
+        'approved_total_amount' => 'float',
         'approved_at' => 'datetime',
+        'owner_approved_at' => 'datetime',
         'paid_at' => 'datetime',
     ];
 
@@ -63,6 +74,11 @@ class SavingWithdrawal extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function ownerApprover()
+    {
+        return $this->belongsTo(User::class, 'owner_approved_by');
+    }
+
     public function payer()
     {
         return $this->belongsTo(User::class, 'paid_by');
@@ -71,6 +87,21 @@ class SavingWithdrawal extends Model
     public function savingTransaction()
     {
         return $this->belongsTo(SavingTransaction::class, 'saving_transaction_id');
+    }
+
+    public function getEffectiveTotalAmountAttribute(): float
+    {
+        return (float) ($this->approved_total_amount !== null ? $this->approved_total_amount : $this->total_amount);
+    }
+
+    public function getEffectiveMandatoryAmountAttribute(): float
+    {
+        return (float) ($this->approved_mandatory_amount !== null ? $this->approved_mandatory_amount : $this->mandatory_amount);
+    }
+
+    public function getEffectiveSecondaryAmountAttribute(): float
+    {
+        return (float) ($this->approved_secondary_amount !== null ? $this->approved_secondary_amount : $this->secondary_amount);
     }
 
     public function getWithdrawalTypeLabelAttribute(): string
@@ -91,14 +122,21 @@ class SavingWithdrawal extends Model
                 'bg' => 'bg-amber-100 dark:bg-amber-950/60',
                 'text' => 'text-amber-800 dark:text-amber-300',
                 'border' => 'border-amber-300 dark:border-amber-800',
-                'desc' => 'Menunggu Persetujuan Admin',
+                'desc' => 'Menunggu Persetujuan Admin Divisi',
             ],
             'accepted' => [
                 'label' => 'ACCEPTED',
                 'bg' => 'bg-blue-100 dark:bg-blue-950/60',
                 'text' => 'text-blue-800 dark:text-blue-300',
                 'border' => 'border-blue-300 dark:border-blue-800',
-                'desc' => 'Disetujui Admin, Menunggu Pembayaran',
+                'desc' => 'Disetujui Admin, Menunggu Approval Owner',
+            ],
+            'approved' => [
+                'label' => 'APPROVED',
+                'bg' => 'bg-indigo-100 dark:bg-indigo-950/60',
+                'text' => 'text-indigo-800 dark:text-indigo-300',
+                'border' => 'border-indigo-300 dark:border-indigo-800',
+                'desc' => 'Disetujui Owner, Antrean Pembayaran',
             ],
             'paid' => [
                 'label' => 'PAID',

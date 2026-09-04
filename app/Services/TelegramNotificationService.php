@@ -316,15 +316,15 @@ class TelegramNotificationService
         $actionUrl = $baseUrl . '/payroll/saving-transactions?activeTab=withdrawals';
 
         // 3. Construct Message
-        $message = "✅ <b>PENGAJUAN PENARIKAN SYIRKAH DISETUJUI (ACCEPTED)</b>\n";
+        $message = "✅ <b>PENGAJUAN PENARIKAN SYIRKAH DISETUJUI ADMIN (ACCEPTED)</b>\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $message .= "Pengajuan penarikan dana telah diverifikasi oleh Manager Divisi dan siap untuk dicairkan / ditransfer.\n\n";
+        $message .= "Pengajuan telah diverifikasi oleh Manager Divisi dan menunggu <b>Approval & Penentuan Nominal dari Owner</b>.\n\n";
         $message .= "👤 <b>Karyawan</b>  : " . htmlspecialchars($user?->name ?? '-') . " (NIP: " . htmlspecialchars($user?->nip ?? '-') . ")\n";
         $message .= "🏢 <b>Divisi</b>    : " . htmlspecialchars($division) . "\n";
         $message .= "🏦 <b>Program</b>   : " . htmlspecialchars($program) . "\n";
-        $message .= "✍️ <b>Disetujui</b> : " . htmlspecialchars($approverName) . " ({$approvedDate})\n";
+        $message .= "✍️ <b>Disetujui Admin</b> : " . htmlspecialchars($approverName) . " ({$approvedDate})\n";
         $message .= "📑 <b>Opsi</b>      : " . htmlspecialchars($typeLabel) . "\n";
-        $message .= "💵 <b>Nominal Siap Cair</b> : <b>Rp {$totalNominal}</b>\n";
+        $message .= "💵 <b>Nominal Pengajuan</b> : <b>Rp {$totalNominal}</b>\n";
         if ($withdrawal->mandatory_amount > 0) {
             $message .= "   ├─ Syirkah Wajib : Rp {$mandNominal}\n";
         }
@@ -332,12 +332,12 @@ class TelegramNotificationService
             $message .= "   └─ Sukarela (SSR) : Rp {$secNominal}\n";
         }
 
-        $message .= "\n💳 <b>Rekening Pembayaran Karyawan:</b>\n";
-        $message .= "   ├─ <b>Bank / Provider</b> : <b>" . htmlspecialchars($bankName) . "</b>\n";
-        $message .= "   ├─ <b>No. Rekening</b>    : <code>" . htmlspecialchars($bankAccount) . "</code>\n";
-        $message .= "   └─ <b>Atas Nama</b>       : " . htmlspecialchars($accountName) . "\n";
+        $message .= "\n💳 <b>REKENING PEMBAYARAN KARYAWAN:</b>\n";
+        $message .= "   ├─ 🏦 <b>Bank / E-Wallet</b> : <b>" . htmlspecialchars($bankName) . "</b>\n";
+        $message .= "   ├─ 🔢 <b>No. Rekening</b>    : <code>" . htmlspecialchars($bankAccount) . "</code> <i>(Tap nomor untuk salin)</i>\n";
+        $message .= "   └─ 👤 <b>Atas Nama</b>       : <b>" . htmlspecialchars($accountName) . "</b>\n";
 
-        $message .= "\n📉 <b>Sisa Saldo Setelah Dipotong:</b>\n";
+        $message .= "\n📉 <b>Estimasi Sisa Saldo:</b>\n";
         $message .= "   ├─ Saldo Wajib : Rp {$remMandNominal}\n";
         $message .= "   ├─ Saldo SSR   : Rp {$remSecNominal}\n";
         $message .= "   └─ Total Saldo : <b>Rp {$remTotNominal}</b>\n";
@@ -347,16 +347,16 @@ class TelegramNotificationService
             $message .= "<i>\"" . htmlspecialchars($withdrawal->reason) . "\"</i>\n";
         }
 
-        $message .= "🔗 <b>Menu Mutasi</b> : <a href=\"{$actionUrl}\">{$actionUrl}</a>\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "👉 <i>Klik tombol di bawah untuk menyetujui & mengatur nominal pencairan:</i>";
 
-        // 4. Interactive Inline Keyboard (Direct Mark as PAID / REJECT / Open Web)
+        // 4. Interactive Inline Keyboard (Owner Approval Step)
         $keyboard = [
             'inline_keyboard' => [
                 [
                     [
-                        'text' => '💵 Tandai Dibayar (PAID)',
-                        'callback_data' => 'paid_wd_' . $withdrawal->id,
+                        'text' => '✍️ Setujui & Atur Nominal',
+                        'callback_data' => 'owner_acc_wd_' . $withdrawal->id,
                     ],
                     [
                         'text' => '❌ Tolak (REJECT)',
@@ -366,6 +366,106 @@ class TelegramNotificationService
                 [
                     [
                         'text' => '🌐 Buka di Web App',
+                        'url' => $actionUrl,
+                    ],
+                ],
+            ],
+        ];
+
+        self::sendMessage($targetIds, $message, $keyboard);
+    }
+
+    /**
+     * Send notification for an OWNER-APPROVED withdrawal request (Payment Queue / Antrean Pembayaran).
+     * Includes interactive [ 💵 Tandai Dibayar (PAID) ] inline button.
+     */
+    public static function notifyOwnerApprovedWithdrawal(SavingWithdrawal $withdrawal): void
+    {
+        $withdrawal->loadMissing(['user.division', 'user.paymentMethod', 'masterSaving', 'approver', 'ownerApprover']);
+        $user = $withdrawal->user;
+        $division = $user?->division?->name ?? 'Semua Divisi';
+        $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
+        $ownerName = $withdrawal->ownerApprover?->name ?? 'Owner';
+
+        $targetIds = [];
+        $ownerQuery = User::where('group', 'owner')
+            ->where(function ($q) {
+                $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNotNull('telegram')->where('telegram', '!=', '');
+                  });
+            })
+            ->get();
+
+        foreach ($ownerQuery as $ownerUser) {
+            if (!empty($ownerUser->chat_code)) {
+                $targetIds[] = trim($ownerUser->chat_code);
+            }
+        }
+
+        if (empty($targetIds)) {
+            $envChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
+            if (!empty($envChatId)) {
+                $targetIds[] = trim($envChatId);
+            }
+        }
+
+        $targetIds = array_unique(array_filter($targetIds));
+        if (empty($targetIds)) return;
+
+        // Payment Method info
+        $paymentMethod = $user?->paymentMethod;
+        $bankName = $paymentMethod?->payment_name ?? 'Belum Diatur';
+        $bankAccount = $paymentMethod?->bank_account ?? '-';
+        $accountName = $paymentMethod?->account_name ?? ($user?->name ?? '-');
+
+        $reqNominal = number_format($withdrawal->total_amount, 0, ',', '.');
+        $approvedNominal = number_format($withdrawal->effective_total_amount, 0, ',', '.');
+        $typeLabel = $withdrawal->withdrawal_type_label;
+
+        $baseUrl = rtrim(config('app.url', 'http://localhost:8000'), '/');
+        $actionUrl = $baseUrl . '/payroll/saving-transactions?activeTab=withdrawals';
+
+        $message = "💳 <b>ANTREAN PEMBAYARAN SYIRKAH (SIAP TRANSFER)</b>\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "Pengajuan telah <b>DISETUJUI OLEH OWNER</b> dan siap untuk dieksekusi transfer pembayarannya.\n\n";
+        $message .= "👤 <b>Karyawan</b>  : " . htmlspecialchars($user?->name ?? '-') . " (NIP: " . htmlspecialchars($user?->nip ?? '-') . ")\n";
+        $message .= "🏢 <b>Divisi</b>    : " . htmlspecialchars($division) . "\n";
+        $message .= "🏦 <b>Program</b>   : " . htmlspecialchars($program) . "\n";
+        $message .= "📑 <b>Opsi</b>      : " . htmlspecialchars($typeLabel) . "\n";
+        $message .= "📝 <b>Diajukan</b>  : Rp {$reqNominal}\n";
+        $message .= "💵 <b>DISETUJUI OWNER</b> : <b>Rp {$approvedNominal}</b>\n";
+        if ($withdrawal->owner_note) {
+            $message .= "💬 <b>Catatan Owner</b> : <i>\"" . htmlspecialchars($withdrawal->owner_note) . "\"</i>\n";
+        }
+
+        $message .= "\n💳 <b>REKENING TUJUAN PEMBAYARAN:</b>\n";
+        $message .= "   ├─ 🏦 <b>Bank / E-Wallet</b> : <b>" . htmlspecialchars($bankName) . "</b>\n";
+        $message .= "   ├─ 🔢 <b>No. Rekening</b>    : <code>" . htmlspecialchars($bankAccount) . "</code> <i>(Tap nomor untuk salin)</i>\n";
+        $message .= "   └─ 👤 <b>Atas Nama</b>       : <b>" . htmlspecialchars($accountName) . "</b>\n";
+
+        $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "Status: <b>APPROVED (Masuk Antrean Pembayaran)</b>";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    [
+                        'text' => '💵 Tandai Telah Dibayar (PAID)',
+                        'callback_data' => 'paid_wd_' . $withdrawal->id,
+                    ],
+                    [
+                        'text' => '❌ Tolak (REJECT)',
+                        'callback_data' => 'rej_wd_' . $withdrawal->id,
+                    ],
+                ],
+                [
+                    [
+                        'text' => '📋 Buka Antrean Pembayaran',
+                        'callback_data' => 'cmd_pembayaran',
+                    ],
+                    [
+                        'text' => '🌐 Web App',
                         'url' => $actionUrl,
                     ],
                 ],
@@ -429,12 +529,13 @@ class TelegramNotificationService
      */
     public static function notifyPaidWithdrawal(SavingWithdrawal $withdrawal): void
     {
-        $withdrawal->loadMissing(['user.division', 'user.paymentMethod', 'masterSaving', 'payer', 'approver']);
+        $withdrawal->loadMissing(['user.division', 'user.paymentMethod', 'masterSaving', 'payer', 'approver', 'ownerApprover']);
         $user = $withdrawal->user;
         $division = $user?->division?->name ?? 'Semua Divisi';
         $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
         $payerName = $withdrawal->payer?->name ?? 'Owner / Finance';
-        $totalNominal = number_format($withdrawal->total_amount, 0, ',', '.');
+        $effNominal = number_format($withdrawal->effective_total_amount, 0, ',', '.');
+        $reqNominal = number_format($withdrawal->total_amount, 0, ',', '.');
         $paidDate = $withdrawal->paid_at 
             ? $withdrawal->paid_at->translatedFormat('d F Y, H:i') . ' WIB'
             : now()->translatedFormat('d F Y, H:i') . ' WIB';
@@ -466,9 +567,16 @@ class TelegramNotificationService
         $message .= "👤 <b>Karyawan</b>  : " . htmlspecialchars($user?->name ?? '-') . " (NIP: " . htmlspecialchars($user?->nip ?? '-') . ")\n";
         $message .= "🏢 <b>Divisi</b>    : " . htmlspecialchars($division) . "\n";
         $message .= "🏦 <b>Program</b>   : " . htmlspecialchars($program) . "\n";
-        $message .= "💰 <b>Nominal</b>   : <b>Rp {$totalNominal}</b>\n";
+        $message .= "💰 <b>Nominal Cair</b> : <b>Rp {$effNominal}</b>";
+        if ($withdrawal->approved_total_amount !== null && $withdrawal->approved_total_amount != $withdrawal->total_amount) {
+            $message .= " <i>(Pengajuan: Rp {$reqNominal})</i>";
+        }
+        $message .= "\n";
         $message .= "🏦 <b>Dibayar Oleh</b> : " . htmlspecialchars($payerName) . "\n";
         $message .= "📅 <b>Waktu Bayar</b> : {$paidDate}\n";
+        if ($withdrawal->owner_note) {
+            $message .= "💬 <b>Catatan Owner</b> : <i>\"" . htmlspecialchars($withdrawal->owner_note) . "\"</i>\n";
+        }
         $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
         $message .= "Status: <b>SELESAI (PAID)</b> ✨";
 

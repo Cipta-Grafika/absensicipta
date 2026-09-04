@@ -69,6 +69,13 @@ class SavingTransactionComponent extends Component
     public $rejectWithdrawalId = null;
     public $withdrawalRejectionReason = '';
 
+    // Modal Owner Approval Pengajuan Penarikan
+    public $ownerApproveModalOpen = false;
+    public $ownerApproveWithdrawalId = null;
+    public $ownerApprovedAmount = 0;
+    public $ownerApproveNote = '';
+    public $selectedOwnerWithdrawal = null;
+
     // Modal Detail Pengajuan Penarikan
     public $detailWithdrawalModalOpen = false;
     public $selectedWithdrawal = null;
@@ -540,9 +547,61 @@ class SavingTransactionComponent extends Component
 
         try {
             SavingTransactionService::approveWithdrawalRequest($withdrawalId, Auth::id());
-            $this->dispatch('notify', 'Pengajuan penarikan syirkah berhasil disetujui (ACCEPTED) dan mutasi penarikan telah dicatat di buku kas syirkah.');
+            $this->dispatch('notify', 'Pengajuan penarikan syirkah berhasil disetujui (ACCEPTED) dan diteruskan ke Owner.');
         } catch (\Exception $e) {
             $this->dispatch('notify', 'Gagal menyetujui pengajuan: ' . $e->getMessage());
+        }
+    }
+
+    public function openOwnerApproveModal($withdrawalId)
+    {
+        $withdrawal = SavingWithdrawal::with(['user.division', 'user.paymentMethod', 'masterSaving'])->findOrFail($withdrawalId);
+        $this->authorizeWithdrawalAction($withdrawal);
+
+        $this->selectedOwnerWithdrawal = $withdrawal;
+        $this->ownerApproveWithdrawalId = $withdrawalId;
+        $this->ownerApprovedAmount = $withdrawal->approved_total_amount !== null ? $withdrawal->approved_total_amount : $withdrawal->total_amount;
+        $this->ownerApproveNote = $withdrawal->owner_note ?: '';
+        $this->ownerApproveModalOpen = true;
+    }
+
+    public function closeOwnerApproveModal()
+    {
+        $this->ownerApproveModalOpen = false;
+        $this->ownerApproveWithdrawalId = null;
+        $this->ownerApprovedAmount = 0;
+        $this->ownerApproveNote = '';
+        $this->selectedOwnerWithdrawal = null;
+    }
+
+    public function submitOwnerApprove()
+    {
+        if (!$this->ownerApproveWithdrawalId) return;
+
+        $withdrawal = SavingWithdrawal::with('user')->findOrFail($this->ownerApproveWithdrawalId);
+        $this->authorizeWithdrawalAction($withdrawal);
+
+        $nominal = (float) $this->ownerApprovedAmount;
+        if ($nominal <= 0) {
+            $this->dispatch('notify', 'Nominal yang disetujui harus lebih dari 0.');
+            return;
+        }
+
+        if ($nominal > $withdrawal->total_amount) {
+            $nominal = (float) $withdrawal->total_amount;
+        }
+
+        try {
+            SavingTransactionService::approveByOwnerWithdrawalRequest(
+                $this->ownerApproveWithdrawalId,
+                Auth::id(),
+                $nominal,
+                $this->ownerApproveNote ?: 'Disetujui oleh Owner'
+            );
+            $this->closeOwnerApproveModal();
+            $this->dispatch('notify', 'Pengajuan berhasil disetujui Owner (APPROVED) dan masuk ke antrean pembayaran.');
+        } catch (\Exception $e) {
+            $this->dispatch('notify', 'Gagal menyimpan persetujuan Owner: ' . $e->getMessage());
         }
     }
 
@@ -590,7 +649,7 @@ class SavingTransactionComponent extends Component
 
         try {
             SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, Auth::id());
-            $this->dispatch('notify', 'Pengajuan penarikan berhasil ditandai telah dibayarkan (PAID).');
+            $this->dispatch('notify', 'Pengajuan penarikan berhasil ditandai telah dibayarkan (PAID) dan saldo mutasi telah dipotong.');
         } catch (\Exception $e) {
             $this->dispatch('notify', 'Gagal memproses pembayaran: ' . $e->getMessage());
         }

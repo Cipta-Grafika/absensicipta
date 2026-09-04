@@ -541,18 +541,22 @@
                   <td class="py-3 px-4 text-right whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
                     Rp {{ number_format($wd->mandatory_amount, 0, ',', '.') }}
                   </td>
-
                   <td class="py-3 px-4 text-right whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
                     Rp {{ number_format($wd->secondary_amount, 0, ',', '.') }}
                   </td>
 
-                  <td class="py-3 px-4 text-right whitespace-nowrap font-extrabold text-sm text-rose-600 dark:text-rose-400">
-                    - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                  <td class="py-3 px-4 font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                    @if($wd->approved_total_amount !== null && $wd->approved_total_amount != $wd->total_amount)
+                      <span class="text-indigo-600 dark:text-indigo-400">Rp {{ number_format($wd->approved_total_amount, 0, ',', '.') }}</span>
+                      <p class="text-[10px] text-gray-400 font-normal line-through">Rp {{ number_format($wd->total_amount, 0, ',', '.') }}</p>
+                    @else
+                      - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                    @endif
                   </td>
 
                   <td class="py-3 px-4 text-center whitespace-nowrap">
                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border {{ $badge['bg'] }} {{ $badge['text'] }} {{ $badge['border'] }}">
-                      <span class="h-1.5 w-1.5 rounded-full {{ $wd->status === 'pending' ? 'bg-amber-500 animate-ping' : ($wd->status === 'accepted' ? 'bg-blue-500' : ($wd->status === 'paid' ? 'bg-emerald-500' : 'bg-rose-500')) }}"></span>
+                      <span class="h-1.5 w-1.5 rounded-full {{ $wd->status === 'pending' ? 'bg-amber-500 animate-ping' : ($wd->status === 'accepted' ? 'bg-blue-500' : ($wd->status === 'approved' ? 'bg-indigo-500 animate-pulse' : ($wd->status === 'paid' ? 'bg-emerald-500' : 'bg-rose-500'))) }}"></span>
                       {{ $badge['label'] }}
                     </span>
                     <p class="text-[10px] text-gray-400 mt-0.5">{{ $badge['desc'] }}</p>
@@ -560,14 +564,14 @@
 
                   <td class="py-3 px-4 text-center whitespace-nowrap">
                     <div class="flex items-center justify-center gap-1.5">
-                      <!-- Action for PENDING: Accept / Reject -->
+                      <!-- Action for PENDING: Accept by Admin / Reject -->
                       @if($wd->status === 'pending')
                         <button 
                           type="button" 
                           wire:click="approveWithdrawal('{{ $wd->id }}')" 
-                          wire:confirm="Setujui pengajuan penarikan ini? Saldo syirkah karyawan akan otomatis dipotong di mutasi rekening."
+                          wire:confirm="Setujui pengajuan penarikan ini dan teruskan ke Owner untuk persetujuan nominal?"
                           class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition"
-                          title="Setujui (Accept)"
+                          title="Setujui Admin (Accept)"
                         >
                           <x-heroicon-o-check class="h-3.5 w-3.5" />
                           <span>Setujui</span>
@@ -583,18 +587,44 @@
                         </button>
                       @endif
 
-                      <!-- Action for ACCEPTED: Mark as Paid / Reject -->
+                      <!-- Action for ACCEPTED: Owner Approve & Set Nominal -->
                       @if($wd->status === 'accepted')
+                        @if(Auth::user()?->isOwner || Auth::user()?->isSyirkah || Auth::user()?->isPayroll)
+                          <button 
+                            type="button" 
+                            wire:click="openOwnerApproveModal('{{ $wd->id }}')" 
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] shadow-xs transition"
+                            title="Setujui & Atur Nominal (Owner)"
+                          >
+                            <x-heroicon-o-pencil-square class="h-3.5 w-3.5" />
+                            <span>Setujui Owner</span>
+                          </button>
+                        @endif
+
                         <button 
                           type="button" 
-                          wire:click="markAsPaidWithdrawal('{{ $wd->id }}')" 
-                          wire:confirm="Tandai dana fisik penarikan syirkah ini telah selesai dibayarkan/ditransfer ke karyawan?"
-                          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] shadow-xs transition"
-                          title="Tandai Telah Dibayarkan (PAID)"
+                          wire:click="openRejectWithdrawalModal('{{ $wd->id }}')" 
+                          class="p-1 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                          title="Tolak Pengajuan"
                         >
-                          <x-heroicon-o-banknotes class="h-3.5 w-3.5" />
-                          <span>Bayar (PAID)</span>
+                          <x-heroicon-o-x-mark class="h-4 w-4" />
                         </button>
+                      @endif
+
+                      <!-- Action for APPROVED: Mark as Paid / Reject -->
+                      @if($wd->status === 'approved')
+                        @if(Auth::user()?->isOwner || Auth::user()?->isSyirkah || Auth::user()?->isPayroll)
+                          <button 
+                            type="button" 
+                            wire:click="markAsPaidWithdrawal('{{ $wd->id }}')" 
+                            wire:confirm="Tandai dana fisik penarikan syirkah ini telah selesai dibayarkan/ditransfer ke karyawan? Saldo mutasi karyawan akan otomatis terpotong."
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition"
+                            title="Tandai Telah Dibayarkan (PAID)"
+                          >
+                            <x-heroicon-o-banknotes class="h-3.5 w-3.5" />
+                            <span>Bayar (PAID)</span>
+                          </button>
+                        @endif
 
                         <button 
                           type="button" 
@@ -602,7 +632,7 @@
                           class="p-1 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                           title="Batalkan / Tolak"
                         >
-                          <x-heroicon-o-arrow-path-rounded-square class="h-4 w-4" />
+                          <x-heroicon-o-x-mark class="h-4 w-4" />
                         </button>
                       @endif
 
@@ -648,15 +678,19 @@
             @php
               $badge = $wd->status_badge;
             @endphp
-            <div class="p-3.5 bg-white dark:bg-gray-800">
+            <div class="p-3.5 bg-white dark:bg-gray-800 space-y-2">
               <div class="flex items-start justify-between gap-2">
                 <div>
-                  <h4 class="text-xs font-bold text-gray-900 dark:text-white">{{ $wd->user->name ?? '-' }}</h4>
-                  <p class="text-[11px] text-gray-400">{{ $wd->user->division->name ?? '-' }} • {{ \Carbon\Carbon::parse($wd->created_at)->translatedFormat('d M Y, H:i') }}</p>
+                  <p class="font-bold text-gray-900 dark:text-white text-xs">{{ $wd->user->name ?? '-' }}</p>
+                  <p class="text-[10px] text-gray-400">{{ $wd->user->division->name ?? '-' }} • NIP: {{ $wd->user->nip ?? '-' }}</p>
                 </div>
                 <div class="text-right">
-                  <span class="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400">
-                    - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                  <span class="font-bold text-gray-900 dark:text-white text-xs">
+                    @if($wd->approved_total_amount !== null && $wd->approved_total_amount != $wd->total_amount)
+                      Rp {{ number_format($wd->approved_total_amount, 0, ',', '.') }}
+                    @else
+                      Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                    @endif
                   </span>
                   <div class="mt-0.5">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border {{ $badge['bg'] }} {{ $badge['text'] }} {{ $badge['border'] }}">
@@ -680,7 +714,11 @@
                     <button type="button" wire:click="approveWithdrawal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-emerald-600 text-white font-bold text-[10px]">Setujui</button>
                     <button type="button" wire:click="openRejectWithdrawalModal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-rose-50 text-rose-600 font-bold text-[10px]">Tolak</button>
                   @elseif($wd->status === 'accepted')
-                    <button type="button" wire:click="markAsPaidWithdrawal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-blue-600 text-white font-bold text-[10px]">Bayar (PAID)</button>
+                    <button type="button" wire:click="openOwnerApproveModal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-indigo-600 text-white font-bold text-[10px]">Setujui Owner</button>
+                    <button type="button" wire:click="openRejectWithdrawalModal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-rose-50 text-rose-600 font-bold text-[10px]">Tolak</button>
+                  @elseif($wd->status === 'approved')
+                    <button type="button" wire:click="markAsPaidWithdrawal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-emerald-600 text-white font-bold text-[10px]">Bayar (PAID)</button>
+                    <button type="button" wire:click="openRejectWithdrawalModal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-rose-50 text-rose-600 font-bold text-[10px]">Tolak</button>
                   @endif
                   <button type="button" wire:click="openDetailWithdrawalModal('{{ $wd->id }}')" class="text-teal-600 font-bold text-[11px]">Detail</button>
                 </div>
@@ -847,9 +885,18 @@
             </span>
           </div>
 
+          @if($selectedWithdrawal->approved_total_amount && $selectedWithdrawal->approved_total_amount != $selectedWithdrawal->total_amount)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700 bg-indigo-50/50 dark:bg-indigo-950/20 px-2 rounded-lg">
+              <span class="text-indigo-600 dark:text-indigo-400 font-bold">Nominal Disetujui Owner</span>
+              <span class="font-extrabold text-indigo-700 dark:text-indigo-300">
+                Rp {{ number_format($selectedWithdrawal->approved_total_amount, 0, ',', '.') }}
+              </span>
+            </div>
+          @endif
+
           @if($selectedWithdrawal->approver)
             <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
-              <span class="text-gray-500 dark:text-gray-400">Disetujui Oleh</span>
+              <span class="text-gray-500 dark:text-gray-400">Diverifikasi Admin</span>
               <span class="font-semibold text-gray-800 dark:text-gray-200">
                 {{ $selectedWithdrawal->approver->name }}
               </span>
@@ -858,9 +905,27 @@
 
           @if($selectedWithdrawal->approved_at)
             <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
-              <span class="text-gray-500 dark:text-gray-400">Waktu Persetujuan</span>
+              <span class="text-gray-500 dark:text-gray-400">Waktu Verifikasi Admin</span>
               <span class="font-semibold text-gray-800 dark:text-gray-200">
                 {{ \Carbon\Carbon::parse($selectedWithdrawal->approved_at)->translatedFormat('d M Y, H:i') }} WIB
+              </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->ownerApprover)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400">Disetujui Owner</span>
+              <span class="font-semibold text-indigo-600 dark:text-indigo-400">
+                {{ $selectedWithdrawal->ownerApprover->name }}
+              </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->owner_approved_at)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400">Waktu Persetujuan Owner</span>
+              <span class="font-semibold text-indigo-600 dark:text-indigo-400">
+                {{ \Carbon\Carbon::parse($selectedWithdrawal->owner_approved_at)->translatedFormat('d M Y, H:i') }} WIB
               </span>
             </div>
           @endif
@@ -880,6 +945,15 @@
               <span class="font-semibold text-emerald-600 dark:text-emerald-400">
                 {{ \Carbon\Carbon::parse($selectedWithdrawal->paid_at)->translatedFormat('d M Y, H:i') }} WIB
               </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->owner_note)
+            <div class="pt-2">
+              <span class="text-indigo-600 dark:text-indigo-400 font-bold block mb-1">Catatan / Pesan Owner:</span>
+              <div class="rounded-xl bg-indigo-50 dark:bg-indigo-950/40 p-2.5 text-indigo-800 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-800">
+                {{ $selectedWithdrawal->owner_note }}
+              </div>
             </div>
           @endif
 
@@ -906,6 +980,91 @@
 
     <x-slot name="footer">
       <x-secondary-button wire:click="closeDetailWithdrawalModal">Tutup</x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- 3.5. MODAL OWNER APPROVE PENGAJUAN PENARIKAN -->
+  <x-dialog-modal wire:model.live="ownerApproveModalOpen" maxWidth="md">
+    <x-slot name="title">
+      <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
+        <x-heroicon-o-check-badge class="h-5 w-5" />
+        {{ __('Persetujuan & Atur Nominal Owner') }}
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      @if($selectedWithdrawalForOwnerApprove)
+        <div class="space-y-4 text-xs">
+          <!-- Info Pengajuan -->
+          <div class="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-800/50 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 dark:text-gray-400 font-medium">Karyawan:</span>
+              <span class="font-bold text-gray-900 dark:text-white">{{ $selectedWithdrawalForOwnerApprove->user->name ?? '-' }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 dark:text-gray-400 font-medium">Divisi:</span>
+              <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $selectedWithdrawalForOwnerApprove->user->division->name ?? '-' }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 dark:text-gray-400 font-medium">Opsi Pengajuan:</span>
+              <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $selectedWithdrawalForOwnerApprove->withdrawal_type_label }}</span>
+            </div>
+            <div class="flex items-center justify-between pt-1 border-t border-indigo-200 dark:border-indigo-800">
+              <span class="text-gray-600 dark:text-gray-300 font-bold">Pengajuan Awal:</span>
+              <span class="font-black text-rose-600 dark:text-rose-400 text-sm">
+                Rp {{ number_format($selectedWithdrawalForOwnerApprove->total_amount, 0, ',', '.') }}
+              </span>
+            </div>
+            @if($selectedWithdrawalForOwnerApprove->reason)
+              <div class="pt-1">
+                <span class="text-gray-500 dark:text-gray-400 block text-[11px]">Keperluan/Alasan:</span>
+                <p class="text-gray-700 dark:text-gray-300 italic text-[11px]">{{ $selectedWithdrawalForOwnerApprove->reason }}</p>
+              </div>
+            @endif
+          </div>
+
+          <!-- Input Nominal Yang Disetujui -->
+          <div>
+            <x-label for="ownerApprovedAmount" value="Nominal Yang Disetujui Owner (Rp)" class="text-xs font-bold text-gray-900 dark:text-white" />
+            <p class="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
+              Bisa disetujui penuh atau disesuaikan nominalnya (contoh: ajuan 500.000, disetujui 200.000).
+            </p>
+            <x-input 
+              type="number" 
+              id="ownerApprovedAmount" 
+              wire:model.live="ownerApprovedAmount" 
+              min="1" 
+              max="{{ $selectedWithdrawalForOwnerApprove->total_amount }}" 
+              class="w-full mt-1 text-sm font-bold text-indigo-600 dark:text-indigo-400" 
+              placeholder="0" 
+            />
+            <x-input-error for="ownerApprovedAmount" class="mt-1" />
+          </div>
+
+          <!-- Input Catatan/Pesan Owner -->
+          <div>
+            <x-label for="ownerApproveNote" value="Pesan / Catatan Owner (Opsional)" class="text-xs font-semibold" />
+            <textarea 
+              id="ownerApproveNote" 
+              wire:model.live="ownerApproveNote" 
+              rows="2" 
+              class="mt-1 block w-full rounded-xl border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-xs" 
+              placeholder="Contoh: Disetujui Rp 200.000 sesuai ketersediaan kas saat ini."
+            ></textarea>
+            <x-input-error for="ownerApproveNote" class="mt-1" />
+          </div>
+        </div>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-end gap-2">
+        <x-secondary-button wire:click="closeOwnerApproveModal">Batal</x-secondary-button>
+        <x-button wire:click="submitOwnerApprove" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold">
+          <x-heroicon-o-check class="h-4 w-4 mr-1 inline" />
+          Setujui Pengajuan
+        </x-button>
+      </div>
     </x-slot>
   </x-dialog-modal>
 
