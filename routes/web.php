@@ -187,7 +187,12 @@ Route::middleware([
     // Real-time SSE Leaderboard Stream Endpoint
     Route::get('/api/leaderboard/stream', [\App\Http\Controllers\Api\LeaderboardStreamController::class, 'stream'])->middleware('throttle:30,1')->name('api.leaderboard.stream');
 
+    // Real-time SSE Deduction Stream Endpoint
+    Route::get('/api/deduction/stream', [\App\Http\Controllers\Api\DeductionStreamController::class, 'stream'])->name('api.deduction.stream');
 });
+
+// Telegram Webhook Handler (Public API Endpoint)
+Route::post('/api/telegram/webhook', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'handle'])->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 // CSRF Token Refresh Endpoint
 Route::get('/csrf-token', function () {
