@@ -9,6 +9,7 @@ use App\Models\SavingWithdrawal;
 use App\Services\SavingTransactionService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -277,14 +278,14 @@ class SyirkahHistoryComponent extends Component
         $totalCreditAll = $totalMandatoryDeposit + $totalSecondaryDeposit;
         $totalDebitAll = $totalMandatoryWithdrawal + $totalSecondaryWithdrawal;
 
-        // Pending withdrawals reservation
+        // Pending/Accepted/Approved active withdrawals reservation for new submission quota
         $pendingMandatory = (float) SavingWithdrawal::where('user_id', $userId)
-            ->where('status', 'pending')
-            ->sum('mandatory_amount');
+            ->whereIn('status', ['pending', 'accepted', 'approved'])
+            ->sum(DB::raw('COALESCE(approved_mandatory_amount, mandatory_amount)'));
 
         $pendingSecondary = (float) SavingWithdrawal::where('user_id', $userId)
-            ->where('status', 'pending')
-            ->sum('secondary_amount');
+            ->whereIn('status', ['pending', 'accepted', 'approved'])
+            ->sum(DB::raw('COALESCE(approved_secondary_amount, secondary_amount)'));
 
         $availMandatory = max(0.0, $saldoWajib - $pendingMandatory);
         $availSecondary = max(0.0, $saldoSukarela - $pendingSecondary);

@@ -413,12 +413,17 @@
                 </td>
 
                 <td class="py-3 px-4 text-right whitespace-nowrap font-extrabold text-rose-600 dark:text-rose-400 text-sm">
-                  - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                  @if($wd->approved_total_amount !== null && $wd->approved_total_amount != $wd->total_amount)
+                    <span class="text-indigo-600 dark:text-indigo-400">Rp {{ number_format($wd->approved_total_amount, 0, ',', '.') }}</span>
+                    <p class="text-[10px] text-gray-400 font-normal line-through">Rp {{ number_format($wd->total_amount, 0, ',', '.') }}</p>
+                  @else
+                    - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                  @endif
                 </td>
 
                 <td class="py-3 px-4 text-center whitespace-nowrap">
                   <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border {{ $badge['bg'] }} {{ $badge['text'] }} {{ $badge['border'] }}">
-                    <span class="h-1.5 w-1.5 rounded-full {{ $wd->status === 'pending' ? 'bg-amber-500 animate-ping' : ($wd->status === 'accepted' ? 'bg-blue-500' : ($wd->status === 'paid' ? 'bg-emerald-500' : 'bg-rose-500')) }}"></span>
+                    <span class="h-1.5 w-1.5 rounded-full {{ $wd->status === 'pending' ? 'bg-amber-500 animate-ping' : ($wd->status === 'accepted' ? 'bg-blue-500' : ($wd->status === 'approved' ? 'bg-indigo-500 animate-pulse' : ($wd->status === 'paid' ? 'bg-emerald-500' : 'bg-rose-500'))) }}"></span>
                     {{ $badge['label'] }}
                   </span>
                   <p class="text-[10px] text-gray-400 mt-0.5">
@@ -485,9 +490,18 @@
               </div>
 
               <div class="text-right">
-                <span class="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400">
-                  - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
-                </span>
+                @if($wd->approved_total_amount !== null && $wd->approved_total_amount != $wd->total_amount)
+                  <span class="text-xs sm:text-sm font-black text-indigo-600 dark:text-indigo-400 block">
+                    Rp {{ number_format($wd->approved_total_amount, 0, ',', '.') }}
+                  </span>
+                  <span class="text-[10px] text-gray-400 line-through">
+                    Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                  </span>
+                @else
+                  <span class="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400">
+                    - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                  </span>
+                @endif
                 <p class="text-[10px] text-gray-400 mt-0.5">
                   {{ $badge['desc'] }}
                 </p>
@@ -712,7 +726,7 @@
         <div class="rounded-lg bg-sky-50 dark:bg-sky-950/40 p-2.5 border border-sky-200 dark:border-sky-800 text-[11px] text-sky-800 dark:text-sky-300 flex items-start gap-2">
           <x-heroicon-o-information-circle class="h-4 w-4 shrink-0 mt-0.5 text-sky-600" />
           <p>
-            Pengajuan akan diproses oleh <strong>Admin Divisi</strong>. Saat disetujui (<strong>ACCEPTED</strong>), saldo otomatis terpotong pada mutasi rekening dan menunggu pencairan dana fisik (<strong>PAID</strong>).
+            Pengajuan akan diverifikasi oleh <strong>Admin Divisi</strong> dan disetujui oleh <strong>Owner</strong>. Saldo mutasi syirkah Anda <strong>hanya akan terpotong setelah status berubah menjadi DIBAYARKAN (PAID)</strong> sebesar nominal yang disetujui.
           </p>
         </div>
       </form>
@@ -911,9 +925,18 @@
             </span>
           </div>
 
+          @if($selectedWithdrawal->approved_total_amount && $selectedWithdrawal->approved_total_amount != $selectedWithdrawal->total_amount)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700 bg-indigo-50/50 dark:bg-indigo-950/20 px-2 rounded-lg">
+              <span class="text-indigo-600 dark:text-indigo-400 font-bold">Nominal Disetujui Owner</span>
+              <span class="font-extrabold text-indigo-700 dark:text-indigo-300">
+                Rp {{ number_format($selectedWithdrawal->approved_total_amount, 0, ',', '.') }}
+              </span>
+            </div>
+          @endif
+
           @if($selectedWithdrawal->approver)
             <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
-              <span class="text-gray-500 dark:text-gray-400">Diverifikasi Oleh</span>
+              <span class="text-gray-500 dark:text-gray-400">Diverifikasi Admin</span>
               <span class="font-semibold text-gray-800 dark:text-gray-200">
                 {{ $selectedWithdrawal->approver->name }}
               </span>
@@ -922,9 +945,27 @@
 
           @if($selectedWithdrawal->approved_at)
             <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
-              <span class="text-gray-500 dark:text-gray-400">Waktu Persetujuan</span>
+              <span class="text-gray-500 dark:text-gray-400">Waktu Verifikasi Admin</span>
               <span class="font-semibold text-gray-800 dark:text-gray-200">
                 {{ \Carbon\Carbon::parse($selectedWithdrawal->approved_at)->translatedFormat('d M Y, H:i') }} WIB
+              </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->ownerApprover)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400">Disetujui Owner</span>
+              <span class="font-semibold text-indigo-600 dark:text-indigo-400">
+                {{ $selectedWithdrawal->ownerApprover->name }}
+              </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->owner_approved_at)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400">Waktu Persetujuan Owner</span>
+              <span class="font-semibold text-indigo-600 dark:text-indigo-400">
+                {{ \Carbon\Carbon::parse($selectedWithdrawal->owner_approved_at)->translatedFormat('d M Y, H:i') }} WIB
               </span>
             </div>
           @endif
@@ -944,6 +985,15 @@
               <span class="font-semibold text-emerald-600 dark:text-emerald-400">
                 {{ \Carbon\Carbon::parse($selectedWithdrawal->paid_at)->translatedFormat('d M Y, H:i') }} WIB
               </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->owner_note)
+            <div class="pt-2">
+              <span class="text-indigo-600 dark:text-indigo-400 font-bold block mb-1">Catatan Owner:</span>
+              <div class="rounded-xl bg-indigo-50 dark:bg-indigo-950/40 p-2.5 text-indigo-800 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-800">
+                {{ $selectedWithdrawal->owner_note }}
+              </div>
             </div>
           @endif
 

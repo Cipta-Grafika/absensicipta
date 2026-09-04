@@ -451,16 +451,16 @@ class SavingTransactionService
         $curMandatory = (float) ($summary?->total_mandatory ?? 0);
         $curSecondary = (float) ($summary?->total_secondary ?? 0);
 
-        // Also check if there are pending withdrawals to prevent over-drafting
+        // Also check if there are pending/accepted/approved withdrawals to prevent over-drafting
         $pendingMandatory = (float) SavingWithdrawal::where('user_id', $userId)
             ->where('savings_id', $savingsId)
-            ->where('status', 'pending')
-            ->sum('mandatory_amount');
+            ->whereIn('status', ['pending', 'accepted', 'approved'])
+            ->sum(DB::raw('COALESCE(approved_mandatory_amount, mandatory_amount)'));
 
         $pendingSecondary = (float) SavingWithdrawal::where('user_id', $userId)
             ->where('savings_id', $savingsId)
-            ->where('status', 'pending')
-            ->sum('secondary_amount');
+            ->whereIn('status', ['pending', 'accepted', 'approved'])
+            ->sum(DB::raw('COALESCE(approved_secondary_amount, secondary_amount)'));
 
         $availMandatory = max(0.0, $curMandatory - $pendingMandatory);
         $availSecondary = max(0.0, $curSecondary - $pendingSecondary);
