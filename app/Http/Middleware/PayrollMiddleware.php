@@ -41,6 +41,16 @@ class PayrollMiddleware
             abort(403, 'Akses Ditolak: Group syirkah tidak memiliki wewenang untuk mengakses halaman ini.');
         }
 
-        abort(403, 'Forbidden. Only payroll or syirkah role can access this.');
+        if ($user->isAdmin) {
+            $allowedAdminRoutes = [
+                'payroll.saving-transactions',
+            ];
+
+            if ($request->routeIs($allowedAdminRoutes)) {
+                return $next($request);
+            }
+        }
+
+        abort(403, 'Forbidden. Only payroll, admin, syirkah, or owner role can access this.');
     }
 }

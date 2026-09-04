@@ -21,8 +21,8 @@
       <div class="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-teal-300/20 blur-xl pointer-events-none"></div>
       
       <div class="relative z-10">
-        <!-- Card Top Bar -->
-        <div class="flex items-center justify-between">
+        <!-- Card Top Bar: Title & Action "Ajukan" Button -->
+        <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 backdrop-blur-md">
               <x-heroicon-o-building-library class="h-4 w-4 text-white" />
@@ -32,10 +32,16 @@
             </span>
           </div>
 
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/40 backdrop-blur-md px-2.5 py-1 text-[11px] font-medium text-emerald-200 border border-emerald-400/30">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            Aktif & Disetujui
-          </span>
+          <!-- ACTION BUTTON "AJUKAN" PENARIKAN (Replacing previous static badge) -->
+          <button 
+            type="button"
+            wire:click="openWithdrawalModal"
+            class="inline-flex items-center gap-1.5 rounded-full bg-white/90 hover:bg-white text-emerald-900 font-bold px-3.5 py-1.5 text-xs shadow-md shadow-emerald-950/30 hover:scale-[1.03] active:scale-[0.98] transition-all duration-150 border border-white/40 cursor-pointer"
+            title="Ajukan Penarikan Saldo Syirkah"
+          >
+            <x-heroicon-s-arrow-up-tray class="h-3.5 w-3.5 text-emerald-700" />
+            <span>Ajukan</span>
+          </button>
         </div>
 
         <!-- Card Main Balance -->
@@ -134,7 +140,7 @@
           </div>
         </div>
 
-        <!-- Filter Controls (Responsive 2-Row / Flex layout) -->
+        <!-- Filter Controls -->
         <div class="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <!-- Search Input -->
           <div class="relative flex-1">
@@ -144,7 +150,7 @@
             <x-input type="text" class="block w-full pl-9 text-xs sm:text-sm !py-2" wire:model.live.debounce.300ms="search" placeholder="Cari keterangan atau referensi..." />
           </div>
 
-          <!-- Secondary Filters Row on Mobile -->
+          <!-- Filters Row -->
           <div class="flex items-center gap-2">
             <!-- Month Selector -->
             <div class="flex-1 sm:w-44">
@@ -160,41 +166,44 @@
               </x-select>
             </div>
 
-            <!-- Reset Button -->
             @if($search || $month || $type)
-              <x-secondary-button wire:click="resetFilters" class="text-xs !py-2 px-2.5 text-rose-600 hover:text-rose-700 dark:text-rose-400 shrink-0" title="Reset Filter">
-                <x-heroicon-o-x-mark class="h-4 w-4" />
-              </x-secondary-button>
+              <button 
+                type="button" 
+                wire:click="resetFilters" 
+                class="px-2.5 py-2 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 transition"
+                title="Reset Filter"
+              >
+                Reset
+              </button>
             @endif
           </div>
         </div>
       </div>
 
-      <!-- DESKTOP PASSBOOK TABLE (md and up) -->
+      <!-- Desktop & Tablet Table View -->
       <div class="hidden md:block overflow-x-auto">
-        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-          <thead class="bg-gray-50/80 text-xs uppercase tracking-wider text-gray-700 dark:bg-gray-700/50 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700">
+        <table class="w-full text-left text-xs text-gray-600 dark:text-gray-300">
+          <thead class="bg-gray-50/80 text-[11px] uppercase tracking-wider text-gray-500 dark:bg-gray-700/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
             <tr>
-              <th scope="col" class="px-4 py-3.5 font-semibold">Tanggal & Waktu</th>
-              <th scope="col" class="px-4 py-3.5 font-semibold">Keterangan / Program</th>
-              <th scope="col" class="px-4 py-3.5 font-semibold text-center">Jenis</th>
-              <th scope="col" class="px-4 py-3.5 font-semibold text-right">Debit (Keluar)</th>
-              <th scope="col" class="px-4 py-3.5 font-semibold text-right">Kredit (Masuk)</th>
-              <th scope="col" class="px-4 py-3.5 font-semibold text-right">Sisa Saldo</th>
-              <th scope="col" class="px-4 py-3.5 font-semibold text-center">Aksi</th>
+              <th scope="col" class="py-3.5 px-4 font-bold">Tanggal</th>
+              <th scope="col" class="py-3.5 px-4 font-bold">Keterangan</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-right">Syirkah Wajib</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-right">Sukarela (SSR)</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-right">Nominal Mutasi</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-right">Saldo Akhir</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-center">Aksi</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60 font-medium">
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">
             @forelse($transactions as $tx)
               @php
                 $isDeposit = $tx->transaction_type === 'deposit';
                 $totalNominal = (float) ($tx->mandatory_amount + $tx->secondary_amount);
                 $totalRunningBalance = (float) ($tx->balance_mandatory + $tx->balance_secondary);
               @endphp
-              <tr class="hover:bg-gray-50/75 dark:hover:bg-gray-700/30 transition-colors">
-                <!-- Tanggal -->
-                <td class="px-4 py-3.5 whitespace-nowrap">
-                  <div class="text-gray-900 dark:text-gray-100 font-bold text-xs sm:text-sm">
+              <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-700/30 transition-colors">
+                <td class="py-3 px-4 whitespace-nowrap">
+                  <div class="font-bold text-gray-900 dark:text-white">
                     {{ \Carbon\Carbon::parse($tx->created_at)->translatedFormat('d M Y') }}
                   </div>
                   <div class="text-[11px] text-gray-400">
@@ -202,83 +211,57 @@
                   </div>
                 </td>
 
-                <!-- Keterangan & Breakdown -->
-                <td class="px-4 py-3.5">
-                  <div class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">
+                <td class="py-3 px-4">
+                  <div class="font-medium text-gray-800 dark:text-gray-200">
                     {{ $tx->description ?: ($isDeposit ? 'Setoran Syirkah' : 'Penarikan Syirkah') }}
                   </div>
-                  <div class="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                    @if($tx->masterSaving)
-                      <span class="inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 font-medium text-gray-600 dark:text-gray-300">
-                        {{ $tx->masterSaving->savings_name }}
+                  <div class="flex items-center gap-1.5 mt-0.5">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold {{ $isDeposit ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' }}">
+                      {{ $isDeposit ? 'Setoran (Kredit)' : 'Penarikan (Debit)' }}
+                    </span>
+                    @if($tx->reference_type)
+                      <span class="text-[10px] text-gray-400 uppercase">
+                        ref: {{ $tx->reference_type }}
                       </span>
                     @endif
-                    <span>Wajib: <strong class="text-gray-700 dark:text-gray-300">Rp {{ number_format($tx->mandatory_amount, 0, ',', '.') }}</strong></span>
-                    <span>•</span>
-                    <span>SSR: <strong class="text-gray-700 dark:text-gray-300">Rp {{ number_format($tx->secondary_amount, 0, ',', '.') }}</strong></span>
                   </div>
                 </td>
 
-                <!-- Jenis Badge -->
-                <td class="px-4 py-3.5 text-center whitespace-nowrap">
-                  @if($isDeposit)
-                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                      <x-heroicon-o-arrow-down-left class="h-3.5 w-3.5" />
-                      KREDIT (SETOR)
-                    </span>
-                  @else
-                    <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
-                      <x-heroicon-o-arrow-up-right class="h-3.5 w-3.5" />
-                      DEBIT (TARIK)
-                    </span>
-                  @endif
+                <td class="py-3 px-4 text-right whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
+                  Rp {{ number_format($tx->mandatory_amount, 0, ',', '.') }}
                 </td>
 
-                <!-- Debit (Keluar) -->
-                <td class="px-4 py-3.5 text-right whitespace-nowrap">
-                  @if(!$isDeposit)
-                    <span class="text-sm font-bold text-rose-600 dark:text-rose-400">
-                      - Rp {{ number_format($totalNominal, 0, ',', '.') }}
-                    </span>
-                  @else
-                    <span class="text-gray-400">-</span>
-                  @endif
+                <td class="py-3 px-4 text-right whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
+                  Rp {{ number_format($tx->secondary_amount, 0, ',', '.') }}
                 </td>
 
-                <!-- Kredit (Masuk) -->
-                <td class="px-4 py-3.5 text-right whitespace-nowrap">
-                  @if($isDeposit)
-                    <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                      + Rp {{ number_format($totalNominal, 0, ',', '.') }}
-                    </span>
-                  @else
-                    <span class="text-gray-400">-</span>
-                  @endif
-                </td>
-
-                <!-- Sisa Saldo Berjalan -->
-                <td class="px-4 py-3.5 text-right whitespace-nowrap">
-                  <span class="text-xs sm:text-sm font-black text-gray-900 dark:text-white">
-                    Rp {{ number_format($totalRunningBalance, 0, ',', '.') }}
+                <td class="py-3 px-4 text-right whitespace-nowrap">
+                  <span class="font-extrabold text-sm {{ $isDeposit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">
+                    {{ $isDeposit ? '+' : '-' }} Rp {{ number_format($totalNominal, 0, ',', '.') }}
                   </span>
-                  <div class="text-[10px] text-gray-400">
-                    W: {{ number_format($tx->balance_mandatory, 0, ',', '.') }} | S: {{ number_format($tx->balance_secondary, 0, ',', '.') }}
-                  </div>
                 </td>
 
-                <!-- Aksi Detail -->
-                <td class="px-4 py-3.5 text-center whitespace-nowrap">
-                  <button type="button" wire:click="openDetailModal('{{ $tx->id }}')" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors" title="Lihat Rincian">
+                <td class="py-3 px-4 text-right whitespace-nowrap font-bold text-gray-900 dark:text-white">
+                  Rp {{ number_format($totalRunningBalance, 0, ',', '.') }}
+                </td>
+
+                <td class="py-3 px-4 text-center whitespace-nowrap">
+                  <button
+                    type="button"
+                    wire:click="openDetailModal('{{ $tx->id }}')"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400 transition"
+                    title="Lihat Detail Transaksi"
+                  >
                     <x-heroicon-o-eye class="h-4 w-4" />
                   </button>
                 </td>
               </tr>
             @empty
               <tr>
-                <td colspan="7" class="px-6 py-12 text-center text-gray-400 dark:text-gray-500">
-                  <x-heroicon-o-banknotes class="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-2" />
+                <td colspan="7" class="py-12 text-center text-gray-400 dark:text-gray-500">
+                  <x-heroicon-o-banknotes class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
                   <p class="text-sm font-bold text-gray-600 dark:text-gray-400">Belum Ada Riwayat Mutasi Syirkah</p>
-                  <p class="text-xs mt-1 text-gray-400 dark:text-gray-500">Data mutasi yang disetujui akan tampil di sini secara otomatis.</p>
+                  <p class="text-xs mt-1 text-gray-400 dark:text-gray-500">Data mutasi yang disetujui akan tampil di sini.</p>
                 </td>
               </tr>
             @endforelse
@@ -286,17 +269,20 @@
         </table>
       </div>
 
-      <!-- MOBILE PASSBOOK LEDGER CARDS (Below md) -->
-      <div class="block md:hidden divide-y divide-gray-100 dark:divide-gray-700/60">
+      <!-- Mobile List View -->
+      <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700/60">
         @forelse($transactions as $tx)
           @php
             $isDeposit = $tx->transaction_type === 'deposit';
             $totalNominal = (float) ($tx->mandatory_amount + $tx->secondary_amount);
             $totalRunningBalance = (float) ($tx->balance_mandatory + $tx->balance_secondary);
           @endphp
-          <div class="p-3.5 sm:p-4 hover:bg-gray-50/60 dark:hover:bg-gray-700/20 transition-colors cursor-pointer active:bg-gray-100 dark:active:bg-gray-700/40" wire:click="openDetailModal('{{ $tx->id }}')">
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex items-start gap-2.5 min-w-0">
+          <div 
+            wire:click="openDetailModal('{{ $tx->id }}')"
+            class="p-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-700/40 transition active:bg-gray-100 dark:active:bg-gray-700 cursor-pointer"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2.5 min-w-0">
                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl {{ $isDeposit ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/40' }}">
                   @if($isDeposit)
                     <x-heroicon-o-arrow-down-left class="h-4 w-4" />
@@ -345,16 +331,416 @@
         @endforelse
       </div>
 
-      <!-- Pagination -->
+      <!-- Pagination Mutasi -->
       @if($transactions->hasPages())
         <div class="p-4 border-t border-gray-100 dark:border-gray-700">
           {{ $transactions->links() }}
         </div>
       @endif
     </div>
+
+    <!-- 4. SECTION RIWAYAT PENGAJUAN PENARIKAN SYIRKAH (Right below Mutasi Rekening Card) -->
+    <div class="overflow-hidden rounded-2xl bg-white shadow-xs border border-gray-100 dark:bg-gray-800 dark:border-gray-700/60">
+      
+      <!-- Card Header -->
+      <div class="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <x-heroicon-o-document-text class="h-4 w-4 sm:h-5 sm:w-5 text-teal-600 dark:text-teal-400" />
+            Riwayat Pengajuan Penarikan Syirkah
+          </h3>
+          <p class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+            Pantau status verifikasi dan pembayaran pengajuan penarikan dana syirkah Anda
+          </p>
+        </div>
+
+        <button 
+          type="button" 
+          wire:click="openWithdrawalModal"
+          class="inline-flex items-center gap-1.5 self-start sm:self-auto px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition"
+        >
+          <x-heroicon-s-plus class="h-3.5 w-3.5" />
+          <span>Buat Pengajuan Baru</span>
+        </button>
+      </div>
+
+      <!-- Desktop & Tablet Withdrawals Table -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full text-left text-xs text-gray-600 dark:text-gray-300">
+          <thead class="bg-gray-50/80 text-[11px] uppercase tracking-wider text-gray-500 dark:bg-gray-700/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+            <tr>
+              <th scope="col" class="py-3.5 px-4 font-bold">Tanggal Pengajuan</th>
+              <th scope="col" class="py-3.5 px-4 font-bold">Tipe Penarikan</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-right">Syirkah Wajib</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-right">Sukarela (SSR)</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-right">Total Penarikan</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-center">Status</th>
+              <th scope="col" class="py-3.5 px-4 font-bold text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">
+            @forelse($withdrawals as $wd)
+              @php
+                $badge = $wd->status_badge;
+              @endphp
+              <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-700/30 transition-colors">
+                <td class="py-3 px-4 whitespace-nowrap">
+                  <div class="font-bold text-gray-900 dark:text-white">
+                    {{ \Carbon\Carbon::parse($wd->created_at)->translatedFormat('d M Y') }}
+                  </div>
+                  <div class="text-[11px] text-gray-400">
+                    {{ \Carbon\Carbon::parse($wd->created_at)->format('H:i') }} WIB
+                  </div>
+                </td>
+
+                <td class="py-3 px-4">
+                  <div class="font-semibold text-gray-800 dark:text-gray-200">
+                    {{ $wd->withdrawal_type_label }}
+                  </div>
+                  @if($wd->reason)
+                    <div class="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1 italic mt-0.5">
+                      "{{ $wd->reason }}"
+                    </div>
+                  @endif
+                </td>
+
+                <td class="py-3 px-4 text-right whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
+                  Rp {{ number_format($wd->mandatory_amount, 0, ',', '.') }}
+                </td>
+
+                <td class="py-3 px-4 text-right whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
+                  Rp {{ number_format($wd->secondary_amount, 0, ',', '.') }}
+                </td>
+
+                <td class="py-3 px-4 text-right whitespace-nowrap font-extrabold text-rose-600 dark:text-rose-400 text-sm">
+                  - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                </td>
+
+                <td class="py-3 px-4 text-center whitespace-nowrap">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border {{ $badge['bg'] }} {{ $badge['text'] }} {{ $badge['border'] }}">
+                    <span class="h-1.5 w-1.5 rounded-full {{ $wd->status === 'pending' ? 'bg-amber-500 animate-ping' : ($wd->status === 'accepted' ? 'bg-blue-500' : ($wd->status === 'paid' ? 'bg-emerald-500' : 'bg-rose-500')) }}"></span>
+                    {{ $badge['label'] }}
+                  </span>
+                  <p class="text-[10px] text-gray-400 mt-0.5">
+                    {{ $badge['desc'] }}
+                  </p>
+                </td>
+
+                <td class="py-3 px-4 text-center whitespace-nowrap">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <button
+                      type="button"
+                      wire:click="openWithdrawalDetailModal('{{ $wd->id }}')"
+                      class="p-1.5 rounded-lg text-gray-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 dark:hover:text-teal-400 transition"
+                      title="Lihat Detail Pengajuan"
+                    >
+                      <x-heroicon-o-eye class="h-4 w-4" />
+                    </button>
+
+                    @if($wd->status === 'pending')
+                      <button
+                        type="button"
+                        wire:click="cancelWithdrawal('{{ $wd->id }}')"
+                        wire:confirm="Apakah Anda yakin ingin membatalkan pengajuan penarikan ini?"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition"
+                        title="Batalkan Pengajuan"
+                      >
+                        <x-heroicon-o-trash class="h-4 w-4" />
+                      </button>
+                    @endif
+                  </div>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="7" class="py-12 text-center text-gray-400 dark:text-gray-500">
+                  <x-heroicon-o-document-plus class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
+                  <p class="text-sm font-bold text-gray-600 dark:text-gray-400">Belum Ada Pengajuan Penarikan</p>
+                  <p class="text-xs mt-1 text-gray-400 dark:text-gray-500">Klik tombol "Ajukan" di atas untuk mengajukan penarikan syirkah.</p>
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile Withdrawals Card List -->
+      <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700/60">
+        @forelse($withdrawals as $wd)
+          @php
+            $badge = $wd->status_badge;
+          @endphp
+          <div class="p-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-700/40 transition">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border {{ $badge['bg'] }} {{ $badge['text'] }} {{ $badge['border'] }}">
+                  {{ $badge['label'] }}
+                </span>
+                <h4 class="text-xs font-bold text-gray-900 dark:text-white mt-1.5">
+                  {{ $wd->withdrawal_type_label }}
+                </h4>
+                <p class="text-[11px] text-gray-400">
+                  {{ \Carbon\Carbon::parse($wd->created_at)->translatedFormat('d M Y, H:i') }} WIB
+                </p>
+              </div>
+
+              <div class="text-right">
+                <span class="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400">
+                  - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                </span>
+                <p class="text-[10px] text-gray-400 mt-0.5">
+                  {{ $badge['desc'] }}
+                </p>
+              </div>
+            </div>
+
+            @if($wd->reason)
+              <p class="mt-2 text-[11px] text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg italic">
+                "{{ $wd->reason }}"
+              </p>
+            @endif
+
+            <div class="mt-2.5 flex items-center justify-between text-[11px] pt-2 border-t border-gray-50 dark:border-gray-700/40 text-gray-500 dark:text-gray-400">
+              <div class="flex items-center gap-1.5 truncate">
+                <span>W: <strong class="text-gray-700 dark:text-gray-300">Rp {{ number_format($wd->mandatory_amount, 0, ',', '.') }}</strong></span>
+                <span>•</span>
+                <span>S: <strong class="text-gray-700 dark:text-gray-300">Rp {{ number_format($wd->secondary_amount, 0, ',', '.') }}</strong></span>
+              </div>
+              
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  wire:click="openWithdrawalDetailModal('{{ $wd->id }}')"
+                  class="font-semibold text-teal-600 dark:text-teal-400"
+                >
+                  Detail
+                </button>
+                @if($wd->status === 'pending')
+                  <span>•</span>
+                  <button
+                    type="button"
+                    wire:click="cancelWithdrawal('{{ $wd->id }}')"
+                    wire:confirm="Batalkan pengajuan ini?"
+                    class="font-semibold text-rose-600 dark:text-rose-400"
+                  >
+                    Batal
+                  </button>
+                @endif
+              </div>
+            </div>
+          </div>
+        @empty
+          <div class="p-8 text-center text-gray-400 dark:text-gray-500">
+            <x-heroicon-o-document-plus class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
+            <p class="text-xs font-bold text-gray-600 dark:text-gray-400">Belum Ada Pengajuan Penarikan</p>
+            <p class="text-[11px] mt-1 text-gray-400 dark:text-gray-500">Klik tombol "Ajukan" di atas untuk mengajukan penarikan syirkah.</p>
+          </div>
+        @endforelse
+      </div>
+
+      <!-- Pagination Withdrawals -->
+      @if($withdrawals->hasPages())
+        <div class="p-4 border-t border-gray-100 dark:border-gray-700">
+          {{ $withdrawals->links() }}
+        </div>
+      @endif
+    </div>
+
   </div>
 
-  <!-- DETAIL TRANSACTION DIALOG MODAL -->
+  <!-- 5. PENGAJUAN PENARIKAN MODAL -->
+  <x-dialog-modal wire:model.live="isWithdrawalModalOpen" maxWidth="md">
+    <x-slot name="title">
+      <div class="flex items-center gap-2 text-gray-900 dark:text-white">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
+          <x-heroicon-o-banknotes class="h-5 w-5" />
+        </div>
+        <div>
+          <h3 class="text-base font-bold">{{ __('Pengajuan Penarikan Syirkah') }}</h3>
+          <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Pilih opsi penarikan & isi nominal dana</p>
+        </div>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      <form wire:submit.prevent="submitWithdrawal" class="space-y-4">
+        
+        <!-- Saldo Tersedia Overview Cards -->
+        <div class="rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 p-3 border border-emerald-200/80 dark:from-emerald-950/40 dark:via-teal-950/40 dark:to-cyan-950/40 dark:border-emerald-800/40">
+          <p class="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">
+            Sisa Saldo Tersedia untuk Ditarik:
+          </p>
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <div class="bg-white/80 dark:bg-gray-800/80 p-2 rounded-lg border border-emerald-100 dark:border-gray-700 text-center">
+              <span class="text-[10px] text-gray-500 dark:text-gray-400 block">Wajib:</span>
+              <strong class="text-xs sm:text-sm font-black text-gray-800 dark:text-gray-100">
+                Rp {{ number_format($availMandatory, 0, ',', '.') }}
+              </strong>
+            </div>
+            <div class="bg-white/80 dark:bg-gray-800/80 p-2 rounded-lg border border-emerald-100 dark:border-gray-700 text-center">
+              <span class="text-[10px] text-gray-500 dark:text-gray-400 block">Sukarela (SSR):</span>
+              <strong class="text-xs sm:text-sm font-black text-gray-800 dark:text-gray-100">
+                Rp {{ number_format($availSecondary, 0, ',', '.') }}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Program Syirkah -->
+        <div>
+          <x-label for="savingsId" value="Program Syirkah" class="text-xs font-semibold" />
+          <x-select id="savingsId" wire:model.live="savingsId" class="w-full mt-1 text-xs sm:text-sm">
+            @foreach($savingsList as $s)
+              <option value="{{ $s->id }}">{{ $s->savings_name }}</option>
+            @endforeach
+          </x-select>
+          <x-input-error for="savingsId" class="mt-1" />
+        </div>
+
+        <!-- Withdrawal Type Selector (3 Options) -->
+        <div>
+          <x-label value="Opsi Penarikan Syirkah" class="text-xs font-semibold mb-1.5 block" />
+          <div class="grid grid-cols-3 gap-2">
+            <!-- Option 1: Syirkah Full -->
+            <label class="relative flex flex-col items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition text-center {{ $withdrawalType === 'full' ? 'border-emerald-600 bg-emerald-50/70 text-emerald-900 dark:border-emerald-500 dark:bg-emerald-950/60 dark:text-emerald-200 shadow-xs' : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-gray-600 dark:text-gray-300' }}">
+              <input type="radio" name="withdrawalType" value="full" wire:model.live="withdrawalType" class="sr-only" />
+              <x-heroicon-o-scale class="h-4 w-4 mb-1 {{ $withdrawalType === 'full' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' }}" />
+              <span class="text-[11px] font-extrabold leading-tight">Syirkah Full</span>
+              <span class="text-[9px] text-gray-400 mt-0.5">Wajib + SSR</span>
+            </label>
+
+            <!-- Option 2: Syirkah Wajib -->
+            <label class="relative flex flex-col items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition text-center {{ $withdrawalType === 'mandatory' ? 'border-emerald-600 bg-emerald-50/70 text-emerald-900 dark:border-emerald-500 dark:bg-emerald-950/60 dark:text-emerald-200 shadow-xs' : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-gray-600 dark:text-gray-300' }}">
+              <input type="radio" name="withdrawalType" value="mandatory" wire:model.live="withdrawalType" class="sr-only" />
+              <x-heroicon-o-lock-closed class="h-4 w-4 mb-1 {{ $withdrawalType === 'mandatory' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' }}" />
+              <span class="text-[11px] font-extrabold leading-tight">Syirkah Wajib</span>
+              <span class="text-[9px] text-gray-400 mt-0.5">Hanya Wajib</span>
+            </label>
+
+            <!-- Option 3: Syirkah SSR -->
+            <label class="relative flex flex-col items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition text-center {{ $withdrawalType === 'secondary' ? 'border-emerald-600 bg-emerald-50/70 text-emerald-900 dark:border-emerald-500 dark:bg-emerald-950/60 dark:text-emerald-200 shadow-xs' : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-gray-600 dark:text-gray-300' }}">
+              <input type="radio" name="withdrawalType" value="secondary" wire:model.live="withdrawalType" class="sr-only" />
+              <x-heroicon-o-sparkles class="h-4 w-4 mb-1 {{ $withdrawalType === 'secondary' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' }}" />
+              <span class="text-[11px] font-extrabold leading-tight">Syirkah SSR</span>
+              <span class="text-[9px] text-gray-400 mt-0.5">Sukarela</span>
+            </label>
+          </div>
+          <x-input-error for="withdrawalType" class="mt-1" />
+        </div>
+
+        <!-- Dynamic Inputs Based on Selection -->
+        @if($withdrawalType === 'full' || $withdrawalType === 'mandatory')
+          <div>
+            <div class="flex items-center justify-between">
+              <x-label for="mandatoryAmount" value="Nominal Syirkah Wajib (Rp)" class="text-xs font-semibold" />
+              <button 
+                type="button" 
+                wire:click="setMaxMandatory" 
+                class="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 underline cursor-pointer"
+              >
+                Tarik Semua (Rp {{ number_format($availMandatory, 0, ',', '.') }})
+              </button>
+            </div>
+            <x-input 
+              type="number" 
+              id="mandatoryAmount" 
+              wire:model.live="mandatoryAmount" 
+              min="0" 
+              max="{{ $availMandatory }}"
+              class="w-full mt-1 text-xs sm:text-sm font-semibold" 
+              placeholder="0" 
+            />
+            <x-input-error for="mandatoryAmount" class="mt-1" />
+          </div>
+        @endif
+
+        @if($withdrawalType === 'full' || $withdrawalType === 'secondary')
+          <div>
+            <div class="flex items-center justify-between">
+              <x-label for="secondaryAmount" value="Nominal Syirkah SSR / Sukarela (Rp)" class="text-xs font-semibold" />
+              <button 
+                type="button" 
+                wire:click="setMaxSecondary" 
+                class="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 underline cursor-pointer"
+              >
+                Tarik Semua (Rp {{ number_format($availSecondary, 0, ',', '.') }})
+              </button>
+            </div>
+            <x-input 
+              type="number" 
+              id="secondaryAmount" 
+              wire:model.live="secondaryAmount" 
+              min="0" 
+              max="{{ $availSecondary }}"
+              class="w-full mt-1 text-xs sm:text-sm font-semibold" 
+              placeholder="0" 
+            />
+            <x-input-error for="secondaryAmount" class="mt-1" />
+          </div>
+        @endif
+
+        <!-- Reason / Keperluan Input -->
+        <div>
+          <x-label for="reason" value="Keperluan / Alasan Penarikan (Opsional)" class="text-xs font-semibold" />
+          <textarea 
+            id="reason" 
+            wire:model.live="reason" 
+            rows="2" 
+            class="mt-1 block w-full rounded-xl border-gray-300 shadow-xs focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-xs sm:text-sm" 
+            placeholder="Contoh: Kebutuhan keluarga mendesak, renovasi, dll."
+          ></textarea>
+          <x-input-error for="reason" class="mt-1" />
+        </div>
+
+        <!-- Live Total Summary Card -->
+        @php
+          $calcMandatory = ($withdrawalType === 'secondary') ? 0 : (float) $mandatoryAmount;
+          $calcSecondary = ($withdrawalType === 'mandatory') ? 0 : (float) $secondaryAmount;
+          $calcTotal = $calcMandatory + $calcSecondary;
+        @endphp
+        <div class="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3 border border-gray-200 dark:border-gray-600 flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase block">Total Pengajuan:</span>
+            <span class="text-[10px] text-gray-400">W: Rp {{ number_format($calcMandatory, 0, ',', '.') }} | S: Rp {{ number_format($calcSecondary, 0, ',', '.') }}</span>
+          </div>
+          <span class="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">
+            Rp {{ number_format($calcTotal, 0, ',', '.') }}
+          </span>
+        </div>
+
+        <!-- Lifecycle Notice -->
+        <div class="rounded-lg bg-sky-50 dark:bg-sky-950/40 p-2.5 border border-sky-200 dark:border-sky-800 text-[11px] text-sky-800 dark:text-sky-300 flex items-start gap-2">
+          <x-heroicon-o-information-circle class="h-4 w-4 shrink-0 mt-0.5 text-sky-600" />
+          <p>
+            Pengajuan akan diproses oleh <strong>Admin Divisi</strong>. Saat disetujui (<strong>ACCEPTED</strong>), saldo otomatis terpotong pada mutasi rekening dan menunggu pencairan dana fisik (<strong>PAID</strong>).
+          </p>
+        </div>
+      </form>
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-end gap-2">
+        <x-secondary-button wire:click="closeWithdrawalModal" wire:loading.attr="disabled">
+          {{ __('Batal') }}
+        </x-secondary-button>
+
+        <x-button wire:click="submitWithdrawal" wire:loading.attr="disabled" class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800">
+          <span wire:loading.remove wire:target="submitWithdrawal">
+            {{ __('Kirim Pengajuan') }}
+          </span>
+          <span wire:loading wire:target="submitWithdrawal" class="inline-flex items-center gap-1.5">
+            <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            {{ __('Mengirim...') }}
+          </span>
+        </x-button>
+      </div>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- 6. DETAIL MUTASI TRANSACTION DIALOG MODAL -->
   <x-dialog-modal wire:model.live="isDetailModalOpen" maxWidth="md">
     <x-slot name="title">
       <div class="flex items-center gap-2 text-gray-900 dark:text-white">
@@ -466,4 +852,127 @@
       </x-secondary-button>
     </x-slot>
   </x-dialog-modal>
+
+  <!-- 7. DETAIL WITHDRAWAL REQUEST MODAL -->
+  <x-dialog-modal wire:model.live="isWithdrawalDetailModalOpen" maxWidth="md">
+    <x-slot name="title">
+      <div class="flex items-center gap-2 text-gray-900 dark:text-white">
+        <x-heroicon-o-document-text class="h-5 w-5 text-teal-600 dark:text-teal-400" />
+        {{ __('Detail Pengajuan Penarikan Syirkah') }}
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      @if($selectedWithdrawal)
+        @php
+          $badge = $selectedWithdrawal->status_badge;
+        @endphp
+
+        <!-- Top Status Card -->
+        <div class="rounded-2xl p-4 text-center {{ $badge['bg'] }} border {{ $badge['border'] }} mb-4">
+          <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider {{ $badge['text'] }}">
+            {{ $badge['label'] }}
+          </span>
+          <h3 class="mt-2 text-2xl font-black text-rose-600 dark:text-rose-400">
+            - Rp {{ number_format($selectedWithdrawal->total_amount, 0, ',', '.') }}
+          </h3>
+          <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 font-semibold">
+            {{ $badge['desc'] }}
+          </p>
+        </div>
+
+        <!-- Detail Information List -->
+        <div class="space-y-2.5 text-xs">
+          <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+            <span class="text-gray-500 dark:text-gray-400">Tanggal Pengajuan</span>
+            <span class="font-semibold text-gray-800 dark:text-gray-200">
+              {{ \Carbon\Carbon::parse($selectedWithdrawal->created_at)->translatedFormat('d F Y, H:i') }} WIB
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+            <span class="text-gray-500 dark:text-gray-400">Opsi Penarikan</span>
+            <span class="font-bold text-gray-800 dark:text-gray-200">
+              {{ $selectedWithdrawal->withdrawal_type_label }}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+            <span class="text-gray-500 dark:text-gray-400">Nominal Wajib</span>
+            <span class="font-bold text-gray-800 dark:text-gray-200">
+              Rp {{ number_format($selectedWithdrawal->mandatory_amount, 0, ',', '.') }}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+            <span class="text-gray-500 dark:text-gray-400">Nominal Sukarela (SSR)</span>
+            <span class="font-bold text-gray-800 dark:text-gray-200">
+              Rp {{ number_format($selectedWithdrawal->secondary_amount, 0, ',', '.') }}
+            </span>
+          </div>
+
+          @if($selectedWithdrawal->approver)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400">Diverifikasi Oleh</span>
+              <span class="font-semibold text-gray-800 dark:text-gray-200">
+                {{ $selectedWithdrawal->approver->name }}
+              </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->approved_at)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400">Waktu Persetujuan</span>
+              <span class="font-semibold text-gray-800 dark:text-gray-200">
+                {{ \Carbon\Carbon::parse($selectedWithdrawal->approved_at)->translatedFormat('d M Y, H:i') }} WIB
+              </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->payer)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400">Dibayarkan Oleh</span>
+              <span class="font-semibold text-gray-800 dark:text-gray-200">
+                {{ $selectedWithdrawal->payer->name }}
+              </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->paid_at)
+            <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400">Waktu Pembayaran</span>
+              <span class="font-semibold text-emerald-600 dark:text-emerald-400">
+                {{ \Carbon\Carbon::parse($selectedWithdrawal->paid_at)->translatedFormat('d M Y, H:i') }} WIB
+              </span>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->rejection_reason)
+            <div class="pt-2">
+              <span class="text-rose-500 font-bold block mb-1">Alasan Penolakan:</span>
+              <div class="rounded-xl bg-rose-50 dark:bg-rose-950/40 p-2.5 text-rose-700 dark:text-rose-300 font-medium border border-rose-200 dark:border-rose-800">
+                {{ $selectedWithdrawal->rejection_reason }}
+              </div>
+            </div>
+          @endif
+
+          @if($selectedWithdrawal->reason)
+            <div class="pt-2">
+              <span class="text-gray-500 dark:text-gray-400 block mb-1">Alasan / Catatan Pengajuan:</span>
+              <div class="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-2.5 text-gray-700 dark:text-gray-300 font-medium">
+                {{ $selectedWithdrawal->reason }}
+              </div>
+            </div>
+          @endif
+        </div>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-secondary-button wire:click="closeWithdrawalDetailModal" wire:loading.attr="disabled">
+        {{ __('Tutup') }}
+      </x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
+
 </div>

@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\SavingSummary;
 use App\Models\SavingTransaction;
+use App\Models\SavingWithdrawal;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
+use RuntimeException;
 
 class SavingTransactionService
 {
@@ -423,4 +426,247 @@ class SavingTransactionService
 
         return $removedCount;
     }
+
+    /**
+     * Create a new withdrawal request for a user.
+     */
+    public static function createWithdrawalRequest(
+        string $userId,
+        string $savingsId,
+        string $withdrawalType,
+        float $mandatoryAmount,
+        float $secondaryAmount,
+        ?string $reason = null
+    ): SavingWithdrawal {
+        $totalAmount = $mandatoryAmount + $secondaryAmount;
+        if ($totalAmount <= 0) {
+            throw new InvalidArgumentException('Jumlah penarikan harus lebih dari 0.');
+        }
+
+        // Get current balance summary for validation
+        $summary = SavingSummary::where('user_id', $userId)
+            ->where('savings_id', $savingsId)
+            ->first();
+
+        $curMandatory = (float) ($summary?->total_mandatory ?? 0);
+        $curSecondary = (float) ($summary?->total_secondary ?? 0);
+
+        // Also check if there are pending withdrawals to prevent over-drafting
+        $pendingMandatory = (float) SavingWithdrawal::where('user_id', $userId)
+            ->where('savings_id', $savingsId)
+            ->where('status', 'pending')
+            ->sum('mandatory_amount');
+
+        $pendingSecondary = (float) SavingWithdrawal::where('user_id', $userId)
+            ->where('savings_id', $savingsId)
+            ->where('status', 'pending')
+            ->sum('secondary_amount');
+
+        $availMandatory = max(0.0, $curMandatory - $pendingMandatory);
+        $availSecondary = max(0.0, $curSecondary - $pendingSecondary);
+
+        if ($mandatoryAmount > $availMandatory) {
+            throw new InvalidArgumentException('Saldo Syirkah Wajib tidak mencukupi untuk pengajuan ini. Sisa saldo tersedia: Rp ' . number_format($availMandatory, 0, ',', '.'));
+        }
+
+        if ($secondaryAmount > $availSecondary) {
+            throw new InvalidArgumentException('Saldo Syirkah SSR/Sukarela tidak mencukupi untuk pengajuan ini. Sisa saldo tersedia: Rp ' . number_format($availSecondary, 0, ',', '.'));
+        }
+
+        $withdrawal = DB::transaction(function () use ($userId, $savingsId, $withdrawalType, $mandatoryAmount, $secondaryAmount, $totalAmount, $reason) {
+            return SavingWithdrawal::create([
+                'user_id' => $userId,
+                'savings_id' => $savingsId,
+                'withdrawal_type' => $withdrawalType,
+                'mandatory_amount' => $mandatoryAmount,
+                'secondary_amount' => $secondaryAmount,
+                'total_amount' => $totalAmount,
+                'status' => 'pending',
+                'reason' => $reason,
+                'approved_by' => null,
+                'approved_at' => null,
+                'paid_by' => null,
+                'paid_at' => null,
+                'rejection_reason' => null,
+                'saving_transaction_id' => null,
+            ]);
+        });
+
+        // Send Telegram Notification to Manager / Admin Divisi
+        try {
+            TelegramNotificationService::notifyPendingWithdrawal($withdrawal);
+        } catch (\Throwable $e) {
+            // Safe-fail: Do not let notification failure block transaction
+        }
+
+        return $withdrawal;
+    }
+
+    /**
+     * Approve a saving withdrawal request (Status: ACCEPTED).
+     * Automatically creates a withdrawal SavingTransaction in the mutation ledger.
+     */
+    public static function approveWithdrawalRequest(string $withdrawalId, string $approverId): SavingWithdrawal
+    {
+        $approvedWithdrawal = DB::transaction(function () use ($withdrawalId, $approverId) {
+            $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($withdrawalId);
+
+            if ($withdrawal->status === 'accepted' || $withdrawal->status === 'paid') {
+                return $withdrawal;
+            }
+
+            // Create SavingTransaction (Withdrawal debit from syirkah account)
+            $typeLabel = match ($withdrawal->withdrawal_type) {
+                'full' => 'Syirkah Full',
+                'mandatory' => 'Syirkah Wajib',
+                'secondary' => 'Syirkah SSR',
+                default => 'Syirkah',
+            };
+
+            $desc = 'Penarikan ' . $typeLabel . ($withdrawal->reason ? ' (' . $withdrawal->reason . ')' : '');
+
+            // If an existing transaction was linked, update or create new
+            if ($withdrawal->saving_transaction_id) {
+                $transaction = SavingTransaction::find($withdrawal->saving_transaction_id);
+                if ($transaction) {
+                    $transaction->update([
+                        'transaction_type' => 'withdrawal',
+                        'mandatory_amount' => $withdrawal->mandatory_amount,
+                        'secondary_amount' => $withdrawal->secondary_amount,
+                        'description' => $desc,
+                        'status' => 'approved',
+                        'approved_by' => $approverId,
+                        'approval_date' => now(),
+                    ]);
+                } else {
+                    $transaction = SavingTransaction::create([
+                        'user_id' => $withdrawal->user_id,
+                        'savings_id' => $withdrawal->savings_id,
+                        'transaction_type' => 'withdrawal',
+                        'mandatory_amount' => $withdrawal->mandatory_amount,
+                        'secondary_amount' => $withdrawal->secondary_amount,
+                        'reference_type' => 'saving_withdrawal',
+                        'reference_id' => $withdrawal->id,
+                        'description' => $desc,
+                        'status' => 'approved',
+                        'approved_by' => $approverId,
+                        'approval_date' => now(),
+                    ]);
+                }
+            } else {
+                $transaction = SavingTransaction::create([
+                    'user_id' => $withdrawal->user_id,
+                    'savings_id' => $withdrawal->savings_id,
+                    'transaction_type' => 'withdrawal',
+                    'mandatory_amount' => $withdrawal->mandatory_amount,
+                    'secondary_amount' => $withdrawal->secondary_amount,
+                    'reference_type' => 'saving_withdrawal',
+                    'reference_id' => $withdrawal->id,
+                    'description' => $desc,
+                    'status' => 'approved',
+                    'approved_by' => $approverId,
+                    'approval_date' => now(),
+                ]);
+            }
+
+            $withdrawal->update([
+                'status' => 'accepted',
+                'approved_by' => $approverId,
+                'approved_at' => now(),
+                'rejection_reason' => null,
+                'saving_transaction_id' => $transaction->id,
+            ]);
+
+            // Recalculate balances
+            self::recalculateUserTransactions($withdrawal->user_id, $withdrawal->savings_id);
+
+            return $withdrawal->fresh();
+        });
+
+        // Send Telegram Notification to Owner / Syirkah Team / Finance
+        try {
+            TelegramNotificationService::notifyAcceptedWithdrawal($approvedWithdrawal);
+        } catch (\Throwable $e) {
+            // Safe-fail
+        }
+
+        return $approvedWithdrawal;
+    }
+
+    /**
+     * Reject a saving withdrawal request (Status: REJECTED).
+     */
+    public static function rejectWithdrawalRequest(string $withdrawalId, string $approverId, ?string $reason = null): SavingWithdrawal
+    {
+        return DB::transaction(function () use ($withdrawalId, $approverId, $reason) {
+            $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($withdrawalId);
+
+            // If a transaction was previously created (e.g. accepted before), delete it
+            if ($withdrawal->saving_transaction_id) {
+                SavingTransaction::where('id', $withdrawal->saving_transaction_id)->delete();
+            }
+
+            $withdrawal->update([
+                'status' => 'rejected',
+                'approved_by' => $approverId,
+                'approved_at' => now(),
+                'rejection_reason' => $reason,
+                'saving_transaction_id' => null,
+            ]);
+
+            // Recalculate balances
+            self::recalculateUserTransactions($withdrawal->user_id, $withdrawal->savings_id);
+
+            return $withdrawal->fresh();
+        });
+    }
+
+    /**
+     * Mark an approved withdrawal request as PAID (Status: PAID).
+     */
+    public static function markAsPaidWithdrawalRequest(string $withdrawalId, string $payerId): SavingWithdrawal
+    {
+        return DB::transaction(function () use ($withdrawalId, $payerId) {
+            $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($withdrawalId);
+
+            // If not yet accepted, approve first to record the transaction
+            if ($withdrawal->status === 'pending') {
+                self::approveWithdrawalRequest($withdrawalId, $payerId);
+                $withdrawal = $withdrawal->fresh();
+            }
+
+            $withdrawal->update([
+                'status' => 'paid',
+                'paid_by' => $payerId,
+                'paid_at' => now(),
+            ]);
+
+            return $withdrawal->fresh();
+        });
+    }
+
+    /**
+     * Delete a withdrawal request.
+     */
+    public static function deleteWithdrawalRequest(string $withdrawalId): bool
+    {
+        return DB::transaction(function () use ($withdrawalId) {
+            $withdrawal = SavingWithdrawal::lockForUpdate()->find($withdrawalId);
+            if (!$withdrawal) return false;
+
+            if ($withdrawal->saving_transaction_id) {
+                SavingTransaction::where('id', $withdrawal->saving_transaction_id)->delete();
+            }
+
+            $userId = $withdrawal->user_id;
+            $savingsId = $withdrawal->savings_id;
+
+            $withdrawal->delete();
+
+            self::recalculateUserTransactions($userId, $savingsId);
+
+            return true;
+        });
+    }
 }
+
