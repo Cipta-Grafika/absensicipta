@@ -112,7 +112,7 @@
         @endif
 
         <!-- Reusable Fixed Left Sidebar Component (Positioned Below Banner Component) -->
-        @if (request()->routeIs('payroll.*'))
+        @if (request()->routeIs('payroll.*') && (Auth::user()?->isPayroll || Auth::user()?->isOwner || Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin))
           <x-payroll-sidebar />
         @else
           <x-hr-sidebar />

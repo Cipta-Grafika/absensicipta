@@ -35,12 +35,20 @@
     @endif
 
     <!-- 3. SYIRKAH (DROPDOWN) -->
+    @php
+      $pendingWithdrawalsCount = \App\Models\SavingWithdrawal::where('status', 'pending')->count();
+    @endphp
     <div>
       <button type="button" @click="openSyirkah = !openSyirkah"
               class="group flex w-full items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 {{ $isSyirkahActive ? 'bg-gray-100/80 dark:bg-gray-700/80 text-gray-900 dark:text-white' : 'text-gray-600 hover:bg-gray-100/80 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/60 dark:hover:text-gray-200' }}">
         <div class="flex items-center gap-3 truncate">
           <x-heroicon-o-banknotes class="h-5 w-5 shrink-0 {{ $isSyirkahActive ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-300' }}" />
           <span class="truncate">Syirkah</span>
+          @if ($pendingWithdrawalsCount > 0)
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white shadow-xs animate-pulse">
+              {{ $pendingWithdrawalsCount }}
+            </span>
+          @endif
         </div>
         <x-heroicon-o-chevron-down class="h-4 w-4 shrink-0 transition-transform duration-200 text-gray-400" x-bind:class="openSyirkah ? 'rotate-180 text-gray-600 dark:text-gray-300' : ''" />
       </button>
@@ -50,6 +58,11 @@
         <a href="{{ route('payroll.saving-transactions') }}"
            class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
           <span>Mutasi Syirkah</span>
+          @if ($pendingWithdrawalsCount > 0)
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white animate-pulse">
+              {{ $pendingWithdrawalsCount }}
+            </span>
+          @endif
         </a>
 
         @php $active = request()->routeIs('payroll.loans'); @endphp
@@ -262,6 +275,11 @@
               <div class="flex items-center gap-3 truncate">
                 <x-heroicon-o-banknotes class="h-5 w-5 shrink-0 {{ $isSyirkahActive ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-300' }}" />
                 <span class="truncate">Syirkah</span>
+                @if ($pendingWithdrawalsCount > 0)
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white shadow-xs animate-pulse">
+                    {{ $pendingWithdrawalsCount }}
+                  </span>
+                @endif
               </div>
               <x-heroicon-o-chevron-down class="h-4 w-4 shrink-0 transition-transform duration-200 text-gray-400" x-bind:class="openSyirkah ? 'rotate-180 text-gray-600 dark:text-gray-300' : ''" />
             </button>
@@ -271,6 +289,11 @@
               <a href="{{ route('payroll.saving-transactions') }}"
                  class="group flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-500 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/40 dark:hover:text-gray-200' }}">
                 <span>Mutasi Syirkah</span>
+                @if ($pendingWithdrawalsCount > 0)
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white animate-pulse">
+                    {{ $pendingWithdrawalsCount }}
+                  </span>
+                @endif
               </a>
 
               @php $active = request()->routeIs('payroll.loans'); @endphp
