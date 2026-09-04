@@ -90,25 +90,29 @@
           <option value="">-- {{ __('Pilih Shift') }} --</option>
             @php
               $userDivId = auth()->user()?->division_id;
-              $divisionShifts = $shifts->filter(fn($s) => $s->division_id == $userDivId && !is_null($s->division_id));
+              $divisionShifts = $shifts->filter(fn($s) => !is_null($s->division_id) && $s->division_id == $userDivId);
               $globalShifts = $shifts->filter(fn($s) => is_null($s->division_id));
             @endphp
 
             @if($divisionShifts->count() > 0)
-              <optgroup label="Shift Divisi (Prioritas Utama)">
+              <optgroup label="Shift Divisi (Terkunci & Diprioritaskan)">
                 @foreach ($divisionShifts as $shift)
+                  @php
+                    $wInfo = $shift->getCheckInWindowInfo();
+                  @endphp
                   <option value="{{ $shift->id }}">
-                    {{ $shift->name }} ({{ $shift->start_time }} - {{ $shift->end_time }})
+                    {{ $shift->name }} ({{ $wInfo['start_time_str'] }} - {{ $wInfo['end_time_str'] }}) {{ $wInfo['is_open'] ? '• [Aktif / Buka]' : '• [Buka ' . $wInfo['earliest_time_str'] . ' WIB]' }}
                   </option>
                 @endforeach
               </optgroup>
-            @endif
-
-            @if($globalShifts->count() > 0)
-              <optgroup label="Shift Global">
+            @elseif($globalShifts->count() > 0)
+              <optgroup label="Shift Global (Fallback)">
                 @foreach ($globalShifts as $shift)
+                  @php
+                    $wInfo = $shift->getCheckInWindowInfo();
+                  @endphp
                   <option value="{{ $shift->id }}">
-                    {{ $shift->name }} ({{ $shift->start_time }} - {{ $shift->end_time }})
+                    {{ $shift->name }} ({{ $wInfo['start_time_str'] }} - {{ $wInfo['end_time_str'] }}) {{ $wInfo['is_open'] ? '• [Aktif / Buka]' : '• [Buka ' . $wInfo['earliest_time_str'] . ' WIB]' }}
                   </option>
                 @endforeach
               </optgroup>
@@ -181,15 +185,22 @@
     @php
       $hasTimeIn = !empty($attendance?->time_in);
       $hasTimeOut = !empty($attendance?->time_out);
-      $canManualCheckIn = empty($attendance?->time_in) && !$isAbsence;
 
-      $windowInfo = $this->checkOutWindowInfo;
-      $hasShift = $windowInfo['hasShift'] ?? true;
-      $isCheckOutWindowOpen = $windowInfo['isOpen'];
-      $checkOutUnlockTime = $windowInfo['unlockTime'];
+      $inWindow = $this->checkInWindowInfo;
+      $hasShiftIn = $inWindow['hasShift'] ?? true;
+      $isCheckInWindowOpen = $inWindow['isOpen'] ?? false;
+      $checkInUnlockTime = $inWindow['unlockTime'] ?? '-';
 
-      $canManualCheckOut = $hasTimeIn && !$hasTimeOut && !$isAbsence && $hasShift && $isCheckOutWindowOpen;
-      $isCheckOutLockedUntilWindow = $hasTimeIn && !$hasTimeOut && !$isAbsence && (!$hasShift || !$isCheckOutWindowOpen);
+      $canManualCheckIn = empty($attendance?->time_in) && !$isAbsence && $hasShiftIn && $isCheckInWindowOpen;
+      $isCheckInLockedUntilWindow = empty($attendance?->time_in) && !$isAbsence && (!$hasShiftIn || !$isCheckInWindowOpen);
+
+      $outWindow = $this->checkOutWindowInfo;
+      $hasShiftOut = $outWindow['hasShift'] ?? true;
+      $isCheckOutWindowOpen = $outWindow['isOpen'] ?? false;
+      $checkOutUnlockTime = $outWindow['unlockTime'] ?? '-';
+
+      $canManualCheckOut = $hasTimeIn && !$hasTimeOut && !$isAbsence && $hasShiftOut && $isCheckOutWindowOpen;
+      $isCheckOutLockedUntilWindow = $hasTimeIn && !$hasTimeOut && !$isAbsence && (!$hasShiftOut || !$isCheckOutWindowOpen);
     @endphp
 
     <div class="grid grid-cols-2 gap-2.5 sm:gap-4">
@@ -202,6 +213,8 @@
           wire:loading.class="pointer-events-none opacity-60 cursor-wait"
           wire:target="manualCheckIn, manualCheckOut"
           title="Klik untuk Absen Masuk (Verifikasi GPS Radius Barcode Kantor)"
+        @elseif($isCheckInLockedUntilWindow)
+          title="{{ !$hasShiftIn ? 'Pilih shift terlebih dahulu sebelum melakukan presensi.' : 'Absen Masuk belum dibuka. Dapat diakses mulai pukul ' . $checkInUnlockTime . ' WIB (2 jam sebelum shift dimulai).' }}"
         @endif
         class="col-span-1 relative flex flex-col justify-between rounded-xl p-2.5 sm:p-4 transition-all duration-200
                {{ $canManualCheckIn 
@@ -210,13 +223,19 @@
                       ? ($attendance?->status == 'late' 
                           ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800' 
                           : 'bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800') 
-                      : 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 opacity-80') }}">
+                      : ($isCheckInLockedUntilWindow
+                          ? 'bg-gray-100/90 dark:bg-gray-800/60 border border-gray-300/80 dark:border-gray-700/80 cursor-not-allowed opacity-90'
+                          : 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 opacity-80')) }}">
         
         <div class="space-y-2">
           <!-- HEADER: ICON & TITLE (JAM MASUK) -->
           <div class="flex items-center gap-1.5 sm:gap-2">
-            <div class="rounded-lg p-1.5 sm:p-2 {{ $canManualCheckIn ? 'bg-emerald-600 text-white' : ($attendance?->time_in ? 'bg-emerald-600/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400') }} shrink-0">
-              <x-heroicon-o-arrows-pointing-in class="h-4 w-4 sm:h-5 sm:w-5" />
+            <div class="rounded-lg p-1.5 sm:p-2 {{ $canManualCheckIn ? 'bg-emerald-600 text-white' : ($attendance?->time_in ? 'bg-emerald-600/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400' : ($isCheckInLockedUntilWindow ? 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400')) }} shrink-0">
+              @if($isCheckInLockedUntilWindow)
+                <x-heroicon-o-lock-closed class="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-400" />
+              @else
+                <x-heroicon-o-arrows-pointing-in class="h-4 w-4 sm:h-5 sm:w-5" />
+              @endif
             </div>
             <h4 class="text-xs sm:text-base font-bold text-gray-900 dark:text-white leading-tight truncate">Jam Masuk</h4>
           </div>
@@ -228,6 +247,11 @@
                 <span class="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-white shadow-xs animate-pulse">
                   <span>Klik Absen</span>
                   <x-heroicon-s-hand-raised class="h-3 w-3" />
+                </span>
+              @elseif($isCheckInLockedUntilWindow)
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-amber-800 dark:text-amber-300">
+                  <x-heroicon-o-lock-closed class="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                  {{ !$hasShiftIn ? 'Pilih Shift Dulu' : 'Buka Pukul ' . $checkInUnlockTime }}
                 </span>
               @elseif($attendance?->time_in)
                 <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200">
@@ -254,9 +278,11 @@
           </div>
         </div>
 
-        <p class="mt-2 text-[10px] sm:text-xs font-medium {{ $canManualCheckIn ? 'text-emerald-800 dark:text-emerald-200 font-semibold' : 'text-gray-500 dark:text-gray-400' }} line-clamp-2">
+        <p class="mt-2 text-[10px] sm:text-xs font-medium {{ $canManualCheckIn ? 'text-emerald-800 dark:text-emerald-200 font-semibold' : ($isCheckInLockedUntilWindow ? 'text-amber-700 dark:text-amber-300' : 'text-gray-500 dark:text-gray-400') }} line-clamp-2">
           @if($canManualCheckIn)
             Tap di sini untuk Absen Masuk (GPS)
+          @elseif($isCheckInLockedUntilWindow)
+            {{ !$hasShiftIn ? 'Pilih shift kerja terlebih dahulu' : 'Buka pukul ' . $checkInUnlockTime . ' (2 jam sblm shift)' }}
           @else
             Waktu presensi masuk hari ini
           @endif

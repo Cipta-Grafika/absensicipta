@@ -142,8 +142,8 @@ class ScanFeedbackTest extends TestCase
 
         $shift = Shift::create([
             'name' => 'Shift Pagi',
-            'start_time' => '23:59:59',
-            'end_time' => '23:59:59',
+            'start_time' => \Illuminate\Support\Carbon::now()->addMinutes(15)->format('H:i:s'),
+            'end_time' => \Illuminate\Support\Carbon::now()->addHours(8)->format('H:i:s'),
         ]);
 
         $this->actingAs($user);

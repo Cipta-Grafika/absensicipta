@@ -72,7 +72,7 @@ class EmployeeMonthlyStat extends Model
                     $shiftStart = Carbon::parse($attDate . ' ' . $shiftStartStr);
 
                     if ($timeIn->lessThan($shiftStart)) {
-                        $earlyMins = $timeIn->diffInMinutes($shiftStart);
+                        $earlyMins = min(120, $timeIn->diffInMinutes($shiftStart));
                         $totalEarlyMinutes += $earlyMins;
                         $earlyCount++;
                     }

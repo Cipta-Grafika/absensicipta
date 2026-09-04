@@ -90,4 +90,88 @@ class Shift extends Model
         
         return abs($end->diffInMinutes($start));
     }
+
+    /**
+     * Get candidate shifts for a specific user using strict hierarchy:
+     * 1. Lock to user's division shifts first if they exist.
+     * 2. Fallback to global shifts only if no division shifts exist.
+     */
+    public static function getCandidateShiftsForUser($user = null)
+    {
+        if (!$user) {
+            $user = auth()->user();
+        }
+
+        if (!$user) {
+            return static::whereNull('division_id')->orderBy('start_time')->get();
+        }
+
+        if ($user->isSuperadmin) {
+            return static::orderBy('start_time')->get();
+        }
+
+        if ($user->division_id) {
+            $divisionShifts = static::where('division_id', $user->division_id)->orderBy('start_time')->get();
+            if ($divisionShifts->isNotEmpty()) {
+                return $divisionShifts;
+            }
+        }
+
+        return static::whereNull('division_id')->orderBy('start_time')->get();
+    }
+
+    /**
+     * Calculate the 2-hour check-in window and active state for this shift.
+     */
+    public function getCheckInWindowInfo(?\Illuminate\Support\Carbon $now = null): array
+    {
+        $now = $now ? $now->copy() : \Illuminate\Support\Carbon::now();
+        $startStr = \Illuminate\Support\Carbon::parse($this->start_time ?? '08:00:00')->format('H:i:s');
+        $endStr = \Illuminate\Support\Carbon::parse($this->end_time ?? '17:00:00')->format('H:i:s');
+
+        $isOvernight = $endStr < $startStr;
+
+        if ($isOvernight) {
+            // e.g. 21:00 - 05:00
+            if ($now->format('H:i:s') <= $endStr) {
+                $shiftStart = \Illuminate\Support\Carbon::yesterday()->setTimeFromTimeString($startStr);
+                $shiftEnd = \Illuminate\Support\Carbon::today()->setTimeFromTimeString($endStr);
+            } else {
+                $shiftStart = \Illuminate\Support\Carbon::today()->setTimeFromTimeString($startStr);
+                $shiftEnd = \Illuminate\Support\Carbon::tomorrow()->setTimeFromTimeString($endStr);
+            }
+        } else {
+            // Regular daytime shift, e.g. 08:00 - 17:00
+            $shiftStart = \Illuminate\Support\Carbon::today()->setTimeFromTimeString($startStr);
+            $shiftEnd = \Illuminate\Support\Carbon::today()->setTimeFromTimeString($endStr);
+        }
+
+        // Check-in window opens strictly 2 hours before shift start time
+        $earliestCheckIn = $shiftStart->copy()->subHours(2);
+        // Check-in window closes at shift end time
+        $latestCheckIn = $shiftEnd->copy();
+
+        $isOpen = $now->gte($earliestCheckIn) && $now->lte($latestCheckIn);
+
+        $minutesToOpen = $now->lt($earliestCheckIn) ? $now->diffInMinutes($earliestCheckIn) : 0;
+        $distanceToStartMinutes = abs($now->diffInMinutes($shiftStart, false));
+
+        return [
+            'shift_id' => $this->id,
+            'name' => $this->name,
+            'start_time' => $startStr,
+            'end_time' => $endStr,
+            'shift_start' => $shiftStart,
+            'shift_end' => $shiftEnd,
+            'earliest_check_in' => $earliestCheckIn,
+            'latest_check_in' => $latestCheckIn,
+            'earliest_time_str' => $earliestCheckIn->format('H:i'),
+            'start_time_str' => $shiftStart->format('H:i'),
+            'end_time_str' => $shiftEnd->format('H:i'),
+            'is_open' => $isOpen,
+            'minutes_to_open' => $minutesToOpen,
+            'distance_to_start_minutes' => $distanceToStartMinutes,
+            'is_overnight' => $isOvernight,
+        ];
+    }
 }

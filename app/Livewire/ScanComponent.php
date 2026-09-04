@@ -262,14 +262,31 @@ class ScanComponent extends Component
             }
 
             if ($isCheckInAction) {
+                if (is_null($this->shift_id)) {
+                    return __('Pilih shift terlebih dahulu sebelum melakukan absen.');
+                }
+
+                $shift = Shift::find($this->shift_id);
+                if (!$shift) {
+                    return __('Shift tidak ditemukan. Silakan pilih shift yang valid.');
+                }
+
+                $windowInfo = $shift->getCheckInWindowInfo();
+                if (!$windowInfo['is_open']) {
+                    if (Carbon::now()->lt($windowInfo['earliest_check_in'])) {
+                        return "Absen Masuk ditolak: Absen Masuk untuk {$shift->name} baru dibuka pukul {$windowInfo['earliest_time_str']} WIB (2 jam sebelum jam masuk {$windowInfo['start_time_str']} WIB).";
+                    } else {
+                        return "Absen Masuk ditolak: Waktu kerja untuk {$shift->name} telah berakhir pada pukul {$windowInfo['end_time_str']} WIB.";
+                    }
+                }
+
                 if ($existingAttendance) {
-                    $shift = Shift::find($this->shift_id);
-                    $shiftStartTime = $shift ? $shift->start_time : '08:00:00';
+                    $shiftStartTime = $shift->start_time ?: '08:00:00';
                     $now = Carbon::now();
                     $status = Carbon::now()->setTimeFromTimeString($shiftStartTime)->lt($now) ? 'late' : 'present';
                     $existingAttendance->update([
                         'barcode_id' => $barcodeModel->id,
-                        'shift_id' => $shift?->id,
+                        'shift_id' => $shift->id,
                         'time_in' => date('H:i:s'),
                         'latitude' => doubleval($this->currentLiveCoords[0]),
                         'longitude' => doubleval($this->currentLiveCoords[1]),
@@ -429,6 +446,22 @@ class ScanComponent extends Component
                 return;
             }
 
+            $shift = Shift::find($this->shift_id);
+            if (!$shift) {
+                $this->dangerBanner(__('Shift tidak ditemukan. Silakan pilih shift yang valid.'));
+                return;
+            }
+
+            $windowInfo = $shift->getCheckInWindowInfo();
+            if (!$windowInfo['is_open']) {
+                if (Carbon::now()->lt($windowInfo['earliest_check_in'])) {
+                    $this->dangerBanner("Absen Masuk ditolak: Absen Masuk untuk {$shift->name} baru dibuka pukul {$windowInfo['earliest_time_str']} WIB (2 jam sebelum jam masuk {$windowInfo['start_time_str']} WIB).");
+                } else {
+                    $this->dangerBanner("Absen Masuk ditolak: Waktu kerja untuk {$shift->name} telah berakhir pada pukul {$windowInfo['end_time_str']} WIB.");
+                }
+                return;
+            }
+
             $userLocation = new LatLong($userLat, $userLng);
             $barcodes = Barcode::all();
 
@@ -476,6 +509,36 @@ class ScanComponent extends Component
         } finally {
             $lock->release();
         }
+    }
+
+    #[\Livewire\Attributes\Computed]
+    public function checkInWindowInfo(): array
+    {
+        $shiftId = $this->shift_id ?? $this->attendance?->shift_id;
+        $shift = $shiftId ? Shift::find($shiftId) : null;
+
+        if (!$shift) {
+            return [
+                'hasShift' => false,
+                'isOpen' => false,
+                'unlockTime' => '-',
+                'shiftStartTime' => '-',
+                'shiftEndTime' => '-',
+                'minutesToOpen' => 0,
+                'isOvernight' => false,
+            ];
+        }
+
+        $info = $shift->getCheckInWindowInfo();
+        return [
+            'hasShift' => true,
+            'isOpen' => $info['is_open'],
+            'unlockTime' => $info['earliest_time_str'],
+            'shiftStartTime' => $info['start_time_str'],
+            'shiftEndTime' => $info['end_time_str'],
+            'minutesToOpen' => $info['minutes_to_open'],
+            'isOvernight' => $info['is_overnight'],
+        ];
     }
 
     #[\Livewire\Attributes\Computed]
@@ -720,6 +783,30 @@ class ScanComponent extends Component
         if (!empty($this->attendance?->time_in)) {
             $this->shift_id = $this->attendance->shift_id;
             $this->dangerBanner(__('Shift kerja tidak dapat diubah karena Anda sudah melakukan absen masuk hari ini.'));
+            return;
+        }
+
+        $user = Auth::user();
+        $candidateShifts = Shift::getCandidateShiftsForUser($user);
+
+        if (!$candidateShifts->contains('id', $value)) {
+            $this->ensureShiftSelected();
+            $this->dangerBanner(__('Shift yang dipilih tidak tersedia untuk divisi Anda.'));
+            return;
+        }
+
+        $selectedShift = Shift::find($value);
+        if ($selectedShift) {
+            $windowInfo = $selectedShift->getCheckInWindowInfo();
+            if (!$windowInfo['is_open']) {
+                $this->ensureShiftSelected();
+                if (Carbon::now()->lt($windowInfo['earliest_check_in'])) {
+                    $this->dangerBanner("Shift {$selectedShift->name} belum dapat dipilih. Absen Masuk baru dibuka pukul {$windowInfo['earliest_time_str']} WIB (2 jam sebelum jam masuk {$windowInfo['start_time_str']} WIB).");
+                } else {
+                    $this->dangerBanner("Shift {$selectedShift->name} telah berakhir pada pukul {$windowInfo['end_time_str']} WIB.");
+                }
+                return;
+            }
         }
     }
 
@@ -728,30 +815,64 @@ class ScanComponent extends Component
         $user = Auth::user();
         if (!$user) return;
 
-        if (is_null($this->shifts)) {
-            $this->shifts = Shift::forUser($user)->get();
+        $candidateShifts = Shift::getCandidateShiftsForUser($user);
+        $this->shifts = $candidateShifts;
+
+        if ($candidateShifts->isEmpty()) {
+            $this->shift_id = null;
+            return;
         }
 
-        if (is_null($this->shift_id) && $this->shifts->isNotEmpty()) {
-            $divisionShifts = $this->shifts->filter(fn (Shift $s) => !is_null($s->division_id) && $s->division_id == $user->division_id);
-            $candidateShifts = $divisionShifts->isNotEmpty() ? $divisionShifts : $this->shifts;
-
-            $validTimes = array_filter($candidateShifts->pluck('start_time')->toArray());
-
-            if (!empty($validTimes)) {
-                $closest = ExtendedCarbon::now()->closestFromDateArray($validTimes);
-                $matchedShift = $closest ? $candidateShifts->where(fn (Shift $shift) => $shift->start_time == $closest->format('H:i:s'))->first() : null;
-                $this->shift_id = $matchedShift?->id ?? $candidateShifts->first()?->id;
-            } else {
-                $this->shift_id = $candidateShifts->first()?->id;
+        // If shift_id is already set and valid in candidates and currently open, keep it
+        if (!is_null($this->shift_id) && $candidateShifts->contains('id', $this->shift_id)) {
+            $currentShift = Shift::find($this->shift_id);
+            if ($currentShift && $currentShift->getCheckInWindowInfo()['is_open']) {
+                return;
             }
+        }
+
+        $now = Carbon::now();
+        $openShifts = [];
+        $upcomingShifts = [];
+
+        foreach ($candidateShifts as $shift) {
+            $window = $shift->getCheckInWindowInfo($now);
+            if ($window['is_open']) {
+                $openShifts[] = [
+                    'shift' => $shift,
+                    'distance' => $window['distance_to_start_minutes'],
+                ];
+            } else {
+                $upcomingShifts[] = [
+                    'shift' => $shift,
+                    'minutes_to_open' => $window['minutes_to_open'],
+                    'distance' => $window['distance_to_start_minutes'],
+                ];
+            }
+        }
+
+        if (!empty($openShifts)) {
+            // Pick open shift closest to start time
+            usort($openShifts, fn($a, $b) => $a['distance'] <=> $b['distance']);
+            $this->shift_id = $openShifts[0]['shift']->id;
+        } elseif (!empty($upcomingShifts)) {
+            // Pick upcoming shift closest to opening
+            usort($upcomingShifts, function($a, $b) {
+                if ($a['minutes_to_open'] > 0 && $b['minutes_to_open'] > 0) {
+                    return $a['minutes_to_open'] <=> $b['minutes_to_open'];
+                }
+                return $a['distance'] <=> $b['distance'];
+            });
+            $this->shift_id = $upcomingShifts[0]['shift']->id;
+        } else {
+            $this->shift_id = $candidateShifts->first()->id;
         }
     }
 
     public function mount()
     {
         $user = Auth::user();
-        $this->shifts = Shift::forUser($user)->get();
+        $this->shifts = Shift::getCandidateShiftsForUser($user);
 
         /** @var Attendance */
         $attendance = Attendance::where('user_id', $user->id)
@@ -1166,7 +1287,7 @@ class ScanComponent extends Component
         return view('livewire.scan', [
             'attendance' => $this->attendance,
             'shift_id' => $this->shift_id,
-            'shifts' => $this->shifts ?: Shift::forUser(Auth::user())->get(),
+            'shifts' => $this->shifts ?: Shift::getCandidateShiftsForUser(Auth::user()),
             'currentLiveCoords' => $this->currentLiveCoords,
             'successMsg' => $this->successMsg,
             'isAbsence' => $this->isAbsence,
