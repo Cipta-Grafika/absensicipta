@@ -152,7 +152,7 @@
     <!-- 3. CARD POTONGAN (TOP BANNER - CLICKABLE FOR DETAILS) -->
     <div 
       wire:click="openDeductionDetailModal"
-      title="Klik untuk melihat rincian detail potongan bulan ini"
+      title="Klik untuk melihat rincian detail potongan bulan ini (Real-time SSE Active)"
       class="group relative flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-red-100 via-rose-100 to-red-100 dark:from-red-950/80 dark:via-rose-950/70 dark:to-red-950/80 px-4 py-3 text-gray-800 dark:text-white border border-red-300 dark:border-red-800 shadow-xs cursor-pointer hover:shadow-md hover:border-red-400 dark:hover:border-red-700 hover:scale-[1.005] active:scale-[0.99] transition-all duration-200">
       <div class="flex items-center gap-3">
         <div class="rounded-lg bg-red-500/15 dark:bg-red-500/20 p-2 text-red-600 dark:text-red-400 shrink-0 group-hover:scale-110 transition-transform">
@@ -162,6 +162,7 @@
           <div class="flex items-center gap-1.5">
             <h4 class="text-sm font-bold sm:text-base text-gray-900 dark:text-white">Potongan Bulan Ini</h4>
             <span class="inline-flex items-center rounded-full bg-red-600/10 dark:bg-red-400/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:text-red-300">
+              <span class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
               Lihat Detail
             </span>
           </div>
@@ -421,7 +422,18 @@
             <x-heroicon-o-calculator class="h-5 w-5" />
           </div>
           <div>
-            <h3 class="text-base font-bold text-gray-900 dark:text-white">Rincian Potongan Anda</h3>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-gray-900 dark:text-white">Rincian Potongan Anda</h3>
+              @if($isPayrollFinal)
+                <span class="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                  Payroll Terbit
+                </span>
+              @else
+                <span class="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+                  Estimasi Berjalan
+                </span>
+              @endif
+            </div>
             <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Periode: {{ $deductionPeriod ?: date('F Y') }}</p>
           </div>
         </div>
@@ -459,7 +471,7 @@
               <tfoot class="bg-red-50/70 dark:bg-red-950/40 border-t-2 border-red-200 dark:border-red-900">
                 <tr>
                   <th scope="row" class="py-3 pl-4 pr-3 text-left text-sm font-extrabold text-gray-900 dark:text-white">
-                    Total Estimasi Potongan
+                    {{ $isPayrollFinal ? 'Total Potongan' : 'Total Estimasi Potongan' }}
                   </th>
                   <td class="whitespace-nowrap px-3 py-3 text-right text-sm font-extrabold font-mono text-red-700 dark:text-red-300">
                     Rp {{ number_format($userTotalDeduction ?? 0, 0, ',', '.') }}
@@ -468,11 +480,18 @@
               </tfoot>
             </table>
           </div>
-          <div class="mt-3 rounded-lg bg-sky-50 dark:bg-sky-950/40 p-2.5 text-xs text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-start gap-2">
-            <x-heroicon-s-information-circle class="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
-            <p>
-              Perhitungan potongan ini dihitung secara realtime berdasarkan presensi berjalan bulan ini dan disesuaikan saat proses penggajian (payroll) final.
-            </p>
+          <div class="mt-3 rounded-lg {{ $isPayrollFinal ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800' }} p-2.5 text-xs border flex items-start gap-2">
+            @if($isPayrollFinal)
+              <x-heroicon-s-check-circle class="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <p>
+                Rincian potongan ini bersumber langsung dari data Payroll Resmi yang telah diproses untuk periode bulan ini.
+              </p>
+            @else
+              <x-heroicon-s-information-circle class="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+              <p>
+                Perhitungan potongan ini dihitung secara realtime berdasarkan presensi berjalan bulan ini dan disesuaikan saat proses penggajian (payroll) final.
+              </p>
+            @endif
           </div>
         @else
           <div class="text-center py-6">
@@ -717,5 +736,47 @@
         modalLiveMap.invalidateSize();
       }, 200);
     };
+
+    // --------------------------------------------------------------------------
+    // SSE Real-time Deduction Streaming Engine (Non-blocking, Ultra-fast)
+    // --------------------------------------------------------------------------
+    let lastDeductionTimestamp = null;
+    let deductionStreamTimer = null;
+
+    function pollDeductionStream() {
+      if (document.hidden) return;
+
+      fetch('{{ route("api.deduction.stream") }}', {
+        headers: {
+          'Accept': 'text/event-stream, application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(res => res.text())
+      .then(text => {
+        const match = text.match(/data:\s*({.*})/);
+        if (match && match[1]) {
+          const payload = JSON.parse(match[1]);
+          if (lastDeductionTimestamp === null) {
+            lastDeductionTimestamp = payload.timestamp;
+          } else if (payload.timestamp > lastDeductionTimestamp) {
+            lastDeductionTimestamp = payload.timestamp;
+            $wire.dispatch('refresh-deduction-from-sse', { data: payload });
+          }
+        }
+      })
+      .catch(() => {});
+    }
+
+    // Initial check and background periodic sync every 15s (100% non-blocking)
+    if (deductionStreamTimer) clearInterval(deductionStreamTimer);
+    deductionStreamTimer = setInterval(pollDeductionStream, 15000);
+
+    // Immediate check when tab gains focus
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        pollDeductionStream();
+      }
+    });
   </script>
 @endscript

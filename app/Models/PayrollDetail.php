@@ -10,6 +10,17 @@ class PayrollDetail extends Model
 {
     use HasFactory, HasUlids;
 
+    protected static function booted()
+    {
+        static::saved(function ($detail) {
+            \App\Services\DeductionNotificationService::notify($detail->payroll?->employee_id);
+        });
+
+        static::deleted(function ($detail) {
+            \App\Services\DeductionNotificationService::notify($detail->payroll?->employee_id);
+        });
+    }
+
     protected $fillable = [
         'payroll_id',
         'type', // 'earning' or 'deduction'

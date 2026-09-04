@@ -9,6 +9,7 @@ use App\Models\Shift;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Livewire\Attributes\On;
 use App\Services\AttendanceScheduleService;
 use Ballen\Distical\Calculator as DistanceCalculator;
 use Ballen\Distical\Entities\LatLong;
@@ -34,6 +35,7 @@ class ScanComponent extends Component
     public array $userDeductionDetails = [];
     public float $userTotalDeduction = 0.0;
     public string $deductionPeriod = '';
+    public bool $isPayrollFinal = false;
     public string $motivationTitle = '';
     public string $motivationMessage = '';
     public string $motivationType = '';
@@ -768,16 +770,66 @@ class ScanComponent extends Component
         $salary = $user?->salary;
         $startPeriod = Carbon::now()->startOfMonth();
         $today = Carbon::today();
+        $periodMonth = date('Y-m');
         $periodName = $startPeriod->translatedFormat('F Y');
 
         if (!$salary) {
             return [
                 'total' => 0.0,
                 'period' => $periodName,
+                'is_payroll_final' => false,
                 'items' => [],
             ];
         }
 
+        // 1. SINGLE SOURCE OF TRUTH: If official Payroll for current month already exists and has details, use its snapshot directly!
+        $currentMonthPayroll = \App\Models\Payroll::with('details')
+            ->where('employee_id', $user->id)
+            ->where('period_month', $periodMonth)
+            ->first();
+
+        if ($currentMonthPayroll && $currentMonthPayroll->details->isNotEmpty()) {
+            $items = [];
+            foreach ($currentMonthPayroll->details->where('type', 'deduction') as $pDetail) {
+                $nameLower = strtolower($pDetail->name);
+                $detailSubtitle = 'Potongan Payroll Resmi';
+
+                if (str_contains($nameLower, 'izin') || str_contains($nameLower, 'sakit') || str_contains($nameLower, 'cuti') || str_contains($nameLower, 'wfh') || str_contains($nameLower, 'alpa') || str_contains($nameLower, 'terlambat') || str_contains($nameLower, 'imp')) {
+                    $detailSubtitle = 'Potongan Kehadiran / Presensi';
+                } elseif (str_contains($nameLower, 'syirkah')) {
+                    $detailSubtitle = 'Simpanan Syirkah';
+                } elseif (str_contains($nameLower, 'pinjaman') || str_contains($nameLower, 'kasbon')) {
+                    $detailSubtitle = 'Cicilan Pinjaman';
+                } elseif (str_contains($nameLower, 'bpjs') || str_contains($nameLower, 'pph')) {
+                    $detailSubtitle = 'Pajak & Jaminan Sosial';
+                } elseif (str_contains($nameLower, 'error')) {
+                    $detailSubtitle = 'Potongan Kerusakan / Error Produksi';
+                } elseif (str_contains($nameLower, 'fleksibel') || str_contains($nameLower, 'program')) {
+                    $detailSubtitle = 'Potongan Program Khusus';
+                }
+
+                $items[] = [
+                    'name' => $pDetail->name,
+                    'detail' => $detailSubtitle,
+                    'amount' => (float) $pDetail->amount,
+                ];
+            }
+
+            $totalDeduction = (float) $currentMonthPayroll->total_deduction;
+            if ($totalDeduction <= 0 && !empty($items)) {
+                $totalDeduction = (float) array_sum(array_column($items, 'amount'));
+            }
+
+            return [
+                'total' => round($totalDeduction, 0),
+                'period' => $periodName,
+                'is_payroll_final' => true,
+                'payroll_status' => $currentMonthPayroll->status,
+                'items' => $items,
+            ];
+        }
+
+        // 2. REALTIME ESTIMATION: When Payroll has not yet been generated for current month
         $startDateStr = $startPeriod->format('Y-m-d');
         $endDateStr = $today->format('Y-m-d');
 
@@ -796,14 +848,16 @@ class ScanComponent extends Component
         $consecutive_cuti = 0;
         $penalized_cuti_days = 0;
         $late_days_count = 0;
+        $todayDate = Carbon::today()->startOfDay();
 
         for ($d = $startPeriod->copy(); $d->lte($today); $d->addDay()) {
+            $isPastDate = $d->startOfDay()->lt($todayDate);
             if ($scheduleContext->isWorkingDay($user, $d)) {
                 $records = $attendancesByDate->get($d->format('Y-m-d'), collect());
                 $hasValidRecord = $records->whereNotIn('status', ['absent', 'dayoff'])->isNotEmpty();
                 $isExplicitDayOff = $records->where('status', 'dayoff')->isNotEmpty();
 
-                if (!$hasValidRecord && !$isExplicitDayOff) {
+                if ($isPastDate && !$hasValidRecord && !$isExplicitDayOff) {
                     $missing_absent_days++;
                 }
 
@@ -822,29 +876,28 @@ class ScanComponent extends Component
             }
         }
 
-        $days_divisor = $salary->working_days_per_month ?? 25;
-        $fixed_income = $salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance;
+        $days_divisor = (int) ($salary->working_days_per_month ?: 25);
+        $fixed_income = (int) round($salary->basic_salary + $salary->meal_allowance + $salary->transport_allowance + $salary->attendance_allowance);
         $daily_rate_approx = ($days_divisor > 0) ? ($fixed_income / $days_divisor) : 0;
 
         $total_absent = $missing_absent_days;
-
         $total_late_minutes = 0;
         $total_sick = 0;
         $total_excused = 0;
         $total_wfh = 0;
 
         foreach ($attendances as $att) {
-            if ($att->status == 'late' && $att->shift) {
-                $time_in = Carbon::parse($att->time_in);
+            if ($att->status == 'late' && $att->shift && $att->time_in) {
                 $attDateStr = $att->date instanceof Carbon ? $att->date->format('Y-m-d') : substr((string)$att->date, 0, 10);
-                $shift_start = Carbon::parse($attDateStr . ' ' . $att->shift->start_time);
+                $time_in = Carbon::parse($attDateStr . ' ' . Carbon::parse($att->time_in)->format('H:i:s'));
+                $shift_start = Carbon::parse($attDateStr . ' ' . Carbon::parse($att->shift->start_time)->format('H:i:s'));
                 if ($time_in->gt($shift_start)) {
-                    $total_late_minutes += $time_in->diffInMinutes($shift_start);
+                    $total_late_minutes += (int) abs($time_in->diffInMinutes($shift_start));
                 }
             }
-            if ($att->status == 'sick') $total_sick++;
-            if ($att->status == 'permit') $total_excused++;
-            if ($att->status == 'wfh') $total_wfh++;
+            if (in_array($att->status, ['sick', 'sakit'])) $total_sick++;
+            if (in_array($att->status, ['excused', 'permit', 'izin'])) $total_excused++;
+            if (in_array($att->status, ['wfh'])) $total_wfh++;
         }
 
         // Unreplaced IMP Minutes
@@ -858,33 +911,33 @@ class ScanComponent extends Component
 
         $isCiptaFood = strcasecmp(trim($user->division?->name ?? ''), 'Cipta Food') === 0;
         if ($isCiptaFood) {
-            $late_deduction = (float) ($late_days_count * 10000);
+            $late_deduction = (int) ($late_days_count * 10000);
         } else {
             $late_rate = $salary->late_deduction_per_minute ?? $salary->late_deduction_rate ?? 0;
-            $late_deduction = $total_late_minutes * $late_rate;
+            $late_deduction = (int) round($total_late_minutes * $late_rate);
         }
-        $imp_deduction = ($days_divisor > 0) ? $total_unreplaced_imp_minutes * ($fixed_income / ($days_divisor * 8 * 60)) : 0;
+        $imp_deduction = ($days_divisor > 0) ? (int) round($total_unreplaced_imp_minutes * ($fixed_income / ($days_divisor * 8 * 60))) : 0;
 
-        $effective_absent = min($total_absent, max(1, $days_divisor));
-        $absent_deduction = $daily_rate_approx * $effective_absent;
+        $effective_absent = min($total_absent, $days_divisor);
+        $absent_deduction = (int) round($daily_rate_approx * $effective_absent);
 
-        $effective_excused = min($total_excused, max(1, $days_divisor));
-        $excused_deduction = ($days_divisor > 0) ? ($effective_excused / ($days_divisor * 2)) * ($salary->basic_salary ?? 0) + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+        $effective_excused = min($total_excused, $days_divisor);
+        $excused_deduction = ($days_divisor > 0) ? (int) round(($effective_excused / ($days_divisor * 2)) * ($salary->basic_salary ?? 0) + ($effective_excused / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
 
-        $effective_sick = min($total_sick, max(1, $days_divisor));
-        $sick_deduction = ($days_divisor > 0) ? ($effective_sick / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+        $effective_sick = min($total_sick, $days_divisor);
+        $sick_deduction = ($days_divisor > 0) ? (int) round(($effective_sick / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
 
-        $effective_cuti = min($penalized_cuti_days, max(1, $days_divisor));
-        $cuti_deduction = ($days_divisor > 0) ? ($effective_cuti / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance) : 0;
+        $effective_cuti = min($penalized_cuti_days, $days_divisor);
+        $cuti_deduction = ($days_divisor > 0) ? (int) round(($effective_cuti / $days_divisor) * ($salary->transport_allowance + $salary->attendance_allowance)) : 0;
 
-        $effective_wfh = min($total_wfh, max(1, $days_divisor));
+        $effective_wfh = min($total_wfh, $days_divisor);
         if ($user->count_wfo) {
             $wfh_deduction = 0;
         } else {
-            $wfh_deduction = ($days_divisor > 0) ? ($effective_wfh / $days_divisor) * (0.5 * $fixed_income) : 0;
+            $wfh_deduction = ($days_divisor > 0) ? (int) round(($effective_wfh / $days_divisor) * (0.5 * $fixed_income)) : 0;
         }
 
-        $late_penalty_deduction = ($late_days_count > 3) ? (0.10 * $salary->attendance_allowance) : 0;
+        $late_penalty_deduction = ($late_days_count > 3) ? (int) round(0.10 * $salary->attendance_allowance) : 0;
 
         if ($salary->salary_type == 'daily') {
             $absent_deduction = 0;
@@ -897,8 +950,8 @@ class ScanComponent extends Component
         $items = [];
         if ($absent_deduction > 0) {
             $items[] = [
-                'name' => 'Potongan Alpa / Tidak Masuk',
-                'detail' => $total_absent . ' hari kerja',
+                'name' => 'Potongan Alpa (' . $total_absent . ' Hari)',
+                'detail' => $total_absent . ' hari tidak masuk kerja',
                 'amount' => (float) round($absent_deduction, 0),
             ];
         }
@@ -925,15 +978,15 @@ class ScanComponent extends Component
         }
         if ($excused_deduction > 0) {
             $items[] = [
-                'name' => 'Potongan Izin',
-                'detail' => $total_excused . ' hari',
+                'name' => 'Potongan Izin (' . $total_excused . ' Hari)',
+                'detail' => $total_excused . ' hari izin resmi',
                 'amount' => (float) round($excused_deduction, 0),
             ];
         }
         if ($sick_deduction > 0) {
             $items[] = [
-                'name' => 'Potongan Tunjangan Sakit',
-                'detail' => $total_sick . ' hari',
+                'name' => 'Potongan Sakit (' . $total_sick . ' Hari)',
+                'detail' => $total_sick . ' hari surat sakit',
                 'amount' => (float) round($sick_deduction, 0),
             ];
         }
@@ -946,69 +999,100 @@ class ScanComponent extends Component
         }
         if ($wfh_deduction > 0) {
             $items[] = [
-                'name' => 'Potongan WFH',
+                'name' => 'Potongan WFH (' . $total_wfh . ' Hari)',
                 'detail' => $total_wfh . ' hari WFH',
                 'amount' => (float) round($wfh_deduction, 0),
             ];
         }
 
-        // Check if there are active Payroll Deductions (such as Tabungan, Syirkah, Pinjaman) for this month
-        $currentMonthPayroll = \App\Models\Payroll::with('details')
-            ->where('employee_id', $user->id)
-            ->where('period_month', date('Y-m'))
-            ->first();
-
-        if ($currentMonthPayroll && $currentMonthPayroll->details->isNotEmpty()) {
-            foreach ($currentMonthPayroll->details->where('type', 'deduction') as $pDetail) {
-                $nameLower = strtolower($pDetail->name);
-                if (!str_contains($nameLower, 'kehadiran') && !str_contains($nameLower, 'alpa') && !str_contains($nameLower, 'terlambat') && !str_contains($nameLower, 'imp') && !str_contains($nameLower, 'izin') && !str_contains($nameLower, 'sakit') && !str_contains($nameLower, 'cuti')) {
-                    $items[] = [
-                        'name' => $pDetail->name,
-                        'detail' => 'Potongan Payroll / Simpanan',
-                        'amount' => (float) $pDetail->amount,
-                    ];
-                }
-            }
-        } else {
-            if (($salary->bpjs ?? 0) > 0) {
+        // Syirkah / Savings
+        if ($salary->savings_id && $salary->savings) {
+            $savingProgram = $salary->savings;
+            $syirkah_mandatory = (int) round($savingProgram->mandatory_savings);
+            $syirkah_secondary = ($salary->custom_secondary_savings !== null)
+                ? (int) round($salary->custom_secondary_savings)
+                : (int) round($savingProgram->secondary_savings);
+            $syirkah_total = $syirkah_mandatory + $syirkah_secondary;
+            if ($syirkah_total > 0) {
                 $items[] = [
-                    'name' => 'Potongan BPJS',
-                    'detail' => 'Potongan Tetap Bulanan',
-                    'amount' => (float) $salary->bpjs,
+                    'name' => 'Potongan Syirkah',
+                    'detail' => 'Simpanan Wajib & Sukarela',
+                    'amount' => (float) $syirkah_total,
                 ];
             }
-            if ($salary->taxMaster && $salary->taxMaster->rate_percentage > 0) {
-                $approxGross = $fixed_income;
-                $pphEst = round(($salary->taxMaster->rate_percentage / 100) * $approxGross);
-                if ($pphEst > 0) {
-                    $items[] = [
-                        'name' => 'Potongan PPh 21 (' . $salary->taxMaster->formatted_rate . ')',
-                        'detail' => 'Estimasi PPh 21 TER',
-                        'amount' => (float) $pphEst,
-                    ];
-                }
-            } elseif (($salary->pph21 ?? 0) > 0) {
+        }
+
+        // Active Loans (Kasbon / Pinjaman)
+        $activeLoans = \App\Models\Loan::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where('remaining_balance', '>', 0)
+            ->get();
+        foreach ($activeLoans as $loan) {
+            $inst = (int) round(min($loan->installment_amount, $loan->remaining_balance));
+            if ($inst > 0) {
                 $items[] = [
-                    'name' => 'Potongan PPh 21',
-                    'detail' => 'Potongan Tetap Bulanan',
-                    'amount' => (float) $salary->pph21,
+                    'name' => 'Cicilan Pinjaman',
+                    'detail' => 'Kasbon / Pinjaman Karyawan',
+                    'amount' => (float) $inst,
                 ];
             }
+        }
 
-            // Check pending/approved error deductions for current month
-            $activeErrorDeds = \App\Models\ErrorDeduction::where('user_id', $user->id)
-                ->where('period_month', date('Y-m'))
-                ->where('deduction_source', 'payroll')
-                ->whereIn('status', ['pending', 'approved'])
-                ->get();
+        // BPJS
+        if (($salary->bpjs ?? 0) > 0) {
+            $items[] = [
+                'name' => 'Potongan BPJS',
+                'detail' => 'Potongan Tetap Bulanan',
+                'amount' => (float) $salary->bpjs,
+            ];
+        }
 
-            foreach ($activeErrorDeds as $ed) {
+        // PPh 21
+        if ($salary->taxMaster && $salary->taxMaster->rate_percentage > 0) {
+            $approxGross = $fixed_income;
+            $pphEst = (int) round(($salary->taxMaster->rate_percentage / 100) * $approxGross);
+            if ($pphEst > 0) {
                 $items[] = [
-                    'name' => 'Potongan Error: ' . $ed->error_title,
-                    'detail' => 'Kesalahan Produksi / Log Error',
-                    'amount' => (float) $ed->amount,
+                    'name' => 'Potongan PPh 21 (' . $salary->taxMaster->formatted_rate . ')',
+                    'detail' => 'Estimasi PPh 21 TER',
+                    'amount' => (float) $pphEst,
                 ];
             }
+        } elseif (($salary->pph21 ?? 0) > 0) {
+            $items[] = [
+                'name' => 'Potongan PPh 21',
+                'detail' => 'Potongan Tetap Bulanan',
+                'amount' => (float) $salary->pph21,
+            ];
+        }
+
+        // Flexible Deductions
+        $flexDeds = \App\Models\FlexibleDeduction::where('user_id', $user->id)
+            ->where('period_month', $periodMonth)
+            ->where('deduction_source', 'payroll')
+            ->with('program')
+            ->get();
+        foreach ($flexDeds as $fd) {
+            $items[] = [
+                'name' => 'Potongan: ' . ($fd->program->name ?? 'Fleksibel'),
+                'detail' => 'Potongan Tambahan Payroll',
+                'amount' => (float) $fd->amount,
+            ];
+        }
+
+        // Error Deductions
+        $activeErrorDeds = \App\Models\ErrorDeduction::where('user_id', $user->id)
+            ->where('period_month', $periodMonth)
+            ->where('deduction_source', 'payroll')
+            ->whereIn('status', ['pending', 'approved'])
+            ->get();
+
+        foreach ($activeErrorDeds as $ed) {
+            $items[] = [
+                'name' => 'Potongan Error: ' . $ed->error_title,
+                'detail' => 'Kesalahan Produksi / Log Error',
+                'amount' => (float) $ed->amount,
+            ];
         }
 
         $total_deduction = (float) array_sum(array_column($items, 'amount'));
@@ -1016,6 +1100,7 @@ class ScanComponent extends Component
         return [
             'total' => round($total_deduction, 0),
             'period' => $periodName,
+            'is_payroll_final' => false,
             'items' => $items,
         ];
     }
@@ -1046,7 +1131,27 @@ class ScanComponent extends Component
         $this->userDeductionDetails = $breakdown['items'];
         $this->userTotalDeduction = $breakdown['total'];
         $this->deductionPeriod = $breakdown['period'];
+        $this->isPayrollFinal = $breakdown['is_payroll_final'] ?? false;
         $this->showDeductionDetailModal = true;
+    }
+
+    #[On('refresh-deduction-from-sse')]
+    public function handleDeductionSSEUpdate($payload = null): void
+    {
+        $this->memoizedDeduction = null;
+        $user = Auth::user();
+        if ($user) {
+            $cacheKey = 'realtime_deduction_' . $user->id . '_' . date('Y-m-d');
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+
+            if ($this->showDeductionDetailModal) {
+                $breakdown = $this->calculateRealtimeDeductionData($user);
+                $this->userDeductionDetails = $breakdown['items'];
+                $this->userTotalDeduction = $breakdown['total'];
+                $this->deductionPeriod = $breakdown['period'];
+                $this->isPayrollFinal = $breakdown['is_payroll_final'] ?? false;
+            }
+        }
     }
 
     public function closeDeductionDetailModal()

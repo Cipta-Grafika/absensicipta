@@ -10,6 +10,17 @@ class ErrorDeduction extends Model
 {
     use HasFactory, HasUlids;
 
+    protected static function booted()
+    {
+        static::saved(function ($ed) {
+            \App\Services\DeductionNotificationService::notify($ed->user_id);
+        });
+
+        static::deleted(function ($ed) {
+            \App\Services\DeductionNotificationService::notify($ed->user_id);
+        });
+    }
+
     protected $table = 'error_deductions';
 
     protected $fillable = [

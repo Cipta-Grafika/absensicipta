@@ -18,6 +18,17 @@ class Attendance extends Model
     use HasFactory;
     use HasTimestamps;
 
+    protected static function booted()
+    {
+        static::saved(function ($attendance) {
+            \App\Services\DeductionNotificationService::notify($attendance->user_id);
+        });
+
+        static::deleted(function ($attendance) {
+            \App\Services\DeductionNotificationService::notify($attendance->user_id);
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'barcode_id',

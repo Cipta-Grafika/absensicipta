@@ -10,6 +10,17 @@ class FlexibleDeduction extends Model
 {
     use HasFactory, HasUlids;
 
+    protected static function booted()
+    {
+        static::saved(function ($fd) {
+            \App\Services\DeductionNotificationService::notify($fd->user_id);
+        });
+
+        static::deleted(function ($fd) {
+            \App\Services\DeductionNotificationService::notify($fd->user_id);
+        });
+    }
+
     protected $table = 'flexible_deductions';
 
     protected $fillable = [

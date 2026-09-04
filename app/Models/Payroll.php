@@ -10,6 +10,19 @@ class Payroll extends Model
 {
     use HasFactory, HasUlids;
 
+    protected static function booted()
+    {
+        static::saved(function ($payroll) {
+            \App\Services\DeductionNotificationService::notify($payroll->employee_id);
+            \App\Services\DeductionNotificationService::notifyGlobal();
+        });
+
+        static::deleted(function ($payroll) {
+            \App\Services\DeductionNotificationService::notify($payroll->employee_id);
+            \App\Services\DeductionNotificationService::notifyGlobal();
+        });
+    }
+
     protected $fillable = [
         'employee_id',
         'period_month',

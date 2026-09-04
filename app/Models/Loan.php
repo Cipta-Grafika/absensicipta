@@ -11,6 +11,17 @@ class Loan extends Model
 {
     use HasFactory, HasUlids;
 
+    protected static function booted()
+    {
+        static::saved(function ($loan) {
+            \App\Services\DeductionNotificationService::notify($loan->user_id);
+        });
+
+        static::deleted(function ($loan) {
+            \App\Services\DeductionNotificationService::notify($loan->user_id);
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'loan_amount',
