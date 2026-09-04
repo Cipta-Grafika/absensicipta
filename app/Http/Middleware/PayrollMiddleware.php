@@ -20,7 +20,20 @@ class PayrollMiddleware
             abort(403);
         }
 
-        if ($user->isPayroll || $user->isSuperadmin || $user->isOwner) {
+        // Superadmin is strictly forbidden from accessing Syirkah menu / CRUD / management
+        if ($user->isSuperadmin) {
+            if ($request->routeIs([
+                'payroll.saving-transactions',
+                'payroll.import-export.saving-transactions',
+                'payroll.savings',
+                'payroll.import-export.savings',
+            ])) {
+                abort(403, 'Akses Ditolak: Role Superadmin tidak memiliki akses ke fitur Syirkah.');
+            }
+            return $next($request);
+        }
+
+        if ($user->isPayroll || $user->isOwner) {
             return $next($request);
         }
 

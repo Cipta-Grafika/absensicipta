@@ -6,6 +6,7 @@ use App\Models\SavingSummary;
 use App\Models\SavingTransaction;
 use App\Models\SavingWithdrawal;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class TelegramBotHandler
@@ -56,6 +57,150 @@ class TelegramBotHandler
             $user->update(['chat_code' => (string) $fromId]);
         }
 
+        // =========================================================================
+        // 1. CHECK CONVERSATION STATE / PAYLOAD FLOW (ACCEPT / REJECT REASON)
+        // =========================================================================
+        $cacheKey = "tg_action_{$fromId}";
+        if (Cache::has($cacheKey)) {
+            $state = Cache::pull($cacheKey);
+
+            // If user typed cancellation
+            if (in_array(strtolower($text), ['/batal', '/cancel', 'batal', 'cancel'])) {
+                TelegramNotificationService::sendMessage(
+                    $chatId,
+                    "❌ <i>Aksi persetujuan/penolakan telah dibatalkan. Konteks percakapan telah dibersihkan.</i>"
+                );
+                return;
+            }
+
+            $action = $state['action'] ?? null;
+            $withdrawalId = $state['withdrawal_id'] ?? null;
+            $origMessageId = $state['message_id'] ?? null;
+
+            $withdrawal = SavingWithdrawal::with(['user.division', 'masterSaving'])->find($withdrawalId);
+
+            if (!$withdrawal) {
+                TelegramNotificationService::sendMessage(
+                    $chatId,
+                    "⚠️ <b>Pengajuan Tidak Ditemukan</b>\nData pengajuan penarikan syirkah tidak ditemukan atau sudah dihapus."
+                );
+                return;
+            }
+
+            if ($withdrawal->status === 'accepted' || $withdrawal->status === 'paid') {
+                TelegramNotificationService::sendMessage(
+                    $chatId,
+                    "⚠️ <b>Pengajuan Sudah Disetujui</b>\nPengajuan atas nama <b>" . htmlspecialchars($withdrawal->user?->name ?? '-') . "</b> sudah diproses sebelumnya."
+                );
+                return;
+            }
+
+            if ($withdrawal->status === 'rejected') {
+                TelegramNotificationService::sendMessage(
+                    $chatId,
+                    "⚠️ <b>Pengajuan Sudah Ditolak</b>\nPengajuan atas nama <b>" . htmlspecialchars($withdrawal->user?->name ?? '-') . "</b> sudah ditolak sebelumnya."
+                );
+                return;
+            }
+
+            // Verify Permission
+            if (!$user || $user->isSuperadmin) {
+                TelegramNotificationService::sendMessage(
+                    $chatId,
+                    "⛔ <b>Akses Ditolak</b>\nAkun Anda tidak memiliki wewenang untuk menyetujui / menolak pengajuan syirkah."
+                );
+                return;
+            }
+
+            if ($user->group === 'admin' && !$user->isOwner && !$user->isSyirkah && !$user->isPayroll) {
+                if ($withdrawal->user?->division_id !== $user->division_id) {
+                    TelegramNotificationService::sendMessage(
+                        $chatId,
+                        "⛔ <b>Akses Ditolak</b>\nAnda hanya berwenang memproses pengajuan karyawan di divisi Anda."
+                    );
+                    return;
+                }
+            }
+
+            $empName = htmlspecialchars($withdrawal->user?->name ?? '-');
+            $empDiv = htmlspecialchars($withdrawal->user?->division?->name ?? '-');
+            $nominalFormatted = number_format($withdrawal->total_amount, 0, ',', '.');
+            $dateNow = now()->translatedFormat('d M Y, H:i') . ' WIB';
+
+            if ($action === 'accept') {
+                $note = (in_array(strtolower($text), ['-', 'ok', 'acc', 'setuju', 'disetujui']))
+                    ? 'Disetujui via Telegram oleh ' . ($user->name ?? $firstName)
+                    : $text;
+
+                try {
+                    SavingTransactionService::approveWithdrawalRequest($withdrawalId, $user->id);
+
+                    $reply = "✅ <b>Terima kasih! Permintaan telah berhasil terkirim.</b>\n\n";
+                    $reply .= "Pengajuan penarikan syirkah atas nama <b>{$empName}</b> (Rp {$nominalFormatted}) telah <b>DISETUJUI (ACCEPTED)</b>.\n";
+                    $reply .= "📝 <b>Catatan</b>: " . htmlspecialchars($note) . "\n\n";
+                    $reply .= "<i>Konteks percakapan telah ditutup secara aman.</i>";
+
+                    TelegramNotificationService::sendMessage($chatId, $reply);
+
+                    if ($origMessageId) {
+                        $updatedText = "✅ <b>PENGAJUAN PENARIKAN TELAH DISETUJUI (ACCEPTED)</b>\n";
+                        $updatedText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+                        $updatedText .= "👤 <b>Karyawan</b> : {$empName} ({$empDiv})\n";
+                        $updatedText .= "💰 <b>Nominal</b>  : <b>Rp {$nominalFormatted}</b>\n";
+                        $updatedText .= "✍️ <b>Disetujui Oleh</b> : " . htmlspecialchars($user->name ?? $firstName) . " (@" . htmlspecialchars($username ?? 'admin') . ")\n";
+                        $updatedText .= "📝 <b>Catatan</b> : " . htmlspecialchars($note) . "\n";
+                        $updatedText .= "📅 <b>Waktu ACC</b> : {$dateNow}\n";
+                        $updatedText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+                        $updatedText .= "Status: <b>Menunggu Pembayaran (PAID)</b> oleh Owner/Finance.";
+
+                        TelegramNotificationService::editMessageText($chatId, $origMessageId, $updatedText);
+                    }
+                } catch (\Throwable $e) {
+                    TelegramNotificationService::sendMessage($chatId, "❌ Gagal memproses persetujuan: " . $e->getMessage());
+                }
+
+                return;
+            }
+
+            if ($action === 'reject') {
+                $reason = (empty($text) || in_array(strtolower($text), ['-', 'tolak']))
+                    ? 'Ditolak via Telegram oleh ' . ($user->name ?? $firstName)
+                    : $text;
+
+                try {
+                    SavingTransactionService::rejectWithdrawalRequest($withdrawalId, $user->id, $reason);
+
+                    $reply = "✅ <b>Terima kasih! Permintaan telah berhasil terkirim.</b>\n\n";
+                    $reply .= "Pengajuan penarikan syirkah atas nama <b>{$empName}</b> (Rp {$nominalFormatted}) telah <b>DITOLAK (REJECTED)</b>.\n";
+                    $reply .= "🚫 <b>Alasan</b>: " . htmlspecialchars($reason) . "\n\n";
+                    $reply .= "<i>Konteks percakapan telah ditutup secara aman.</i>";
+
+                    TelegramNotificationService::sendMessage($chatId, $reply);
+
+                    if ($origMessageId) {
+                        $updatedText = "❌ <b>PENGAJUAN PENARIKAN TELAH DITOLAK (REJECTED)</b>\n";
+                        $updatedText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+                        $updatedText .= "👤 <b>Karyawan</b> : {$empName} ({$empDiv})\n";
+                        $updatedText .= "💰 <b>Nominal</b>  : Rp {$nominalFormatted}\n";
+                        $updatedText .= "🚫 <b>Ditolak Oleh</b> : " . htmlspecialchars($user->name ?? $firstName) . " (@" . htmlspecialchars($username ?? 'admin') . ")\n";
+                        $updatedText .= "📝 <b>Alasan</b> : " . htmlspecialchars($reason) . "\n";
+                        $updatedText .= "📅 <b>Waktu</b> : {$dateNow}\n";
+                        $updatedText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+                        $updatedText .= "Status: <b>DITOLAK (Saldo tidak terpotong)</b>";
+
+                        TelegramNotificationService::editMessageText($chatId, $origMessageId, $updatedText);
+                    }
+                } catch (\Throwable $e) {
+                    TelegramNotificationService::sendMessage($chatId, "❌ Gagal memproses penolakan: " . $e->getMessage());
+                }
+
+                return;
+            }
+        }
+
+        // =========================================================================
+        // 2. STANDARD BOT COMMANDS
+        // =========================================================================
         $command = strtolower(explode(' ', $text)[0] ?? '');
 
         switch ($command) {
@@ -83,6 +228,12 @@ class TelegramBotHandler
                 self::sendChatIdMessage($chatId, $fromId, $username);
                 break;
 
+            case '/batal':
+            case '/cancel':
+                Cache::forget("tg_action_{$fromId}");
+                TelegramNotificationService::sendMessage($chatId, "ℹ️ Tidak ada aksi pending yang aktif.");
+                break;
+
             default:
                 // Friendly default reply with menu
                 self::sendWelcomeMessage($chatId, $fromId, $username, $firstName, $user);
@@ -102,7 +253,6 @@ class TelegramBotHandler
         $fromFirstName = $callbackQuery['from']['first_name'] ?? 'Admin';
         $chatId = $callbackQuery['message']['chat']['id'] ?? $fromId;
         $messageId = $callbackQuery['message']['message_id'] ?? null;
-        $originalText = $callbackQuery['message']['text'] ?? '';
 
         // Find approving user
         $approverUser = User::where('chat_code', (string) $fromId)
@@ -112,9 +262,20 @@ class TelegramBotHandler
                       ->orWhere('telegram', $fromUsername);
                 }
             })
-            ->first() ?? User::where('group', 'superadmin')->first();
+            ->first();
 
-        // Menu callbacks
+        // 1. Cancel Action Callback
+        if ($data === 'cancel_action') {
+            Cache::forget("tg_action_{$fromId}");
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Aksi dibatalkan.');
+            TelegramNotificationService::sendMessage(
+                $chatId,
+                "❌ <i>Aksi persetujuan/penolakan telah dibatalkan. Konteks percakapan telah dibersihkan.</i>"
+            );
+            return;
+        }
+
+        // 2. Menu Callbacks
         if ($data === 'cmd_saldo') {
             TelegramNotificationService::answerCallbackQuery($callbackId, 'Memuat data saldo...');
             self::sendBalanceMessage($chatId, $approverUser);
@@ -133,10 +294,10 @@ class TelegramBotHandler
             return;
         }
 
-        // Action: Approve Withdrawal
+        // 3. Action: Initiate Approve Withdrawal (Prompt user to type payload / reason)
         if (str_starts_with($data, 'acc_wd_')) {
             $withdrawalId = substr($data, 7);
-            $withdrawal = SavingWithdrawal::with('user')->find($withdrawalId);
+            $withdrawal = SavingWithdrawal::with(['user.division', 'masterSaving'])->find($withdrawalId);
 
             if (!$withdrawal) {
                 TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan tidak ditemukan atau sudah dihapus.', true);
@@ -153,13 +314,85 @@ class TelegramBotHandler
                 return;
             }
 
+            if ($approverUser?->isSuperadmin) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Role Superadmin tidak memiliki akses untuk menyetujui Syirkah.', true);
+                return;
+            }
+
+            if ($approverUser && $approverUser->group === 'admin' && !$approverUser->isOwner && !$approverUser->isSyirkah && !$approverUser->isPayroll) {
+                if ($withdrawal->user?->division_id !== $approverUser->division_id) {
+                    TelegramNotificationService::answerCallbackQuery($callbackId, 'Anda hanya berwenang memproses pengajuan divisi Anda.', true);
+                    return;
+                }
+            }
+
+            // Save state to Cache (10 minutes expiry)
+            Cache::put("tg_action_{$fromId}", [
+                'action' => 'accept',
+                'withdrawal_id' => $withdrawalId,
+                'message_id' => $messageId,
+            ], now()->addMinutes(10));
+
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Silakan ketik catatan approval di chat.');
+
+            $empName = htmlspecialchars($withdrawal->user?->name ?? '-');
+            $empDiv = htmlspecialchars($withdrawal->user?->division?->name ?? '-');
+            $nom = number_format($withdrawal->total_amount, 0, ',', '.');
+            $type = htmlspecialchars($withdrawal->withdrawal_type_label);
+
+            $prompt = "✍️ <b>Konfirmasi Persetujuan Pengajuan</b>\n";
+            $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $prompt .= "👤 <b>Karyawan</b> : {$empName} ({$empDiv})\n";
+            $prompt .= "💰 <b>Nominal</b>  : <b>Rp {$nom}</b>\n";
+            $prompt .= "📑 <b>Opsi</b>     : {$type}\n";
+            $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $prompt .= "Silakan ketikan alasan / catatan <b>ACCEPTED</b> di bawah (atau ketik <code>-</code> / <code>ok</code> jika tanpa catatan khusus):\n\n";
+            $prompt .= "<i>Ketik /batal atau klik tombol di bawah untuk membatalkan.</i>";
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '✅ Setujui Langsung (Tanpa Catatan)', 'callback_data' => 'acc_direct_' . $withdrawalId],
+                        ['text' => '❌ Batal', 'callback_data' => 'cancel_action'],
+                    ],
+                ],
+            ];
+
+            TelegramNotificationService::sendMessage($chatId, $prompt, $keyboard);
+            return;
+        }
+
+        // 4. Action: Direct Approve Withdrawal (Bypass Typing Note)
+        if (str_starts_with($data, 'acc_direct_')) {
+            $withdrawalId = substr($data, 11);
+            Cache::forget("tg_action_{$fromId}");
+
+            $withdrawal = SavingWithdrawal::with(['user.division', 'masterSaving'])->find($withdrawalId);
+            if (!$withdrawal || $withdrawal->status !== 'pending') {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan tidak ditemukan atau sudah diproses.', true);
+                return;
+            }
+
+            if ($approverUser?->isSuperadmin) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Role Superadmin tidak memiliki akses untuk menyetujui Syirkah.', true);
+                return;
+            }
+
             try {
-                $approverId = $approverUser?->id ?? User::where('group', 'superadmin')->value('id');
+                $approverId = $approverUser?->id ?? User::where('group', 'owner')->value('id');
                 SavingTransactionService::approveWithdrawalRequest($withdrawalId, $approverId);
 
-                TelegramNotificationService::answerCallbackQuery($callbackId, '✅ Berhasil disetujui! Saldo mutasi syirkah telah dipotong.', true);
+                TelegramNotificationService::answerCallbackQuery($callbackId, '✅ Berhasil disetujui!', true);
 
-                // Edit the original Telegram message to show approved status
+                $empName = htmlspecialchars($withdrawal->user?->name ?? '-');
+                $nominalFormatted = number_format($withdrawal->total_amount, 0, ',', '.');
+
+                $reply = "✅ <b>Terima kasih! Permintaan telah berhasil terkirim.</b>\n\n";
+                $reply .= "Pengajuan penarikan syirkah atas nama <b>{$empName}</b> (Rp {$nominalFormatted}) telah <b>DISETUJUI (ACCEPTED)</b>.\n\n";
+                $reply .= "<i>Konteks percakapan telah ditutup secara aman.</i>";
+
+                TelegramNotificationService::sendMessage($chatId, $reply);
+
                 if ($messageId) {
                     $dateNow = now()->translatedFormat('d M Y, H:i') . ' WIB';
                     $updatedText = "✅ <b>PENGAJUAN PENARIKAN TELAH DISETUJUI (ACCEPTED)</b>\n";
@@ -179,42 +412,69 @@ class TelegramBotHandler
             return;
         }
 
-        // Action: Reject Withdrawal
+        // 5. Action: Initiate Reject Withdrawal (Prompt user to type reason)
         if (str_starts_with($data, 'rej_wd_')) {
             $withdrawalId = substr($data, 7);
-            $withdrawal = SavingWithdrawal::with('user')->find($withdrawalId);
+            $withdrawal = SavingWithdrawal::with(['user.division', 'masterSaving'])->find($withdrawalId);
 
             if (!$withdrawal) {
                 TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan tidak ditemukan.', true);
                 return;
             }
 
-            try {
-                $approverId = $approverUser?->id ?? User::where('group', 'superadmin')->value('id');
-                SavingTransactionService::rejectWithdrawalRequest($withdrawalId, $approverId, 'Ditolak via Telegram oleh @' . ($fromUsername ?? 'admin'));
-
-                TelegramNotificationService::answerCallbackQuery($callbackId, '❌ Pengajuan telah ditolak.', true);
-
-                if ($messageId) {
-                    $dateNow = now()->translatedFormat('d M Y, H:i') . ' WIB';
-                    $updatedText = "❌ <b>PENGAJUAN PENARIKAN TELAH DITOLAK (REJECTED)</b>\n";
-                    $updatedText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                    $updatedText .= "👤 <b>Karyawan</b> : " . htmlspecialchars($withdrawal->user?->name ?? '-') . "\n";
-                    $updatedText .= "💰 <b>Nominal</b>  : Rp " . number_format($withdrawal->total_amount, 0, ',', '.') . "\n";
-                    $updatedText .= "🚫 <b>Ditolak Oleh</b> : " . htmlspecialchars($fromFirstName) . " (@" . htmlspecialchars($fromUsername ?? 'admin') . ")\n";
-                    $updatedText .= "📅 <b>Waktu</b> : {$dateNow}\n";
-                    $updatedText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                    $updatedText .= "Status: <b>DITOLAK (Saldo tidak terpotong)</b>";
-
-                    TelegramNotificationService::editMessageText($chatId, $messageId, $updatedText);
-                }
-            } catch (\Throwable $e) {
-                TelegramNotificationService::answerCallbackQuery($callbackId, 'Gagal menolak: ' . $e->getMessage(), true);
+            if ($withdrawal->status === 'rejected') {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan ini sudah ditolak sebelumnya.', true);
+                return;
             }
+
+            if ($approverUser?->isSuperadmin) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Role Superadmin tidak memiliki akses untuk menolak Syirkah.', true);
+                return;
+            }
+
+            if ($approverUser && $approverUser->group === 'admin' && !$approverUser->isOwner && !$approverUser->isSyirkah && !$approverUser->isPayroll) {
+                if ($withdrawal->user?->division_id !== $approverUser->division_id) {
+                    TelegramNotificationService::answerCallbackQuery($callbackId, 'Anda hanya berwenang memproses pengajuan divisi Anda.', true);
+                    return;
+                }
+            }
+
+            // Save state to Cache (10 minutes expiry)
+            Cache::put("tg_action_{$fromId}", [
+                'action' => 'reject',
+                'withdrawal_id' => $withdrawalId,
+                'message_id' => $messageId,
+            ], now()->addMinutes(10));
+
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Silakan ketik alasan penolakan di chat.');
+
+            $empName = htmlspecialchars($withdrawal->user?->name ?? '-');
+            $empDiv = htmlspecialchars($withdrawal->user?->division?->name ?? '-');
+            $nom = number_format($withdrawal->total_amount, 0, ',', '.');
+            $type = htmlspecialchars($withdrawal->withdrawal_type_label);
+
+            $prompt = "🚫 <b>Konfirmasi Penolakan Pengajuan</b>\n";
+            $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $prompt .= "👤 <b>Karyawan</b> : {$empName} ({$empDiv})\n";
+            $prompt .= "💰 <b>Nominal</b>  : <b>Rp {$nom}</b>\n";
+            $prompt .= "📑 <b>Opsi</b>     : {$type}\n";
+            $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $prompt .= "Silakan ketikan alasan <b>REJECTED</b> di bawah:\n\n";
+            $prompt .= "<i>Ketik /batal atau klik tombol di bawah untuk membatalkan.</i>";
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '❌ Batal', 'callback_data' => 'cancel_action'],
+                    ],
+                ],
+            ];
+
+            TelegramNotificationService::sendMessage($chatId, $prompt, $keyboard);
             return;
         }
 
-        // Action: Mark as Paid
+        // 6. Action: Mark as Paid
         if (str_starts_with($data, 'paid_wd_')) {
             $withdrawalId = substr($data, 8);
             $withdrawal = SavingWithdrawal::with('user')->find($withdrawalId);
@@ -224,8 +484,13 @@ class TelegramBotHandler
                 return;
             }
 
+            if ($approverUser?->isSuperadmin) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Role Superadmin tidak memiliki akses untuk menandai pembayaran Syirkah.', true);
+                return;
+            }
+
             try {
-                $payerId = $approverUser?->id ?? User::where('group', 'owner')->value('id') ?? User::where('group', 'superadmin')->value('id');
+                $payerId = $approverUser?->id ?? User::where('group', 'owner')->value('id');
                 SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $payerId);
 
                 TelegramNotificationService::answerCallbackQuery($callbackId, '💰 Berhasil ditandai telah dibayarkan (PAID)!', true);
@@ -285,8 +550,16 @@ class TelegramBotHandler
 
     protected static function sendBalanceMessage($chatId, ?User $user): void
     {
+        if ($user && $user->isSuperadmin) {
+            TelegramNotificationService::sendMessage(
+                $chatId,
+                "ℹ️ Role Superadmin tidak memiliki akses ke data mutasi saldo Syirkah."
+            );
+            return;
+        }
+
         $scopeTitle = "PERUSAHAAN (GLOBAL)";
-        $scopeSubtitle = "🏢 <b>Cakupan</b> : Seluruh Divisi (Owner/Superadmin Scope)";
+        $scopeSubtitle = "🏢 <b>Cakupan</b> : Seluruh Divisi (Owner Scope)";
 
         $txQuery = SavingTransaction::where('status', 'approved');
 
@@ -340,6 +613,14 @@ class TelegramBotHandler
 
     protected static function sendPendingWithdrawalsList($chatId, ?User $user): void
     {
+        if ($user && $user->isSuperadmin) {
+            TelegramNotificationService::sendMessage(
+                $chatId,
+                "ℹ️ Role Superadmin tidak memiliki akses ke antrean pengajuan Syirkah."
+            );
+            return;
+        }
+
         $query = SavingWithdrawal::with(['user.division', 'masterSaving'])
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc');

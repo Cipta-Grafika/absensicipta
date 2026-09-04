@@ -33,9 +33,11 @@
             <x-nav-link class="hidden md:inline-flex" href="{{ route('hr.employees') }}" :active="request()->routeIs('hr.employees')">
               {{ __('Employee') }}
             </x-nav-link>
-            <x-nav-link class="hidden md:inline-flex" href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
-              Syirkah
-            </x-nav-link>
+            @if (!Auth::user()?->isSuperadmin)
+              <x-nav-link class="hidden md:inline-flex" href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
+                Syirkah
+              </x-nav-link>
+            @endif
             <x-nav-dropdown :active="request()->routeIs('hr.work-schedules') || request()->routeIs('hr.holidays')" triggerClasses="text-nowrap">
               <x-slot name="trigger">
                 Jadwal & Libur
@@ -379,9 +381,11 @@
         <x-responsive-nav-link href="{{ route('hr.employees') }}" :active="request()->routeIs('hr.employees')">
           {{ __('Employee') }}
         </x-responsive-nav-link>
-        <x-responsive-nav-link href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
-          Syirkah
-        </x-responsive-nav-link>
+        @if (!Auth::user()?->isSuperadmin)
+          <x-responsive-nav-link href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
+            Syirkah
+          </x-responsive-nav-link>
+        @endif
         @if (Auth::user()?->isSuperadmin)
           <x-responsive-nav-link href="{{ route('hr.masters.division') }}" :active="request()->routeIs('hr.masters.division')">
             {{ __('Division') }}

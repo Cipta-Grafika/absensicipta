@@ -128,7 +128,7 @@ class TelegramNotificationService
         $division = $user?->division?->name ?? 'Semua Divisi';
         $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
 
-        // 1. Resolve Dynamic Recipient Targets (Admin of employee's division + Superadmins)
+        // 1. Resolve Dynamic Recipient Targets (Admin of employee's division + Owner / Syirkah)
         $targetIds = [];
 
         $adminQuery = User::where(function ($q) use ($userDivisionId) {
@@ -137,9 +137,9 @@ class TelegramNotificationService
                     $sub->where('group', 'admin')
                         ->where('division_id', $userDivisionId);
                 })
-                ->orWhere('group', 'superadmin');
+                ->orWhereIn('group', ['owner', 'syirkah']);
             } else {
-                $q->whereIn('group', ['admin', 'superadmin']);
+                $q->whereIn('group', ['admin', 'owner', 'syirkah']);
             }
         })
         ->where(function ($q) {
@@ -166,7 +166,7 @@ class TelegramNotificationService
 
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) {
-            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Division Admin or Superadmin.');
+            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Division Admin or Owner.');
             return;
         }
 
@@ -260,10 +260,10 @@ class TelegramNotificationService
         $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
         $approverName = $withdrawal->approver?->name ?? 'Admin Divisi';
 
-        // 1. Resolve Dynamic Recipient Targets (Owner, Syirkah, Superadmin, Payroll)
+        // 1. Resolve Dynamic Recipient Targets (Owner, Syirkah, Payroll)
         $targetIds = [];
 
-        $ownerQuery = User::whereIn('group', ['owner', 'syirkah', 'superadmin', 'payroll'])
+        $ownerQuery = User::whereIn('group', ['owner', 'syirkah', 'payroll'])
             ->where(function ($q) {
                 $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
                   ->orWhere(function ($sub) {

@@ -181,25 +181,10 @@
         </div>
       </div>
 
-      <!-- 2. PRIMARY NAVIGATION TABS (MUTASI VS PENGAJUAN PENARIKAN) -->
+      <!-- 2. PRIMARY NAVIGATION TABS (PENGAJUAN PENARIKAN VS MUTASI) -->
       <div class="mb-5 border-b border-gray-200 dark:border-gray-700">
         <nav class="-mb-px flex space-x-4 sm:space-x-8">
-          <!-- Tab 1: Mutasi Rekening Syirkah -->
-          <button
-            type="button"
-            wire:click="setActiveTab('transactions')"
-            class="whitespace-nowrap py-3 px-1 border-b-2 font-bold text-xs sm:text-sm flex items-center gap-2 transition {{ $activeTab === 'transactions' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200' }}"
-          >
-            <x-heroicon-o-queue-list class="h-4 w-4 sm:h-5 sm:w-5" />
-            <span>Mutasi Rekening (Buku Kas)</span>
-            @if($pendingCount > 0)
-              <span class="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 px-2 py-0.5 text-[11px] font-bold">
-                {{ $pendingCount }}
-              </span>
-            @endif
-          </button>
-
-          <!-- Tab 2: Pengajuan Penarikan Karyawan -->
+          <!-- Tab 1: Pengajuan Penarikan Karyawan -->
           <button
             type="button"
             wire:click="setActiveTab('withdrawals')"
@@ -210,6 +195,21 @@
             @if($pendingWithdrawalsCount > 0)
               <span class="rounded-full bg-amber-500 text-white px-2 py-0.5 text-[11px] font-extrabold animate-pulse">
                 {{ $pendingWithdrawalsCount }} Baru
+              </span>
+            @endif
+          </button>
+
+          <!-- Tab 2: Mutasi Rekening Syirkah -->
+          <button
+            type="button"
+            wire:click="setActiveTab('transactions')"
+            class="whitespace-nowrap py-3 px-1 border-b-2 font-bold text-xs sm:text-sm flex items-center gap-2 transition {{ $activeTab === 'transactions' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200' }}"
+          >
+            <x-heroicon-o-queue-list class="h-4 w-4 sm:h-5 sm:w-5" />
+            <span>Mutasi Rekening (Buku Kas)</span>
+            @if($pendingCount > 0)
+              <span class="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 px-2 py-0.5 text-[11px] font-bold">
+                {{ $pendingCount }}
               </span>
             @endif
           </button>
@@ -371,7 +371,7 @@
                         </button>
                       @endif
 
-                      @if(Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
+                      @if(Auth::user()?->isSyirkah || Auth::user()?->isOwner)
                         <button type="button" wire:click="openEditNominalModal('{{ $tx->id }}')" class="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40" title="Edit Nominal">
                           <x-heroicon-o-pencil-square class="h-4 w-4" />
                         </button>
@@ -616,8 +616,8 @@
                         <x-heroicon-o-eye class="h-4 w-4" />
                       </button>
 
-                      <!-- Delete for Superadmin / Owner -->
-                      @if(Auth::user()?->isSuperadmin || Auth::user()?->isSyirkah || Auth::user()?->isOwner)
+                      <!-- Delete for Syirkah / Owner -->
+                      @if(Auth::user()?->isSyirkah || Auth::user()?->isOwner)
                         <button 
                           type="button" 
                           wire:click="deleteWithdrawal('{{ $wd->id }}')" 
