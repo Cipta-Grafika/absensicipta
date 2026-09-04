@@ -993,32 +993,32 @@
     </x-slot>
 
     <x-slot name="content">
-      @if($selectedWithdrawalForOwnerApprove)
+      @if($selectedOwnerWithdrawal)
         <div class="space-y-4 text-xs">
           <!-- Info Pengajuan -->
           <div class="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-800/50 space-y-1.5">
             <div class="flex items-center justify-between">
               <span class="text-gray-500 dark:text-gray-400 font-medium">Karyawan:</span>
-              <span class="font-bold text-gray-900 dark:text-white">{{ $selectedWithdrawalForOwnerApprove->user->name ?? '-' }}</span>
+              <span class="font-bold text-gray-900 dark:text-white">{{ $selectedOwnerWithdrawal->user->name ?? '-' }}</span>
             </div>
             <div class="flex items-center justify-between">
               <span class="text-gray-500 dark:text-gray-400 font-medium">Divisi:</span>
-              <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $selectedWithdrawalForOwnerApprove->user->division->name ?? '-' }}</span>
+              <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $selectedOwnerWithdrawal->user->division->name ?? '-' }}</span>
             </div>
             <div class="flex items-center justify-between">
               <span class="text-gray-500 dark:text-gray-400 font-medium">Opsi Pengajuan:</span>
-              <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $selectedWithdrawalForOwnerApprove->withdrawal_type_label }}</span>
+              <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $selectedOwnerWithdrawal->withdrawal_type_label }}</span>
             </div>
             <div class="flex items-center justify-between pt-1 border-t border-indigo-200 dark:border-indigo-800">
               <span class="text-gray-600 dark:text-gray-300 font-bold">Pengajuan Awal:</span>
               <span class="font-black text-rose-600 dark:text-rose-400 text-sm">
-                Rp {{ number_format($selectedWithdrawalForOwnerApprove->total_amount, 0, ',', '.') }}
+                Rp {{ number_format($selectedOwnerWithdrawal->total_amount, 0, ',', '.') }}
               </span>
             </div>
-            @if($selectedWithdrawalForOwnerApprove->reason)
+            @if($selectedOwnerWithdrawal->reason)
               <div class="pt-1">
                 <span class="text-gray-500 dark:text-gray-400 block text-[11px]">Keperluan/Alasan:</span>
-                <p class="text-gray-700 dark:text-gray-300 italic text-[11px]">{{ $selectedWithdrawalForOwnerApprove->reason }}</p>
+                <p class="text-gray-700 dark:text-gray-300 italic text-[11px]">{{ $selectedOwnerWithdrawal->reason }}</p>
               </div>
             @endif
           </div>
@@ -1034,7 +1034,7 @@
               id="ownerApprovedAmount" 
               wire:model.live="ownerApprovedAmount" 
               min="1" 
-              max="{{ $selectedWithdrawalForOwnerApprove->total_amount }}" 
+              max="{{ $selectedOwnerWithdrawal->total_amount ?? '' }}" 
               class="w-full mt-1 text-sm font-bold text-indigo-600 dark:text-indigo-400" 
               placeholder="0" 
             />
