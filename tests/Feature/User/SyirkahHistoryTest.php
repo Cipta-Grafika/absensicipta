@@ -209,4 +209,52 @@ class SyirkahHistoryTest extends TestCase
             ->call('closeDetailModal')
             ->assertSet('isDetailModalOpen', false);
     }
+
+    public function test_user_withdrawal_modal_starts_from_zero_and_submits_cleanly(): void
+    {
+        $user = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+        ]);
+
+        $saving = Saving::create([
+            'savings_name' => 'Syirkah Umum',
+            'mandatory_savings' => 100000,
+            'secondary_savings' => 50000,
+        ]);
+
+        // Create initial deposit so balance is available
+        SavingTransaction::create([
+            'user_id' => $user->id,
+            'savings_id' => $saving->id,
+            'transaction_type' => 'deposit',
+            'mandatory_amount' => 2000000,
+            'secondary_amount' => 900000,
+            'balance_mandatory' => 2000000,
+            'balance_secondary' => 900000,
+            'description' => 'Saldo Awal',
+            'status' => 'approved',
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(SyirkahHistoryComponent::class)
+            ->call('openWithdrawalModal')
+            ->assertSet('isWithdrawalModalOpen', true)
+            ->assertSet('mandatoryAmount', 0)
+            ->assertSet('secondaryAmount', 0)
+            ->set('mandatoryAmount', 200000)
+            ->set('secondaryAmount', 100000)
+            ->call('submitWithdrawal')
+            ->assertSet('isWithdrawalModalOpen', false)
+            ->assertDispatched('notify', 'Pengajuan penarikan syirkah berhasil dikirim. Menunggu verifikasi Manajer Divisi.');
+
+        $this->assertDatabaseHas('saving_withdrawals', [
+            'user_id' => $user->id,
+            'mandatory_amount' => 200000,
+            'secondary_amount' => 100000,
+            'total_amount' => 300000,
+            'status' => 'pending',
+        ]);
+    }
 }

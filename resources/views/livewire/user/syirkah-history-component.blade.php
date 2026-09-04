@@ -622,17 +622,6 @@
           </div>
         </div>
 
-        <!-- Program Syirkah -->
-        <div>
-          <x-label for="savingsId" value="Program Syirkah" class="text-xs font-semibold" />
-          <x-select id="savingsId" wire:model.live="savingsId" class="w-full mt-1 text-xs sm:text-sm">
-            @foreach($savingsList as $s)
-              <option value="{{ $s->id }}">{{ $s->savings_name }}</option>
-            @endforeach
-          </x-select>
-          <x-input-error for="savingsId" class="mt-1" />
-        </div>
-
         <!-- Withdrawal Type Selector (3 Options) -->
         <div>
           <x-label value="Opsi Penarikan Syirkah" class="text-xs font-semibold mb-1.5 block" />
@@ -664,9 +653,30 @@
           <x-input-error for="withdrawalType" class="mt-1" />
         </div>
 
-        <!-- Dynamic Inputs Based on Selection -->
+        <!-- Dynamic Inputs Based on Selection with Auto IDR / Rupiah Formatting -->
         @if($withdrawalType === 'full' || $withdrawalType === 'mandatory')
-          <div>
+          <div x-data="{
+            rawVal: @entangle('mandatoryAmount').live,
+            displayVal: '',
+            formatRupiah(val) {
+              if (val === null || val === undefined || val === '' || Number(val) === 0) return '';
+              let num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+              if (isNaN(num) || num === 0) return '';
+              return 'Rp. ' + new Intl.NumberFormat('id-ID').format(num);
+            },
+            init() {
+              this.displayVal = this.formatRupiah(this.rawVal);
+              this.$watch('rawVal', (newVal) => {
+                this.displayVal = this.formatRupiah(newVal);
+              });
+            },
+            handleInput(e) {
+              let clean = e.target.value.replace(/[^0-9]/g, '');
+              let num = clean ? parseInt(clean, 10) : 0;
+              this.rawVal = num;
+              this.displayVal = num > 0 ? 'Rp. ' + new Intl.NumberFormat('id-ID').format(num) : '';
+            }
+          }">
             <div class="flex items-center justify-between">
               <x-label for="mandatoryAmount" value="Nominal Syirkah Wajib (Rp)" class="text-xs font-semibold" />
               <button 
@@ -677,21 +687,44 @@
                 Tarik Semua (Rp {{ number_format($availMandatory, 0, ',', '.') }})
               </button>
             </div>
-            <x-input 
-              type="number" 
-              id="mandatoryAmount" 
-              wire:model.live="mandatoryAmount" 
-              min="0" 
-              max="{{ $availMandatory }}"
-              class="w-full mt-1 text-xs sm:text-sm font-semibold" 
-              placeholder="0" 
-            />
+            <div class="relative mt-1">
+              <x-input 
+                type="text" 
+                inputmode="numeric"
+                id="mandatoryAmount" 
+                x-model="displayVal"
+                @input="handleInput($event)"
+                class="w-full text-xs sm:text-sm font-bold text-gray-900 dark:text-white" 
+                placeholder="Rp. 0" 
+              />
+            </div>
             <x-input-error for="mandatoryAmount" class="mt-1" />
           </div>
         @endif
 
         @if($withdrawalType === 'full' || $withdrawalType === 'secondary')
-          <div>
+          <div x-data="{
+            rawVal: @entangle('secondaryAmount').live,
+            displayVal: '',
+            formatRupiah(val) {
+              if (val === null || val === undefined || val === '' || Number(val) === 0) return '';
+              let num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+              if (isNaN(num) || num === 0) return '';
+              return 'Rp. ' + new Intl.NumberFormat('id-ID').format(num);
+            },
+            init() {
+              this.displayVal = this.formatRupiah(this.rawVal);
+              this.$watch('rawVal', (newVal) => {
+                this.displayVal = this.formatRupiah(newVal);
+              });
+            },
+            handleInput(e) {
+              let clean = e.target.value.replace(/[^0-9]/g, '');
+              let num = clean ? parseInt(clean, 10) : 0;
+              this.rawVal = num;
+              this.displayVal = num > 0 ? 'Rp. ' + new Intl.NumberFormat('id-ID').format(num) : '';
+            }
+          }">
             <div class="flex items-center justify-between">
               <x-label for="secondaryAmount" value="Nominal Syirkah SSR / Sukarela (Rp)" class="text-xs font-semibold" />
               <button 
@@ -702,15 +735,17 @@
                 Tarik Semua (Rp {{ number_format($availSecondary, 0, ',', '.') }})
               </button>
             </div>
-            <x-input 
-              type="number" 
-              id="secondaryAmount" 
-              wire:model.live="secondaryAmount" 
-              min="0" 
-              max="{{ $availSecondary }}"
-              class="w-full mt-1 text-xs sm:text-sm font-semibold" 
-              placeholder="0" 
-            />
+            <div class="relative mt-1">
+              <x-input 
+                type="text" 
+                inputmode="numeric"
+                id="secondaryAmount" 
+                x-model="displayVal"
+                @input="handleInput($event)"
+                class="w-full text-xs sm:text-sm font-bold text-gray-900 dark:text-white" 
+                placeholder="Rp. 0" 
+              />
+            </div>
             <x-input-error for="secondaryAmount" class="mt-1" />
           </div>
         @endif
@@ -748,7 +783,7 @@
         <div class="rounded-lg bg-sky-50 dark:bg-sky-950/40 p-2.5 border border-sky-200 dark:border-sky-800 text-[11px] text-sky-800 dark:text-sky-300 flex items-start gap-2">
           <x-heroicon-o-information-circle class="h-4 w-4 shrink-0 mt-0.5 text-sky-600" />
           <p>
-            Pengajuan akan diverifikasi oleh <strong>Admin Divisi</strong> dan disetujui oleh <strong>Owner</strong>. Saldo mutasi syirkah Anda <strong>hanya akan terpotong setelah status berubah menjadi DIBAYARKAN (PAID)</strong> sebesar nominal yang disetujui.
+            Pengajuan akan diverifikasi oleh <strong>Manajer Divisi</strong> dan disetujui oleh <strong>Owner</strong>. Saldo mutasi syirkah Anda <strong>hanya akan terpotong setelah status berubah menjadi DIBAYARKAN (PAID)</strong> sebesar nominal yang disetujui.
           </p>
         </div>
       </form>
@@ -958,7 +993,7 @@
 
           @if($selectedWithdrawal->approver)
             <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
-              <span class="text-gray-500 dark:text-gray-400">Diverifikasi Admin</span>
+              <span class="text-gray-500 dark:text-gray-400">Diverifikasi Manajer Divisi</span>
               <span class="font-semibold text-gray-800 dark:text-gray-200">
                 {{ $selectedWithdrawal->approver->name }}
               </span>
@@ -967,7 +1002,7 @@
 
           @if($selectedWithdrawal->approved_at)
             <div class="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700">
-              <span class="text-gray-500 dark:text-gray-400">Waktu Verifikasi Admin</span>
+              <span class="text-gray-500 dark:text-gray-400">Waktu Verifikasi Manajer</span>
               <span class="font-semibold text-gray-800 dark:text-gray-200">
                 {{ \Carbon\Carbon::parse($selectedWithdrawal->approved_at)->translatedFormat('d M Y, H:i') }} WIB
               </span>

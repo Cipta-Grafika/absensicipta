@@ -100,21 +100,17 @@ class SyirkahHistoryComponent extends Component
 
         if ($availMandatory > 0 && $availSecondary > 0) {
             $this->withdrawalType = 'full';
-            $this->mandatoryAmount = $availMandatory;
-            $this->secondaryAmount = $availSecondary;
         } elseif ($availMandatory > 0) {
             $this->withdrawalType = 'mandatory';
-            $this->mandatoryAmount = $availMandatory;
-            $this->secondaryAmount = 0;
         } elseif ($availSecondary > 0) {
             $this->withdrawalType = 'secondary';
-            $this->mandatoryAmount = 0;
-            $this->secondaryAmount = $availSecondary;
         } else {
             $this->withdrawalType = 'full';
-            $this->mandatoryAmount = 0;
-            $this->secondaryAmount = 0;
         }
+
+        // Always start from 0 as requested
+        $this->mandatoryAmount = 0;
+        $this->secondaryAmount = 0;
 
         $this->reason = '';
         $this->isWithdrawalModalOpen = true;
@@ -128,19 +124,10 @@ class SyirkahHistoryComponent extends Component
 
     public function updatedWithdrawalType($value)
     {
-        $balances = $this->calculateBalances(Auth::id());
-        $availMandatory = $balances['availMandatory'];
-        $availSecondary = $balances['availSecondary'];
-
         if ($value === 'mandatory') {
-            $this->mandatoryAmount = $availMandatory;
             $this->secondaryAmount = 0;
         } elseif ($value === 'secondary') {
             $this->mandatoryAmount = 0;
-            $this->secondaryAmount = $availSecondary;
-        } elseif ($value === 'full') {
-            $this->mandatoryAmount = $availMandatory;
-            $this->secondaryAmount = $availSecondary;
         }
     }
 
@@ -169,6 +156,14 @@ class SyirkahHistoryComponent extends Component
         $balances = $this->calculateBalances($userId);
         $availMandatory = $balances['availMandatory'];
         $availSecondary = $balances['availSecondary'];
+
+        // Clean numeric values if formatted as string
+        if (is_string($this->mandatoryAmount)) {
+            $this->mandatoryAmount = (float) preg_replace('/[^0-9]/', '', $this->mandatoryAmount);
+        }
+        if (is_string($this->secondaryAmount)) {
+            $this->secondaryAmount = (float) preg_replace('/[^0-9]/', '', $this->secondaryAmount);
+        }
 
         $this->validate([
             'savingsId' => 'required|exists:savings,id',
@@ -221,7 +216,7 @@ class SyirkahHistoryComponent extends Component
             );
 
             $this->closeWithdrawalModal();
-            $this->dispatch('notify', 'Pengajuan penarikan syirkah berhasil dikirim. Menunggu persetujuan Admin.');
+            $this->dispatch('notify', 'Pengajuan penarikan syirkah berhasil dikirim. Menunggu verifikasi Manajer Divisi.');
         } catch (\Exception $e) {
             $this->addError('withdrawalType', 'Gagal mengajukan penarikan: ' . $e->getMessage());
         }

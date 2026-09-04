@@ -145,14 +145,14 @@ class SavingWithdrawal extends Model
                 'bg' => 'bg-amber-100 dark:bg-amber-950/60',
                 'text' => 'text-amber-800 dark:text-amber-300',
                 'border' => 'border-amber-300 dark:border-amber-800',
-                'desc' => 'Menunggu Persetujuan Admin Divisi',
+                'desc' => 'Menunggu Verifikasi Manajer Divisi',
             ],
             'accepted' => [
                 'label' => 'ACCEPTED',
                 'bg' => 'bg-blue-100 dark:bg-blue-950/60',
                 'text' => 'text-blue-800 dark:text-blue-300',
                 'border' => 'border-blue-300 dark:border-blue-800',
-                'desc' => 'Disetujui Admin, Menunggu Approval Owner',
+                'desc' => 'Diverifikasi Manajer, Menunggu Persetujuan Owner',
             ],
             'approved' => [
                 'label' => 'APPROVED',
