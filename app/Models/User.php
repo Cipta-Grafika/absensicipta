@@ -46,6 +46,8 @@ class User extends Authenticatable
         'group',
         'type',
         'phone',
+        'telegram',
+        'chat_code',
         'gender',
         'birth_date',
         'birth_place',
@@ -59,6 +61,20 @@ class User extends Authenticatable
         'count_wfo',
         'off_days',
     ];
+
+    public function getTelegramTargetAttribute(): ?string
+    {
+        if (!empty($this->chat_code)) {
+            return trim($this->chat_code);
+        }
+
+        if (!empty($this->telegram)) {
+            $tg = trim($this->telegram);
+            return ltrim($tg, '@');
+        }
+
+        return null;
+    }
 
     public static function generateNip(string $type = 'full-time', $date = null): string
     {

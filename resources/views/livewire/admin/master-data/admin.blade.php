@@ -19,6 +19,9 @@
           <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
             {{ __('Phone Number') }}
           </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            {{ __('Telegram / Chat ID') }}
+          </th>
           <th scope="col" class="relative px-6 py-3">
             <span class="sr-only">Actions</span>
           </th>
@@ -47,11 +50,28 @@
             </td>
             <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
               {{ $wireClick }}>
-              {{ $user->group }}
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase {{ $user->group === 'superadmin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' : ($user->group === 'owner' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' : ($user->group === 'syirkah' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300')) }}">
+                {{ $user->group }}
+              </span>
             </td>
             <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
               {{ $wireClick }}>
               {{ $user->phone }}
+            </td>
+            <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
+              {{ $wireClick }}>
+              @if($user->telegram || $user->chat_code)
+                <div class="flex flex-col">
+                  @if($user->telegram)
+                    <span class="font-bold text-sky-600 dark:text-sky-400 text-xs">{{ str_starts_with($user->telegram, '@') ? $user->telegram : '@' . $user->telegram }}</span>
+                  @endif
+                  @if($user->chat_code)
+                    <span class="text-[11px] text-gray-500 dark:text-gray-400 font-mono">ID: {{ $user->chat_code }}</span>
+                  @endif
+                </div>
+              @else
+                <span class="text-gray-400 text-xs">-</span>
+              @endif
             </td>
             <td class="relative flex justify-center gap-2 px-4 py-4">
               @if (Auth::user()->isSuperadmin || Auth::user()->id == $user->id)
@@ -100,6 +120,7 @@
     </x-slot>
   </x-confirmation-modal>
 
+  <!-- CREATE ADMIN MODAL -->
   <x-dialog-modal wire:model="creating">
     <x-slot name="title">
       Admin Baru
@@ -195,7 +216,7 @@
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
             <x-label for="phone">{{ __('Phone') }}</x-label>
-            <x-input id="phone" class="mt-1 block w-full" type="number" wire:model="form.phone"
+            <x-input id="phone" class="mt-1 block w-full" type="text" wire:model="form.phone"
               placeholder="+628123456789" />
             @error('form.phone')
               <x-input-error for="form.phone" class="mt-2" message="{{ $message }}" />
@@ -210,6 +231,27 @@
             @enderror
           </div>
         </div>
+
+        <!-- Telegram Username & Chat ID Row -->
+        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+          <div class="w-full">
+            <x-label for="telegram">Username Telegram</x-label>
+            <x-input id="telegram" class="mt-1 block w-full" type="text" wire:model="form.telegram"
+              placeholder="@username (Opsional)" />
+            @error('form.telegram')
+              <x-input-error for="form.telegram" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full">
+            <x-label for="chat_code">Telegram Chat ID / Code</x-label>
+            <x-input id="chat_code" class="mt-1 block w-full" type="text" wire:model="form.chat_code"
+              placeholder="Contoh: 1909551792 (Opsional)" />
+            @error('form.chat_code')
+              <x-input-error for="form.chat_code" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+        </div>
+
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full sm:w-1/3">
             <x-label for="form.group" value="{{ __('Group') }}" />
@@ -277,6 +319,7 @@
     </form>
   </x-dialog-modal>
 
+  <!-- EDIT ADMIN MODAL -->
   <x-dialog-modal wire:model="editing">
     <x-slot name="title">
       Edit Admin
@@ -373,7 +416,7 @@
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full">
             <x-label for="phone">{{ __('Phone') }}</x-label>
-            <x-input id="phone" class="mt-1 block w-full" type="number" wire:model="form.phone"
+            <x-input id="phone" class="mt-1 block w-full" type="text" wire:model="form.phone"
               placeholder="+628123456789" />
             @error('form.phone')
               <x-input-error for="form.phone" class="mt-2" message="{{ $message }}" />
@@ -388,6 +431,27 @@
             @enderror
           </div>
         </div>
+
+        <!-- Telegram Username & Chat ID Row -->
+        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+          <div class="w-full">
+            <x-label for="edit_telegram">Username Telegram</x-label>
+            <x-input id="edit_telegram" class="mt-1 block w-full" type="text" wire:model="form.telegram"
+              placeholder="@username (Opsional)" />
+            @error('form.telegram')
+              <x-input-error for="form.telegram" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+          <div class="w-full">
+            <x-label for="edit_chat_code">Telegram Chat ID / Code</x-label>
+            <x-input id="edit_chat_code" class="mt-1 block w-full" type="text" wire:model="form.chat_code"
+              placeholder="Contoh: 1909551792 (Opsional)" />
+            @error('form.chat_code')
+              <x-input-error for="form.chat_code" class="mt-2" message="{{ $message }}" />
+            @enderror
+          </div>
+        </div>
+
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
           <div class="w-full sm:w-1/3">
             <x-label for="form.group" value="{{ __('Group') }}" />
@@ -455,6 +519,7 @@
     </form>
   </x-dialog-modal>
 
+  <!-- SHOW DETAIL MODAL -->
   <x-modal wire:model="showDetail">
     @if ($form->user)
       @php
@@ -484,6 +549,14 @@
           <div class="mt-4">
             <x-label for="phone" value="{{ __('Phone') }}" />
             <p>{{ $form->user->phone }}</p>
+          </div>
+          <div class="mt-4">
+            <x-label for="telegram_detail" value="Telegram" />
+            <p class="font-semibold text-sky-600 dark:text-sky-400">{{ $form->user->telegram ? (str_starts_with($form->user->telegram, '@') ? $form->user->telegram : '@' . $form->user->telegram) : '-' }}</p>
+          </div>
+          <div class="mt-4">
+            <x-label for="chat_code_detail" value="Telegram Chat ID" />
+            <p class="font-mono text-gray-700 dark:text-gray-300">{{ $form->user->chat_code ?: '-' }}</p>
           </div>
           <div class="mt-4">
             <x-label for="group" value="{{ __('Group') }}" />
@@ -525,10 +598,6 @@
             <x-label for="division_id" value="{{ __('Division') }}" />
             <p>{{ $division }}</p>
           </div>
-          {{-- <div class="mt-4">
-            <x-label for="education_id" value="{{ __('Last Education') }}" />
-            <p>{{ $education }}</p>
-          </div> --}}
         </div>
       </div>
     @endif

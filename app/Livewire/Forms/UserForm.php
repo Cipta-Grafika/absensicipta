@@ -16,6 +16,8 @@ class UserForm extends Form
     public $nip = '';
     public $email = '';
     public $phone = '';
+    public $telegram = '';
+    public $chat_code = '';
     public $password = null;
     public $gender = null;
     public $city = '';
@@ -57,6 +59,8 @@ class UserForm extends Form
                 Rule::unique('users')->ignore($this->user)
             ],
             'phone' => ['required',  'string', 'min:5', 'max:255'],
+            'telegram' => ['nullable', 'string', 'max:255'],
+            'chat_code' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:4', 'max:255'],
             'gender' => [$requiredOrNullable, 'in:male,female'],
             'city' => [$requiredOrNullable, 'string', 'max:255'],
@@ -83,6 +87,8 @@ class UserForm extends Form
         $this->nip = $user->nip;
         $this->email = $user->email;
         $this->phone = $user->phone;
+        $this->telegram = $user->telegram;
+        $this->chat_code = $user->chat_code;
         $this->password = null;
         $this->gender = $user->gender;
         $this->city = $user->city;
