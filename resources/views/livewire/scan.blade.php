@@ -299,7 +299,7 @@
           wire:target="manualCheckIn, manualCheckOut"
           title="Klik untuk Absen Keluar (Verifikasi GPS Radius Barcode Kantor)"
         @elseif($isCheckOutLockedUntilWindow)
-          title="{{ !$hasShift ? 'Pilih shift terlebih dahulu sebelum melakukan presensi.' : 'Absen Keluar belum dibuka. Dapat diakses mulai pukul ' . $checkOutUnlockTime . ' (1 jam sebelum shift berakhir).' }}"
+          title="{{ !$hasShiftOut ? 'Pilih shift terlebih dahulu sebelum melakukan presensi.' : 'Absen Keluar belum dibuka. Dapat diakses mulai pukul ' . $checkOutUnlockTime . ' (1 jam sebelum shift berakhir).' }}"
         @endif
         class="col-span-1 relative flex flex-col justify-between rounded-xl p-2.5 sm:p-4 transition-all duration-200
                {{ $canManualCheckOut 
@@ -334,7 +334,7 @@
               @elseif($isCheckOutLockedUntilWindow)
                 <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-amber-800 dark:text-amber-300">
                   <x-heroicon-o-lock-closed class="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                  {{ !$hasShift ? 'Pilih Shift Dulu' : 'Buka Pukul ' . $checkOutUnlockTime }}
+                  {{ !$hasShiftOut ? 'Pilih Shift Dulu' : 'Buka Pukul ' . $checkOutUnlockTime }}
                 </span>
               @elseif($attendance?->time_out)
                 <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-amber-800 dark:bg-amber-900/80 dark:text-amber-200">
@@ -358,7 +358,7 @@
           @if($canManualCheckOut)
             Tap di sini untuk Absen Keluar (GPS)
           @elseif($isCheckOutLockedUntilWindow)
-            {{ !$hasShift ? 'Pilih shift kerja terlebih dahulu' : 'Buka pukul ' . $checkOutUnlockTime . ' (1 jam sblm shift usai)' }}
+            {{ !$hasShiftOut ? 'Pilih shift kerja terlebih dahulu' : 'Buka pukul ' . $checkOutUnlockTime . ' (1 jam sblm shift usai)' }}
           @else
             Waktu presensi keluar hari ini
           @endif
