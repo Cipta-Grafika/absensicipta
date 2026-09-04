@@ -20,6 +20,7 @@
         "laravel/jetstream": "^5.1",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
+        "league/commonmark": "^2.10.0",
         "livewire/livewire": "^3.0",
         "maatwebsite/excel": "^3.1"
     },

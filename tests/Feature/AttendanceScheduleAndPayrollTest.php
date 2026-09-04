@@ -334,6 +334,7 @@ class AttendanceScheduleAndPayrollTest extends TestCase
 
         // Test search filter
         Livewire::test(HolidayManagementComponent::class)
+            ->set('calendar_month', '2026-08')
             ->set('search', 'Custom Holiday')
             ->assertSee('Custom Holiday');
     }
@@ -412,6 +413,7 @@ class AttendanceScheduleAndPayrollTest extends TestCase
         ]);
 
         // Note: 2026-08-31 has no attendance record (future / hyphen)
+        Carbon::setTestNow('2026-08-25');
 
         $this->actingAs($payrollAdmin);
 
@@ -432,6 +434,8 @@ class AttendanceScheduleAndPayrollTest extends TestCase
         // Effective paid days should be rounded to standard 25 days since 0 absent and >= 15 paid days
         $this->assertEquals(25 * 60000, $payroll->basic_salary_earned);
         $this->assertEquals(25 * 60000, $payroll->net_salary);
+
+        Carbon::setTestNow();
     }
 
     public function test_daily_employee_with_sick_and_permit_reduces_paid_days_correctly(): void
