@@ -51,6 +51,11 @@ class TelegramBotHandler
             })
             ->first();
 
+        // Auto-bind / sync numeric chat_code in database if user matched by username
+        if ($user && (empty($user->chat_code) || $user->chat_code !== (string) $fromId)) {
+            $user->update(['chat_code' => (string) $fromId]);
+        }
+
         $command = strtolower(explode(' ', $text)[0] ?? '');
 
         switch ($command) {

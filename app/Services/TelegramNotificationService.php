@@ -151,21 +151,22 @@ class TelegramNotificationService
         ->get();
 
         foreach ($adminQuery as $admin) {
-            if ($target = $admin->telegram_target) {
-                $targetIds[] = $target;
+            if (!empty($admin->chat_code)) {
+                $targetIds[] = trim($admin->chat_code);
             }
         }
 
-        // Fallback to .env TELEGRAM_ADMIN_CHAT_ID if no user targets configured
+        // Fallback to .env TELEGRAM_ADMIN_CHAT_ID if no database users have chat_code
         if (empty($targetIds)) {
             $envChatId = config('services.telegram.admin_chat_id', env('TELEGRAM_ADMIN_CHAT_ID'));
             if (!empty($envChatId)) {
-                $targetIds[] = $envChatId;
+                $targetIds[] = trim($envChatId);
             }
         }
 
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) {
+            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Division Admin or Superadmin.');
             return;
         }
 
@@ -219,6 +220,7 @@ class TelegramNotificationService
         }
 
         $message .= "\n📅 <b>Waktu</b>    : {$dateFormatted}\n";
+        $message .= "🔗 <b>Menu Approval</b> : <a href=\"{$actionUrl}\">{$actionUrl}</a>\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
 
         // 4. Interactive Inline Keyboard (Direct ACC / Reject from Telegram!)
@@ -271,21 +273,22 @@ class TelegramNotificationService
             ->get();
 
         foreach ($ownerQuery as $ownerUser) {
-            if ($target = $ownerUser->telegram_target) {
-                $targetIds[] = $target;
+            if (!empty($ownerUser->chat_code)) {
+                $targetIds[] = trim($ownerUser->chat_code);
             }
         }
 
-        // Fallback to .env TELEGRAM_OWNER_CHAT_ID if no user targets configured
+        // Fallback to .env TELEGRAM_OWNER_CHAT_ID if no database users have chat_code
         if (empty($targetIds)) {
             $envChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
             if (!empty($envChatId)) {
-                $targetIds[] = $envChatId;
+                $targetIds[] = trim($envChatId);
             }
         }
 
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) {
+            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Owner/Finance/Syirkah.');
             return;
         }
 
@@ -351,6 +354,7 @@ class TelegramNotificationService
             $message .= "<i>\"" . htmlspecialchars($withdrawal->reason) . "\"</i>\n";
         }
 
+        $message .= "🔗 <b>Menu Mutasi</b> : <a href=\"{$actionUrl}\">{$actionUrl}</a>\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
 
         // 4. Interactive Inline Keyboard (Direct Mark as PAID / Open Web)
