@@ -285,30 +285,52 @@ class TelegramBotHandler
 
     protected static function sendBalanceMessage($chatId, ?User $user): void
     {
-        $depMan = (float) SavingTransaction::where('status', 'approved')->where('transaction_type', 'deposit')->sum('mandatory_amount');
-        $wdMan = (float) SavingTransaction::where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('mandatory_amount');
+        $scopeTitle = "PERUSAHAAN (GLOBAL)";
+        $scopeSubtitle = "🏢 <b>Cakupan</b> : Seluruh Divisi (Owner/Superadmin Scope)";
+
+        $txQuery = SavingTransaction::where('status', 'approved');
+
+        if ($user) {
+            $user->loadMissing('division');
+            if ($user->group === 'admin' && $user->division_id) {
+                $divName = $user->division?->name ?? 'Divisi Anda';
+                $txQuery->whereHas('user', fn($q) => $q->where('division_id', $user->division_id));
+                $scopeTitle = "DIVISI " . strtoupper($divName);
+                $scopeSubtitle = "🏢 <b>Divisi</b>  : <b>" . htmlspecialchars($divName) . "</b> <i>(Khusus Divisi Anda)</i>";
+            } elseif ($user->group === 'user') {
+                $txQuery->where('user_id', $user->id);
+                $scopeTitle = "PRIBADI";
+                $scopeSubtitle = "👤 <b>Nama</b>    : <b>" . htmlspecialchars($user->name) . "</b>";
+            }
+        }
+
+        $depMan = (float) (clone $txQuery)->where('transaction_type', 'deposit')->sum('mandatory_amount');
+        $wdMan = (float) (clone $txQuery)->where('transaction_type', 'withdrawal')->sum('mandatory_amount');
         $totalWajib = max(0.0, $depMan - $wdMan);
 
-        $depSec = (float) SavingTransaction::where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
-        $wdSec = (float) SavingTransaction::where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+        $depSec = (float) (clone $txQuery)->where('transaction_type', 'deposit')->sum('secondary_amount');
+        $wdSec = (float) (clone $txQuery)->where('transaction_type', 'withdrawal')->sum('secondary_amount');
         $totalSukarela = max(0.0, $depSec - $wdSec);
 
         $totalAkumulasi = $totalWajib + $totalSukarela;
 
-        $msg = "📊 <b>INFORMASI SALDO SYIRKAH PERUSAHAAN</b>\n";
+        $msg = "📊 <b>INFORMASI SALDO SYIRKAH — {$scopeTitle}</b>\n";
         $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "{$scopeSubtitle}\n";
         $msg .= "🔒 <b>Total Saldo Wajib</b>    : <b>Rp " . number_format($totalWajib, 0, ',', '.') . "</b>\n";
         $msg .= "✨ <b>Total Saldo SSR/Sukarela</b> : <b>Rp " . number_format($totalSukarela, 0, ',', '.') . "</b>\n";
         $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
         $msg .= "💰 <b>Total Akumulasi Terverifikasi</b> :\n";
         $msg .= "👉 <b>Rp " . number_format($totalAkumulasi, 0, ',', '.') . "</b>\n\n";
-        $msg .= "<i>Data diperbarui secara real-time dari database.</i>";
+        $msg .= "<i>Data saldo dihitung secara real-time berdasarkan hak akses (role & divisi).</i>";
+
+        $appUrl = rtrim(config('app.url', env('APP_URL', 'https://digitalprint.biz.id')), '/');
 
         $keyboard = [
             'inline_keyboard' => [
                 [
                     ['text' => '⏳ Cek Antrean Pengajuan', 'callback_data' => 'cmd_pending'],
-                    ['text' => '🌐 Buka Web Mutasi', 'url' => config('app.url', 'http://localhost:8000') . '/payroll/saving-transactions'],
+                    ['text' => '🌐 Buka Web Mutasi', 'url' => $appUrl . '/payroll/saving-transactions'],
                 ],
             ],
         ];
@@ -339,6 +361,8 @@ class TelegramBotHandler
         $msg = "⏳ <b>DAFTAR ANTREAN PENGAJUAN SYIRKAH (PENDING)</b>\n";
         $msg .= "Menampilkan {$count} pengajuan terbaru yang menunggu persetujuan:\n\n";
 
+        $inlineButtons = [];
+
         foreach ($pendingList as $idx => $wd) {
             $num = $idx + 1;
             $name = $wd->user?->name ?? 'Karyawan';
@@ -351,16 +375,32 @@ class TelegramBotHandler
             $msg .= "   ├─ Opsi : {$type}\n";
             $msg .= "   ├─ Nominal : <b>Rp {$nominal}</b>\n";
             $msg .= "   └─ Tanggal : {$date} WIB\n\n";
+
+            $shortName = explode(' ', trim($name))[0];
+            $inlineButtons[] = [
+                [
+                    'text' => "✅ Setujui #{$num} ({$shortName})",
+                    'callback_data' => 'acc_wd_' . $wd->id,
+                ],
+                [
+                    'text' => "❌ Tolak #{$num}",
+                    'callback_data' => 'rej_wd_' . $wd->id,
+                ],
+            ];
         }
 
-        $msg .= "👉 <i>Gunakan tombol pada pesan notifikasi pengajuan untuk menyetujui langsung, atau buka Web Dashboard di bawah.</i>";
+        $msg .= "👉 <i>Klik tombol di bawah untuk menyetujui / menolak langsung per pengajuan, atau buka Web Dashboard.</i>";
+
+        $appUrl = rtrim(config('app.url', env('APP_URL', 'https://digitalprint.biz.id')), '/');
+        $inlineButtons[] = [
+            [
+                'text' => '🌐 Buka Menu Approval Web',
+                'url' => $appUrl . '/payroll/saving-transactions?activeTab=withdrawals',
+            ],
+        ];
 
         $keyboard = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '🌐 Buka Menu Approval Web', 'url' => config('app.url', 'http://localhost:8000') . '/payroll/saving-transactions?activeTab=withdrawals'],
-                ],
-            ],
+            'inline_keyboard' => $inlineButtons,
         ];
 
         TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
