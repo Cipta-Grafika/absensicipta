@@ -87,20 +87,40 @@ class TelegramBotHandler
                 return;
             }
 
-            if ($withdrawal->status === 'accepted' || $withdrawal->status === 'paid') {
-                TelegramNotificationService::sendMessage(
-                    $chatId,
-                    "⚠️ <b>Pengajuan Sudah Disetujui</b>\nPengajuan atas nama <b>" . htmlspecialchars($withdrawal->user?->name ?? '-') . "</b> sudah diproses sebelumnya."
-                );
-                return;
+            if ($action === 'accept') {
+                if ($withdrawal->status === 'accepted' || $withdrawal->status === 'paid') {
+                    TelegramNotificationService::sendMessage(
+                        $chatId,
+                        "⚠️ <b>Pengajuan Sudah Disetujui</b>\nPengajuan atas nama <b>" . htmlspecialchars($withdrawal->user?->name ?? '-') . "</b> sudah disetujui sebelumnya."
+                    );
+                    return;
+                }
+
+                if ($withdrawal->status === 'rejected') {
+                    TelegramNotificationService::sendMessage(
+                        $chatId,
+                        "⚠️ <b>Pengajuan Sudah Ditolak</b>\nPengajuan atas nama <b>" . htmlspecialchars($withdrawal->user?->name ?? '-') . "</b> sudah ditolak sebelumnya."
+                    );
+                    return;
+                }
             }
 
-            if ($withdrawal->status === 'rejected') {
-                TelegramNotificationService::sendMessage(
-                    $chatId,
-                    "⚠️ <b>Pengajuan Sudah Ditolak</b>\nPengajuan atas nama <b>" . htmlspecialchars($withdrawal->user?->name ?? '-') . "</b> sudah ditolak sebelumnya."
-                );
-                return;
+            if ($action === 'reject') {
+                if ($withdrawal->status === 'paid') {
+                    TelegramNotificationService::sendMessage(
+                        $chatId,
+                        "⚠️ <b>Pengajuan Sudah Dibayarkan</b>\nPengajuan atas nama <b>" . htmlspecialchars($withdrawal->user?->name ?? '-') . "</b> sudah selesai dibayarkan (PAID) dan tidak dapat ditolak."
+                    );
+                    return;
+                }
+
+                if ($withdrawal->status === 'rejected') {
+                    TelegramNotificationService::sendMessage(
+                        $chatId,
+                        "⚠️ <b>Pengajuan Sudah Ditolak</b>\nPengajuan atas nama <b>" . htmlspecialchars($withdrawal->user?->name ?? '-') . "</b> sudah ditolak sebelumnya."
+                    );
+                    return;
+                }
             }
 
             // Verify Permission
