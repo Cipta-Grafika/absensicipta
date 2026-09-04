@@ -62,15 +62,17 @@
               </x-select>
             </div>
 
-            <div>
-              <x-label for="division_filter" value="Divisi" class="mb-1"></x-label>
-              <x-select id="division_filter" class="w-full" wire:model.live="division">
-                <option value="">Semua Divisi</option>
-                @foreach ($divisionsList as $div)
-                  <option value="{{ $div->id }}">{{ $div->name }}</option>
-                @endforeach
-              </x-select>
-            </div>
+            @if(!$isDivisionScoped)
+              <div>
+                <x-label for="division_filter" value="Divisi" class="mb-1"></x-label>
+                <x-select id="division_filter" class="w-full" wire:model.live="division">
+                  <option value="">Semua Divisi</option>
+                  @foreach ($divisionsList as $div)
+                    <option value="{{ $div->id }}">{{ $div->name }}</option>
+                  @endforeach
+                </x-select>
+              </div>
+            @endif
           @else
             <div>
               <x-label for="wd_status_filter" value="Status Pengajuan Penarikan" class="mb-1"></x-label>
@@ -88,15 +90,17 @@
               <x-input type="month" id="wd_month_filter" class="w-full block" wire:model.live="withdrawalMonth" />
             </div>
 
-            <div>
-              <x-label for="wd_division_filter" value="Divisi Karyawan" class="mb-1"></x-label>
-              <x-select id="wd_division_filter" class="w-full" wire:model.live="withdrawalDivision">
-                <option value="">Semua Divisi</option>
-                @foreach ($divisionsList as $div)
-                  <option value="{{ $div->id }}">{{ $div->name }}</option>
-                @endforeach
-              </x-select>
-            </div>
+            @if(!$isDivisionScoped)
+              <div>
+                <x-label for="wd_division_filter" value="Divisi Karyawan" class="mb-1"></x-label>
+                <x-select id="wd_division_filter" class="w-full" wire:model.live="withdrawalDivision">
+                  <option value="">Semua Divisi</option>
+                  @foreach ($divisionsList as $div)
+                    <option value="{{ $div->id }}">{{ $div->name }}</option>
+                  @endforeach
+                </x-select>
+              </div>
+            @endif
           @endif
         </div>
       </x-slot>
@@ -104,17 +108,35 @@
 
     <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-t border-b sm:border border-white/90 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl shadow-slate-900/10 dark:shadow-black/50 rounded-none sm:rounded-2xl overflow-hidden p-4 sm:p-6 lg:p-8">
       
+      @if($isDivisionScoped)
+        <!-- Scope Divisi Banner -->
+        <div class="mb-5 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 p-3.5 flex items-center justify-between gap-3 shadow-xs">
+          <div class="flex items-center gap-2.5">
+            <div class="rounded-lg bg-sky-500 text-white p-2 shrink-0">
+              <x-heroicon-s-building-office-2 class="h-5 w-5" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="text-sm font-bold text-gray-900 dark:text-white">Cakupan Data: Divisi {{ $adminDivisionName }}</h4>
+                <span class="inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-300 px-2 py-0.5 text-[10px] font-bold">Admin Divisi</span>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Menampilkan mutasi saldo syirkah dan pengajuan penarikan khusus karyawan di divisi Anda.</p>
+            </div>
+          </div>
+        </div>
+      @endif
+
       <!-- 1. SUMMARY CARDS -->
       <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Saldo Wajib -->
         <div class="overflow-hidden rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 p-4 sm:p-5 shadow-xs">
-          <dt class="truncate text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Total Saldo Wajib (Disetujui)</dt>
+          <dt class="truncate text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Total Saldo Wajib (Disetujui){{ $isDivisionScoped ? ' - ' . $adminDivisionName : '' }}</dt>
           <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-indigo-950 dark:text-indigo-100">Rp {{ number_format($totalWajib, 0, ',', '.') }}</dd>
         </div>
 
         <!-- Saldo Sukarela -->
         <div class="overflow-hidden rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-4 sm:p-5 shadow-xs">
-          <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Total Saldo Sukarela (Disetujui)</dt>
+          <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Total Saldo Sukarela (Disetujui){{ $isDivisionScoped ? ' - ' . $adminDivisionName : '' }}</dt>
           <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">Rp {{ number_format($totalSukarela, 0, ',', '.') }}</dd>
         </div>
 

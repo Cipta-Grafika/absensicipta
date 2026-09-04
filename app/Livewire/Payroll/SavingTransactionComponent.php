@@ -578,13 +578,21 @@ class SavingTransactionComponent extends Component
      * QUERIES & DATA RENDERING
      * ========================================================================= */
 
-    private function applyDivisionScope($query, string $userRelation = 'user')
+    private function applyDivisionScope($query, ?string $userRelation = 'user')
     {
         $currentUser = Auth::user();
         if ($currentUser && $currentUser->group === 'admin' && !$currentUser->isSuperadmin && !$currentUser->isSyirkah && !$currentUser->isOwner && !$currentUser->isPayroll) {
-            $query->whereHas($userRelation, function($q) use ($currentUser) {
-                $q->where('division_id', $currentUser->division_id);
-            });
+            if ($userRelation === null) {
+                if ($currentUser->division_id) {
+                    $query->where('division_id', $currentUser->division_id);
+                }
+            } else {
+                $query->whereHas($userRelation, function($q) use ($currentUser) {
+                    if ($currentUser->division_id) {
+                        $q->where('division_id', $currentUser->division_id);
+                    }
+                });
+            }
         }
         return $query;
     }
@@ -677,6 +685,10 @@ class SavingTransactionComponent extends Component
 
     public function render()
     {
+        $currentUser = Auth::user();
+        $isDivisionScoped = ($currentUser && $currentUser->group === 'admin' && !$currentUser->isSuperadmin && !$currentUser->isSyirkah && !$currentUser->isOwner && !$currentUser->isPayroll);
+        $adminDivisionName = $isDivisionScoped ? ($currentUser->division?->name ?? 'Divisi Anda') : null;
+
         // 1. Transactions List
         $transactionsQuery = $this->buildTransactionsQuery();
         $transactions = $transactionsQuery->latest()->paginate(15, ['*'], 'transactionsPage');
@@ -685,13 +697,19 @@ class SavingTransactionComponent extends Component
         $withdrawalsQuery = $this->buildWithdrawalsQuery();
         $withdrawals = $withdrawalsQuery->latest()->paginate(15, ['*'], 'withdrawalsPage');
 
-        $users = User::onlyWorkingEmployee()
-            ->orderBy('name')
-            ->get();
-        $savingsList = Saving::orderBy('savings_name')->get();
-        $divisionsList = Division::orderBy('name')->get();
+        $usersQuery = User::onlyWorkingEmployee()->orderBy('name');
+        $usersQuery = $this->applyDivisionScope($usersQuery, null);
+        $users = $usersQuery->get();
 
-        // 3. True balances calculated dynamically from approved transactions
+        $savingsList = Saving::orderBy('savings_name')->get();
+
+        $divisionsListQuery = Division::orderBy('name');
+        if ($isDivisionScoped && $currentUser->division_id) {
+            $divisionsListQuery->where('id', $currentUser->division_id);
+        }
+        $divisionsList = $divisionsListQuery->get();
+
+        // 3. True balances calculated dynamically from approved transactions (Scoped per division for admin)
         $approvedDepositQuery = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'approved')->where('transaction_type', 'deposit');
         $approvedWithdrawalQuery = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'approved')->where('transaction_type', 'withdrawal');
 
@@ -725,7 +743,7 @@ class SavingTransactionComponent extends Component
         $totalWajib = max(0.0, (float) $approvedDepositQuery->sum('mandatory_amount') - (float) $approvedWithdrawalQuery->sum('mandatory_amount'));
         $totalSukarela = max(0.0, (float) $approvedDepositQuery->sum('secondary_amount') - (float) $approvedWithdrawalQuery->sum('secondary_amount'));
 
-        // Pending Mutasi Counter
+        // Pending Mutasi Counter (Scoped)
         $pendingQuery = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'pending');
         $pendingQuery = $this->applyDivisionScope($pendingQuery, 'user');
         $pendingCount = $pendingQuery->count();
@@ -756,6 +774,8 @@ class SavingTransactionComponent extends Component
             'acceptedWithdrawalsCount' => $acceptedWithdrawalsCount,
             'paidWithdrawalsCount' => $paidWithdrawalsCount,
             'rejectedWithdrawalsCount' => $rejectedWithdrawalsCount,
+            'isDivisionScoped' => $isDivisionScoped,
+            'adminDivisionName' => $adminDivisionName,
         ])->layout('layouts.app');
     }
 }
