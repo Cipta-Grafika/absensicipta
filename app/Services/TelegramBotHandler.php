@@ -7,6 +7,7 @@ use App\Models\SavingTransaction;
 use App\Models\SavingWithdrawal;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class TelegramBotHandler
@@ -354,9 +355,20 @@ class TelegramBotHandler
         switch ($command) {
             case '/start':
             case '/menu':
+                self::sendWelcomeMessage($chatId, $fromId, $username, $firstName, $user);
+                break;
+
             case '/help':
             case '/bantuan':
-                self::sendWelcomeMessage($chatId, $fromId, $username, $firstName, $user);
+            case '/panduan':
+                self::sendHelpMessage($chatId, $user, $fromId, $username);
+                break;
+
+            case '/status':
+            case '/ping':
+            case '/health':
+            case '/check':
+                self::sendServiceStatusMessage($chatId, $user, $fromId, $username);
                 break;
 
             case '/pembayaran':
@@ -451,6 +463,30 @@ class TelegramBotHandler
         if ($data === 'cmd_id') {
             TelegramNotificationService::answerCallbackQuery($callbackId);
             self::sendChatIdMessage($chatId, $fromId, $fromUsername);
+            return;
+        }
+
+        if ($data === 'cmd_help') {
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Memuat panduan bantuan...');
+            self::sendHelpMessage($chatId, $approverUser, $fromId, $fromUsername);
+            return;
+        }
+
+        if ($data === 'cmd_status') {
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Memeriksa status layanan...');
+            self::sendServiceStatusMessage($chatId, $approverUser, $fromId, $fromUsername);
+            return;
+        }
+
+        if ($data === 'refresh_status') {
+            TelegramNotificationService::answerCallbackQuery($callbackId, '✅ Status diperbarui!');
+            self::sendServiceStatusMessage($chatId, $approverUser, $fromId, $fromUsername, $messageId);
+            return;
+        }
+
+        if ($data === 'cmd_menu') {
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Membuka menu utama...');
+            self::sendWelcomeMessage($chatId, $fromId, $fromUsername, $fromFirstName, $approverUser);
             return;
         }
 
@@ -867,6 +903,7 @@ class TelegramBotHandler
     {
         $roleName = $user ? strtoupper($user->group) : 'Tamu / Belum Terdaftar';
         $userRealName = $user ? $user->name : $firstName;
+        $appUrl = rtrim(config('app.url', env('APP_URL', 'https://digitalprint.biz.id')), '/');
 
         $msg = "👋 <b>Halo, " . htmlspecialchars($userRealName) . "!</b>\n\n";
         $msg .= "Selamat datang di <b>CetakiaBot</b> — Asisten Notifikasi & Persetujuan Absensi & Syirkah Cipta Grafika.\n\n";
@@ -884,10 +921,14 @@ class TelegramBotHandler
                 ],
                 [
                     ['text' => '📊 Cek Saldo Syirkah', 'callback_data' => 'cmd_saldo'],
+                    ['text' => '⚡ Cek Status Layanan', 'callback_data' => 'cmd_status'],
+                ],
+                [
+                    ['text' => '📖 Panduan & Bantuan', 'callback_data' => 'cmd_help'],
                     ['text' => '🆔 Salin Chat ID', 'callback_data' => 'cmd_id'],
                 ],
                 [
-                    ['text' => '🌐 Buka Web Dashboard', 'url' => config('app.url', 'http://localhost:8000') . '/payroll/saving-transactions'],
+                    ['text' => '🌐 Buka Web Dashboard', 'url' => $appUrl . '/payroll/saving-transactions'],
                 ],
             ],
         ];
@@ -1267,8 +1308,301 @@ class TelegramBotHandler
         $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
         $msg .= "Chat ID Anda : <code>{$fromId}</code> <i>(Klik untuk salin)</i>\n";
         $msg .= "Username     : @" . htmlspecialchars($username ?? 'none') . "\n\n";
-        $msg .= "Masukkan Chat ID <code>{$fromId}</code> di atas ke form Admin pada aplikasi Absensi & Syirkah.";
+        $msg .= "Masukkan Chat ID <code>{$fromId}</code> di atas ke form Akun / Profil pada aplikasi Absensi & Syirkah.";
 
-        TelegramNotificationService::sendMessage($chatId, $msg);
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '⚡ Cek Status Layanan', 'callback_data' => 'cmd_status'],
+                    ['text' => '📖 Panduan / Help', 'callback_data' => 'cmd_help'],
+                ],
+                [
+                    ['text' => '🏠 Menu Utama', 'callback_data' => 'cmd_menu'],
+                ],
+            ],
+        ];
+
+        TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+    }
+
+    /**
+     * Send structured, interactive Help & Guide message tailored to user role.
+     */
+    protected static function sendHelpMessage($chatId, ?User $user, $fromId, ?string $username): void
+    {
+        $appUrl = rtrim(config('app.url', env('APP_URL', 'https://digitalprint.biz.id')), '/');
+        $isOwnerOrFinance = $user && ($user->isOwner || $user->group === 'owner' || $user->isSyirkah || $user->isPayroll);
+        $isAdmin = $user && $user->group === 'admin';
+        $isRegularUser = $user && $user->group === 'user';
+
+        // 1. OWNER / FINANCE GUIDE
+        if ($isOwnerOrFinance) {
+            $msg = "👑 <b>PANDUAN OPERASIONAL BOT — OWNER & FINANCE</b>\n";
+            $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $msg .= "Bot ini dirancang untuk mempermudah persetujuan, penyesuaian nominal, dan pembayaran syirkah secara cepat & aman.\n\n";
+
+            $msg .= "📋 <b>ALUR KERJA OWNER (3 TAHAP):</b>\n";
+            $msg .= "<b>1. Approval & Penentuan Nominal</b> ✍️\n";
+            $msg .= "   • Pengajuan berstatus <code>ACCEPTED</code> (diverifikasi Manajer Divisi) akan muncul di notifikasi dan menu <b>/pengajuan</b>.\n";
+            $msg .= "   • Klik <b>[✍️ Setujui]</b>, masukkan nominal yang disetujui (bisa disetujui penuh atau disesuaikan lebih rendah), lalu masukkan pesan/catatan approval.\n\n";
+
+            $msg .= "<b>2. Pembayaran Transfer (PAID)</b> 💳\n";
+            $msg .= "   • Buka <b>/pembayaran</b> untuk melihat daftar pengajuan berstatus <code>APPROVED</code> yang siap transfer.\n";
+            $msg .= "   • Salin nomor rekening bank karyawan secara instan (1x klik).\n";
+            $msg .= "   • Setelah transfer bank selesai, klik <b>[💵 Bayar]</b> untuk menandai PAID.\n";
+            $msg .= "   • <i>Saldo mutasi syirkah karyawan akan otomatis terpotong saat status PAID.</i>\n\n";
+
+            $msg .= "<b>3. Penolakan (REJECT)</b> ❌\n";
+            $msg .= "   • Anda dapat menolak pengajuan pada tahap PENDING, ACCEPTED, maupun APPROVED dengan klik <b>[❌ Tolak]</b> dan memasukkan alasan penolakan.\n\n";
+
+            $msg .= "⚡ <b>DAFTAR PERINTAH BOT:</b>\n";
+            $msg .= "├─ <code>/start</code> — Buka menu utama interaktif\n";
+            $msg .= "├─ <code>/help</code> — Panduan lengkap & alur bot\n";
+            $msg .= "├─ <code>/status</code> — Cek status koneksi layanan AbsensiCipta\n";
+            $msg .= "├─ <code>/pengajuan</code> — Antrean pengajuan penarikan (ACCEPTED & PENDING)\n";
+            $msg .= "├─ <code>/pembayaran</code> — Antrean pembayaran siap transfer (APPROVED)\n";
+            $msg .= "├─ <code>/saldo</code> — Cek total saldo syirkah perusahaan (Global)\n";
+            $msg .= "├─ <code>/id</code> — Salin Telegram Chat ID Anda\n";
+            $msg .= "└─ <code>/batal</code> — Batalkan proses input yang sedang aktif\n";
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '⏳ Antrean Pengajuan (ACC)', 'callback_data' => 'cmd_pending'],
+                        ['text' => '💳 Antrean Pembayaran', 'callback_data' => 'cmd_pembayaran'],
+                    ],
+                    [
+                        ['text' => '📊 Cek Saldo Global', 'callback_data' => 'cmd_saldo'],
+                        ['text' => '⚡ Cek Status Layanan', 'callback_data' => 'cmd_status'],
+                    ],
+                    [
+                        ['text' => '🏠 Menu Utama', 'callback_data' => 'cmd_menu'],
+                        ['text' => '🌐 Web Dashboard Syirkah', 'url' => $appUrl . '/payroll/saving-transactions?activeTab=withdrawals'],
+                    ],
+                ],
+            ];
+
+            TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+            return;
+        }
+
+        // 2. ADMIN / MANAJER DIVISI GUIDE
+        if ($isAdmin) {
+            $user->loadMissing('division');
+            $divName = $user->division?->name ?? 'Divisi Anda';
+
+            $msg = "👔 <b>PANDUAN OPERASIONAL BOT — MANAJER DIVISI</b>\n";
+            $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $msg .= "🏢 <b>Divisi Anda</b> : <b>" . htmlspecialchars($divName) . "</b>\n\n";
+
+            $msg .= "📋 <b>ALUR KERJA MANAJER DIVISI:</b>\n";
+            $msg .= "<b>1. Verifikasi Pengajuan Karyawan (PENDING)</b> 🔍\n";
+            $msg .= "   • Setiap ada anggota divisi Anda yang mengajukan penarikan syirkah, notifikasi masuk ke bot Anda.\n";
+            $msg .= "   • Klik <b>[✅ Setujui]</b> untuk menyetujui rekomendasi (status berubah menjadi <code>ACCEPTED</code> dan diteruskan ke Owner).\n";
+            $msg .= "   • Klik <b>[❌ Tolak]</b> dan masukkan alasan penolakan jika pengajuan tidak memenuhi kriteria.\n\n";
+
+            $msg .= "<b>2. Monitoring Saldo Divisi</b> 📊\n";
+            $msg .= "   • Gunakan perintah <b>/saldo</b> untuk melihat total akumulasi saldo syirkah (Wajib & SSR) khusus anggota divisi Anda.\n\n";
+
+            $msg .= "⚡ <b>DAFTAR PERINTAH BOT:</b>\n";
+            $msg .= "├─ <code>/start</code> — Buka menu utama interaktif\n";
+            $msg .= "├─ <code>/help</code> — Panduan & bantuan penggunaan bot\n";
+            $msg .= "├─ <code>/status</code> — Cek status koneksi layanan AbsensiCipta\n";
+            $msg .= "├─ <code>/pengajuan</code> — Antrean pengajuan penarikan divisi Anda\n";
+            $msg .= "├─ <code>/saldo</code> — Cek total saldo syirkah divisi Anda\n";
+            $msg .= "├─ <code>/id</code> — Salin Telegram Chat ID Anda\n";
+            $msg .= "└─ <code>/batal</code> — Batalkan proses input alasan penolakan\n";
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '⏳ Antrean Pengajuan Divisi', 'callback_data' => 'cmd_pending'],
+                        ['text' => '📊 Saldo Divisi', 'callback_data' => 'cmd_saldo'],
+                    ],
+                    [
+                        ['text' => '⚡ Cek Status Layanan', 'callback_data' => 'cmd_status'],
+                        ['text' => '🆔 Chat ID Saya', 'callback_data' => 'cmd_id'],
+                    ],
+                    [
+                        ['text' => '🏠 Menu Utama', 'callback_data' => 'cmd_menu'],
+                        ['text' => '🌐 Web Dashboard Divisi', 'url' => $appUrl . '/payroll/saving-transactions?activeTab=withdrawals'],
+                    ],
+                ],
+            ];
+
+            TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+            return;
+        }
+
+        // 3. REGULAR USER / KARYAWAN GUIDE
+        if ($isRegularUser) {
+            $msg = "👤 <b>PANDUAN & BANTUAN BOT — KARYAWAN</b>\n";
+            $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $msg .= "Selamat datang! Bot ini terhubung langsung dengan akun Absensi & Syirkah Cipta Grafika Anda.\n\n";
+
+            $msg .= "📋 <b>FITUR & PANDUAN PENGGUNAAN:</b>\n";
+            $msg .= "<b>1. Cek Saldo Syirkah Real-Time</b> 💰\n";
+            $msg .= "   • Ketik <b>/saldo</b> atau klik tombol di bawah untuk melihat rincian Saldo Wajib, Saldo SSR/Sukarela, dan total akumulasi simpanan Anda.\n\n";
+
+            $msg .= "<b>2. Pengajuan Penarikan Dana Syirkah</b> 📝\n";
+            $msg .= "   • Pengajuan dilakukan melalui portal Web AbsensiCipta pada menu <b>Syirkah > Pengajuan Penarikan</b>.\n";
+            $msg .= "   • Pengajuan akan diverifikasi oleh Manajer Divisi dan disetujui oleh Owner.\n\n";
+
+            $msg .= "<b>3. Notifikasi Otomatis Real-Time</b> 🔔\n";
+            $msg .= "   • Bot akan otomatis mengirimkan pesan konfirmasi setiap kali ada perubahan status pengajuan (Verifikasi, Approval, maupun Pencairan Transfer PAID).\n\n";
+
+            $msg .= "⚡ <b>DAFTAR PERINTAH BOT:</b>\n";
+            $msg .= "├─ <code>/start</code> — Menu utama bot\n";
+            $msg .= "├─ <code>/help</code> — Panduan penggunaan bot\n";
+            $msg .= "├─ <code>/saldo</code> — Rincian saldo syirkah pribadi Anda\n";
+            $msg .= "├─ <code>/status</code> — Cek status koneksi layanan AbsensiCipta\n";
+            $msg .= "└─ <code>/id</code> — Salin Chat ID Telegram Anda\n";
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '📊 Cek Saldo Saya', 'callback_data' => 'cmd_saldo'],
+                        ['text' => '⚡ Cek Status Layanan', 'callback_data' => 'cmd_status'],
+                    ],
+                    [
+                        ['text' => '🏠 Menu Utama', 'callback_data' => 'cmd_menu'],
+                        ['text' => '🆔 Salin Chat ID', 'callback_data' => 'cmd_id'],
+                    ],
+                    [
+                        ['text' => '🌐 Buka Web AbsensiCipta', 'url' => $appUrl],
+                    ],
+                ],
+            ];
+
+            TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+            return;
+        }
+
+        // 4. GUEST / UNREGISTERED GUIDE
+        $msg = "👋 <b>PANDUAN INTEGRASI AKUN — CETAKIABOT</b>\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "Akun Telegram Anda saat ini <b>belum terhubung</b> dengan akun karyawan di AbsensiCipta.\n\n";
+
+        $msg .= "📌 <b>CARA MENGHUBUNGKAN AKUN:</b>\n";
+        $msg .= "1. Salin Telegram Chat ID Anda: <code>{$fromId}</code> <i>(Klik untuk salin)</i>\n";
+        $msg .= "2. Buka Web <b>AbsensiCipta > Profil / Pengaturan Akun</b>.\n";
+        $msg .= "3. Tempelkan Chat ID <code>{$fromId}</code> atau Username <code>@" . htmlspecialchars($username ?? 'username') . "</code> pada kolom Telegram.\n";
+        $msg .= "4. Simpan profil. Bot akan otomatis mengenali nama dan hak akses Anda!\n\n";
+
+        $msg .= "⚡ <b>PERINTAH YANG DAPAT DIGUNAKAN:</b>\n";
+        $msg .= "├─ <code>/start</code> — Memulai interaksi dengan bot\n";
+        $msg .= "├─ <code>/help</code> — Panduan integrasi bot\n";
+        $msg .= "├─ <code>/status</code> — Cek status koneksi ke AbsensiCipta\n";
+        $msg .= "└─ <code>/id</code> — Salin Chat ID Telegram Anda\n";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '🆔 Salin Chat ID', 'callback_data' => 'cmd_id'],
+                    ['text' => '⚡ Cek Status Layanan', 'callback_data' => 'cmd_status'],
+                ],
+                [
+                    ['text' => '🏠 Menu Utama', 'callback_data' => 'cmd_menu'],
+                    ['text' => '🌐 Buka Web AbsensiCipta', 'url' => $appUrl],
+                ],
+            ],
+        ];
+
+        TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+    }
+
+    /**
+     * Send or update comprehensive, real-time Service & Connection Status with AbsensiCipta.
+     */
+    protected static function sendServiceStatusMessage($chatId, ?User $user, $fromId, ?string $username, ?int $editMessageId = null): void
+    {
+        $appUrl = rtrim(config('app.url', env('APP_URL', 'https://digitalprint.biz.id')), '/');
+        $appName = config('app.name', 'Absensi Cipta Grafika');
+        $appEnv = config('app.env', 'production');
+        $cacheDriver = config('cache.default', 'file');
+
+        // 1. Check Database Health & Latency
+        $dbStart = microtime(true);
+        $dbStatus = '❌ Terputus';
+        $dbDriver = config('database.default', 'mysql');
+
+        try {
+            DB::connection()->getPdo();
+            $dbLatency = round((microtime(true) - $dbStart) * 1000, 2);
+            $dbStatus = "✅ Terhubung ({$dbDriver} — {$dbLatency} ms)";
+        } catch (\Throwable $e) {
+            $dbStatus = "❌ Gagal: " . htmlspecialchars(substr($e->getMessage(), 0, 45));
+        }
+
+        // 2. Check Bot Token Configuration
+        $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
+        $botTokenStatus = !empty($botToken) ? '✅ Terkonfigurasi & Aktif' : '❌ Belum Dikonfigurasi';
+
+        // 3. User Identity & Link Status
+        if ($user) {
+            $user->loadMissing('division');
+            $userLinkStatus = "✅ Terhubung Aktif";
+            $userName = htmlspecialchars($user->name);
+            $userNip = htmlspecialchars($user->nip ?? '-');
+            $userRole = strtoupper($user->group);
+            $userDivision = htmlspecialchars($user->division?->name ?? 'Semua Divisi (Global Scope)');
+        } else {
+            $userLinkStatus = "⚠️ Belum Terhubung (Tamu)";
+            $userName = "Belum Terdaftar";
+            $userNip = "-";
+            $userRole = "GUEST / UNLINKED";
+            $userDivision = "-";
+        }
+
+        $nowFormatted = now()->translatedFormat('d F Y, H:i:s') . ' WIB';
+        $timeOnly = now()->format('H:i:s') . ' WIB';
+
+        $msg = "⚡ <b>STATUS KONEKSI & LAYANAN ABSENSICIPTA</b>\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+
+        $msg .= "🖥️ <b>Layanan Sistem AbsensiCipta:</b>\n";
+        $msg .= "├─ 🌐 <b>Host URL</b>      : <code>{$appUrl}</code>\n";
+        $msg .= "├─ ⚙️ <b>Environment</b>   : <b>{$appEnv}</b> (Laravel " . app()->version() . " / PHP " . PHP_VERSION . ")\n";
+        $msg .= "├─ 💾 <b>Database</b>      : {$dbStatus}\n";
+        $msg .= "├─ 📦 <b>Cache Engine</b>  : <code>{$cacheDriver}</code>\n";
+        $msg .= "└─ 🕒 <b>Waktu Server</b>  : {$nowFormatted}\n\n";
+
+        $msg .= "🤖 <b>Layanan Telegram Bot (CetakiaBot):</b>\n";
+        $msg .= "├─ 🔑 <b>Bot Token</b>     : {$botTokenStatus}\n";
+        $msg .= "└─ 📡 <b>Status Layanan</b> : ✅ Online & Responsif\n\n";
+
+        $msg .= "👤 <b>Status Akun Anda:</b>\n";
+        $msg .= "├─ 🔗 <b>Koneksi Akun</b>  : <b>{$userLinkStatus}</b>\n";
+        $msg .= "├─ 👤 <b>Nama Karyawan</b> : <b>{$userName}</b>\n";
+        $msg .= "├─ 🆔 <b>NIP</b>           : {$userNip}\n";
+        $msg .= "├─ 🎖️ <b>Hak Akses / Role</b> : <b>{$userRole}</b>\n";
+        $msg .= "├─ 🏢 <b>Divisi</b>        : {$userDivision}\n";
+        $msg .= "├─ 💬 <b>Chat ID</b>       : <code>{$fromId}</code>\n";
+        $msg .= "└─ 🏷️ <b>Username</b>      : @" . htmlspecialchars($username ?? 'none') . "\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "<i>Pemeriksaan real-time pada {$timeOnly}.</i>";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '🔄 Refresh Status', 'callback_data' => 'refresh_status'],
+                    ['text' => '📖 Panduan / Help', 'callback_data' => 'cmd_help'],
+                ],
+                [
+                    ['text' => '🏠 Menu Utama', 'callback_data' => 'cmd_menu'],
+                    ['text' => '🌐 Web AbsensiCipta', 'url' => $appUrl],
+                ],
+            ],
+        ];
+
+        if ($editMessageId) {
+            $edited = TelegramNotificationService::editMessageText($chatId, $editMessageId, $msg, $keyboard);
+            if (!$edited) {
+                // In case Telegram returns false if content hasn't changed
+                TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+            }
+        } else {
+            TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+        }
     }
 }

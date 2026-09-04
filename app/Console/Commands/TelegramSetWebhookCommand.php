@@ -12,14 +12,14 @@ class TelegramSetWebhookCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'telegram:set-webhook {--url= : Custom webhook URL} {--delete : Delete existing webhook} {--info : Show webhook info only}';
+    protected $signature = 'telegram:set-webhook {--url= : Custom webhook URL} {--delete : Delete existing webhook} {--info : Show webhook info only} {--commands : Set Telegram bot menu commands}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Set, delete, or inspect the Telegram Bot Webhook endpoint';
+    protected $description = 'Set, delete, inspect the Telegram Bot Webhook endpoint, or set bot commands';
 
     /**
      * Execute the console command.
@@ -49,7 +49,18 @@ class TelegramSetWebhookCommand extends Command
             return Command::SUCCESS;
         }
 
-        // 3. Set Webhook
+        // 3. Set Commands Only
+        if ($this->option('commands')) {
+            $ok = \App\Services\TelegramNotificationService::setMyCommands();
+            if ($ok) {
+                $this->info('✅ Telegram Bot commands registered successfully!');
+                return Command::SUCCESS;
+            }
+            $this->error('❌ Failed to register bot commands.');
+            return Command::FAILURE;
+        }
+
+        // 4. Set Webhook & Auto-sync Commands
         $appUrl = rtrim(config('app.url', env('APP_URL', 'https://digitalprint.biz.id')), '/');
         $webhookUrl = $this->option('url') ?: $appUrl . '/api/telegram/webhook';
 
@@ -62,6 +73,8 @@ class TelegramSetWebhookCommand extends Command
 
         if ($response->successful() && $response->json('ok')) {
             $this->info('✅ ' . ($response->json('description') ?? 'Webhook was set successfully!'));
+            \App\Services\TelegramNotificationService::setMyCommands();
+            $this->info('✅ Telegram Bot menu commands synced.');
             return Command::SUCCESS;
         }
 

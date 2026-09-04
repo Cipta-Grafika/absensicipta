@@ -582,4 +582,34 @@ class TelegramNotificationService
 
         self::sendMessage($targetIds, $message);
     }
+
+    /**
+     * Register bot commands list in Telegram menu interface.
+     */
+    public static function setMyCommands(?array $commands = null): bool
+    {
+        $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
+        if (empty($botToken)) return false;
+
+        $defaultCommands = [
+            ['command' => 'start', 'description' => 'Mulai interaksi & menu utama Cetakia Bot'],
+            ['command' => 'help', 'description' => 'Bantuan, panduan alur & menu interaktif'],
+            ['command' => 'status', 'description' => 'Cek status koneksi layanan AbsensiCipta'],
+            ['command' => 'pengajuan', 'description' => 'Antrean persetujuan penarikan syirkah'],
+            ['command' => 'pembayaran', 'description' => 'Antrean pembayaran siap transfer (Owner)'],
+            ['command' => 'saldo', 'description' => 'Cek rincian saldo simpanan syirkah'],
+            ['command' => 'id', 'description' => 'Cek Telegram Chat ID akun Anda'],
+        ];
+
+        try {
+            $response = Http::timeout(6)->asJson()->post("https://api.telegram.org/bot{$botToken}/setMyCommands", [
+                'commands' => $commands ?: $defaultCommands,
+            ]);
+            return $response->successful() && ($response->json('ok') ?? false);
+        } catch (\Throwable $e) {
+            Log::error('Telegram setMyCommands Exception: ' . $e->getMessage());
+            return false;
+        }
+    }
 }
+
