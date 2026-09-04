@@ -350,13 +350,17 @@ class TelegramNotificationService
         $message .= "🔗 <b>Menu Mutasi</b> : <a href=\"{$actionUrl}\">{$actionUrl}</a>\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
 
-        // 4. Interactive Inline Keyboard (Direct Mark as PAID / Open Web)
+        // 4. Interactive Inline Keyboard (Direct Mark as PAID / REJECT / Open Web)
         $keyboard = [
             'inline_keyboard' => [
                 [
                     [
-                        'text' => '💵 Tandai Telah Dibayar (PAID)',
+                        'text' => '💵 Tandai Dibayar (PAID)',
                         'callback_data' => 'paid_wd_' . $withdrawal->id,
+                    ],
+                    [
+                        'text' => '❌ Tolak (REJECT)',
+                        'callback_data' => 'rej_wd_' . $withdrawal->id,
                     ],
                 ],
                 [
@@ -369,6 +373,55 @@ class TelegramNotificationService
         ];
 
         self::sendMessage($targetIds, $message, $keyboard);
+    }
+
+    /**
+     * Send notification for a REJECTED withdrawal request to Employee and Division Admin.
+     */
+    public static function notifyRejectedWithdrawal(SavingWithdrawal $withdrawal): void
+    {
+        $withdrawal->loadMissing(['user.division', 'masterSaving', 'approver']);
+        $user = $withdrawal->user;
+        $division = $user?->division?->name ?? 'Semua Divisi';
+        $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
+        $approverName = $withdrawal->approver?->name ?? 'Admin / Owner';
+        $totalNominal = number_format($withdrawal->total_amount, 0, ',', '.');
+        $reason = $withdrawal->rejection_reason ?? 'Tidak ada catatan alasan khusus';
+
+        $targetIds = [];
+
+        // 1. Target: The Employee
+        if (!empty($user?->chat_code)) {
+            $targetIds[] = trim($user->chat_code);
+        }
+
+        // 2. Target: Division Admin
+        if ($user?->division_id) {
+            $adminIds = User::where('group', 'admin')
+                ->where('division_id', $user->division_id)
+                ->whereNotNull('chat_code')
+                ->where('chat_code', '!=', '')
+                ->pluck('chat_code')
+                ->toArray();
+            $targetIds = array_merge($targetIds, $adminIds);
+        }
+
+        $targetIds = array_unique(array_filter($targetIds));
+        if (empty($targetIds)) return;
+
+        $message = "❌ <b>PENGAJUAN PENARIKAN SYIRKAH DITOLAK (REJECTED)</b>\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "Pengajuan penarikan dana syirkah telah ditolak. Saldo tidak terpotong.\n\n";
+        $message .= "👤 <b>Karyawan</b>  : " . htmlspecialchars($user?->name ?? '-') . " (NIP: " . htmlspecialchars($user?->nip ?? '-') . ")\n";
+        $message .= "🏢 <b>Divisi</b>    : " . htmlspecialchars($division) . "\n";
+        $message .= "🏦 <b>Program</b>   : " . htmlspecialchars($program) . "\n";
+        $message .= "💰 <b>Nominal</b>   : <b>Rp {$totalNominal}</b>\n";
+        $message .= "🚫 <b>Ditolak Oleh</b> : " . htmlspecialchars($approverName) . "\n";
+        $message .= "📝 <b>Alasan</b>     : <i>\"" . htmlspecialchars($reason) . "\"</i>\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "Status: <b>DITOLAK (REJECTED)</b>";
+
+        self::sendMessage($targetIds, $message);
     }
 
     /**

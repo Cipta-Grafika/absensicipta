@@ -598,7 +598,7 @@ class SavingTransactionService
      */
     public static function rejectWithdrawalRequest(string $withdrawalId, string $approverId, ?string $reason = null): SavingWithdrawal
     {
-        return DB::transaction(function () use ($withdrawalId, $approverId, $reason) {
+        $rejectedWithdrawal = DB::transaction(function () use ($withdrawalId, $approverId, $reason) {
             $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($withdrawalId);
 
             // If a transaction was previously created (e.g. accepted before), delete it
@@ -619,6 +619,15 @@ class SavingTransactionService
 
             return $withdrawal->fresh();
         });
+
+        // Send Telegram Notification for REJECTED withdrawal (to Employee and Division Admin)
+        try {
+            TelegramNotificationService::notifyRejectedWithdrawal($rejectedWithdrawal);
+        } catch (\Throwable $e) {
+            // Safe-fail
+        }
+
+        return $rejectedWithdrawal;
     }
 
     /**

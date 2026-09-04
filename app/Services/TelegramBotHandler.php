@@ -422,6 +422,11 @@ class TelegramBotHandler
                 return;
             }
 
+            if ($withdrawal->status === 'paid') {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan ini sudah dibayarkan (PAID), tidak dapat ditolak.', true);
+                return;
+            }
+
             if ($withdrawal->status === 'rejected') {
                 TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan ini sudah ditolak sebelumnya.', true);
                 return;
@@ -481,6 +486,16 @@ class TelegramBotHandler
 
             if (!$withdrawal) {
                 TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan tidak ditemukan.', true);
+                return;
+            }
+
+            if ($withdrawal->status === 'paid') {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan ini sudah ditandai PAID sebelumnya.', true);
+                return;
+            }
+
+            if ($withdrawal->status === 'rejected') {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Pengajuan ini sudah ditolak, tidak dapat dibayarkan.', true);
                 return;
             }
 
@@ -621,11 +636,120 @@ class TelegramBotHandler
             return;
         }
 
+        $isOwnerOrFinance = $user && ($user->isOwner || $user->group === 'owner' || $user->isSyirkah || $user->isPayroll);
+        $isAdminScoped = $user && $user->group === 'admin' && !$isOwnerOrFinance;
+
+        // =========================================================================
+        // 1. OWNER / GLOBAL FLOW (NO DIVISION SCOPE - ALL DIVISIONS)
+        // =========================================================================
+        if ($isOwnerOrFinance || !$user) {
+            // Priority 1: Accepted (Siap dibayar / finalisasi PAID oleh Owner)
+            $acceptedList = SavingWithdrawal::with(['user.division', 'user.paymentMethod', 'masterSaving', 'approver'])
+                ->where('status', 'accepted')
+                ->orderBy('approved_at', 'desc')
+                ->take(5)
+                ->get();
+
+            // Priority 2: Pending (Menunggu verifikasi admin divisi)
+            $pendingList = SavingWithdrawal::with(['user.division', 'masterSaving'])
+                ->where('status', 'pending')
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
+
+            if ($acceptedList->isEmpty() && $pendingList->isEmpty()) {
+                $msg = "✨ <b>TIDAK ADA ANTREAN PENGAJUAN</b>\n\n";
+                $msg .= "Saat ini tidak ada pengajuan penarikan syirkah dari seluruh divisi yang berstatus <b>ACCEPTED</b> (Siap Bayar) maupun <b>PENDING</b>. Semua pengajuan telah diproses!";
+                TelegramNotificationService::sendMessage($chatId, $msg);
+                return;
+            }
+
+            $msg = "📋 <b>ANTREAN PENGAJUAN SYIRKAH (GLOBAL / OWNER)</b>\n";
+            $msg .= "🏢 <b>Cakupan</b> : Seluruh Divisi (Tanpa Batasan Scope)\n";
+            $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+
+            $inlineButtons = [];
+
+            if ($acceptedList->isNotEmpty()) {
+                $msg .= "💵 <b>SIAP DIBAYARKAN (ACCEPTED)</b>:\n";
+                foreach ($acceptedList as $idx => $wd) {
+                    $num = $idx + 1;
+                    $name = $wd->user?->name ?? 'Karyawan';
+                    $div = $wd->user?->division?->name ?? '-';
+                    $nominal = number_format($wd->total_amount, 0, ',', '.');
+                    $approver = $wd->approver?->name ?? 'Admin Divisi';
+                    $pm = $wd->user?->paymentMethod;
+                    $bankInfo = $pm ? ($pm->payment_name . ' - ' . $pm->bank_account . ' a.n ' . ($pm->account_name ?: $name)) : 'Rekening belum diset';
+
+                    $msg .= "<b>[{$num}] {$name}</b> ({$div})\n";
+                    $msg .= "   ├─ Nominal : <b>Rp {$nominal}</b>\n";
+                    $msg .= "   ├─ Disetujui : {$approver}\n";
+                    $msg .= "   └─ Rekening : <code>{$bankInfo}</code>\n\n";
+
+                    $shortName = explode(' ', trim($name))[0];
+                    $inlineButtons[] = [
+                        [
+                            'text' => "💵 Bayar [{$num}] ({$shortName})",
+                            'callback_data' => 'paid_wd_' . $wd->id,
+                        ],
+                        [
+                            'text' => "❌ Tolak [{$num}]",
+                            'callback_data' => 'rej_wd_' . $wd->id,
+                        ],
+                    ];
+                }
+            }
+
+            if ($pendingList->isNotEmpty()) {
+                $msg .= "⏳ <b>MENUNGGU VERIFIKASI ADMIN (PENDING)</b>:\n";
+                $offset = $acceptedList->count();
+                foreach ($pendingList as $idx => $wd) {
+                    $num = $offset + $idx + 1;
+                    $name = $wd->user?->name ?? 'Karyawan';
+                    $div = $wd->user?->division?->name ?? '-';
+                    $nominal = number_format($wd->total_amount, 0, ',', '.');
+                    $date = $wd->created_at ? $wd->created_at->translatedFormat('d M, H:i') : '-';
+
+                    $msg .= "<b>[{$num}] {$name}</b> ({$div})\n";
+                    $msg .= "   ├─ Nominal : <b>Rp {$nominal}</b>\n";
+                    $msg .= "   └─ Tanggal : {$date} WIB\n\n";
+
+                    $shortName = explode(' ', trim($name))[0];
+                    $inlineButtons[] = [
+                        [
+                            'text' => "✅ ACC [{$num}] ({$shortName})",
+                            'callback_data' => 'acc_wd_' . $wd->id,
+                        ],
+                        [
+                            'text' => "❌ Tolak [{$num}]",
+                            'callback_data' => 'rej_wd_' . $wd->id,
+                        ],
+                    ];
+                }
+            }
+
+            $msg .= "👉 <i>Klik tombol di atas untuk memproses (Bayar / Setujui / Tolak) atau buka Web Dashboard.</i>";
+
+            $appUrl = rtrim(config('app.url', env('APP_URL', 'https://digitalprint.biz.id')), '/');
+            $inlineButtons[] = [
+                [
+                    'text' => '🌐 Buka Menu Pengajuan Web',
+                    'url' => $appUrl . '/payroll/saving-transactions?activeTab=withdrawals',
+                ],
+            ];
+
+            TelegramNotificationService::sendMessage($chatId, $msg, ['inline_keyboard' => $inlineButtons]);
+            return;
+        }
+
+        // =========================================================================
+        // 2. ADMIN DIVISI FLOW (STRICT DIVISION SCOPE - ONLY PENDING)
+        // =========================================================================
         $query = SavingWithdrawal::with(['user.division', 'masterSaving'])
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc');
 
-        if ($user && $user->group === 'admin' && $user->division_id) {
+        if ($user->division_id) {
             $query->whereHas('user', fn($q) => $q->where('division_id', $user->division_id));
         }
 
@@ -633,26 +757,27 @@ class TelegramBotHandler
 
         if ($pendingList->isEmpty()) {
             $msg = "✨ <b>TIDAK ADA ANTREAN PENGAJUAN</b>\n\n";
-            $msg .= "Saat ini tidak ada pengajuan penarikan syirkah berstatus <b>PENDING</b>. Semua pengajuan telah diproses!";
+            $msg .= "Saat ini tidak ada pengajuan penarikan syirkah berstatus <b>PENDING</b> di divisi Anda. Semua pengajuan telah diproses!";
             TelegramNotificationService::sendMessage($chatId, $msg);
             return;
         }
 
         $count = $pendingList->count();
+        $divName = $user->division?->name ?? 'Divisi';
         $msg = "⏳ <b>DAFTAR ANTREAN PENGAJUAN SYIRKAH (PENDING)</b>\n";
-        $msg .= "Menampilkan {$count} pengajuan terbaru yang menunggu persetujuan:\n\n";
+        $msg .= "🏢 <b>Divisi</b> : {$divName}\n";
+        $msg .= "Menampilkan {$count} pengajuan terbaru yang menunggu persetujuan Anda:\n\n";
 
         $inlineButtons = [];
 
         foreach ($pendingList as $idx => $wd) {
             $num = $idx + 1;
             $name = $wd->user?->name ?? 'Karyawan';
-            $div = $wd->user?->division?->name ?? '-';
             $nominal = number_format($wd->total_amount, 0, ',', '.');
             $type = $wd->withdrawal_type_label;
             $date = $wd->created_at ? $wd->created_at->translatedFormat('d M, H:i') : '-';
 
-            $msg .= "<b>{$num}. {$name}</b> ({$div})\n";
+            $msg .= "<b>{$num}. {$name}</b>\n";
             $msg .= "   ├─ Opsi : {$type}\n";
             $msg .= "   ├─ Nominal : <b>Rp {$nominal}</b>\n";
             $msg .= "   └─ Tanggal : {$date} WIB\n\n";
@@ -680,11 +805,7 @@ class TelegramBotHandler
             ],
         ];
 
-        $keyboard = [
-            'inline_keyboard' => $inlineButtons,
-        ];
-
-        TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+        TelegramNotificationService::sendMessage($chatId, $msg, ['inline_keyboard' => $inlineButtons]);
     }
 
     protected static function sendChatIdMessage($chatId, $fromId, ?string $username): void
