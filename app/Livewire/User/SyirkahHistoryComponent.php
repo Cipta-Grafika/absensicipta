@@ -343,7 +343,7 @@ class SyirkahHistoryComponent extends Component
             ->paginate($this->perPage, ['*'], 'transactionsPage');
 
         // 2. Query user's withdrawal requests
-        $withdrawals = SavingWithdrawal::with(['masterSaving', 'approver', 'payer'])
+        $withdrawals = SavingWithdrawal::with(['masterSaving', 'approver', 'payer', 'ownerApprover', 'savingTransaction'])
             ->where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->paginate(10, ['*'], 'withdrawalsPage');

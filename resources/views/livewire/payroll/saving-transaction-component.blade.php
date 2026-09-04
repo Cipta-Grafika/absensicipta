@@ -539,18 +539,28 @@
                   </td>
 
                   <td class="py-3 px-4 text-right whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
-                    Rp {{ number_format($wd->mandatory_amount, 0, ',', '.') }}
+                    @if($wd->is_amount_adjusted && abs($wd->effective_mandatory_amount - $wd->mandatory_amount) > 0.001)
+                      <span class="font-bold text-gray-900 dark:text-white">Rp {{ number_format($wd->effective_mandatory_amount, 0, ',', '.') }}</span>
+                      <p class="text-[10px] text-gray-400 font-normal line-through">Rp {{ number_format($wd->mandatory_amount, 0, ',', '.') }}</p>
+                    @else
+                      Rp {{ number_format($wd->effective_mandatory_amount, 0, ',', '.') }}
+                    @endif
                   </td>
                   <td class="py-3 px-4 text-right whitespace-nowrap font-medium text-gray-700 dark:text-gray-300">
-                    Rp {{ number_format($wd->secondary_amount, 0, ',', '.') }}
+                    @if($wd->is_amount_adjusted && abs($wd->effective_secondary_amount - $wd->secondary_amount) > 0.001)
+                      <span class="font-bold text-gray-900 dark:text-white">Rp {{ number_format($wd->effective_secondary_amount, 0, ',', '.') }}</span>
+                      <p class="text-[10px] text-gray-400 font-normal line-through">Rp {{ number_format($wd->secondary_amount, 0, ',', '.') }}</p>
+                    @else
+                      Rp {{ number_format($wd->effective_secondary_amount, 0, ',', '.') }}
+                    @endif
                   </td>
 
                   <td class="py-3 px-4 font-bold text-gray-900 dark:text-white whitespace-nowrap">
-                    @if($wd->approved_total_amount !== null && $wd->approved_total_amount != $wd->total_amount)
-                      <span class="text-indigo-600 dark:text-indigo-400">Rp {{ number_format($wd->approved_total_amount, 0, ',', '.') }}</span>
-                      <p class="text-[10px] text-gray-400 font-normal line-through">Rp {{ number_format($wd->total_amount, 0, ',', '.') }}</p>
+                    @if($wd->is_amount_adjusted)
+                      <span class="text-rose-600 dark:text-rose-400 font-black block text-xs sm:text-sm">- Rp {{ number_format($wd->effective_total_amount, 0, ',', '.') }}</span>
+                      <p class="text-[10px] text-gray-400 font-normal line-through mt-0.5">Rp {{ number_format($wd->total_amount, 0, ',', '.') }}</p>
                     @else
-                      - Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
+                      - Rp {{ number_format($wd->effective_total_amount, 0, ',', '.') }}
                     @endif
                   </td>
 
@@ -685,13 +695,18 @@
                   <p class="text-[10px] text-gray-400">{{ $wd->user->division->name ?? '-' }} • NIP: {{ $wd->user->nip ?? '-' }}</p>
                 </div>
                 <div class="text-right">
-                  <span class="font-bold text-gray-900 dark:text-white text-xs">
-                    @if($wd->approved_total_amount !== null && $wd->approved_total_amount != $wd->total_amount)
-                      Rp {{ number_format($wd->approved_total_amount, 0, ',', '.') }}
-                    @else
+                  @if($wd->is_amount_adjusted)
+                    <span class="font-black text-rose-600 dark:text-rose-400 text-xs block">
+                      - Rp {{ number_format($wd->effective_total_amount, 0, ',', '.') }}
+                    </span>
+                    <span class="text-[9px] text-gray-400 line-through block mt-0.5">
                       Rp {{ number_format($wd->total_amount, 0, ',', '.') }}
-                    @endif
-                  </span>
+                    </span>
+                  @else
+                    <span class="font-bold text-gray-900 dark:text-white text-xs">
+                      - Rp {{ number_format($wd->effective_total_amount, 0, ',', '.') }}
+                    </span>
+                  @endif
                   <div class="mt-0.5">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border {{ $badge['bg'] }} {{ $badge['text'] }} {{ $badge['border'] }}">
                       {{ $badge['label'] }}
@@ -708,7 +723,16 @@
               </div>
 
               <div class="mt-3 flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700 text-xs">
-                <span class="text-[10px] text-gray-400">W: Rp {{ number_format($wd->mandatory_amount, 0, ',', '.') }} | S: Rp {{ number_format($wd->secondary_amount, 0, ',', '.') }}</span>
+                <span class="text-[10px] text-gray-400">
+                  W: Rp {{ number_format($wd->effective_mandatory_amount, 0, ',', '.') }}
+                  @if($wd->is_amount_adjusted && abs($wd->effective_mandatory_amount - $wd->mandatory_amount) > 0.001)
+                    <span class="line-through text-[9px]">(Rp {{ number_format($wd->mandatory_amount, 0, ',', '.') }})</span>
+                  @endif
+                  | S: Rp {{ number_format($wd->effective_secondary_amount, 0, ',', '.') }}
+                  @if($wd->is_amount_adjusted && abs($wd->effective_secondary_amount - $wd->secondary_amount) > 0.001)
+                    <span class="line-through text-[9px]">(Rp {{ number_format($wd->secondary_amount, 0, ',', '.') }})</span>
+                  @endif
+                </span>
                 <div class="flex items-center gap-1.5">
                   @if($wd->status === 'pending')
                     <button type="button" wire:click="approveWithdrawal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-emerald-600 text-white font-bold text-[10px]">Setujui</button>

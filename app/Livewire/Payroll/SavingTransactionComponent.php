@@ -757,7 +757,7 @@ class SavingTransactionComponent extends Component
 
     private function buildWithdrawalsQuery()
     {
-        $query = SavingWithdrawal::with(['user.division', 'masterSaving', 'approver', 'payer'])
+        $query = SavingWithdrawal::with(['user.division', 'masterSaving', 'approver', 'ownerApprover', 'payer', 'savingTransaction'])
             ->whereHas('user', function($q) {
                 $q->onlyEmployee();
             });

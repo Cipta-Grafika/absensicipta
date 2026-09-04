@@ -91,17 +91,40 @@ class SavingWithdrawal extends Model
 
     public function getEffectiveTotalAmountAttribute(): float
     {
-        return (float) ($this->approved_total_amount !== null ? $this->approved_total_amount : $this->total_amount);
+        if ($this->approved_total_amount !== null) {
+            return (float) $this->approved_total_amount;
+        }
+        if ($this->savingTransaction) {
+            return (float) ($this->savingTransaction->mandatory_amount + $this->savingTransaction->secondary_amount);
+        }
+        return (float) $this->total_amount;
     }
 
     public function getEffectiveMandatoryAmountAttribute(): float
     {
-        return (float) ($this->approved_mandatory_amount !== null ? $this->approved_mandatory_amount : $this->mandatory_amount);
+        if ($this->approved_mandatory_amount !== null) {
+            return (float) $this->approved_mandatory_amount;
+        }
+        if ($this->savingTransaction) {
+            return (float) $this->savingTransaction->mandatory_amount;
+        }
+        return (float) $this->mandatory_amount;
     }
 
     public function getEffectiveSecondaryAmountAttribute(): float
     {
-        return (float) ($this->approved_secondary_amount !== null ? $this->approved_secondary_amount : $this->secondary_amount);
+        if ($this->approved_secondary_amount !== null) {
+            return (float) $this->approved_secondary_amount;
+        }
+        if ($this->savingTransaction) {
+            return (float) $this->savingTransaction->secondary_amount;
+        }
+        return (float) $this->secondary_amount;
+    }
+
+    public function getIsAmountAdjustedAttribute(): bool
+    {
+        return abs($this->effective_total_amount - (float) $this->total_amount) > 0.001;
     }
 
     public function getWithdrawalTypeLabelAttribute(): string
