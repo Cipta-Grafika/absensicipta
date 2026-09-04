@@ -626,7 +626,7 @@ class SavingTransactionService
      */
     public static function markAsPaidWithdrawalRequest(string $withdrawalId, string $payerId): SavingWithdrawal
     {
-        return DB::transaction(function () use ($withdrawalId, $payerId) {
+        $paidWithdrawal = DB::transaction(function () use ($withdrawalId, $payerId) {
             $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($withdrawalId);
 
             // If not yet accepted, approve first to record the transaction
@@ -643,6 +643,15 @@ class SavingTransactionService
 
             return $withdrawal->fresh();
         });
+
+        // Send Telegram Notification for PAID withdrawal (to Employee and Division Admin)
+        try {
+            TelegramNotificationService::notifyPaidWithdrawal($paidWithdrawal);
+        } catch (\Throwable $e) {
+            // Safe-fail
+        }
+
+        return $paidWithdrawal;
     }
 
     /**

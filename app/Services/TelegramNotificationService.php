@@ -128,27 +128,20 @@ class TelegramNotificationService
         $division = $user?->division?->name ?? 'Semua Divisi';
         $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
 
-        // 1. Resolve Dynamic Recipient Targets (Admin of employee's division + Owner / Syirkah)
+        // 1. Resolve Dynamic Recipient Targets (ONLY Admin of employee's division)
         $targetIds = [];
 
-        $adminQuery = User::where(function ($q) use ($userDivisionId) {
-            if ($userDivisionId) {
-                $q->where(function ($sub) use ($userDivisionId) {
-                    $sub->where('group', 'admin')
-                        ->where('division_id', $userDivisionId);
-                })
-                ->orWhereIn('group', ['owner', 'syirkah']);
-            } else {
-                $q->whereIn('group', ['admin', 'owner', 'syirkah']);
-            }
-        })
-        ->where(function ($q) {
-            $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
-              ->orWhere(function ($sub) {
-                  $sub->whereNotNull('telegram')->where('telegram', '!=', '');
-              });
-        })
-        ->get();
+        $adminQuery = User::where('group', 'admin')
+            ->when($userDivisionId, function ($q) use ($userDivisionId) {
+                $q->where('division_id', $userDivisionId);
+            })
+            ->where(function ($q) {
+                $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNotNull('telegram')->where('telegram', '!=', '');
+                  });
+            })
+            ->get();
 
         foreach ($adminQuery as $admin) {
             if (!empty($admin->chat_code)) {
@@ -166,7 +159,7 @@ class TelegramNotificationService
 
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) {
-            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Division Admin or Owner.');
+            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Division Admin.');
             return;
         }
 
@@ -249,7 +242,7 @@ class TelegramNotificationService
     }
 
     /**
-     * Send notification for an ACCEPTED withdrawal request to Owner / Syirkah Team / Finance.
+     * Send notification for an ACCEPTED withdrawal request to all Owner group users.
      * Includes interactive [Tandai Dibayar (PAID)] inline button.
      */
     public static function notifyAcceptedWithdrawal(SavingWithdrawal $withdrawal): void
@@ -260,10 +253,10 @@ class TelegramNotificationService
         $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
         $approverName = $withdrawal->approver?->name ?? 'Admin Divisi';
 
-        // 1. Resolve Dynamic Recipient Targets (Owner, Syirkah, Payroll)
+        // 1. Resolve Dynamic Recipient Targets (All users in OWNER group)
         $targetIds = [];
 
-        $ownerQuery = User::whereIn('group', ['owner', 'syirkah', 'payroll'])
+        $ownerQuery = User::where('group', 'owner')
             ->where(function ($q) {
                 $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
                   ->orWhere(function ($sub) {
@@ -288,7 +281,7 @@ class TelegramNotificationService
 
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) {
-            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Owner/Finance/Syirkah.');
+            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Owner.');
             return;
         }
 
@@ -376,5 +369,56 @@ class TelegramNotificationService
         ];
 
         self::sendMessage($targetIds, $message, $keyboard);
+    }
+
+    /**
+     * Send notification for a PAID withdrawal request to Employee and Division Admin.
+     */
+    public static function notifyPaidWithdrawal(SavingWithdrawal $withdrawal): void
+    {
+        $withdrawal->loadMissing(['user.division', 'user.paymentMethod', 'masterSaving', 'payer', 'approver']);
+        $user = $withdrawal->user;
+        $division = $user?->division?->name ?? 'Semua Divisi';
+        $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
+        $payerName = $withdrawal->payer?->name ?? 'Owner / Finance';
+        $totalNominal = number_format($withdrawal->total_amount, 0, ',', '.');
+        $paidDate = $withdrawal->paid_at 
+            ? $withdrawal->paid_at->translatedFormat('d F Y, H:i') . ' WIB'
+            : now()->translatedFormat('d F Y, H:i') . ' WIB';
+
+        $targetIds = [];
+
+        // 1. Target: The Employee
+        if (!empty($user?->chat_code)) {
+            $targetIds[] = trim($user->chat_code);
+        }
+
+        // 2. Target: Division Admin
+        if ($user?->division_id) {
+            $adminIds = User::where('group', 'admin')
+                ->where('division_id', $user->division_id)
+                ->whereNotNull('chat_code')
+                ->where('chat_code', '!=', '')
+                ->pluck('chat_code')
+                ->toArray();
+            $targetIds = array_merge($targetIds, $adminIds);
+        }
+
+        $targetIds = array_unique(array_filter($targetIds));
+        if (empty($targetIds)) return;
+
+        $message = "💵 <b>PENCAIRAN SYIRKAH SELESAI DIBAYARKAN (PAID)</b>\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "Dana penarikan syirkah telah selesai ditransfer / dibayarkan oleh Owner/Finance.\n\n";
+        $message .= "👤 <b>Karyawan</b>  : " . htmlspecialchars($user?->name ?? '-') . " (NIP: " . htmlspecialchars($user?->nip ?? '-') . ")\n";
+        $message .= "🏢 <b>Divisi</b>    : " . htmlspecialchars($division) . "\n";
+        $message .= "🏦 <b>Program</b>   : " . htmlspecialchars($program) . "\n";
+        $message .= "💰 <b>Nominal</b>   : <b>Rp {$totalNominal}</b>\n";
+        $message .= "🏦 <b>Dibayar Oleh</b> : " . htmlspecialchars($payerName) . "\n";
+        $message .= "📅 <b>Waktu Bayar</b> : {$paidDate}\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "Status: <b>SELESAI (PAID)</b> ✨";
+
+        self::sendMessage($targetIds, $message);
     }
 }
