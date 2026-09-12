@@ -185,6 +185,9 @@ class UserForm extends Form
 
     public function delete()
     {
+        if (!Auth::user()?->isSuperadmin) {
+            return abort(403, 'Akses Ditolak: Hanya Superadmin yang memiliki wewenang untuk menghapus pengguna.');
+        }
         if (!$this->isAllowed()) {
             return abort(403);
         }

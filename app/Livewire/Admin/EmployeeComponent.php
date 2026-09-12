@@ -89,6 +89,10 @@ class EmployeeComponent extends Component
 
     public function confirmDeletion($id, $name)
     {
+        if (!auth()->user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya Superadmin yang memiliki wewenang untuk menghapus data karyawan.');
+        }
+
         $this->deleteName = $name;
         $this->confirmingDeletion = true;
         $this->selectedId = $id;
@@ -96,10 +100,19 @@ class EmployeeComponent extends Component
 
     public function delete()
     {
+        if (!auth()->user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya Superadmin yang memiliki wewenang untuk menghapus data karyawan.');
+        }
+
         $user = User::find($this->selectedId);
-        $this->form->setUser($user)->delete();
+        if ($user) {
+            $this->form->setUser($user)->delete();
+            $this->banner(__('Deleted successfully.'));
+        }
+
         $this->confirmingDeletion = false;
-        $this->banner(__('Deleted successfully.'));
+        $this->selectedId = null;
+        $this->deleteName = null;
     }
 
     public function render()
