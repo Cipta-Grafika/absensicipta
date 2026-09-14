@@ -4,6 +4,7 @@ namespace App\Livewire\Payroll;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
 use App\Models\SavingTransaction;
 use App\Models\SavingWithdrawal;
 use App\Models\User;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
 
 class SavingTransactionComponent extends Component
 {
-    use WithPagination;
+    use WithPagination, WithFileUploads;
 
     // Active View Tab ('withdrawals' or 'transactions') - Default to withdrawals
     public $activeTab = 'withdrawals';
@@ -45,6 +46,25 @@ class SavingTransactionComponent extends Component
     public $withdrawal_amount = 0;
     public $withdrawal_type = 'secondary'; // mandatory or secondary
     public $withdrawal_description = '';
+    public $withdrawal_transfer_proof = null;
+
+    // Modal Pembayaran Penarikan Syirkah (Upload Bukti Transfer)
+    public $payWithdrawalModalOpen = false;
+    public $payingWithdrawalId = null;
+    public $payingWithdrawal = null;
+    public $paymentProof = null;
+    public $paymentNote = '';
+
+    // Viewer Bukti Transfer (Lightbox Modal)
+    public $selectedProofUrl = null;
+    public $isProofModalOpen = false;
+
+    // Modal Upload / Edit Bukti Transfer (Belakangan / Re-upload)
+    public $isUploadProofModalOpen = false;
+    public $proofTargetType = 'withdrawal'; // 'withdrawal' or 'transaction'
+    public $proofTargetId = null;
+    public $proofTargetModel = null;
+    public $newTransferProof = null;
 
     // Modal Edit Nominal (Khusus Syirkah Group / Owner)
     public $editNominalModalOpen = false;
@@ -416,13 +436,14 @@ class SavingTransactionComponent extends Component
 
     public function openWithdrawalModal()
     {
-        $this->reset(['withdrawal_user_id', 'withdrawal_savings_id', 'withdrawal_amount', 'withdrawal_description', 'withdrawal_type']);
+        $this->reset(['withdrawal_user_id', 'withdrawal_savings_id', 'withdrawal_amount', 'withdrawal_description', 'withdrawal_type', 'withdrawal_transfer_proof']);
         $this->withdrawalModalOpen = true;
     }
 
     public function closeWithdrawalModal()
     {
         $this->withdrawalModalOpen = false;
+        $this->withdrawal_transfer_proof = null;
     }
 
     public function processWithdrawal()
@@ -432,6 +453,10 @@ class SavingTransactionComponent extends Component
             'withdrawal_savings_id' => 'required|exists:savings,id',
             'withdrawal_amount' => 'required|numeric|min:1',
             'withdrawal_type' => 'required|in:mandatory,secondary,both',
+            'withdrawal_transfer_proof' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+        ], [
+            'withdrawal_transfer_proof.mimes' => 'Format bukti transfer harus JPG, PNG, WEBP, atau PDF.',
+            'withdrawal_transfer_proof.max' => 'Ukuran bukti transfer maksimal 5MB.',
         ]);
 
         $user = User::onlyWorkingEmployee()->findOrFail($this->withdrawal_user_id);
@@ -482,6 +507,11 @@ class SavingTransactionComponent extends Component
 
             $isDirectApproved = Auth::user()?->isSyirkah || Auth::user()?->isSuperadmin || Auth::user()?->isOwner;
 
+            $directProofPath = null;
+            if ($this->withdrawal_transfer_proof) {
+                $directProofPath = $this->withdrawal_transfer_proof->store('syirkah/proofs', 'public');
+            }
+
             SavingTransaction::create([
                 'user_id' => $this->withdrawal_user_id,
                 'savings_id' => $this->withdrawal_savings_id,
@@ -494,6 +524,7 @@ class SavingTransactionComponent extends Component
                 'approved_by' => $isDirectApproved ? Auth::id() : null,
                 'approval_date' => $isDirectApproved ? now() : null,
                 'description' => $this->withdrawal_description ?: 'Pencairan Syirkah',
+                'transfer_proof' => $directProofPath,
             ]);
 
             if ($isDirectApproved) {
@@ -642,16 +673,153 @@ class SavingTransactionComponent extends Component
         }
     }
 
-    public function markAsPaidWithdrawal($withdrawalId)
+    public function openPayWithdrawalModal($withdrawalId)
     {
-        $withdrawal = SavingWithdrawal::with('user')->findOrFail($withdrawalId);
+        $this->resetErrorBag();
+        $withdrawal = SavingWithdrawal::with(['user.division', 'user.paymentMethod', 'masterSaving'])->findOrFail($withdrawalId);
         $this->authorizeWithdrawalAction($withdrawal);
 
+        $this->payingWithdrawalId = $withdrawalId;
+        $this->payingWithdrawal = $withdrawal;
+        $this->paymentProof = null;
+        $this->paymentNote = '';
+        $this->payWithdrawalModalOpen = true;
+    }
+
+    public function closePayWithdrawalModal()
+    {
+        $this->payWithdrawalModalOpen = false;
+        $this->payingWithdrawalId = null;
+        $this->payingWithdrawal = null;
+        $this->paymentProof = null;
+        $this->paymentNote = '';
+        $this->resetErrorBag();
+    }
+
+    public function submitPayWithdrawal()
+    {
+        if (!$this->payingWithdrawalId) return;
+
+        $withdrawal = SavingWithdrawal::with('user')->findOrFail($this->payingWithdrawalId);
+        $this->authorizeWithdrawalAction($withdrawal);
+
+        $this->validate([
+            'paymentProof' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+        ], [
+            'paymentProof.mimes' => 'Format file bukti transfer harus berupa JPG, PNG, WEBP, atau PDF.',
+            'paymentProof.max' => 'Ukuran file bukti transfer tidak boleh melebihi 5MB.',
+        ]);
+
         try {
-            SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, Auth::id());
-            $this->dispatch('notify', 'Pengajuan penarikan berhasil ditandai telah dibayarkan (PAID) dan saldo mutasi telah dipotong.');
+            $proofPath = null;
+            if ($this->paymentProof) {
+                $proofPath = $this->paymentProof->store('syirkah/proofs', 'public');
+            }
+
+            SavingTransactionService::markAsPaidWithdrawalRequest(
+                $this->payingWithdrawalId,
+                Auth::id(),
+                $proofPath
+            );
+
+            $this->closePayWithdrawalModal();
+            $this->dispatch('notify', 'Pengajuan penarikan berhasil dibayarkan (PAID) dan bukti transfer berhasil disimpan.');
         } catch (\Exception $e) {
             $this->dispatch('notify', 'Gagal memproses pembayaran: ' . $e->getMessage());
+        }
+    }
+
+    public function markAsPaidWithdrawal($withdrawalId)
+    {
+        $this->openPayWithdrawalModal($withdrawalId);
+    }
+
+    public function viewProof($url)
+    {
+        $this->selectedProofUrl = $url;
+        $this->isProofModalOpen = true;
+    }
+
+    public function closeProofModal()
+    {
+        $this->isProofModalOpen = false;
+        $this->selectedProofUrl = null;
+    }
+
+    public function openUploadProofModal($id, $type = 'withdrawal')
+    {
+        $this->proofTargetType = $type;
+        $this->proofTargetId = $id;
+
+        if ($type === 'withdrawal') {
+            $this->proofTargetModel = SavingWithdrawal::with(['user.division', 'masterSaving'])->findOrFail($id);
+        } else {
+            $this->proofTargetModel = SavingTransaction::with(['user.division', 'masterSaving', 'savingWithdrawal'])->findOrFail($id);
+        }
+
+        $this->newTransferProof = null;
+        $this->isUploadProofModalOpen = true;
+    }
+
+    public function closeUploadProofModal()
+    {
+        $this->isUploadProofModalOpen = false;
+        $this->proofTargetId = null;
+        $this->proofTargetModel = null;
+        $this->newTransferProof = null;
+        $this->resetValidation('newTransferProof');
+    }
+
+    public function saveTransferProof()
+    {
+        if (!$this->proofTargetId) return;
+
+        $this->validate([
+            'newTransferProof' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+        ], [
+            'newTransferProof.required' => 'Pilih file bukti transfer terlebih dahulu.',
+            'newTransferProof.mimes' => 'Format file bukti transfer harus berupa JPG, PNG, WEBP, atau PDF.',
+            'newTransferProof.max' => 'Ukuran file bukti transfer tidak boleh melebihi 5MB.',
+        ]);
+
+        try {
+            SavingTransactionService::updateTransferProof(
+                $this->proofTargetType,
+                $this->proofTargetId,
+                $this->newTransferProof
+            );
+
+            // If detail withdrawal modal is currently open, refresh it
+            if ($this->detailWithdrawalModalOpen && $this->selectedWithdrawal && $this->selectedWithdrawal->id == $this->proofTargetId) {
+                $this->selectedWithdrawal = $this->selectedWithdrawal->fresh();
+            }
+
+            $this->closeUploadProofModal();
+            $this->dispatch('notify', 'Bukti transfer berhasil disimpan dan file lama telah dibersihkan.');
+        } catch (\Exception $e) {
+            $this->dispatch('notify', 'Gagal memperbarui bukti transfer: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteTransferProof()
+    {
+        if (!$this->proofTargetId) return;
+
+        try {
+            SavingTransactionService::deleteTransferProof(
+                $this->proofTargetType,
+                $this->proofTargetId
+            );
+
+            // If detail withdrawal modal is currently open, refresh it
+            if ($this->detailWithdrawalModalOpen && $this->selectedWithdrawal && $this->selectedWithdrawal->id == $this->proofTargetId) {
+                $this->selectedWithdrawal = $this->selectedWithdrawal->fresh();
+            }
+
+            $this->closeUploadProofModal();
+            $this->dispatch('notify', 'Bukti transfer berhasil dihapus dari sistem.');
+        } catch (\Exception $e) {
+            $this->dispatch('notify', 'Gagal menghapus bukti transfer: ' . $e->getMessage());
         }
     }
 
@@ -711,7 +879,7 @@ class SavingTransactionComponent extends Component
 
     private function buildTransactionsQuery()
     {
-        $query = SavingTransaction::with(['user.division', 'masterSaving', 'approver'])
+        $query = SavingTransaction::with(['user.division', 'masterSaving', 'approver', 'savingWithdrawal'])
             ->whereHas('user', function($q) {
                 $q->onlyEmployee();
             });

@@ -379,6 +379,19 @@
                           <x-heroicon-o-trash class="h-4 w-4" />
                         </button>
                       @endif
+
+                      @if($tx->effective_transfer_proof)
+                        <button type="button" wire:click="viewProof('{{ $tx->effective_transfer_proof_url }}')" class="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40" title="Lihat Bukti Transfer">
+                          <x-heroicon-o-document-magnifying-glass class="h-4 w-4" />
+                        </button>
+                        <button type="button" wire:click="openUploadProofModal('{{ $tx->id }}', 'transaction')" class="p-1 rounded text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40" title="Ganti / Upload Ulang Bukti Transfer">
+                          <x-heroicon-o-arrow-up-tray class="h-4 w-4" />
+                        </button>
+                      @elseif($tx->transaction_type === 'withdrawal')
+                        <button type="button" wire:click="openUploadProofModal('{{ $tx->id }}', 'transaction')" class="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40" title="Upload Bukti Transfer">
+                          <x-heroicon-o-arrow-up-tray class="h-4 w-4" />
+                        </button>
+                      @endif
                     </div>
                   </td>
                 </tr>
@@ -626,8 +639,7 @@
                         @if(Auth::user()?->isOwner || Auth::user()?->isSyirkah || Auth::user()?->isPayroll)
                           <button 
                             type="button" 
-                            wire:click="markAsPaidWithdrawal('{{ $wd->id }}')" 
-                            wire:confirm="Tandai dana fisik penarikan syirkah ini telah selesai dibayarkan/ditransfer ke karyawan? Saldo mutasi karyawan akan otomatis terpotong."
+                            wire:click="openPayWithdrawalModal('{{ $wd->id }}')" 
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition"
                             title="Tandai Telah Dibayarkan (PAID)"
                           >
@@ -650,11 +662,45 @@
                       <button 
                         type="button" 
                         wire:click="openDetailWithdrawalModal('{{ $wd->id }}')" 
-                        class="p-1 rounded-lg text-gray-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition"
-                        title="Lihat Detail"
+                        class="p-1 rounded-lg text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition"
+                        title="Rincian Pengajuan"
                       >
                         <x-heroicon-o-eye class="h-4 w-4" />
                       </button>
+
+                      @if($wd->status === 'paid')
+                        @if($wd->transfer_proof)
+                          <button 
+                            type="button" 
+                            wire:click="viewProof('{{ $wd->transfer_proof_url }}')" 
+                            class="p-1 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition"
+                            title="Lihat Bukti Transfer"
+                          >
+                            <x-heroicon-o-document-magnifying-glass class="h-4 w-4" />
+                          </button>
+                          <button 
+                            type="button" 
+                            wire:click="openUploadProofModal('{{ $wd->id }}', 'withdrawal')" 
+                            class="p-1 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition"
+                            title="Ganti / Upload Ulang Bukti Transfer"
+                          >
+                            <x-heroicon-o-arrow-up-tray class="h-4 w-4" />
+                          </button>
+                        @else
+                          <button 
+                            type="button" 
+                            wire:click="openUploadProofModal('{{ $wd->id }}', 'withdrawal')" 
+                            class="p-1 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition relative"
+                            title="Upload Bukti Transfer (Belum Ada)"
+                          >
+                            <x-heroicon-o-arrow-up-tray class="h-4 w-4" />
+                            <span class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                            </span>
+                          </button>
+                        @endif
+                      @endif
 
                       <!-- Delete for Syirkah / Owner -->
                       @if(Auth::user()?->isSyirkah || Auth::user()?->isOwner)
@@ -743,6 +789,13 @@
                   @elseif($wd->status === 'approved')
                     <button type="button" wire:click="markAsPaidWithdrawal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-emerald-600 text-white font-bold text-[10px]">Bayar (PAID)</button>
                     <button type="button" wire:click="openRejectWithdrawalModal('{{ $wd->id }}')" class="px-2 py-1 rounded bg-rose-50 text-rose-600 font-bold text-[10px]">Tolak</button>
+                  @elseif($wd->status === 'paid')
+                    @if($wd->transfer_proof)
+                      <button type="button" wire:click="viewProof('{{ $wd->transfer_proof_url }}')" class="px-2 py-1 rounded bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">Lihat Bukti</button>
+                      <button type="button" wire:click="openUploadProofModal('{{ $wd->id }}', 'withdrawal')" class="px-2 py-1 rounded bg-indigo-50 text-indigo-700 font-bold text-[10px] border border-indigo-200">Ganti Bukti</button>
+                    @else
+                      <button type="button" wire:click="openUploadProofModal('{{ $wd->id }}', 'withdrawal')" class="px-2 py-1 rounded bg-amber-50 text-amber-700 font-bold text-[10px] border border-amber-200">Upload Bukti</button>
+                    @endif
                   @endif
                   <button type="button" wire:click="openDetailWithdrawalModal('{{ $wd->id }}')" class="text-teal-600 font-bold text-[11px]">Detail</button>
                 </div>
@@ -981,6 +1034,35 @@
             </div>
           @endif
 
+          @if($selectedWithdrawal->status === 'paid' || $selectedWithdrawal->transfer_proof)
+            <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+              <span class="text-gray-500 dark:text-gray-400 font-bold block mb-1.5">Bukti Transfer Pembayaran:</span>
+              @if($selectedWithdrawal->transfer_proof)
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <button type="button" wire:click="viewProof('{{ $selectedWithdrawal->transfer_proof_url }}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition shadow-xs">
+                    <x-heroicon-o-document-magnifying-glass class="w-4 h-4" />
+                    Lihat Bukti Transfer
+                  </button>
+                  <button type="button" wire:click="openUploadProofModal('{{ $selectedWithdrawal->id }}', 'withdrawal')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition shadow-xs">
+                    <x-heroicon-o-arrow-up-tray class="w-4 h-4" />
+                    Ganti Bukti
+                  </button>
+                  <a href="{{ $selectedWithdrawal->transfer_proof_url }}" target="_blank" class="text-[11px] text-gray-500 hover:text-gray-700 underline">
+                    Unduh / Buka File
+                  </a>
+                </div>
+              @else
+                <div class="flex items-center gap-3">
+                  <span class="text-xs text-amber-600 dark:text-amber-400 italic">Belum ada bukti transfer diunggah.</span>
+                  <button type="button" wire:click="openUploadProofModal('{{ $selectedWithdrawal->id }}', 'withdrawal')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition">
+                    <x-heroicon-o-arrow-up-tray class="w-4 h-4" />
+                    Upload Bukti Transfer
+                  </button>
+                </div>
+              @endif
+            </div>
+          @endif
+
           @if($selectedWithdrawal->rejection_reason)
             <div class="pt-2">
               <span class="text-rose-500 font-bold block mb-1">Alasan Penolakan:</span>
@@ -1209,6 +1291,13 @@
           <x-input type="text" id="withdrawal_description" wire:model.live="withdrawal_description" class="w-full mt-1 text-xs sm:text-sm" placeholder="Contoh: Pencairan dana darurat" />
           <x-input-error for="withdrawal_description" class="mt-1" />
         </div>
+
+        <div>
+          <x-label for="withdrawal_transfer_proof" value="Upload Bukti Transfer (Opsional)" class="text-xs font-semibold" />
+          <input type="file" id="withdrawal_transfer_proof" wire:model="withdrawal_transfer_proof" accept="image/*,application/pdf" class="w-full mt-1 text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-950/40 dark:file:text-emerald-300 cursor-pointer" />
+          <div wire:loading wire:target="withdrawal_transfer_proof" class="text-[11px] text-emerald-600 mt-1">Mengunggah bukti...</div>
+          <x-input-error for="withdrawal_transfer_proof" class="mt-1" />
+        </div>
       </div>
     </x-slot>
 
@@ -1216,6 +1305,263 @@
       <div class="flex items-center justify-end gap-2">
         <x-secondary-button wire:click="closeWithdrawalModal">Batal</x-secondary-button>
         <x-button wire:click="processWithdrawal" class="bg-emerald-600 hover:bg-emerald-700">Proses Pencairan</x-button>
+      </div>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- 7. MODAL PEMBAYARAN PENARIKAN (UPLOAD BUKTI TRANSFER & KONFIRMASI PAID) -->
+  <x-dialog-modal wire:model.live="payWithdrawalModalOpen" maxWidth="md">
+    <x-slot name="title">
+      <div class="flex items-center gap-2 text-gray-900 dark:text-white font-bold">
+        <x-heroicon-o-banknotes class="h-5 w-5 text-emerald-600" />
+        {{ __('Pembayaran Penarikan Syirkah (PAID)') }}
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      @if($payingWithdrawal)
+        @php
+          $effNominal = $payingWithdrawal->approved_total_amount !== null ? $payingWithdrawal->approved_total_amount : $payingWithdrawal->total_amount;
+        @endphp
+        <div class="space-y-4 text-xs">
+          <!-- Summary Target Transfer -->
+          <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 p-3.5 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Penerima Dana:</span>
+              <span class="font-bold text-gray-900 dark:text-white">{{ $payingWithdrawal->user?->name }} ({{ $payingWithdrawal->user?->nip }})</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Divisi:</span>
+              <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $payingWithdrawal->user?->division?->name ?? '-' }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Rekening / E-Wallet:</span>
+              <span class="font-bold text-emerald-700 dark:text-emerald-300">
+                @if($payingWithdrawal->user?->paymentMethod)
+                  {{ $payingWithdrawal->user->paymentMethod->name }} - {{ $payingWithdrawal->user->paymentMethod->account_number }}
+                @else
+                  <span class="text-amber-600 font-medium">Belum diatur di profil</span>
+                @endif
+              </span>
+            </div>
+            <div class="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between">
+              <span class="font-bold text-gray-700 dark:text-gray-300">Nominal Disetujui:</span>
+              <span class="text-base font-black text-emerald-700 dark:text-emerald-300">
+                Rp {{ number_format($effNominal, 0, ',', '.') }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Upload Bukti Transfer -->
+          <div>
+            <x-label for="paymentProof" value="Upload Bukti Transfer Pembayaran" class="text-xs font-semibold" />
+            <div class="mt-1.5 flex flex-col gap-2">
+              <input type="file" id="paymentProof" wire:model="paymentProof" accept="image/*,application/pdf"
+                class="block w-full text-xs text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 dark:file:bg-emerald-600 cursor-pointer" />
+              <p class="text-[11px] text-gray-500 dark:text-gray-400">Format yang didukung: JPG, PNG, WEBP, PDF (Maks. 5MB).</p>
+            </div>
+            <div wire:loading wire:target="paymentProof" class="text-[11px] text-emerald-600 font-semibold mt-1">
+              Mengunggah file... Harap tunggu sebentar.
+            </div>
+            <x-input-error for="paymentProof" class="mt-1" />
+
+            @if ($paymentProof && str_starts_with($paymentProof->getMimeType() ?? '', 'image/'))
+              <div class="mt-2.5 p-2 rounded-xl bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+                <p class="text-[10px] font-bold text-gray-500 mb-1">Pratinjau Bukti Transfer:</p>
+                <img src="{{ $paymentProof->temporaryUrl() }}" alt="Preview" class="max-h-48 rounded-lg object-contain mx-auto" />
+              </div>
+            @endif
+          </div>
+        </div>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-end gap-2">
+        <x-secondary-button wire:click="closePayWithdrawalModal" wire:loading.attr="disabled">Batal</x-secondary-button>
+        <x-button wire:click="submitPayWithdrawal" wire:loading.attr="disabled" class="bg-emerald-600 hover:bg-emerald-700">
+          <x-heroicon-o-check-circle class="w-4 h-4 mr-1 text-white" />
+          Konfirmasi & Simpan (PAID)
+        </x-button>
+      </div>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- 8. LIGHTBOX VIEWER BUKTI TRANSFER -->
+  <x-dialog-modal wire:model.live="isProofModalOpen" maxWidth="lg">
+    <x-slot name="title">
+      <div class="flex items-center justify-between text-gray-900 dark:text-white font-bold">
+        <div class="flex items-center gap-2">
+          <x-heroicon-o-document-magnifying-glass class="h-5 w-5 text-emerald-600" />
+          <span>Bukti Transfer Pembayaran Syirkah</span>
+        </div>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      @if($selectedProofUrl)
+        <div class="flex flex-col items-center justify-center p-2" x-data="{ imgError: false }">
+          @if(str_ends_with(strtolower($selectedProofUrl), '.pdf'))
+            <div class="w-full text-center py-6">
+              <x-heroicon-o-document-text class="h-16 w-16 mx-auto text-emerald-600 mb-2" />
+              <p class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4">Dokumen Bukti Transfer (PDF)</p>
+              <a href="{{ $selectedProofUrl }}" target="_blank" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow hover:bg-emerald-700">
+                <x-heroicon-o-arrow-top-right-on-square class="h-4 w-4" />
+                Buka / Unduh Dokumen PDF
+              </a>
+            </div>
+          @else
+            <!-- Error State Fallback -->
+            <div x-show="imgError" x-cloak class="w-full p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-center text-amber-800 dark:text-amber-300 text-xs mb-3">
+              <x-heroicon-o-exclamation-triangle class="h-8 w-8 mx-auto mb-1 text-amber-500" />
+              <p class="font-bold">Pratinjau gambar belum dapat ditampilkan langsung.</p>
+              <p class="text-[11px] text-gray-500 mt-0.5">Silakan klik tautan di bawah ini untuk membuka atau mengunduh file langsung.</p>
+            </div>
+
+            <div x-show="!imgError" class="max-h-[70vh] overflow-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-black/5 dark:bg-black/30 p-1 flex justify-center w-full">
+              <img 
+                src="{{ $selectedProofUrl }}" 
+                alt="Bukti Transfer" 
+                x-on:error="imgError = true" 
+                class="max-h-[65vh] w-auto rounded-lg object-contain shadow-sm" 
+              />
+            </div>
+            <div class="mt-3 flex gap-2">
+              <a href="{{ $selectedProofUrl }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400">
+                <x-heroicon-o-arrow-top-right-on-square class="h-3.5 w-3.5" />
+                Buka di Tab Baru / Unduh File
+              </a>
+            </div>
+          @endif
+        </div>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-secondary-button wire:click="closeProofModal">Tutup</x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- 9. MODAL UPLOAD / EDIT BUKTI TRANSFER (UNTUK STATUS PAID) -->
+  <x-dialog-modal wire:model.live="isUploadProofModalOpen" maxWidth="md">
+    <x-slot name="title">
+      <div class="flex items-center gap-2 text-gray-900 dark:text-white font-bold">
+        <x-heroicon-o-arrow-up-tray class="h-5 w-5 text-emerald-600" />
+        <span>{{ $proofTargetModel?->transfer_proof ? 'Ganti / Edit Bukti Transfer' : 'Upload Bukti Transfer Pembayaran' }}</span>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      @if($proofTargetModel)
+        <div class="space-y-4">
+          <!-- Info Ringkas -->
+          <div class="bg-gray-50 dark:bg-gray-800/60 p-3 rounded-xl border border-gray-100 dark:border-gray-700 text-xs space-y-1">
+            <div class="flex justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Karyawan:</span>
+              <span class="font-bold text-gray-900 dark:text-white">{{ $proofTargetModel->user->name ?? '-' }} ({{ $proofTargetModel->user->division->name ?? '-' }})</span>
+            </div>
+            @if($proofTargetType === 'withdrawal')
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">Nominal Disetujui:</span>
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">Rp {{ number_format($proofTargetModel->effective_total_amount, 0, ',', '.') }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">Status:</span>
+                <span class="font-bold uppercase text-emerald-600">{{ $proofTargetModel->status }}</span>
+              </div>
+            @else
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">Tipe / Nominal:</span>
+                <span class="font-bold text-emerald-600">Rp {{ number_format($proofTargetModel->mandatory_amount + $proofTargetModel->secondary_amount, 0, ',', '.') }}</span>
+              </div>
+            @endif
+          </div>
+
+          <!-- Bukti Saat Ini (Jika Ada) -->
+          @if($proofTargetModel->transfer_proof)
+            <div>
+              <span class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Bukti Transfer Saat Ini:</span>
+              <div class="flex items-center justify-between p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                <div class="flex items-center gap-2.5 overflow-hidden">
+                  @if(str_ends_with(strtolower($proofTargetModel->transfer_proof), '.pdf'))
+                    <x-heroicon-o-document-text class="h-8 w-8 text-rose-500 flex-shrink-0" />
+                    <div class="text-xs truncate">
+                      <p class="font-medium text-gray-800 dark:text-gray-200 truncate">Dokumen Bukti PDF</p>
+                      <a href="{{ $proofTargetModel->transfer_proof_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-400 underline text-[11px]">Buka Dokumen</a>
+                    </div>
+                  @else
+                    <img src="{{ $proofTargetModel->transfer_proof_url }}" alt="Bukti" class="h-12 w-12 object-cover rounded-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 shadow-xs" />
+                    <div class="text-xs truncate">
+                      <p class="font-medium text-gray-800 dark:text-gray-200 truncate">{{ basename($proofTargetModel->transfer_proof) }}</p>
+                      <button type="button" wire:click="viewProof('{{ $proofTargetModel->transfer_proof_url }}')" class="text-emerald-600 dark:text-emerald-400 underline text-[11px]">Lihat Gambar</button>
+                    </div>
+                  @endif
+                </div>
+
+                <button 
+                  type="button" 
+                  wire:click="deleteTransferProof" 
+                  wire:confirm="Yakin ingin menghapus bukti transfer ini? File lama akan dihapus permanen dari folder penyimpanan."
+                  class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition flex-shrink-0"
+                  title="Hapus Bukti Transfer"
+                >
+                  <x-heroicon-o-trash class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          @endif
+
+          <!-- Input Upload File Baru -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              {{ $proofTargetModel->transfer_proof ? 'Pilih File Baru (Menggantikan Bukti Lama):' : 'Pilih File Bukti Transfer:' }}
+            </label>
+            <input 
+              type="file" 
+              wire:model="newTransferProof" 
+              accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+              class="block w-full text-xs text-gray-900 border border-gray-300 rounded-xl cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-hidden dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-l-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+            />
+            <p class="text-[11px] text-gray-500 mt-1">Format: JPG, PNG, WEBP, atau PDF (Maks. 5MB). File lama akan otomatis dihapus dari directory saat disimpan.</p>
+            <x-input-error for="newTransferProof" class="mt-1 text-xs" />
+          </div>
+
+          <!-- Preview File Baru yang Dipilih -->
+          <div wire:loading wire:target="newTransferProof" class="text-center py-2 text-xs text-emerald-600 font-semibold animate-pulse">
+            Mengunggah pratinjau file...
+          </div>
+
+          @if($newTransferProof)
+            <div class="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5">
+              <span class="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 block mb-1">Pratinjau File Baru:</span>
+              @if(in_array($newTransferProof->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'webp']))
+                <div class="flex justify-center max-h-48 overflow-hidden rounded-lg bg-black/5 p-1">
+                  <img src="{{ $newTransferProof->temporaryUrl() }}" alt="Preview" class="max-h-44 object-contain rounded" />
+                </div>
+              @else
+                <div class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                  <x-heroicon-o-document-text class="h-6 w-6 text-rose-500" />
+                  <span>{{ $newTransferProof->getClientOriginalName() }} (PDF)</span>
+                </div>
+              @endif
+            </div>
+          @endif
+        </div>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-end gap-2">
+        <x-secondary-button wire:click="closeUploadProofModal">Batal</x-secondary-button>
+        <button 
+          type="button" 
+          wire:click="saveTransferProof" 
+          wire:loading.attr="disabled"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition disabled:opacity-50"
+        >
+          <span wire:loading.remove wire:target="saveTransferProof">Simpan Bukti Transfer</span>
+          <span wire:loading wire:target="saveTransferProof">Menyimpan...</span>
+        </button>
       </div>
     </x-slot>
   </x-dialog-modal>

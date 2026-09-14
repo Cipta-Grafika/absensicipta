@@ -26,6 +26,7 @@ class SavingTransaction extends Model
         'approved_by',
         'approval_date',
         'rejection_reason',
+        'transfer_proof',
         'created_at',
         'updated_at',
     ];
@@ -49,6 +50,9 @@ class SavingTransaction extends Model
         });
 
         static::deleted(function ($transaction) {
+            if ($transaction->transfer_proof && $transaction->reference_type !== 'saving_withdrawal' && \Illuminate\Support\Facades\Storage::disk('public')->exists($transaction->transfer_proof)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($transaction->transfer_proof);
+            }
             self::syncSummary($transaction);
         });
     }
@@ -88,6 +92,43 @@ class SavingTransaction extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function savingWithdrawal()
+    {
+        return $this->belongsTo(SavingWithdrawal::class, 'reference_id');
+    }
+
+    public function getEffectiveTransferProofAttribute(): ?string
+    {
+        if (!empty($this->transfer_proof)) {
+            return $this->transfer_proof;
+        }
+
+        if ($this->reference_type === 'saving_withdrawal' && $this->relationLoaded('savingWithdrawal') && $this->savingWithdrawal) {
+            return $this->savingWithdrawal->transfer_proof;
+        }
+
+        if ($this->reference_type === 'saving_withdrawal' && $this->reference_id) {
+            return $this->savingWithdrawal?->transfer_proof;
+        }
+
+        return null;
+    }
+
+    public function getEffectiveTransferProofUrlAttribute(): ?string
+    {
+        $proof = $this->effective_transfer_proof;
+        if (!$proof) {
+            return null;
+        }
+        $base = '';
+        try {
+            if (function_exists('request') && request()) {
+                $base = request()->getBasePath() ?: '';
+            }
+        } catch (\Throwable $e) {}
+        return $base . '/storage/' . ltrim($proof, '/');
     }
 
     public function scopeApproved($query)

@@ -7,6 +7,7 @@ use App\Models\SavingTransaction;
 use App\Models\SavingWithdrawal;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -636,9 +637,9 @@ class SavingTransactionService
      * Mark an approved withdrawal request as PAID (Status: PAID).
      * Deducts the approved nominal from employee balance in the mutation ledger.
      */
-    public static function markAsPaidWithdrawalRequest(string $withdrawalId, string $payerId): SavingWithdrawal
+    public static function markAsPaidWithdrawalRequest(string $withdrawalId, string $payerId, ?string $transferProof = null): SavingWithdrawal
     {
-        $paidWithdrawal = DB::transaction(function () use ($withdrawalId, $payerId) {
+        $paidWithdrawal = DB::transaction(function () use ($withdrawalId, $payerId, $transferProof) {
             $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($withdrawalId);
 
             // Determine effective nominals
@@ -664,7 +665,7 @@ class SavingTransactionService
             if ($withdrawal->saving_transaction_id) {
                 $transaction = SavingTransaction::find($withdrawal->saving_transaction_id);
                 if ($transaction) {
-                    $transaction->update([
+                    $updateData = [
                         'transaction_type' => 'withdrawal',
                         'mandatory_amount' => $effMandatory,
                         'secondary_amount' => $effSecondary,
@@ -672,7 +673,11 @@ class SavingTransactionService
                         'status' => 'approved',
                         'approved_by' => $payerId,
                         'approval_date' => now(),
-                    ]);
+                    ];
+                    if ($transferProof) {
+                        $updateData['transfer_proof'] = $transferProof;
+                    }
+                    $transaction->update($updateData);
                 } else {
                     $transaction = SavingTransaction::create([
                         'user_id' => $withdrawal->user_id,
@@ -686,6 +691,7 @@ class SavingTransactionService
                         'status' => 'approved',
                         'approved_by' => $payerId,
                         'approval_date' => now(),
+                        'transfer_proof' => $transferProof,
                     ]);
                 }
             } else {
@@ -701,15 +707,23 @@ class SavingTransactionService
                     'status' => 'approved',
                     'approved_by' => $payerId,
                     'approval_date' => now(),
+                    'transfer_proof' => $transferProof,
                 ]);
             }
 
-            $withdrawal->update([
+            $withdrawalUpdate = [
                 'status' => 'paid',
                 'paid_by' => $payerId,
                 'paid_at' => now(),
                 'saving_transaction_id' => $transaction->id,
-            ]);
+            ];
+            if ($transferProof) {
+                if ($withdrawal->transfer_proof && $withdrawal->transfer_proof !== $transferProof && Storage::disk('public')->exists($withdrawal->transfer_proof)) {
+                    Storage::disk('public')->delete($withdrawal->transfer_proof);
+                }
+                $withdrawalUpdate['transfer_proof'] = $transferProof;
+            }
+            $withdrawal->update($withdrawalUpdate);
 
             // Recalculate balance so user's real balance is reduced by the effective amount
             self::recalculateUserTransactions($withdrawal->user_id, $withdrawal->savings_id);
@@ -725,6 +739,103 @@ class SavingTransactionService
         }
 
         return $paidWithdrawal;
+    }
+
+    /**
+     * Update/Replace transfer proof file for a withdrawal or transaction.
+     * Automatically removes previous proof file from storage.
+     */
+    public static function updateTransferProof(string $type, string $id, $newFile): string
+    {
+        return DB::transaction(function () use ($type, $id, $newFile) {
+            $newPath = $newFile->store('syirkah/proofs', 'public');
+
+            if ($type === 'withdrawal') {
+                $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($id);
+                $oldProof = $withdrawal->transfer_proof;
+
+                if ($oldProof && $oldProof !== $newPath && Storage::disk('public')->exists($oldProof)) {
+                    Storage::disk('public')->delete($oldProof);
+                }
+
+                $withdrawal->update(['transfer_proof' => $newPath]);
+
+                // Sync with related transaction
+                $tx = null;
+                if ($withdrawal->saving_transaction_id) {
+                    $tx = SavingTransaction::find($withdrawal->saving_transaction_id);
+                }
+                if (!$tx) {
+                    $tx = SavingTransaction::where('reference_type', 'saving_withdrawal')
+                        ->where('reference_id', $withdrawal->id)
+                        ->first();
+                }
+                if ($tx) {
+                    $tx->update(['transfer_proof' => $newPath]);
+                }
+            } elseif ($type === 'transaction') {
+                $tx = SavingTransaction::lockForUpdate()->findOrFail($id);
+                $oldProof = $tx->transfer_proof;
+
+                if ($oldProof && $oldProof !== $newPath && Storage::disk('public')->exists($oldProof)) {
+                    Storage::disk('public')->delete($oldProof);
+                }
+
+                $tx->update(['transfer_proof' => $newPath]);
+
+                if ($tx->reference_type === 'saving_withdrawal' && $tx->reference_id) {
+                    $withdrawal = SavingWithdrawal::find($tx->reference_id);
+                    if ($withdrawal) {
+                        $withdrawal->update(['transfer_proof' => $newPath]);
+                    }
+                }
+            }
+
+            return $newPath;
+        });
+    }
+
+    /**
+     * Delete transfer proof file for a withdrawal or transaction.
+     * Removes the physical file from disk and clears the database column.
+     */
+    public static function deleteTransferProof(string $type, string $id): void
+    {
+        DB::transaction(function () use ($type, $id) {
+            if ($type === 'withdrawal') {
+                $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($id);
+                $oldProof = $withdrawal->transfer_proof;
+
+                if ($oldProof && Storage::disk('public')->exists($oldProof)) {
+                    Storage::disk('public')->delete($oldProof);
+                }
+
+                $withdrawal->update(['transfer_proof' => null]);
+
+                $tx = SavingTransaction::where('reference_type', 'saving_withdrawal')
+                    ->where('reference_id', $withdrawal->id)
+                    ->first();
+                if ($tx) {
+                    $tx->update(['transfer_proof' => null]);
+                }
+            } elseif ($type === 'transaction') {
+                $tx = SavingTransaction::lockForUpdate()->findOrFail($id);
+                $oldProof = $tx->transfer_proof;
+
+                if ($oldProof && Storage::disk('public')->exists($oldProof)) {
+                    Storage::disk('public')->delete($oldProof);
+                }
+
+                $tx->update(['transfer_proof' => null]);
+
+                if ($tx->reference_type === 'saving_withdrawal' && $tx->reference_id) {
+                    $withdrawal = SavingWithdrawal::find($tx->reference_id);
+                    if ($withdrawal) {
+                        $withdrawal->update(['transfer_proof' => null]);
+                    }
+                }
+            }
+        });
     }
 
     /**

@@ -39,6 +39,10 @@ class SyirkahHistoryComponent extends Component
     public $selectedWithdrawal = null;
     public $isWithdrawalDetailModalOpen = false;
 
+    // Proof Viewer Modal State
+    public $selectedProofUrl = null;
+    public $isProofModalOpen = false;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'month' => ['except' => ''],
@@ -68,7 +72,7 @@ class SyirkahHistoryComponent extends Component
 
     public function openDetailModal($id)
     {
-        $this->selectedTransaction = SavingTransaction::with(['masterSaving', 'approver', 'user'])
+        $this->selectedTransaction = SavingTransaction::with(['masterSaving', 'approver', 'user', 'savingWithdrawal'])
             ->where('user_id', Auth::id())
             ->where('status', 'approved')
             ->find($id);
@@ -251,6 +255,18 @@ class SyirkahHistoryComponent extends Component
         $this->selectedWithdrawal = null;
     }
 
+    public function viewProof($url)
+    {
+        $this->selectedProofUrl = $url;
+        $this->isProofModalOpen = true;
+    }
+
+    public function closeProofModal()
+    {
+        $this->isProofModalOpen = false;
+        $this->selectedProofUrl = null;
+    }
+
     private function calculateBalances(string $userId): array
     {
         $approvedDepositQuery = SavingTransaction::where('user_id', $userId)
@@ -306,7 +322,7 @@ class SyirkahHistoryComponent extends Component
         $balances = $this->calculateBalances($userId);
 
         // 1. Query transactions for ledger table (strictly approved only)
-        $query = SavingTransaction::with(['masterSaving', 'approver'])
+        $query = SavingTransaction::with(['masterSaving', 'approver', 'savingWithdrawal'])
             ->where('user_id', $userId)
             ->where('status', 'approved');
 

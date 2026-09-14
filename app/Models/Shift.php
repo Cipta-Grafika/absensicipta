@@ -146,8 +146,21 @@ class Shift extends Model
             $shiftEnd = \Illuminate\Support\Carbon::today()->setTimeFromTimeString($endStr);
         }
 
-        // Check-in window opens strictly 2 hours before shift start time
-        $earliestCheckIn = $shiftStart->copy()->subHours(2);
+        // Standard early check-in window (2 hours before shift start time)
+        $standardEarliest = $shiftStart->copy()->subHours(2);
+
+        // Day window: 06:00 WIB to 17:00 WIB
+        // Shifts whose start time is between 06:00 and 17:00 can be checked in early from 06:00 WIB onwards
+        // (allowing more than 2 hours early during 06:00 - 17:00).
+        // If outside 06:00 - 17:00 (e.g. shift start < 06:00 or > 17:00),
+        // earliest check-in is capped at strictly max 2 hours before shift start.
+        if (!$isOvernight && $startStr >= '06:00:00' && $startStr <= '17:00:00') {
+            $sixAm = $shiftStart->copy()->setTime(6, 0, 0);
+            $earliestCheckIn = $standardEarliest->lt($sixAm) ? $standardEarliest : $sixAm;
+        } else {
+            $earliestCheckIn = $standardEarliest;
+        }
+
         // Check-in window closes at shift end time
         $latestCheckIn = $shiftEnd->copy();
 

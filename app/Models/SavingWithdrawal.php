@@ -34,6 +34,7 @@ class SavingWithdrawal extends Model
         'paid_at',
         'rejection_reason',
         'saving_transaction_id',
+        'transfer_proof',
     ];
 
     protected $casts = [
@@ -55,6 +56,9 @@ class SavingWithdrawal extends Model
         });
 
         static::deleted(function ($withdrawal) {
+            if ($withdrawal->transfer_proof && \Illuminate\Support\Facades\Storage::disk('public')->exists($withdrawal->transfer_proof)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($withdrawal->transfer_proof);
+            }
             \App\Services\DeductionNotificationService::notify($withdrawal->user_id);
         });
     }
@@ -98,6 +102,20 @@ class SavingWithdrawal extends Model
             return (float) ($this->savingTransaction->mandatory_amount + $this->savingTransaction->secondary_amount);
         }
         return (float) $this->total_amount;
+    }
+
+    public function getTransferProofUrlAttribute(): ?string
+    {
+        if (!$this->transfer_proof) {
+            return null;
+        }
+        $base = '';
+        try {
+            if (function_exists('request') && request()) {
+                $base = request()->getBasePath() ?: '';
+            }
+        } catch (\Throwable $e) {}
+        return $base . '/storage/' . ltrim($this->transfer_proof, '/');
     }
 
     public function getEffectiveMandatoryAmountAttribute(): float

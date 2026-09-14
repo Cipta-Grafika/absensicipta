@@ -71,7 +71,7 @@ class ShiftCheckInGuardTest extends TestCase
         $this->assertTrue($candidates->contains('id', $globalShift->id));
     }
 
-    public function test_check_in_window_is_closed_if_more_than_two_hours_before_shift()
+    public function test_check_in_window_is_open_early_more_than_two_hours_between_06_and_17()
     {
         $shift = Shift::create([
             'name' => 'Afternoon Shift',
@@ -79,12 +79,48 @@ class ShiftCheckInGuardTest extends TestCase
             'end_time' => '21:00:00',
         ]);
 
-        // Simulated time: 08:00 WIB (5 hours before 13:00)
+        // Simulated time: 08:00 WIB (5 hours before 13:00, within 06:00 - 17:00 daytime window)
         $simulatedNow = Carbon::today()->setTime(8, 0, 0);
         $window = $shift->getCheckInWindowInfo($simulatedNow);
 
+        $this->assertTrue($window['is_open']);
+        $this->assertEquals('06:00', $window['earliest_time_str']);
+    }
+
+    public function test_check_in_window_is_closed_if_before_06_and_more_than_two_hours_early()
+    {
+        $shift = Shift::create([
+            'name' => 'Morning Shift',
+            'start_time' => '08:00:00',
+            'end_time' => '17:00:00',
+        ]);
+
+        // Simulated time: 05:30 WIB (less than 06:00 and 2.5 hours before 08:00)
+        $simulatedNow = Carbon::today()->setTime(5, 30, 0);
+        $window = $shift->getCheckInWindowInfo($simulatedNow);
+
         $this->assertFalse($window['is_open']);
-        $this->assertEquals('11:00', $window['earliest_time_str']);
+        $this->assertEquals('06:00', $window['earliest_time_str']);
+    }
+
+    public function test_check_in_window_for_night_shift_after_17_is_strictly_max_two_hours()
+    {
+        $shift = Shift::create([
+            'name' => 'Night Shift',
+            'start_time' => '21:00:00',
+            'end_time' => '05:00:00',
+        ]);
+
+        // Simulated time: 18:00 WIB (3 hours before 21:00)
+        $simulatedClosed = Carbon::today()->setTime(18, 0, 0);
+        $windowClosed = $shift->getCheckInWindowInfo($simulatedClosed);
+        $this->assertFalse($windowClosed['is_open']);
+        $this->assertEquals('19:00', $windowClosed['earliest_time_str']);
+
+        // Simulated time: 19:30 WIB (1.5 hours before 21:00)
+        $simulatedOpen = Carbon::today()->setTime(19, 30, 0);
+        $windowOpen = $shift->getCheckInWindowInfo($simulatedOpen);
+        $this->assertTrue($windowOpen['is_open']);
     }
 
     public function test_check_in_window_is_open_within_two_hours_before_shift()
@@ -176,4 +212,41 @@ class ShiftCheckInGuardTest extends TestCase
         // Even though 180 mins early, capped at max 120 mins
         $this->assertEquals(120, $stat->total_early_minutes);
     }
+
+    public function test_shift_can_be_adjusted_before_check_out()
+    {
+        $user = User::factory()->create([
+            'name' => 'Zaenal Shift Change',
+            'group' => 'user',
+            'status' => 'active',
+        ]);
+
+        $shift1 = Shift::create([
+            'name' => 'Morning Shift',
+            'start_time' => '08:00:00',
+            'end_time' => '17:00:00',
+        ]);
+
+        $shift2 = Shift::create([
+            'name' => 'Middle Shift',
+            'start_time' => '10:00:00',
+            'end_time' => '19:00:00',
+        ]);
+
+        $attendance = Attendance::create([
+            'user_id' => $user->id,
+            'date' => Carbon::today()->format('Y-m-d'),
+            'time_in' => '08:05:00',
+            'shift_id' => $shift1->id,
+            'status' => 'present',
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(ScanComponent::class)
+            ->set('shift_id', $shift2->id);
+
+        $this->assertEquals($shift2->id, $attendance->fresh()->shift_id);
+    }
 }
+

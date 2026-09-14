@@ -84,9 +84,9 @@
       <div>
         <x-label for="shift" value="{{ __('Pilih Shift Kerja') }}" class="font-bold text-gray-700 dark:text-gray-200 text-xs uppercase tracking-wider" />
         <x-select name="shift" id="shift" 
-          class="mt-1.5 block w-full font-semibold text-sm {{ ($hasTimeIn || $isAbsence) ? 'bg-gray-200 text-gray-500 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600 cursor-not-allowed opacity-75' : '' }}" 
+          class="mt-1.5 block w-full font-semibold text-sm {{ (!empty($attendance?->time_out) || $isAbsence) ? 'bg-gray-200 text-gray-500 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600 cursor-not-allowed opacity-75' : ($hasTimeIn ? 'border-amber-400 dark:border-amber-500 bg-amber-50/40 dark:bg-amber-950/20 text-gray-900 dark:text-gray-100' : '') }}" 
           wire:model.live="shift_id"
-          :disabled="$hasTimeIn || $isAbsence">
+          :disabled="!empty($attendance?->time_out) || $isAbsence">
           <option value="">-- {{ __('Pilih Shift') }} --</option>
             @php
               $userDivId = auth()->user()?->division_id;
@@ -101,7 +101,7 @@
                     $wInfo = $shift->getCheckInWindowInfo();
                   @endphp
                   <option value="{{ $shift->id }}">
-                    {{ $shift->name }} ({{ $wInfo['start_time_str'] }} - {{ $wInfo['end_time_str'] }}) {{ $wInfo['is_open'] ? '• [Aktif / Buka]' : '• [Buka ' . $wInfo['earliest_time_str'] . ' WIB]' }}
+                    {{ $shift->name }} ({{ $wInfo['start_time_str'] }} - {{ $wInfo['end_time_str'] }}) {{ ($hasTimeIn && empty($attendance?->time_out)) ? '• [Siap Jam Keluar]' : ($wInfo['is_open'] ? '• [Aktif / Buka]' : '• [Buka ' . $wInfo['earliest_time_str'] . ' WIB]') }}
                   </option>
                 @endforeach
               </optgroup>
@@ -112,7 +112,7 @@
                     $wInfo = $shift->getCheckInWindowInfo();
                   @endphp
                   <option value="{{ $shift->id }}">
-                    {{ $shift->name }} ({{ $wInfo['start_time_str'] }} - {{ $wInfo['end_time_str'] }}) {{ $wInfo['is_open'] ? '• [Aktif / Buka]' : '• [Buka ' . $wInfo['earliest_time_str'] . ' WIB]' }}
+                    {{ $shift->name }} ({{ $wInfo['start_time_str'] }} - {{ $wInfo['end_time_str'] }}) {{ ($hasTimeIn && empty($attendance?->time_out)) ? '• [Siap Jam Keluar]' : ($wInfo['is_open'] ? '• [Aktif / Buka]' : '• [Buka ' . $wInfo['earliest_time_str'] . ' WIB]') }}
                   </option>
                 @endforeach
               </optgroup>

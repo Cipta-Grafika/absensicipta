@@ -184,6 +184,10 @@ class ScanComponent extends Component
         }
 
         if (is_null($this->shift_id)) {
+            $this->shift_id = $this->attendance?->shift_id;
+        }
+
+        if (is_null($this->shift_id)) {
             return __('Pilih shift terlebih dahulu sebelum melakukan absen.');
         }
 
@@ -274,7 +278,7 @@ class ScanComponent extends Component
                 $windowInfo = $shift->getCheckInWindowInfo();
                 if (!$windowInfo['is_open']) {
                     if (Carbon::now()->lt($windowInfo['earliest_check_in'])) {
-                        return "Absen Masuk ditolak: Absen Masuk untuk {$shift->name} baru dibuka pukul {$windowInfo['earliest_time_str']} WIB (2 jam sebelum jam masuk {$windowInfo['start_time_str']} WIB).";
+                        return "Absen Masuk ditolak: Absen Masuk untuk {$shift->name} baru dibuka pukul {$windowInfo['earliest_time_str']} WIB.";
                     } else {
                         return "Absen Masuk ditolak: Waktu kerja untuk {$shift->name} telah berakhir pada pukul {$windowInfo['end_time_str']} WIB.";
                     }
@@ -455,7 +459,7 @@ class ScanComponent extends Component
             $windowInfo = $shift->getCheckInWindowInfo();
             if (!$windowInfo['is_open']) {
                 if (Carbon::now()->lt($windowInfo['earliest_check_in'])) {
-                    $this->dangerBanner("Absen Masuk ditolak: Absen Masuk untuk {$shift->name} baru dibuka pukul {$windowInfo['earliest_time_str']} WIB (2 jam sebelum jam masuk {$windowInfo['start_time_str']} WIB).");
+                    $this->dangerBanner("Absen Masuk ditolak: Absen Masuk untuk {$shift->name} baru dibuka pukul {$windowInfo['earliest_time_str']} WIB.");
                 } else {
                     $this->dangerBanner("Absen Masuk ditolak: Waktu kerja untuk {$shift->name} telah berakhir pada pukul {$windowInfo['end_time_str']} WIB.");
                 }
@@ -780,9 +784,10 @@ class ScanComponent extends Component
             return;
         }
 
-        if (!empty($this->attendance?->time_in)) {
+        // Only lock if user has already checked out (attendance completed today)
+        if (!empty($this->attendance?->time_out)) {
             $this->shift_id = $this->attendance->shift_id;
-            $this->dangerBanner(__('Shift kerja tidak dapat diubah karena Anda sudah melakukan absen masuk hari ini.'));
+            $this->dangerBanner(__('Shift kerja tidak dapat diubah karena Anda sudah menyelesaikan presensi keluar hari ini.'));
             return;
         }
 
@@ -796,17 +801,31 @@ class ScanComponent extends Component
         }
 
         $selectedShift = Shift::find($value);
-        if ($selectedShift) {
-            $windowInfo = $selectedShift->getCheckInWindowInfo();
-            if (!$windowInfo['is_open']) {
-                $this->ensureShiftSelected();
-                if (Carbon::now()->lt($windowInfo['earliest_check_in'])) {
-                    $this->dangerBanner("Shift {$selectedShift->name} belum dapat dipilih. Absen Masuk baru dibuka pukul {$windowInfo['earliest_time_str']} WIB (2 jam sebelum jam masuk {$windowInfo['start_time_str']} WIB).");
-                } else {
-                    $this->dangerBanner("Shift {$selectedShift->name} telah berakhir pada pukul {$windowInfo['end_time_str']} WIB.");
-                }
-                return;
+        if (!$selectedShift) {
+            return;
+        }
+
+        // Check if user is in check-out phase (has time_in, but not time_out yet)
+        $isCheckOutPhase = !empty($this->attendance?->time_in) && empty($this->attendance?->time_out);
+
+        if ($isCheckOutPhase) {
+            // Update the attendance record with the newly chosen shift for check-out
+            $this->attendance->update(['shift_id' => $selectedShift->id]);
+            $this->shift_id = $selectedShift->id;
+            $this->banner("Shift kerja disesuaikan ke {$selectedShift->name} untuk Absen Keluar.");
+            return;
+        }
+
+        // If in check-in phase (not checked in yet), validate check-in window
+        $windowInfo = $selectedShift->getCheckInWindowInfo();
+        if (!$windowInfo['is_open']) {
+            $this->ensureShiftSelected();
+            if (Carbon::now()->lt($windowInfo['earliest_check_in'])) {
+                $this->dangerBanner("Shift {$selectedShift->name} belum dapat dipilih. Absen Masuk baru dibuka pukul {$windowInfo['earliest_time_str']} WIB.");
+            } else {
+                $this->dangerBanner("Shift {$selectedShift->name} telah berakhir pada pukul {$windowInfo['end_time_str']} WIB.");
             }
+            return;
         }
     }
 
