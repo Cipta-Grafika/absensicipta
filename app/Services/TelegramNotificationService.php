@@ -128,38 +128,30 @@ class TelegramNotificationService
         $division = $user?->division?->name ?? 'Semua Divisi';
         $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
 
-        // 1. Resolve Dynamic Recipient Targets (ONLY Admin of employee's division)
+        // 1. Resolve Dynamic Recipient Targets (STRICTLY Admins of employee's division only)
         $targetIds = [];
 
-        $adminQuery = User::where('group', 'admin')
-            ->when($userDivisionId, function ($q) use ($userDivisionId) {
-                $q->where('division_id', $userDivisionId);
-            })
-            ->where(function ($q) {
-                $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
-                  ->orWhere(function ($sub) {
-                      $sub->whereNotNull('telegram')->where('telegram', '!=', '');
-                  });
-            })
-            ->get();
+        if ($userDivisionId) {
+            $adminQuery = User::where('group', 'admin')
+                ->where('division_id', $userDivisionId)
+                ->where(function ($q) {
+                    $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
+                      ->orWhere(function ($sub) {
+                          $sub->whereNotNull('telegram')->where('telegram', '!=', '');
+                      });
+                })
+                ->get();
 
-        foreach ($adminQuery as $admin) {
-            if (!empty($admin->chat_code)) {
-                $targetIds[] = trim($admin->chat_code);
-            }
-        }
-
-        // Fallback to .env TELEGRAM_ADMIN_CHAT_ID if no database users have chat_code
-        if (empty($targetIds)) {
-            $envChatId = config('services.telegram.admin_chat_id', env('TELEGRAM_ADMIN_CHAT_ID'));
-            if (!empty($envChatId)) {
-                $targetIds[] = trim($envChatId);
+            foreach ($adminQuery as $admin) {
+                if (!empty($admin->chat_code)) {
+                    $targetIds[] = trim($admin->chat_code);
+                }
             }
         }
 
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) {
-            Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Division Admin.');
+            Log::info("TelegramNotificationService: No valid Telegram Chat ID found for Division Admin in division ID " . ($userDivisionId ?? 'none') . ".");
             return;
         }
 
