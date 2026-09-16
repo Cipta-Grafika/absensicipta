@@ -62,39 +62,40 @@
                         @foreach ($dates as $date)
                             @php
                                 $dateStr = $date->format('Y-m-d');
-                                $existingReplacement = $monthReplacements->first(function ($item) use ($dateStr) {
+                                $dayReplacements = $monthReplacements->filter(function ($item) use ($dateStr) {
                                     return \Carbon\Carbon::parse($item->replaced_date)->format('Y-m-d') === $dateStr;
                                 });
+                                $replacementCount = $dayReplacements->count();
+                                $existingReplacement = $dayReplacements->first();
                                 $hasImpAttendance = in_array($dateStr, $monthImpDates ?? [], true);
 
                                 $isWorkingDay = \App\Services\AttendanceScheduleService::isWorkingDay(auth()->user(), $date);
                                 $dayIsOff = !$isWorkingDay;
                                 
-                                $isModalActive = (($isDateModalOpen ?? false) || ($isDetailModalOpen ?? false));
+                                $isModalActive = (($isDateModalOpen ?? false) || ($isDetailModalOpen ?? false) || ($isOptionsModalOpen ?? false));
                                 $isActiveSubmittedDate = ($isModalActive && (($activeCalendarDate ?? null) === $dateStr || ($replaced_date ?? null) === $dateStr));
 
                                 if ($isActiveSubmittedDate) {
                                     // Solid Sky Blue background when modal is active for this date
                                     $bgColor = 'bg-sky-600 dark:bg-sky-600 text-white font-bold border-2 border-sky-700 ring-2 ring-sky-300 shadow-md transform scale-105 z-10';
                                     $dateNumClass = 'text-white font-bold';
-                                } elseif ($existingReplacement) {
-                                    switch ($existingReplacement->status) {
-                                        case 'approved':
-                                            $bgColor = 'bg-emerald-50 dark:bg-emerald-950/70 border-2 border-emerald-400 dark:border-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 shadow-xs';
-                                            $dateNumClass = 'font-bold text-emerald-950 dark:text-emerald-100';
-                                            break;
-                                        case 'pending':
-                                            $bgColor = 'bg-amber-50 dark:bg-amber-950/70 border-2 border-amber-400 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/80 shadow-xs';
-                                            $dateNumClass = 'font-bold text-amber-950 dark:text-amber-100';
-                                            break;
-                                        case 'rejected':
-                                            $bgColor = 'bg-rose-50 dark:bg-rose-950/70 border-2 border-rose-400 dark:border-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/80 shadow-xs';
-                                            $dateNumClass = 'font-bold text-rose-950 dark:text-rose-100';
-                                            break;
-                                        default:
-                                            $bgColor = 'bg-sky-50 dark:bg-sky-950/70 border-2 border-sky-400 dark:border-sky-600 hover:bg-sky-100 dark:hover:bg-sky-900/80 shadow-xs';
-                                            $dateNumClass = 'font-bold text-sky-950 dark:text-sky-100';
-                                            break;
+                                } elseif ($replacementCount > 0) {
+                                    $hasPending = $dayReplacements->contains('status', 'pending');
+                                    $allApproved = $dayReplacements->every(fn($r) => $r->status === 'approved');
+                                    $allRejected = $dayReplacements->every(fn($r) => $r->status === 'rejected');
+
+                                    if ($hasPending) {
+                                        $bgColor = 'bg-amber-50 dark:bg-amber-950/70 border-2 border-amber-400 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/80 shadow-xs';
+                                        $dateNumClass = 'font-bold text-amber-950 dark:text-amber-100';
+                                    } elseif ($allApproved) {
+                                        $bgColor = 'bg-emerald-50 dark:bg-emerald-950/70 border-2 border-emerald-400 dark:border-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 shadow-xs';
+                                        $dateNumClass = 'font-bold text-emerald-950 dark:text-emerald-100';
+                                    } elseif ($allRejected) {
+                                        $bgColor = 'bg-rose-50 dark:bg-rose-950/70 border-2 border-rose-400 dark:border-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/80 shadow-xs';
+                                        $dateNumClass = 'font-bold text-rose-950 dark:text-rose-100';
+                                    } else {
+                                        $bgColor = 'bg-sky-50 dark:bg-sky-950/70 border-2 border-sky-400 dark:border-sky-600 hover:bg-sky-100 dark:hover:bg-sky-900/80 shadow-xs';
+                                        $dateNumClass = 'font-bold text-sky-950 dark:text-sky-100';
                                     }
                                 } elseif ($hasImpAttendance) {
                                     // Date HAS IMP attendance: Always Active Soft Pastel Blue Box (Gambar 2)
@@ -114,7 +115,13 @@
                                     {{ $date->format('d') }}
                                 </span>
 
-                                @if ($existingReplacement)
+                                @if ($replacementCount > 1)
+                                    <div class="bg-indigo-600 text-white font-bold text-[10px] p-1 sm:px-2 sm:py-0.5 rounded-full shadow-xs flex items-center justify-center gap-1">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-white shrink-0"></span>
+                                        <span class="hidden sm:inline leading-none">{{ $replacementCount }} Pengajuan</span>
+                                        <span class="sm:hidden leading-none">{{ $replacementCount }}x</span>
+                                    </div>
+                                @elseif ($replacementCount === 1)
                                     @if ($existingReplacement->status === 'approved')
                                         <div class="bg-emerald-600 text-white font-bold text-[10px] p-1 sm:px-2.5 sm:py-0.5 rounded-full shadow-xs flex items-center justify-center gap-1.5">
                                             <span class="h-2 w-2 rounded-full bg-white shrink-0"></span>
@@ -255,6 +262,126 @@
         </div>
     </div>
 
+    <!-- OPTIONS / LIST MODAL (For dates with existing submissions) -->
+    @if($isOptionsModalOpen ?? false)
+        <div x-data>
+            <template x-teleport="body">
+                <div class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-gray-900/60 dark:bg-gray-950/75 backdrop-blur-xs overflow-y-auto">
+                    <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[85vh] sm:max-h-[88vh] my-auto overflow-hidden transform-gpu">
+                        <!-- Modal Header -->
+                        <div class="flex items-center justify-between rounded-t border-b p-4 md:p-5 dark:border-gray-700 shrink-0">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                                        Pengajuan Ganti Jam
+                                    </h3>
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold {{ count($selectedDateReplacements) >= 5 ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200' : 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200' }}">
+                                        {{ count($selectedDateReplacements) }}/5 Pengajuan
+                                    </span>
+                                </div>
+                                <p class="text-xs text-sky-600 dark:text-sky-400 font-semibold mt-0.5">
+                                    {{ $selectedDateDisplay }}
+                                </p>
+                            </div>
+                            <button wire:click="closeOptionsModal" class="ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white" type="button">
+                                <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                                </svg>
+                                <span class="sr-only">Tutup modal</span>
+                            </button>
+                        </div>
+
+                        <!-- Modal Body -->
+                        <div class="p-4 md:p-5 space-y-3 overflow-y-auto min-h-0 flex-1">
+                            @if($modalError)
+                                <div class="flex items-center rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800 dark:border-red-800 dark:bg-gray-800 dark:text-red-400" role="alert">
+                                    <svg class="me-2 inline h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                                    </svg>
+                                    <div>{{ $modalError }}</div>
+                                </div>
+                            @endif
+
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                Klik pada salah satu pengajuan untuk melihat detail lengkap:
+                            </p>
+
+                            <div class="space-y-2.5">
+                                @foreach($selectedDateReplacements as $idx => $item)
+                                    <div wire:click="openDetailModal({{ $item->id }})"
+                                         class="group flex items-center justify-between p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/80 hover:bg-sky-50/70 dark:hover:bg-sky-950/40 hover:border-sky-300 dark:hover:border-sky-700 transition-all cursor-pointer shadow-xs">
+                                        <div class="flex flex-col gap-1 min-w-0 pr-3">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-bold text-gray-600 dark:text-gray-400">
+                                                    #{{ $idx + 1 }}
+                                                </span>
+                                                @if($item->status == 'pending')
+                                                    <span class="inline-flex rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-bold text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100">
+                                                        Pending
+                                                    </span>
+                                                @elseif($item->status == 'approved')
+                                                    <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-700 dark:text-emerald-100">
+                                                        Approved
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800 dark:bg-rose-700 dark:text-rose-100">
+                                                        Rejected
+                                                    </span>
+                                                @endif
+                                                <span class="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                                                    {{ $item->shift ? $item->shift->name : 'Shift' }}
+                                                </span>
+                                            </div>
+                                            <div class="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                                <span>Tgl Ganti: <strong class="text-gray-700 dark:text-gray-300">{{ \Carbon\Carbon::parse($item->replacement_date)->format('d M Y') }}</strong></span>
+                                                <span>•</span>
+                                                <span>{{ \Carbon\Carbon::parse($item->start_hour)->format('H:i') }} - {{ \Carbon\Carbon::parse($item->end_hour)->format('H:i') }}</span>
+                                                <span>({{ $item->formatted_duration }})</span>
+                                            </div>
+                                            @if($item->reason)
+                                                <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate max-w-sm mt-0.5 italic">
+                                                    "{{ $item->reason }}"
+                                                </p>
+                                            @endif
+                                        </div>
+                                        <div class="shrink-0 flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform">
+                                            <span class="hidden sm:inline">Detail</span>
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- Modal Footer: Create New Action -->
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5 rounded-b border-t border-gray-200 p-4 shrink-0 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90">
+                            <button wire:click="closeOptionsModal" type="button" class="w-full sm:w-auto rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition order-2 sm:order-1">
+                                Tutup
+                            </button>
+
+                            @if(count($selectedDateReplacements) < 5)
+                                <button wire:click="openCreateModal" type="button" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-white hover:bg-sky-600 focus:outline-none focus:ring-4 focus:ring-sky-300 dark:bg-sky-500 dark:hover:bg-sky-400 transition shadow-xs order-1 sm:order-2 cursor-pointer">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Buat Pengajuan Baru
+                                </button>
+                            @else
+                                <div class="w-full sm:w-auto text-center sm:text-right order-1 sm:order-2">
+                                    <button type="button" disabled class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-gray-300 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                                        Maksimal 5 Pengajuan Tercapai
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    @endif
+
     <!-- DETAIL REPLACEMENT HOUR MODAL (For existing active date clicks) -->
     @if(($isDetailModalOpen ?? false) && $selectedReplacement)
         <div x-data>
@@ -352,8 +479,14 @@
                     @endif
                 </div>
 
-                <div class="flex items-center justify-end rounded-b border-t border-gray-200 p-4 shrink-0 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90">
-                    <button wire:click="closeDetailModal" type="button" class="rounded-lg bg-gray-200 px-5 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition">
+                <div class="flex items-center justify-between rounded-b border-t border-gray-200 p-4 shrink-0 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90">
+                    <button wire:click="backToOptionsModal" type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition cursor-pointer">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Kembali ke Daftar
+                    </button>
+                    <button wire:click="closeDetailModal" type="button" class="rounded-lg bg-gray-200 px-5 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition cursor-pointer">
                         Tutup
                     </button>
                 </div>
@@ -370,9 +503,16 @@
                     <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800 flex flex-col max-h-[82vh] sm:max-h-[88vh] my-auto overflow-hidden transform-gpu">
                 <div class="flex items-center justify-between rounded-t border-b p-4 md:p-5 dark:border-gray-700 shrink-0">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-                            Ajukan Ganti Jam
-                        </h3>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                                Ajukan Ganti Jam
+                            </h3>
+                            @if(count($selectedDateReplacements) > 0)
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200">
+                                    Pengajuan ke-{{ count($selectedDateReplacements) + 1 }} (Maks. 5)
+                                </span>
+                            @endif
+                        </div>
                         <p class="text-xs text-sky-600 dark:text-sky-400 font-semibold mt-0.5">
                             {{ $selectedDateDisplay }}
                         </p>
@@ -518,7 +658,7 @@
                     </div>
 
                     <div class="flex items-center justify-end rounded-b border-t border-gray-200 p-4 shrink-0 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90">
-                        <button wire:click="closeDateModal" type="button" class="mr-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700">Batal</button>
+                        <button wire:click="cancelCreateModal" type="button" class="mr-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700">Batal</button>
                         <button type="submit" class="rounded-lg bg-sky-500 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-sky-600 focus:outline-none focus:ring-4 focus:ring-sky-300 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus:ring-sky-800 transition">Ajukan Ganti Jam</button>
                     </div>
                 </form>

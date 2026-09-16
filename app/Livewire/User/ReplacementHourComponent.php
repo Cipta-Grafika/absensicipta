@@ -32,6 +32,7 @@ class ReplacementHourComponent extends Component
     public $selectedReplacement = null;
     public $isDateModalOpen = false;
     public $isDetailModalOpen = false;
+    public $isOptionsModalOpen = false;
     public $perPage = 10;
 
     public function mount()
@@ -125,6 +126,14 @@ class ReplacementHourComponent extends Component
 
         $offDays = AttendanceScheduleService::getUserOffDays($user);
 
+        $selectedDateReplacements = $this->activeCalendarDate
+            ? ReplacementHour::with(['shift', 'approver'])
+                ->where('user_id', $user->id)
+                ->where('replaced_date', $this->activeCalendarDate)
+                ->orderBy('created_at', 'asc')
+                ->get()
+            : collect();
+
         return view('livewire.user.replacement-hour-component', [
             'replacements' => $replacements,
             'monthReplacements' => $monthReplacements,
@@ -138,6 +147,8 @@ class ReplacementHourComponent extends Component
             'activeCalendarDate' => $this->activeCalendarDate,
             'isDateModalOpen' => $this->isDateModalOpen,
             'isDetailModalOpen' => $this->isDetailModalOpen,
+            'isOptionsModalOpen' => $this->isOptionsModalOpen,
+            'selectedDateReplacements' => $selectedDateReplacements,
             'replaced_date' => $this->replaced_date,
             'replacement_date' => $this->replacement_date,
             'selectedDateDisplay' => $this->selectedDateDisplay,
@@ -157,34 +168,109 @@ class ReplacementHourComponent extends Component
         $user = Auth::user();
         $formattedDate = Carbon::parse($dateString)->format('Y-m-d');
 
-        // Only match strictly by replaced_date (the IMP date)
-        $existing = ReplacementHour::with(['shift', 'approver'])
-            ->where('user_id', $user->id)
+        $existingCount = ReplacementHour::where('user_id', $user->id)
             ->where('replaced_date', $formattedDate)
-            ->first();
+            ->count();
 
         $this->activeCalendarDate = $formattedDate;
         $this->selectedDateDisplay = Carbon::parse($formattedDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+        $this->modalError = null;
 
-        if ($existing) {
-            $this->selectedReplacement = $existing;
-            $this->isDetailModalOpen = true;
+        if ($existingCount > 0) {
+            $this->isOptionsModalOpen = true;
+            $this->isDetailModalOpen = false;
+            $this->isDateModalOpen = false;
         } else {
-            $this->resetInputFields();
-            $this->replaced_date = $formattedDate;
-            $this->replacement_date = Carbon::now()->format('Y-m-d');
-
-            // Default shift: prioritize division shift first
-            $shifts = Shift::forUser($user)
-                ->orderByRaw('CASE WHEN division_id = ? THEN 0 ELSE 1 END', [$user->division_id ?? 0])
-                ->orderBy('name', 'asc')
-                ->get();
-            $defaultShift = $shifts->where('division_id', $user->division_id)->first() ?? $shifts->first();
-            $this->shift_id = $defaultShift ? $defaultShift->id : '';
-
-            $this->activeCalendarDate = $formattedDate;
-            $this->isDateModalOpen = true;
+            $this->openCreateModal();
         }
+    }
+
+    public function openDetailModal($replacementId)
+    {
+        $user = Auth::user();
+        $replacement = ReplacementHour::with(['shift', 'approver'])
+            ->where('user_id', $user->id)
+            ->find($replacementId);
+
+        if ($replacement) {
+            $this->selectedReplacement = $replacement;
+            $this->activeCalendarDate = Carbon::parse($replacement->replaced_date)->format('Y-m-d');
+            $this->selectedDateDisplay = Carbon::parse($this->activeCalendarDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+            $this->isDetailModalOpen = true;
+            $this->isOptionsModalOpen = false;
+            $this->isDateModalOpen = false;
+        }
+    }
+
+    public function backToOptionsModal()
+    {
+        $this->isDetailModalOpen = false;
+        $this->selectedReplacement = null;
+        $this->isDateModalOpen = false;
+        $this->modalError = null;
+
+        if ($this->activeCalendarDate) {
+            $this->isOptionsModalOpen = true;
+        }
+    }
+
+    public function openCreateModal()
+    {
+        $user = Auth::user();
+        $targetDate = $this->activeCalendarDate ?: Carbon::now()->format('Y-m-d');
+
+        $count = ReplacementHour::where('user_id', $user->id)
+            ->where('replaced_date', $targetDate)
+            ->count();
+
+        if ($count >= 5) {
+            $this->modalError = 'Maksimal 5 pengajuan ganti jam untuk tanggal yang sama telah tercapai.';
+            return;
+        }
+
+        $this->resetInputFields();
+        $this->replaced_date = $targetDate;
+        $this->selectedDateDisplay = Carbon::parse($targetDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+        $this->replacement_date = Carbon::now()->format('Y-m-d');
+
+        // Default shift: prioritize division shift first
+        $shifts = Shift::forUser($user)
+            ->orderByRaw('CASE WHEN division_id = ? THEN 0 ELSE 1 END', [$user->division_id ?? 0])
+            ->orderBy('name', 'asc')
+            ->get();
+        $defaultShift = $shifts->where('division_id', $user->division_id)->first() ?? $shifts->first();
+        $this->shift_id = $defaultShift ? $defaultShift->id : '';
+
+        $this->activeCalendarDate = $targetDate;
+        $this->isOptionsModalOpen = false;
+        $this->isDetailModalOpen = false;
+        $this->isDateModalOpen = true;
+    }
+
+    public function cancelCreateModal()
+    {
+        $user = Auth::user();
+        $targetDate = $this->replaced_date ?: $this->activeCalendarDate;
+        $hasExisting = $targetDate ? ReplacementHour::where('user_id', $user->id)->where('replaced_date', $targetDate)->exists() : false;
+
+        $this->isDateModalOpen = false;
+        $this->resetInputFields();
+
+        if ($hasExisting && $targetDate) {
+            $this->activeCalendarDate = $targetDate;
+            $this->selectedDateDisplay = Carbon::parse($targetDate)->locale('id')->isoFormat('dddd, DD MMMM YYYY');
+            $this->isOptionsModalOpen = true;
+        } else {
+            $this->activeCalendarDate = null;
+        }
+    }
+
+    public function closeOptionsModal()
+    {
+        $this->isOptionsModalOpen = false;
+        $this->activeCalendarDate = null;
+        $this->selectedDateDisplay = '';
+        $this->modalError = null;
     }
 
     public function closeDateModal()
@@ -228,7 +314,17 @@ class ReplacementHourComponent extends Component
         $this->modalError = null;
         $this->validate();
 
-        // Check if user has an IMP attendance on replaced_date
+        // 1. Max 5 replacement hours per replaced_date check
+        $existingCount = ReplacementHour::where('user_id', Auth::id())
+            ->where('replaced_date', $this->replaced_date)
+            ->count();
+
+        if ($existingCount >= 5) {
+            $this->modalError = 'Maksimal 5 pengajuan ganti jam untuk tanggal yang sama (' . Carbon::parse($this->replaced_date)->format('d/m/Y') . ') telah tercapai!';
+            return;
+        }
+
+        // 2. Check if user has an IMP attendance on replaced_date
         $hasImp = Attendance::where('user_id', Auth::id())
             ->where('date', $this->replaced_date)
             ->where('status', 'imp')
