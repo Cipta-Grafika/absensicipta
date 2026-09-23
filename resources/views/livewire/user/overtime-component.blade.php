@@ -284,16 +284,29 @@
                                         {{ $overtime->reason }}
                                     </td>
                                     <td class="px-4 py-3 text-center text-sm font-medium whitespace-nowrap" wire:click.stop="">
-                                        <button type="button" 
-                                                wire:click.stop="showDetail({{ $overtime->id }})" 
-                                                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-2xs hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-sky-600 dark:hover:text-sky-400 focus:outline-none transition cursor-pointer" 
-                                                title="Lihat Detail Lembur">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            <span>Detail</span>
-                                        </button>
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            @if($overtime->status == 'pending')
+                                                <button type="button" 
+                                                        wire:click.stop="editOvertime({{ $overtime->id }})" 
+                                                        class="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 shadow-2xs hover:bg-amber-100 dark:hover:bg-amber-900/80 focus:outline-none transition cursor-pointer" 
+                                                        title="Edit Pengajuan Lembur">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                    <span>Edit</span>
+                                                </button>
+                                            @endif
+                                            <button type="button" 
+                                                    wire:click.stop="showDetail({{ $overtime->id }})" 
+                                                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-2xs hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-sky-600 dark:hover:text-sky-400 focus:outline-none transition cursor-pointer" 
+                                                    title="Lihat Detail Lembur">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                <span>Detail</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -658,7 +671,17 @@
                         </div>
 
                         <!-- Footer Modal -->
-                        <div class="flex items-center justify-end rounded-b border-t border-gray-200 p-4 shrink-0 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90">
+                        <div class="flex items-center justify-between rounded-b border-t border-gray-200 p-4 shrink-0 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90">
+                            <div>
+                                @if($selectedOvertime->status == 'pending')
+                                    <button wire:click="editOvertime({{ $selectedOvertime->id }})" type="button" class="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 focus:outline-none focus:ring-4 focus:ring-amber-300 dark:bg-amber-600 dark:hover:bg-amber-500 transition cursor-pointer">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        <span>Edit Pengajuan</span>
+                                    </button>
+                                @endif
+                            </div>
                             <button wire:click="closeDetailModal" type="button" class="rounded-lg bg-gray-200 px-5 py-2 text-sm font-medium text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition">
                                 Tutup
                             </button>
@@ -669,7 +692,7 @@
         </div>
     @endif
 
-    <!-- DEDICATED SUBMISSION FORM MODAL (Triggered exclusively from date box clicks) -->
+    <!-- DEDICATED SUBMISSION / EDIT FORM MODAL (Triggered from date clicks, edit buttons) -->
     @if($isDateModalOpen ?? false)
         <div x-data>
             <template x-teleport="body">
@@ -678,7 +701,7 @@
                 <div class="flex items-center justify-between rounded-t border-b p-4 md:p-5 dark:border-gray-700 shrink-0">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-                            Ajukan Lembur
+                            {{ $editingOvertimeId ? 'Edit Pengajuan Lembur' : 'Ajukan Lembur' }}
                         </h3>
                         <p class="text-xs text-sky-600 dark:text-sky-400 font-semibold mt-0.5">
                             {{ $selectedDateDisplay }}
@@ -788,7 +811,9 @@
 
                     <div class="flex items-center justify-end rounded-b border-t border-gray-200 p-4 shrink-0 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90">
                         <button wire:click="closeDateModal" type="button" class="mr-3 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700">Batal</button>
-                        <button type="submit" class="rounded-lg bg-sky-500 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-sky-600 focus:outline-none focus:ring-4 focus:ring-sky-300 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus:ring-sky-800 transition">Ajukan Lembur</button>
+                        <button type="submit" class="rounded-lg {{ $editingOvertimeId ? 'bg-amber-500 hover:bg-amber-600 focus:ring-amber-300 dark:bg-amber-500 dark:hover:bg-amber-400 dark:focus:ring-amber-800' : 'bg-sky-500 hover:bg-sky-600 focus:ring-sky-300 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus:ring-sky-800' }} px-5 py-2.5 text-center text-sm font-medium text-white focus:outline-none focus:ring-4 transition">
+                            {{ $editingOvertimeId ? 'Simpan Perubahan' : 'Ajukan Lembur' }}
+                        </button>
                     </div>
                 </form>
             </div>

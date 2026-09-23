@@ -26,6 +26,7 @@ class OvertimeComponent extends Component
     public $activeCalendarDate = null;
 
     public $selectedOvertime = null;
+    public ?int $editingOvertimeId = null;
     public $isDateModalOpen = false;
     public $isDetailModalOpen = false;
     public $perPage = 10;
@@ -109,6 +110,7 @@ class OvertimeComponent extends Component
             'activeCalendarDate' => $this->activeCalendarDate,
             'isDateModalOpen' => $this->isDateModalOpen,
             'isDetailModalOpen' => $this->isDetailModalOpen,
+            'editingOvertimeId' => $this->editingOvertimeId,
             'overtime_date' => $this->overtime_date,
             'selectedDateDisplay' => $this->selectedDateDisplay,
             'modalError' => $this->modalError,
@@ -131,6 +133,35 @@ class OvertimeComponent extends Component
             $this->selectedDateDisplay = $overtime->overtime_date ? Carbon::parse($overtime->overtime_date)->locale('id')->isoFormat('dddd, DD MMMM YYYY') : '';
             $this->isDetailModalOpen = true;
         }
+    }
+
+    public function editOvertime($id)
+    {
+        $overtime = Overtime::where('employee_id', Auth::id())->find($id);
+
+        if (!$overtime) {
+            $this->dangerBanner('Data pengajuan lembur tidak ditemukan.');
+            return;
+        }
+
+        if ($overtime->status !== 'pending') {
+            $this->dangerBanner('Pengajuan lembur tidak dapat diedit karena status sudah diproses (' . ucfirst($overtime->status) . ').');
+            return;
+        }
+
+        $this->editingOvertimeId = $overtime->id;
+        $this->overtime_date = $overtime->overtime_date ? Carbon::parse($overtime->overtime_date)->format('Y-m-d') : '';
+        $this->start_time = $overtime->start_time ? Carbon::parse($overtime->start_time)->format('H:i') : '';
+        $this->end_time = $overtime->end_time ? Carbon::parse($overtime->end_time)->format('H:i') : '';
+        $this->break = $overtime->break ?? '';
+        $this->reason = $overtime->reason ?? '';
+        $this->modalError = null;
+
+        $this->activeCalendarDate = $this->overtime_date;
+        $this->selectedDateDisplay = $this->overtime_date ? Carbon::parse($this->overtime_date)->locale('id')->isoFormat('dddd, DD MMMM YYYY') : '';
+
+        $this->isDetailModalOpen = false;
+        $this->isDateModalOpen = true;
     }
 
     public function handleDateClick($dateString)
@@ -177,6 +208,7 @@ class OvertimeComponent extends Component
 
     private function resetInputFields()
     {
+        $this->editingOvertimeId = null;
         $this->overtime_date = '';
         $this->start_time = '';
         $this->end_time = '';
@@ -199,37 +231,88 @@ class OvertimeComponent extends Component
         $this->modalError = null;
         $this->validate();
 
-        // Enforce 1 overtime request per date rule
-        $exists = Overtime::where('employee_id', Auth::id())
-            ->where('overtime_date', $this->overtime_date)
-            ->exists();
+        if ($this->editingOvertimeId) {
+            // Edit existing pending overtime
+            $overtime = Overtime::where('employee_id', Auth::id())->find($this->editingOvertimeId);
 
-        if ($exists) {
-            $this->modalError = 'Anda sudah memiliki pengajuan lembur pada tanggal ini (1 tanggal hanya 1 pengajuan lembur).';
-            return;
+            if (!$overtime) {
+                $this->modalError = 'Data pengajuan lembur tidak ditemukan.';
+                return;
+            }
+
+            if ($overtime->status !== 'pending') {
+                $this->modalError = 'Pengajuan lembur tidak dapat diedit karena status sudah diproses (' . ucfirst($overtime->status) . ').';
+                return;
+            }
+
+            // Enforce 1 overtime request per date rule (excluding current record)
+            $exists = Overtime::where('employee_id', Auth::id())
+                ->where('overtime_date', $this->overtime_date)
+                ->where('id', '!=', $this->editingOvertimeId)
+                ->exists();
+
+            if ($exists) {
+                $this->modalError = 'Anda sudah memiliki pengajuan lembur lain pada tanggal ini (1 tanggal hanya 1 pengajuan lembur).';
+                return;
+            }
+
+            $tempOvertime = new Overtime([
+                'start_time' => $this->start_time,
+                'end_time' => $this->end_time,
+                'break' => $this->break ? trim($this->break) : null,
+            ]);
+
+            $duration = $tempOvertime->calculateDuration();
+
+            if ($duration <= 0) {
+                $this->modalError = 'Durasi lembur tidak valid. Pastikan jam selesai lebih besar dari jam mulai.';
+                return;
+            }
+
+            $overtime->update([
+                'overtime_date' => $this->overtime_date,
+                'start_time' => $this->start_time,
+                'end_time' => $this->end_time,
+                'break' => $this->break ? trim($this->break) : null,
+                'reason' => $this->reason,
+                'duration_hours' => $duration,
+            ]);
+
+            $this->banner('Pengajuan lembur berhasil diperbarui.');
+        } else {
+            // Enforce 1 overtime request per date rule
+            $exists = Overtime::where('employee_id', Auth::id())
+                ->where('overtime_date', $this->overtime_date)
+                ->exists();
+
+            if ($exists) {
+                $this->modalError = 'Anda sudah memiliki pengajuan lembur pada tanggal ini (1 tanggal hanya 1 pengajuan lembur).';
+                return;
+            }
+
+            // Instantiate Overtime to calculate duration before saving
+            $overtime = new Overtime([
+                'employee_id' => Auth::id(),
+                'overtime_date' => $this->overtime_date,
+                'start_time' => $this->start_time,
+                'end_time' => $this->end_time,
+                'break' => $this->break ? trim($this->break) : null,
+                'reason' => $this->reason,
+                'status' => 'pending',
+            ]);
+
+            $duration = $overtime->calculateDuration();
+
+            if ($duration <= 0) {
+                $this->modalError = 'Durasi lembur tidak valid. Pastikan jam selesai lebih besar dari jam mulai.';
+                return;
+            }
+
+            $overtime->duration_hours = $duration;
+            $overtime->save();
+
+            $this->banner('Pengajuan lembur berhasil dikirim dan sedang menunggu persetujuan.');
         }
-
-        // Instantiate Overtime to calculate duration before saving
-        $overtime = new Overtime([
-            'employee_id' => Auth::id(),
-            'overtime_date' => $this->overtime_date,
-            'start_time' => $this->start_time,
-            'end_time' => $this->end_time,
-            'break' => $this->break ? trim($this->break) : null,
-            'reason' => $this->reason,
-            'status' => 'pending',
-        ]);
-
-        $duration = $overtime->calculateDuration();
-
-        if ($duration <= 0) {
-            $this->modalError = 'Durasi lembur tidak valid. Pastikan jam selesai lebih besar dari jam mulai.';
-            return;
-        }
-
-        $overtime->duration_hours = $duration;
-        $overtime->save();
-
-        $this->banner('Pengajuan lembur berhasil dikirim dan sedang menunggu persetujuan.');
     }
 }
+
