@@ -3,6 +3,7 @@
 namespace Tests\Feature\User;
 
 use App\Livewire\User\SyirkahHistoryComponent;
+use App\Models\EmployeeSalary;
 use App\Models\Saving;
 use App\Models\SavingTransaction;
 use App\Models\User;
@@ -256,5 +257,135 @@ class SyirkahHistoryTest extends TestCase
             'total_amount' => 300000,
             'status' => 'pending',
         ]);
+    }
+
+    public function test_user_can_open_override_modal_and_see_master_program_info(): void
+    {
+        $user = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+        ]);
+
+        $saving = Saving::create([
+            'savings_name' => 'Syirkah Reguler 2026',
+            'mandatory_savings' => 50000,
+            'secondary_savings' => 50000,
+        ]);
+
+        $salary = EmployeeSalary::create([
+            'employee_id' => $user->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 4000000,
+            'savings_id' => $saving->id,
+            'custom_secondary_savings' => null,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(SyirkahHistoryComponent::class)
+            ->call('openOverrideModal')
+            ->assertSet('isOverrideModalOpen', true)
+            ->assertSet('masterSavingsName', 'Syirkah Reguler 2026')
+            ->assertSet('masterMandatorySavings', 50000.0)
+            ->assertSet('masterSecondarySavings', 50000.0)
+            ->assertSet('overrideMode', 'default')
+            ->assertSet('overrideNominal', 50000.0)
+            ->assertSet('hasCustomOverride', false)
+            ->assertSee('Syirkah Reguler 2026')
+            ->assertSee('Default Master');
+    }
+
+    public function test_user_can_set_custom_secondary_savings_override_and_it_persists(): void
+    {
+        $user = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+        ]);
+
+        $saving = Saving::create([
+            'savings_name' => 'Syirkah Reguler 2026',
+            'mandatory_savings' => 50000,
+            'secondary_savings' => 50000,
+        ]);
+
+        $salary = EmployeeSalary::create([
+            'employee_id' => $user->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 4000000,
+            'savings_id' => $saving->id,
+            'custom_secondary_savings' => null,
+        ]);
+
+        $this->actingAs($user);
+
+        // User chooses Custom mode and sets nominal to 150000
+        Livewire::test(SyirkahHistoryComponent::class)
+            ->call('openOverrideModal')
+            ->assertSet('isOverrideModalOpen', true)
+            ->set('overrideMode', 'custom')
+            ->set('overrideNominal', 150000)
+            ->call('saveOverride')
+            ->assertSet('isOverrideModalOpen', false)
+            ->assertDispatched('notify', 'Pengaturan nominal Syirkah Sukarela berhasil diubah.');
+
+        $salary->refresh();
+        expect($salary->custom_secondary_savings)->toEqual(150000.0)
+            ->and($salary->effective_secondary_savings)->toEqual(150000.0);
+
+        // Verify page reflects the custom setting
+        Livewire::test(SyirkahHistoryComponent::class)
+            ->assertViewHas('userHasCustomOverride', true)
+            ->assertViewHas('userEffectiveSecondary', 150000.0)
+            ->assertSee('Custom')
+            ->assertSee('Rp 150.000/bln');
+    }
+
+    public function test_user_can_use_preset_buttons_and_reset_override_to_default(): void
+    {
+        $user = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+        ]);
+
+        $saving = Saving::create([
+            'savings_name' => 'Syirkah Reguler 2026',
+            'mandatory_savings' => 50000,
+            'secondary_savings' => 50000,
+        ]);
+
+        $salary = EmployeeSalary::create([
+            'employee_id' => $user->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 4000000,
+            'savings_id' => $saving->id,
+            'custom_secondary_savings' => 200000,
+        ]);
+
+        $this->actingAs($user);
+
+        // 1. Test preset helper
+        Livewire::test(SyirkahHistoryComponent::class)
+            ->call('openOverrideModal')
+            ->assertSet('overrideMode', 'custom')
+            ->assertSet('overrideNominal', 200000.0)
+            ->call('setOverridePreset', 300000)
+            ->assertSet('overrideNominal', 300000.0)
+            ->call('saveOverride')
+            ->assertSet('isOverrideModalOpen', false);
+
+        $salary->refresh();
+        expect($salary->custom_secondary_savings)->toEqual(300000.0);
+
+        // 2. Test reset back to default master
+        Livewire::test(SyirkahHistoryComponent::class)
+            ->call('openOverrideModal')
+            ->set('overrideMode', 'default')
+            ->call('saveOverride')
+            ->assertSet('isOverrideModalOpen', false)
+            ->assertDispatched('notify', 'Nominal Syirkah Sukarela dikembalikan ke default master.');
+
+        $salary->refresh();
+        expect($salary->custom_secondary_savings)->toBeNull()
+            ->and($salary->effective_secondary_savings)->toEqual(50000.0);
     }
 }

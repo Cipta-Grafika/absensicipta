@@ -21,7 +21,7 @@
       <div class="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-teal-300/20 blur-xl pointer-events-none"></div>
       
       <div class="relative z-10">
-        <!-- Card Top Bar: Title & Action "Ajukan" Button -->
+        <!-- Card Top Bar: Title & Action Buttons -->
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 backdrop-blur-md">
@@ -32,16 +32,29 @@
             </span>
           </div>
 
-          <!-- ACTION BUTTON "AJUKAN" PENARIKAN (Replacing previous static badge) -->
-          <button 
-            type="button"
-            wire:click="openWithdrawalModal"
-            class="inline-flex items-center gap-1.5 rounded-full bg-white/90 hover:bg-white text-emerald-900 font-bold px-3.5 py-1.5 text-xs shadow-md shadow-emerald-950/30 hover:scale-[1.03] active:scale-[0.98] transition-all duration-150 border border-white/40 cursor-pointer"
-            title="Ajukan Penarikan Saldo Syirkah"
-          >
-            <x-heroicon-s-arrow-up-tray class="h-3.5 w-3.5 text-emerald-700" />
-            <span>Ajukan</span>
-          </button>
+          <div class="flex items-center gap-2">
+            <!-- ACTION BUTTON "ATUR SSR / OVERRIDE" (Gear Setting Icon) -->
+            <button 
+              type="button"
+              wire:click="openOverrideModal"
+              class="inline-flex items-center gap-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-1.5 text-xs backdrop-blur-md border border-white/30 shadow-xs hover:scale-[1.03] active:scale-[0.98] transition-all duration-150 cursor-pointer"
+              title="Atur Nominal Syirkah Sukarela (SSR) Sendiri"
+            >
+              <x-heroicon-s-cog-6-tooth class="h-3.5 w-3.5 text-amber-300" />
+              <span class="hidden xs:inline">Atur SSR</span>
+            </button>
+
+            <!-- ACTION BUTTON "AJUKAN" PENARIKAN -->
+            <button 
+              type="button"
+              wire:click="openWithdrawalModal"
+              class="inline-flex items-center gap-1.5 rounded-full bg-white/90 hover:bg-white text-emerald-900 font-bold px-3.5 py-1.5 text-xs shadow-md shadow-emerald-950/30 hover:scale-[1.03] active:scale-[0.98] transition-all duration-150 border border-white/40 cursor-pointer"
+              title="Ajukan Penarikan Saldo Syirkah"
+            >
+              <x-heroicon-s-arrow-up-tray class="h-3.5 w-3.5 text-emerald-700" />
+              <span>Ajukan</span>
+            </button>
+          </div>
         </div>
 
         <!-- Card Main Balance -->
@@ -68,14 +81,24 @@
           </div>
 
           <!-- Syirkah Sukarela -->
-          <div class="rounded-xl bg-white/10 backdrop-blur-md p-2.5 sm:p-3 border border-white/10">
-            <div class="flex items-center gap-1.5 text-[11px] text-emerald-200">
-              <x-heroicon-o-sparkles class="h-3.5 w-3.5 text-amber-300" />
-              <span>Sukarela (SSR)</span>
+          <div class="rounded-xl bg-white/10 backdrop-blur-md p-2.5 sm:p-3 border border-white/10 relative group">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 text-[11px] text-emerald-200">
+                <x-heroicon-o-sparkles class="h-3.5 w-3.5 text-amber-300" />
+                <span>Sukarela (SSR)</span>
+              </div>
+              @if($userHasCustomOverride)
+                <span class="inline-flex items-center px-1.5 py-0.5 text-[9px] font-extrabold rounded-full bg-amber-400 text-amber-950 shadow-2xs" title="Kustomisasi Mandiri Aktif">
+                  Custom
+                </span>
+              @endif
             </div>
             <p class="mt-1 text-sm sm:text-base font-extrabold text-white">
               Rp {{ number_format($saldoSukarela, 0, ',', '.') }}
             </p>
+            <div class="mt-0.5 text-[10px] text-emerald-100/80 truncate">
+              Potongan: <strong>Rp {{ number_format($userEffectiveSecondary, 0, ',', '.') }}/bln</strong>
+            </div>
           </div>
 
           <!-- Total Mutasi -->
@@ -1188,6 +1211,171 @@
 
     <x-slot name="footer">
       <x-secondary-button wire:click="closeProofModal">Tutup</x-secondary-button>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- 9. MODAL PENGATURAN OVERRIDE NOMINAL SYIRKAH SUKARELA (SSR) MANDIRI USER -->
+  <x-dialog-modal wire:model.live="isOverrideModalOpen" maxWidth="lg">
+    <x-slot name="title">
+      <div class="flex items-center gap-2.5 text-gray-900 dark:text-white">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 shadow-2xs">
+          <x-heroicon-s-cog-6-tooth class="h-5 w-5" />
+        </div>
+        <div>
+          <h3 class="text-base font-bold">{{ __('Pengaturan Nominal Syirkah Sukarela (SSR)') }}</h3>
+          <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Atur besaran kontribusi sukarela bulanan sesuai keinginan Anda</p>
+        </div>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      <div class="space-y-4">
+        <!-- Info Program Syirkah Aktif -->
+        <div class="rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 p-3.5 sm:p-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Program Terdaftar</p>
+              <p class="text-sm font-extrabold text-slate-800 dark:text-slate-100">{{ $masterSavingsName }}</p>
+            </div>
+            <div class="flex items-center gap-4 text-slate-600 dark:text-slate-300">
+              <div>
+                <span class="text-[10px] text-slate-400 block">Wajib (Master):</span>
+                <strong class="font-bold text-gray-900 dark:text-white">Rp {{ number_format($masterMandatorySavings, 0, ',', '.') }}/bln</strong>
+              </div>
+              <div class="border-l border-slate-200 dark:border-slate-700 pl-4">
+                <span class="text-[10px] text-slate-400 block">Default SSR:</span>
+                <strong class="font-bold text-gray-900 dark:text-white">Rp {{ number_format($masterSecondarySavings, 0, ',', '.') }}/bln</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode Selector Cards -->
+        <div>
+          <x-label value="Pilihan Aturan Nominal Sukarela (SSR)" class="text-xs font-semibold mb-2 block" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+            <!-- Mode 1: Default Master -->
+            <label class="relative flex cursor-pointer rounded-xl border-2 p-3.5 shadow-xs transition-all {{ $overrideMode === 'default' ? 'border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-500 ring-2 ring-emerald-500/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750' }}">
+              <input type="radio" wire:model.live="overrideMode" value="default" class="sr-only" />
+              <div class="flex flex-1 flex-col">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                    <x-heroicon-o-check-circle class="h-4 w-4 {{ $overrideMode === 'default' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400' }}" />
+                    Default Master
+                  </span>
+                  <span class="text-[11px] font-extrabold text-gray-700 dark:text-gray-300">Rp {{ number_format($masterSecondarySavings, 0, ',', '.') }}</span>
+                </div>
+                <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                  Otomatis mengikuti nominal standar program syirkah
+                </p>
+              </div>
+            </label>
+
+            <!-- Mode 2: Custom Override -->
+            <label class="relative flex cursor-pointer rounded-xl border-2 p-3.5 shadow-xs transition-all {{ $overrideMode === 'custom' ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 dark:border-amber-500 ring-2 ring-amber-500/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750' }}">
+              <input type="radio" wire:model.live="overrideMode" value="custom" class="sr-only" />
+              <div class="flex flex-1 flex-col">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <x-heroicon-s-sparkles class="h-4 w-4 {{ $overrideMode === 'custom' ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400' }}" />
+                    Kustom Sendiri
+                  </span>
+                  <span class="text-[10px] font-bold bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded">Sukarela</span>
+                </div>
+                <p class="mt-1 text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-snug">
+                  Atur nominal sukarela mandiri (misal: 100rb, 200rb, dst)
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Custom Input & Quick Presets (Shown when Mode === 'custom') -->
+        @if($overrideMode === 'custom')
+          <div class="rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 p-4 space-y-3">
+            <div x-data="{
+              rawVal: @entangle('overrideNominal').live,
+              displayVal: '',
+              formatRupiah(val) {
+                if (val === null || val === undefined || val === '' || Number(val) === 0) return '';
+                let num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+                if (isNaN(num) || num === 0) return '';
+                return 'Rp. ' + new Intl.NumberFormat('id-ID').format(num);
+              },
+              init() {
+                this.displayVal = this.formatRupiah(this.rawVal);
+                this.$watch('rawVal', (newVal) => {
+                  this.displayVal = this.formatRupiah(newVal);
+                });
+              },
+              handleInput(e) {
+                let clean = e.target.value.replace(/[^0-9]/g, '');
+                let num = clean ? parseInt(clean, 10) : 0;
+                this.rawVal = num;
+                this.displayVal = num > 0 ? 'Rp. ' + new Intl.NumberFormat('id-ID').format(num) : '';
+              }
+            }">
+              <x-label for="overrideNominal" value="Nominal Syirkah Sukarela yang Diinginkan (Rp/bulan)" class="font-bold text-amber-900 dark:text-amber-200 text-xs" />
+              <div class="relative mt-1.5">
+                <x-input 
+                  id="overrideNominal" 
+                  type="text" 
+                  inputmode="numeric"
+                  x-model="displayVal"
+                  @input="handleInput($event)"
+                  class="block w-full text-base font-extrabold text-gray-900 dark:text-gray-100" 
+                  placeholder="Rp. 100.000" 
+                  required
+                />
+              </div>
+              <x-input-error for="overrideNominal" class="mt-1" />
+            </div>
+
+            <!-- Quick Presets -->
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 block mb-1.5">Pilihan Cepat:</span>
+              <div class="flex flex-wrap gap-1.5">
+                @foreach([50000, 100000, 150000, 200000, 300000, 500000] as $preset)
+                  <button 
+                    type="button" 
+                    wire:click="setOverridePreset({{ $preset }})"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition {{ (float)$overrideNominal === (float)$preset ? 'bg-amber-600 text-white shadow-xs' : 'bg-white dark:bg-gray-800 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800' }}"
+                  >
+                    Rp {{ number_format($preset, 0, ',', '.') }}
+                  </button>
+                @endforeach
+              </div>
+            </div>
+          </div>
+        @endif
+
+        <!-- Transparency & Persistence Information Notice -->
+        <div class="rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 p-3 flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200">
+          <x-heroicon-o-information-circle class="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div class="space-y-1 text-[11px] leading-relaxed">
+            <p class="font-bold text-blue-950 dark:text-blue-100">Sifat Pengaturan Menetap & Transparan:</p>
+            <p class="text-blue-800 dark:text-blue-300">
+              Pengaturan ini berlaku secara otomatis untuk pemotongan payroll syirkah setiap bulannya dan akan menetap sampai Anda melakukan perubahan kembali di masa mendatang.
+            </p>
+          </div>
+        </div>
+      </div>
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-end gap-2">
+        <x-secondary-button wire:click="closeOverrideModal" wire:loading.attr="disabled">
+          {{ __('Batal') }}
+        </x-secondary-button>
+
+        <x-button 
+          wire:click="saveOverride" 
+          wire:loading.attr="disabled"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+        >
+          {{ __('Simpan Pengaturan') }}
+        </x-button>
+      </div>
     </x-slot>
   </x-dialog-modal>
 

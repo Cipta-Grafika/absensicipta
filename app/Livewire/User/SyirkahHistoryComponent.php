@@ -12,10 +12,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Laravel\Jetstream\InteractsWithBanner;
 
 class SyirkahHistoryComponent extends Component
 {
-    use WithPagination;
+    use WithPagination, InteractsWithBanner;
 
     // Filters for Mutation Ledger
     public $search = '';
@@ -34,6 +35,16 @@ class SyirkahHistoryComponent extends Component
     public $secondaryAmount = 0;
     public $savingsId = null;
     public $reason = '';
+
+    // Custom Sukarela Override State (for individual user)
+    public $isOverrideModalOpen = false;
+    public $overrideMode = 'default'; // 'default' | 'custom'
+    public $overrideNominal = 0;
+    public $masterSecondarySavings = 0;
+    public $masterMandatorySavings = 0;
+    public $masterSavingsName = '';
+    public $hasCustomOverride = false;
+    public $currentEffectiveSecondary = 0;
 
     // Detail Withdrawal Modal State
     public $selectedWithdrawal = null;
@@ -267,6 +278,88 @@ class SyirkahHistoryComponent extends Component
         $this->selectedProofUrl = null;
     }
 
+    // --- Custom Sukarela Override Actions (Mandiri User) ---
+
+    public function openOverrideModal()
+    {
+        $this->resetErrorBag();
+        $userId = Auth::id();
+        $salary = EmployeeSalary::with('savings')->where('employee_id', $userId)->first();
+
+        $this->masterSavingsName = $salary?->savings?->savings_name ?? 'Syirkah Reguler';
+        $this->masterMandatorySavings = (float) ($salary?->savings?->mandatory_savings ?? 0);
+        $this->masterSecondarySavings = (float) ($salary?->savings?->secondary_savings ?? 0);
+
+        if ($salary && $salary->custom_secondary_savings !== null) {
+            $this->overrideMode = 'custom';
+            $this->overrideNominal = (float) $salary->custom_secondary_savings;
+            $this->hasCustomOverride = true;
+            $this->currentEffectiveSecondary = (float) $salary->custom_secondary_savings;
+        } else {
+            $this->overrideMode = 'default';
+            $this->overrideNominal = (float) $this->masterSecondarySavings;
+            $this->hasCustomOverride = false;
+            $this->currentEffectiveSecondary = (float) $this->masterSecondarySavings;
+        }
+
+        $this->isOverrideModalOpen = true;
+    }
+
+    public function closeOverrideModal()
+    {
+        $this->isOverrideModalOpen = false;
+        $this->resetErrorBag();
+    }
+
+    public function setOverridePreset($amount)
+    {
+        $this->overrideMode = 'custom';
+        $this->overrideNominal = (float) $amount;
+    }
+
+    public function saveOverride()
+    {
+        $userId = Auth::id();
+        $salary = EmployeeSalary::with('savings')->where('employee_id', $userId)->first();
+
+        if (!$salary) {
+            $this->dangerBanner('Data penggajian/salary Anda belum terdaftar di sistem.');
+            return;
+        }
+
+        if ($this->overrideMode === 'custom') {
+            if (is_string($this->overrideNominal)) {
+                $this->overrideNominal = (float) preg_replace('/[^0-9]/', '', $this->overrideNominal);
+            }
+
+            $this->validate([
+                'overrideNominal' => 'required|numeric|min:0',
+            ], [
+                'overrideNominal.required' => 'Nominal syirkah sukarela wajib diisi.',
+                'overrideNominal.numeric' => 'Nominal harus berupa angka.',
+                'overrideNominal.min' => 'Nominal tidak boleh negatif.',
+            ]);
+
+            $val = max(0, (float) $this->overrideNominal);
+            $salary->update([
+                'custom_secondary_savings' => $val,
+            ]);
+
+            $this->closeOverrideModal();
+            $this->banner('Pengaturan nominal Syirkah Sukarela (SSR) berhasil disimpan menjadi Rp ' . number_format($val, 0, ',', '.') . '/bulan dan akan berlaku menetap.');
+            $this->dispatch('notify', 'Pengaturan nominal Syirkah Sukarela berhasil diubah.');
+        } else {
+            $salary->update([
+                'custom_secondary_savings' => null,
+            ]);
+
+            $this->closeOverrideModal();
+            $masterSec = (float) ($salary->savings?->secondary_savings ?? 0);
+            $this->banner('Pengaturan nominal Syirkah Sukarela (SSR) dikembalikan mengikuti default master program (Rp ' . number_format($masterSec, 0, ',', '.') . '/bulan).');
+            $this->dispatch('notify', 'Nominal Syirkah Sukarela dikembalikan ke default master.');
+        }
+    }
+
     private function calculateBalances(string $userId): array
     {
         $approvedDepositQuery = SavingTransaction::where('user_id', $userId)
@@ -320,6 +413,13 @@ class SyirkahHistoryComponent extends Component
     {
         $userId = Auth::id();
         $balances = $this->calculateBalances($userId);
+
+        $userSalary = EmployeeSalary::with('savings')->where('employee_id', $userId)->first();
+        $userEffectiveSecondary = $userSalary ? (float) $userSalary->effective_secondary_savings : 0.0;
+        $userHasCustomOverride = $userSalary && $userSalary->custom_secondary_savings !== null;
+        $userMasterSecondary = $userSalary ? (float) ($userSalary->savings?->secondary_savings ?? 0) : 0.0;
+        $userMasterMandatory = $userSalary ? (float) ($userSalary->savings?->mandatory_savings ?? 0) : 0.0;
+        $userSavingsName = $userSalary?->savings?->savings_name ?? 'Syirkah';
 
         // 1. Query transactions for ledger table (strictly approved only)
         $query = SavingTransaction::with(['masterSaving', 'approver', 'savingWithdrawal'])
@@ -375,6 +475,12 @@ class SyirkahHistoryComponent extends Component
             'availTotal' => $balances['availTotal'],
             'totalTransactionsCount' => SavingTransaction::where('user_id', $userId)->where('status', 'approved')->count(),
             'pendingWithdrawalsCount' => SavingWithdrawal::where('user_id', $userId)->where('status', 'pending')->count(),
+            'userSalary' => $userSalary,
+            'userEffectiveSecondary' => $userEffectiveSecondary,
+            'userHasCustomOverride' => $userHasCustomOverride,
+            'userMasterSecondary' => $userMasterSecondary,
+            'userMasterMandatory' => $userMasterMandatory,
+            'userSavingsName' => $userSavingsName,
         ])->layout('layouts.app');
     }
 }
