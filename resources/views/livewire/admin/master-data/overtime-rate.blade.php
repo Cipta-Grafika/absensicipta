@@ -59,14 +59,18 @@
               @if(($rate->meal_allowance ?? 0) > 0)
                 <div class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5 flex flex-col">
                   <span>+ Uang Makan Rp {{ number_format($rate->meal_allowance, 0, ',', '.') }}</span>
-                  @if($rate->meal_min_start_time || $rate->meal_max_start_time || $rate->meal_min_duration)
+                  @if($rate->meal_min_start_time || $rate->meal_max_start_time || $rate->meal_min_duration || $rate->meal_condition_type === 'always')
                     <span class="text-[10px] font-medium text-amber-700/80 dark:text-amber-300/80">
                       Syarat: 
-                      @if($rate->meal_min_start_time || $rate->meal_max_start_time)
-                        Mulai: {{ substr($rate->meal_min_start_time ?? '17:00', 0, 5) }} - {{ substr($rate->meal_max_start_time ?? '18:00', 0, 5) }}
+                      @if($rate->meal_condition_type === 'crosses_time')
+                        Melewati {{ substr($rate->meal_min_start_time ?? '12:00', 0, 5) }} - {{ substr($rate->meal_max_start_time ?? '13:00', 0, 5) }}
+                      @elseif($rate->meal_condition_type === 'always')
+                        Selalu Diberikan
+                      @elseif($rate->meal_min_start_time || $rate->meal_max_start_time)
+                        Mulai {{ substr($rate->meal_min_start_time ?? '17:00', 0, 5) }} - {{ substr($rate->meal_max_start_time ?? '18:00', 0, 5) }}
                       @endif
                       @if($rate->meal_min_duration)
-                        {{ ($rate->meal_min_start_time || $rate->meal_max_start_time) ? ', ' : '' }}Min {{ $rate->meal_min_duration }} Jam
+                        {{ ($rate->meal_min_start_time || $rate->meal_max_start_time || $rate->meal_condition_type === 'always') ? ', ' : '' }}Min {{ $rate->meal_min_duration }} Jam
                       @endif
                     </span>
                   @else
@@ -179,27 +183,52 @@
 
         <!-- Conditional Meal Settings Subpanel -->
         <div class="mt-3 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50">
-          <div class="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 mb-2">
-            <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Syarat Pemberian Uang Makan (Otomatis & Konfigurable)</span>
+          <div class="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center justify-between gap-1.5 mb-2">
+            <div class="flex items-center gap-1.5">
+              <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Syarat Pemberian Uang Makan (Otomatis & Presisi)</span>
+            </div>
+            <!-- Quick Preset Buttons -->
+            <div class="flex items-center gap-1">
+              <button type="button" 
+                wire:click="$set('form.meal_min_start_time', '12:00'); $set('form.meal_max_start_time', '13:00'); $set('form.meal_condition_type', 'crosses_time');" 
+                class="px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-200/70 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-900 dark:text-amber-200 transition">
+                ⚡ Makan Siang (12-13)
+              </button>
+              <button type="button" 
+                wire:click="$set('form.meal_min_start_time', '17:00'); $set('form.meal_max_start_time', '18:00'); $set('form.meal_condition_type', 'start_time_gte');" 
+                class="px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-200/70 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-900 dark:text-amber-200 transition">
+                ⚡ Makan Malam (17-18)
+              </button>
+            </div>
           </div>
+
+          <div class="mb-3">
+            <x-label for="meal_condition_type" class="text-xs text-gray-750 dark:text-gray-250 font-medium">Tipe Kondisi Waktu</x-label>
+            <x-select id="meal_condition_type" wire:model.live="form.meal_condition_type" class="mt-1 block w-full text-xs">
+              <option value="start_time_gte">Mulai pada Rentang Jam Tertentu (Makan Malam Sore: 17:00 - 18:00)</option>
+              <option value="crosses_time">Melewati / Melintasi Jam Istirahat (Makan Siang: 12:00 - 13:00)</option>
+              <option value="always">Selalu Diberikan (Tanpa Syarat Jam)</option>
+            </x-select>
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <x-label for="meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Mulai Dari</x-label>
+              <x-label for="meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Batas Awal</x-label>
               <x-input id="meal_min_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_min_start_time" placeholder="17:00" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Mulai dari jam (misal <strong>17:00</strong>).</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Misal: <strong>12:00</strong> (Siang) / <strong>17:00</strong> (Sore).</p>
             </div>
             <div>
-              <x-label for="meal_max_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Mulai Sampai</x-label>
+              <x-label for="meal_max_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Batas Akhir</x-label>
               <x-input id="meal_max_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_max_start_time" placeholder="18:00" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Batas akhir mulai (misal <strong>18:00</strong>).</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Misal: <strong>13:00</strong> (Siang) / <strong>18:00</strong> (Sore).</p>
             </div>
             <div>
               <x-label for="meal_min_duration" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Min. Durasi (Jam)</x-label>
-              <x-input id="meal_min_duration" class="mt-1 block w-full text-xs" type="number" step="0.5" min="0" wire:model="form.meal_min_duration" placeholder="Contoh: 2" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Opsional (mengikuti tier min. jam).</p>
+              <x-input id="meal_min_duration" class="mt-1 block w-full text-xs" type="number" step="0.5" min="0" wire:model="form.meal_min_duration" placeholder="Contoh: 1" />
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Opsional (min durasi lembur).</p>
             </div>
           </div>
         </div>
@@ -221,8 +250,8 @@
           </div>
         </div>
         <p class="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
-          <span class="font-bold text-sky-600 dark:text-sky-400">💡 Best-Practice Tier Range:</span>
-          Untuk tier berjenjang (misal Tier 1: 1 - 3 Jam & Tier 2: > 3 Jam s/d 24 Jam), sistem secara presisi memprioritaskan batas eksak. Uang makan lembur (jika syarat terpenuhi) ditambahkan <strong>flat (1x)</strong> per pengajuan lembur.
+          <span class="font-bold text-sky-600 dark:text-sky-400">💡 Bebas Bentrok:</span>
+          Sistem secara otomatis mendeduplikasi tarif jam (upah pokok tidak akan dihitung ganda) dan mengevaluasi aturan makan siang & malam secara presisi.
         </p>
 
         <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
@@ -326,27 +355,52 @@
 
         <!-- Conditional Meal Settings Subpanel (Edit) -->
         <div class="mt-3 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50">
-          <div class="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 mb-2">
-            <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Syarat Pemberian Uang Makan (Otomatis & Konfigurable)</span>
+          <div class="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center justify-between gap-1.5 mb-2">
+            <div class="flex items-center gap-1.5">
+              <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Syarat Pemberian Uang Makan (Otomatis & Presisi)</span>
+            </div>
+            <!-- Quick Preset Buttons (Edit) -->
+            <div class="flex items-center gap-1">
+              <button type="button" 
+                wire:click="$set('form.meal_min_start_time', '12:00'); $set('form.meal_max_start_time', '13:00'); $set('form.meal_condition_type', 'crosses_time');" 
+                class="px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-200/70 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-900 dark:text-amber-200 transition">
+                ⚡ Makan Siang (12-13)
+              </button>
+              <button type="button" 
+                wire:click="$set('form.meal_min_start_time', '17:00'); $set('form.meal_max_start_time', '18:00'); $set('form.meal_condition_type', 'start_time_gte');" 
+                class="px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-200/70 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-900 dark:text-amber-200 transition">
+                ⚡ Makan Malam (17-18)
+              </button>
+            </div>
           </div>
+
+          <div class="mb-3">
+            <x-label for="edit_meal_condition_type" class="text-xs text-gray-750 dark:text-gray-250 font-medium">Tipe Kondisi Waktu</x-label>
+            <x-select id="edit_meal_condition_type" wire:model.live="form.meal_condition_type" class="mt-1 block w-full text-xs">
+              <option value="start_time_gte">Mulai pada Rentang Jam Tertentu (Makan Malam Sore: 17:00 - 18:00)</option>
+              <option value="crosses_time">Melewati / Melintasi Jam Istirahat (Makan Siang: 12:00 - 13:00)</option>
+              <option value="always">Selalu Diberikan (Tanpa Syarat Jam)</option>
+            </x-select>
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <x-label for="edit_meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Mulai Dari</x-label>
+              <x-label for="edit_meal_min_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Batas Awal</x-label>
               <x-input id="edit_meal_min_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_min_start_time" placeholder="17:00" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Mulai dari jam (misal <strong>17:00</strong>).</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Misal: <strong>12:00</strong> (Siang) / <strong>17:00</strong> (Sore).</p>
             </div>
             <div>
-              <x-label for="edit_meal_max_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Mulai Sampai</x-label>
+              <x-label for="edit_meal_max_start_time" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Jam Batas Akhir</x-label>
               <x-input id="edit_meal_max_start_time" class="mt-1 block w-full text-xs" type="time" wire:model="form.meal_max_start_time" placeholder="18:00" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Batas akhir mulai (misal <strong>18:00</strong>).</p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Misal: <strong>13:00</strong> (Siang) / <strong>18:00</strong> (Sore).</p>
             </div>
             <div>
               <x-label for="edit_meal_min_duration" class="text-xs text-gray-700 dark:text-gray-300 font-medium">Min. Durasi (Jam)</x-label>
-              <x-input id="edit_meal_min_duration" class="mt-1 block w-full text-xs" type="number" step="0.5" min="0" wire:model="form.meal_min_duration" placeholder="Contoh: 2" />
-              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Opsional (mengikuti tier min. jam).</p>
+              <x-input id="edit_meal_min_duration" class="mt-1 block w-full text-xs" type="number" step="0.5" min="0" wire:model="form.meal_min_duration" placeholder="Contoh: 1" />
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Opsional (min durasi lembur).</p>
             </div>
           </div>
         </div>

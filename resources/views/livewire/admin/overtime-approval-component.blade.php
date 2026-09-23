@@ -846,20 +846,38 @@
               </div>
 
               <!-- Baris Uang Makan Lembur -->
-              <div class="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-700/60 text-xs">
-                <div class="text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                  <span class="font-semibold">Uang Makan Lembur</span>
-                  @if($mealAllowance > 0)
-                    <span class="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300">
-                      Memenuhi Syarat
-                    </span>
-                  @else
-                    <span class="text-gray-400 text-[11px]">(Tidak memenuhi syarat)</span>
-                  @endif
+              <div class="py-2 border-t border-gray-100 dark:border-gray-700/60 text-xs">
+                <div class="flex items-center justify-between">
+                  <div class="text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <span class="font-semibold">Uang Makan Lembur</span>
+                    @php
+                      $adminMealDetails = $payData['meal_details'] ?? [];
+                    @endphp
+                    @if($mealAllowance > 0)
+                      <span class="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                        Memenuhi Syarat ({{ count($adminMealDetails) > 1 ? count($adminMealDetails) . 'x Jendela Makan' : '1x Makan' }})
+                      </span>
+                    @else
+                      <span class="text-gray-400 text-[11px]">(Tidak memenuhi syarat)</span>
+                    @endif
+                  </div>
+                  <div class="font-bold {{ $mealAllowance > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400' }} text-sm">
+                    Rp {{ number_format($mealAllowance, 0, ',', '.') }}
+                  </div>
                 </div>
-                <div class="font-bold {{ $mealAllowance > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400' }} text-sm">
-                  Rp {{ number_format($mealAllowance, 0, ',', '.') }}
-                </div>
+                @if(!empty($adminMealDetails))
+                  <div class="mt-2 space-y-1.5 pl-1">
+                    @foreach($adminMealDetails as $mItem)
+                      <div class="flex items-center justify-between text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
+                        <span class="font-medium flex items-center gap-1.5">
+                          <svg class="h-3 w-3 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                          {{ $mItem['name'] }}
+                        </span>
+                        <span class="font-bold">Rp {{ number_format($mItem['amount'], 0, ',', '.') }}</span>
+                      </div>
+                    @endforeach
+                  </div>
+                @endif
               </div>
 
               <!-- Total Akumulasi Bayaran (Highlighted) -->

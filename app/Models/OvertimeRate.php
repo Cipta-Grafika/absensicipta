@@ -148,16 +148,20 @@ class OvertimeRate extends Model
 
             // Select highest specificity score group
             $bestScore = $groupedBySpecificity->keys()->max();
-            $candidateRates = $groupedBySpecificity->get($bestScore)->sortBy('min_hours')->values();
+            $candidateRates = $groupedBySpecificity->get($bestScore)->values();
+
+            // 1. Deduplicate Hourly Rate Tiers by min_hours and max_hours to prevent double counting
+            $uniqueTierRates = $candidateRates->unique(function ($r) {
+                return ((float) $r->min_hours) . '-' . ((float) $r->max_hours);
+            })->sortBy('min_hours')->values();
 
             // Progressive tiering calculation
             $totalHourlyOrFlatPay = 0.0;
-            $appliedMealAllowance = 0.0;
             $primaryRateAmount = 0.0;
             $previousMaxHours = 0.0;
             $breakdownTiers = [];
 
-            foreach ($candidateRates as $index => $rate) {
+            foreach ($uniqueTierRates as $index => $rate) {
                 $minH = (float) $rate->min_hours;
                 $maxH = (float) $rate->max_hours;
 
@@ -199,44 +203,6 @@ class OvertimeRate extends Model
                             'rate_type' => $rate->rate_type,
                             'subtotal' => $subtotal,
                         ];
-
-                        // Evaluate dynamic meal allowance eligibility
-                        if ((float)($rate->meal_allowance ?? 0.0) > 0) {
-                            $isMealApplicable = true;
-
-                            // 1. Min duration check (if specified)
-                            if ($rate->meal_min_duration !== null && (float) $rate->meal_min_duration > 0) {
-                                if ($durationHours < (float) $rate->meal_min_duration) {
-                                    $isMealApplicable = false;
-                                }
-                            }
-
-                            // 2. Start time / time window check (if startTime provided)
-                            if ($isMealApplicable && !empty($startTime)) {
-                                $actualStart = substr(trim($startTime), 0, 5); // e.g. '17:00', '18:00', '19:00'
-                                $rateMinTime = !empty($rate->meal_min_start_time) ? substr(trim($rate->meal_min_start_time), 0, 5) : '17:00';
-                                $rateMaxTime = !empty($rate->meal_max_start_time) ? substr(trim($rate->meal_max_start_time), 0, 5) : '18:00';
-
-                                if ($rate->meal_condition_type === 'crosses_time' && !empty($endTime)) {
-                                    $actualEnd = substr(trim($endTime), 0, 5);
-                                    // Crosses condition: started at/before target window and ended after target window, OR started within window
-                                    if (!($actualStart <= $rateMaxTime && ($actualEnd > $rateMinTime || $actualStart >= $rateMinTime))) {
-                                        $isMealApplicable = false;
-                                    }
-                                } elseif ($rate->meal_condition_type === 'always') {
-                                    $isMealApplicable = true;
-                                } else {
-                                    // Default: Must start within the designated evening window (e.g. 17:00 - 18:00)
-                                    if ($actualStart < $rateMinTime || $actualStart > $rateMaxTime) {
-                                        $isMealApplicable = false;
-                                    }
-                                }
-                            }
-
-                            if ($isMealApplicable) {
-                                $appliedMealAllowance = (float) $rate->meal_allowance;
-                            }
-                        }
                     }
                 }
 
@@ -244,7 +210,7 @@ class OvertimeRate extends Model
             }
 
             // If duration exceeds highest tier max_hours, calculate extra hours at highest tier's rate
-            $highestRate = $candidateRates->last();
+            $highestRate = $uniqueTierRates->last();
             if ($highestRate && $durationHours > $previousMaxHours) {
                 $overflowHours = $durationHours - $previousMaxHours;
                 $highestRateAmount = (float) $highestRate->rate_amount;
@@ -266,11 +232,100 @@ class OvertimeRate extends Model
                 }
             }
 
+            // 2. Multi-Window Meal Allowance Evaluation across all matching candidate rules
+            $mealRules = $candidateRates->filter(function ($r) {
+                return (float) ($r->meal_allowance ?? 0) > 0;
+            })->unique(function ($r) {
+                return implode('|', [
+                    (float) $r->meal_allowance,
+                    substr((string) $r->meal_min_start_time, 0, 5),
+                    substr((string) $r->meal_max_start_time, 0, 5),
+                    (string) ($r->meal_condition_type ?? 'start_time_gte'),
+                    (float) ($r->meal_min_duration ?? 0),
+                ]);
+            })->values();
+
+            $appliedMealAllowance = 0.0;
+            $mealDetails = [];
+
+            foreach ($mealRules as $rule) {
+                $isMealApplicable = true;
+                $nominal = (float) $rule->meal_allowance;
+
+                // A. Min duration check
+                if ($rule->meal_min_duration !== null && (float) $rule->meal_min_duration > 0) {
+                    if ($durationHours < (float) $rule->meal_min_duration) {
+                        $isMealApplicable = false;
+                    }
+                }
+
+                // B. Time window / crossing check
+                if ($isMealApplicable && !empty($startTime)) {
+                    $actualStart = substr(trim($startTime), 0, 5);
+                    $actualEnd = !empty($endTime) ? substr(trim($endTime), 0, 5) : null;
+                    $rateMinTime = !empty($rule->meal_min_start_time) ? substr(trim($rule->meal_min_start_time), 0, 5) : '17:00';
+                    $rateMaxTime = !empty($rule->meal_max_start_time) ? substr(trim($rule->meal_max_start_time), 0, 5) : '18:00';
+
+                    if ($rule->meal_condition_type === 'always') {
+                        $isMealApplicable = true;
+                    } elseif ($rule->meal_condition_type === 'crosses_time') {
+                        if (!empty($actualEnd)) {
+                            // Crosses condition: must cross/overlap the designated window (e.g. 12:00 - 13:00)
+                            $spansAcross = ($actualStart <= $rateMinTime && $actualEnd >= $rateMaxTime);
+                            $overlapsWindow = ($actualStart <= $rateMaxTime && $actualEnd > $rateMinTime);
+                            if (!$spansAcross && !$overlapsWindow) {
+                                $isMealApplicable = false;
+                            }
+                        } else {
+                            if ($actualStart < $rateMinTime || $actualStart > $rateMaxTime) {
+                                $isMealApplicable = false;
+                            }
+                        }
+                    } else {
+                        // Default (start_time_gte):
+                        // Valid if started within the designated window (e.g. 17:00 - 18:00),
+                        // OR if the overtime completely spans across the evening window (e.g. 10:00 - 20:00)
+                        $startedInWindow = ($actualStart >= $rateMinTime && $actualStart <= $rateMaxTime);
+                        $spansAcrossEvening = (!empty($actualEnd) && $actualStart <= $rateMinTime && $actualEnd >= $rateMaxTime);
+
+                        if (!$startedInWindow && !$spansAcrossEvening) {
+                            $isMealApplicable = false;
+                        }
+                    }
+                }
+
+                if ($isMealApplicable) {
+                    $appliedMealAllowance += $nominal;
+
+                    $windowLabel = 'Uang Makan Lembur';
+                    if (!empty($rule->meal_min_start_time) || !empty($rule->meal_max_start_time)) {
+                        $minT = substr($rule->meal_min_start_time ?? '17:00', 0, 5);
+                        $maxT = substr($rule->meal_max_start_time ?? '18:00', 0, 5);
+                        if ($minT === '12:00' && $maxT === '13:00') {
+                            $windowLabel = 'Uang Makan Siang (12:00 - 13:00)';
+                        } elseif ($minT === '17:00' && $maxT === '18:00') {
+                            $windowLabel = 'Uang Makan Malam (17:00 - 18:00)';
+                        } else {
+                            $windowLabel = "Uang Makan ({$minT} - {$maxT})";
+                        }
+                    }
+
+                    $mealDetails[] = [
+                        'name' => $windowLabel,
+                        'amount' => $nominal,
+                        'min_start' => $rule->meal_min_start_time,
+                        'max_start' => $rule->meal_max_start_time,
+                        'condition' => $rule->meal_condition_type ?? 'start_time_gte',
+                    ];
+                }
+            }
+
             $totalPay = round($totalHourlyOrFlatPay + $appliedMealAllowance, 2);
 
             return [
                 'applied_rate_amount' => $primaryRateAmount > 0 ? $primaryRateAmount : (float) ($highestRate->rate_amount ?? 0),
                 'meal_allowance' => $appliedMealAllowance,
+                'meal_details' => $mealDetails,
                 'total_hourly_pay' => round($totalHourlyOrFlatPay, 2),
                 'total_pay' => $totalPay,
                 'breakdown' => $breakdownTiers,
@@ -289,6 +344,7 @@ class OvertimeRate extends Model
         return [
             'applied_rate_amount' => $fallbackRate,
             'meal_allowance' => 0.0,
+            'meal_details' => [],
             'total_hourly_pay' => $fallbackSubtotal,
             'total_pay' => $fallbackSubtotal,
             'breakdown' => [
