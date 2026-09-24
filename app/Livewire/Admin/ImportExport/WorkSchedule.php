@@ -94,12 +94,26 @@ class WorkSchedule extends Component
             }
         } elseif ($this->previewing && $this->mode === 'export') {
             $user = Auth::user();
-            $divisionId = !$user->isSuperadmin ? $user->division_id : $this->division;
+            $divisionId = $this->division;
+            if (!$user->isSuperadmin) {
+                if ($this->division && !$user->hasDivisionAccess($this->division)) {
+                    $divisionId = null;
+                } elseif (!$this->division && !$user->hasMultipleDivisions()) {
+                    $divisionId = $user->division_id;
+                }
+            }
             
             $query = WorkScheduleModel::with(['user.division']);
-            if ($divisionId) {
+            if (!$user->isSuperadmin) {
+                if ($divisionId) {
+                    $query->whereHas('user', fn($u) => $u->where('division_id', $divisionId));
+                } else {
+                    $query->whereHas('user', fn($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
+                }
+            } elseif ($divisionId) {
                 $query->whereHas('user', fn($u) => $u->where('division_id', $divisionId));
             }
+
             if ($this->month) {
                 $query->where('date', 'like', $this->month . '%');
             } elseif ($this->year) {
@@ -119,7 +133,7 @@ class WorkSchedule extends Component
 
         return view('livewire.admin.import-export.work-schedule', [
             'schedules' => $schedules,
-            'divisions' => Auth::user()->isSuperadmin ? Division::orderBy('name')->get() : collect(),
+            'divisions' => Auth::user()->getAccessibleDivisions(),
         ]);
     }
 
@@ -147,7 +161,14 @@ class WorkSchedule extends Component
         }
 
         $user = Auth::user();
-        $divisionId = !$user->isSuperadmin ? $user->division_id : $this->division;
+        $divisionId = $this->division;
+        if (!$user->isSuperadmin) {
+            if ($this->division && !$user->hasDivisionAccess($this->division)) {
+                $divisionId = null;
+            } elseif (!$this->division && !$user->hasMultipleDivisions()) {
+                $divisionId = $user->division_id;
+            }
+        }
         $division = $divisionId ? Division::find($divisionId)?->name : null;
 
         $filename = 'jadwal_rolling' . ($this->month ? '_' . Carbon::parse($this->month)->format('F-Y') : '') . ($this->year && !$this->month ? '_' . $this->year : '') . ($division ? '_' . Str::slug($division) : '') . '.xlsx';

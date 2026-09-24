@@ -32,8 +32,8 @@ class AttendancesImport implements ToModel, WithHeadingRow, WithValidation, Skip
 
         if (auth()->user()->group === 'admin') {
             $employee = \App\Models\User::find($row['user_id']);
-            if (!$employee || $employee->division_id !== auth()->user()->division_id) {
-                return null; // Skip if user is not in the admin's division
+            if (!$employee || !auth()->user()->hasDivisionAccess($employee->division_id)) {
+                return null; // Skip if user is not in the admin's accessible divisions
             }
         }
 

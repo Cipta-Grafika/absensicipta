@@ -106,18 +106,21 @@ class WorkScheduleManagementComponent extends Component
 
         // Division Scope Security Check for Admin
         if (!$user->isSuperadmin) {
-            $allowedUserIds = User::where('division_id', $user->division_id)
-                ->pluck('id')
-                ->map(fn($id) => (string) $id)
-                ->toArray();
+            $accessibleIds = $user->getAccessibleDivisionIds();
+            if (!empty($accessibleIds)) {
+                $allowedUserIds = User::whereIn('division_id', $accessibleIds)
+                    ->pluck('id')
+                    ->map(fn($id) => (string) $id)
+                    ->toArray();
 
-            $filteredUserIds = array_filter($this->user_ids, fn($id) => in_array((string)$id, $allowedUserIds));
+                $filteredUserIds = array_filter($this->user_ids, fn($id) => in_array((string)$id, $allowedUserIds));
 
-            if (empty($filteredUserIds)) {
-                $this->addError('user_ids', 'Karyawan yang dipilih tidak sesuai dengan divisi Anda.');
-                return;
+                if (empty($filteredUserIds)) {
+                    $this->addError('user_ids', 'Karyawan yang dipilih tidak sesuai dengan divisi Anda.');
+                    return;
+                }
+                $this->user_ids = array_values($filteredUserIds);
             }
-            $this->user_ids = array_values($filteredUserIds);
         }
 
         $this->validate();
@@ -156,7 +159,7 @@ class WorkScheduleManagementComponent extends Component
         $sched = WorkSchedule::with('user')->findOrFail($id);
 
         // Authorization Check
-        if (!$user->isSuperadmin && $sched->user?->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($sched->user?->division_id)) {
             return abort(403, 'Akses Ditolak: Anda hanya berhak mengubah jadwal karyawan divisi Anda.');
         }
 
@@ -178,7 +181,7 @@ class WorkScheduleManagementComponent extends Component
         }
 
         $sched = WorkSchedule::with('user')->findOrFail($this->editing_id);
-        if (!$user->isSuperadmin && $sched->user?->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($sched->user?->division_id)) {
             return abort(403, 'Akses Ditolak: Anda hanya berhak mengubah jadwal karyawan divisi Anda.');
         }
 
@@ -190,7 +193,7 @@ class WorkScheduleManagementComponent extends Component
         ]);
 
         $targetUser = User::findOrFail($this->edit_user_id);
-        if (!$user->isSuperadmin && $targetUser->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($targetUser->division_id)) {
             $this->addError('edit_user_id', 'Karyawan yang dipilih tidak berada di divisi Anda.');
             return;
         }
@@ -212,7 +215,7 @@ class WorkScheduleManagementComponent extends Component
         $user = Auth::user();
         $sched = WorkSchedule::with('user')->findOrFail($id);
 
-        if (!$user->isSuperadmin && $sched->user?->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($sched->user?->division_id)) {
             return abort(403, 'Akses Ditolak: Anda hanya berhak menghapus jadwal karyawan divisi Anda.');
         }
 
@@ -230,7 +233,7 @@ class WorkScheduleManagementComponent extends Component
         if ($this->selectedId) {
             $sched = WorkSchedule::with('user')->find($this->selectedId);
             if ($sched) {
-                if (!$user->isSuperadmin && $sched->user?->division_id !== $user->division_id) {
+                if (!$user->isSuperadmin && !$user->hasDivisionAccess($sched->user?->division_id)) {
                     return abort(403, 'Akses Ditolak: Anda hanya berhak menghapus jadwal karyawan divisi Anda.');
                 }
                 $sched->delete();
@@ -395,7 +398,7 @@ class WorkScheduleManagementComponent extends Component
             // Fetch existing schedules for this single date (scoped to division for non-superadmin)
             $existingQuery = WorkSchedule::where('date', $this->selected_calendar_date);
             if (!$user->isSuperadmin) {
-                $existingQuery->whereHas('user', fn($u) => $u->where('division_id', $user->division_id));
+                $existingQuery->whereHas('user', fn($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
             }
             $existingSchedules = $existingQuery->get()->keyBy('user_id');
         } else {
@@ -406,7 +409,7 @@ class WorkScheduleManagementComponent extends Component
 
         $usersQuery = User::where('group', 'user')->whereIn('status', ['active', 'suspend']);
         if (!$user->isSuperadmin) {
-            $usersQuery->where('division_id', $user->division_id);
+            $usersQuery->whereIn('division_id', $user->getAccessibleDivisionIds());
         }
         $users = $usersQuery->orderBy('name')->get();
 
@@ -459,12 +462,15 @@ class WorkScheduleManagementComponent extends Component
 
         // Division Scope Security Check for Admin
         if (!$user->isSuperadmin) {
-            $allowedUserIds = User::where('division_id', $user->division_id)
-                ->pluck('id')
-                ->map(fn($id) => (string) $id)
-                ->toArray();
+            $accessibleIds = $user->getAccessibleDivisionIds();
+            if (!empty($accessibleIds)) {
+                $allowedUserIds = User::whereIn('division_id', $accessibleIds)
+                    ->pluck('id')
+                    ->map(fn($id) => (string) $id)
+                    ->toArray();
 
-            $selectedUserIds = array_values(array_filter($selectedUserIds, fn($id) => in_array((string)$id, $allowedUserIds)));
+                $selectedUserIds = array_values(array_filter($selectedUserIds, fn($id) => in_array((string)$id, $allowedUserIds)));
+            }
         }
 
         if (empty($selectedUserIds)) {
@@ -532,8 +538,8 @@ class WorkScheduleManagementComponent extends Component
         $monthSchedulesQuery = WorkSchedule::with(['user.division'])
             ->whereBetween('date', [$calStart->format('Y-m-d'), $calEnd->format('Y-m-d')]);
 
-        if (!$user->isSuperadmin) {
-            $monthSchedulesQuery->whereHas('user', fn ($u) => $u->where('division_id', $user->division_id));
+        if (!$user->isSuperadmin && !empty($user->getAccessibleDivisionIds())) {
+            $monthSchedulesQuery->whereHas('user', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
         }
 
         $monthSchedules = $monthSchedulesQuery->get()->groupBy(fn($s) => $s->date->format('Y-m-d'));
@@ -541,9 +547,9 @@ class WorkScheduleManagementComponent extends Component
         $query = WorkSchedule::with(['user.division', 'createdBy'])
             ->whereBetween('date', [$calStart->format('Y-m-d'), $calEnd->format('Y-m-d')]);
 
-        // Non-superadmin is restricted to their own division's schedules
-        if (!$user->isSuperadmin) {
-            $query->whereHas('user', fn ($u) => $u->where('division_id', $user->division_id));
+        // Non-superadmin is restricted to their own accessible division schedules
+        if (!$user->isSuperadmin && !empty($user->getAccessibleDivisionIds())) {
+            $query->whereHas('user', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
         }
 
         $query->when($this->search, function ($q) {
@@ -552,8 +558,12 @@ class WorkScheduleManagementComponent extends Component
                     ->orWhere('note', 'like', '%' . $this->search . '%');
             });
         })
-        ->when($this->filter_division_id, function ($q) {
-            $q->whereHas('user', fn ($u) => $u->where('division_id', $this->filter_division_id));
+        ->when($this->filter_division_id, function ($q) use ($user) {
+            if (!$user->isSuperadmin && !$user->hasDivisionAccess($this->filter_division_id)) {
+                $q->whereRaw('1 = 0');
+            } else {
+                $q->whereHas('user', fn ($u) => $u->where('division_id', $this->filter_division_id));
+            }
         })
         ->when($this->filter_user_id, fn ($q) => $q->where('user_id', $this->filter_user_id))
         ->when($this->filter_start_date, fn ($q) => $q->where('date', '>=', $this->filter_start_date))
@@ -563,12 +573,12 @@ class WorkScheduleManagementComponent extends Component
         $perPageCount = $this->perPage === 'all' ? 10000 : (int) $this->perPage;
         $schedules = $query->paginate($perPageCount);
 
-        $divisions = $user->isSuperadmin ? Division::orderBy('name')->get() : collect();
+        $divisions = $user->getAccessibleDivisions();
 
         // Scope employee options for modal & filters based on user role
         $usersQuery = User::where('group', 'user')->whereIn('status', ['active', 'suspend']);
-        if (!$user->isSuperadmin) {
-            $usersQuery->where('division_id', $user->division_id);
+        if (!$user->isSuperadmin && !empty($user->getAccessibleDivisionIds())) {
+            $usersQuery->whereIn('division_id', $user->getAccessibleDivisionIds());
         }
         $users = $usersQuery->orderBy('name')->get();
 

@@ -133,7 +133,10 @@ class TelegramNotificationService
 
         if ($userDivisionId) {
             $adminQuery = User::where('group', 'admin')
-                ->where('division_id', $userDivisionId)
+                ->where(function ($q) use ($userDivisionId) {
+                    $q->where('division_id', $userDivisionId)
+                      ->orWhereHas('adminDivisions', fn($ad) => $ad->where('divisions.id', $userDivisionId));
+                })
                 ->where(function ($q) {
                     $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
                       ->orWhere(function ($sub) {
@@ -490,7 +493,10 @@ class TelegramNotificationService
         // 2. Target: Division Admin
         if ($user?->division_id) {
             $adminIds = User::where('group', 'admin')
-                ->where('division_id', $user->division_id)
+                ->where(function ($q) use ($user) {
+                    $q->where('division_id', $user->division_id)
+                      ->orWhereHas('adminDivisions', fn($ad) => $ad->where('divisions.id', $user->division_id));
+                })
                 ->whereNotNull('chat_code')
                 ->where('chat_code', '!=', '')
                 ->pluck('chat_code')
@@ -542,7 +548,10 @@ class TelegramNotificationService
         // 2. Target: Division Admin
         if ($user?->division_id) {
             $adminIds = User::where('group', 'admin')
-                ->where('division_id', $user->division_id)
+                ->where(function ($q) use ($user) {
+                    $q->where('division_id', $user->division_id)
+                      ->orWhereHas('adminDivisions', fn($ad) => $ad->where('divisions.id', $user->division_id));
+                })
                 ->whereNotNull('chat_code')
                 ->where('chat_code', '!=', '')
                 ->pluck('chat_code')

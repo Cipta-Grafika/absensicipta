@@ -17,6 +17,9 @@
             {{ __('Group') }}
           </th>
           <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+            Divisi Scope
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
             {{ __('Phone Number') }}
           </th>
           <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
@@ -53,6 +56,28 @@
               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase {{ $user->group === 'superadmin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' : ($user->group === 'owner' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' : ($user->group === 'syirkah' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300')) }}">
                 {{ $user->group }}
               </span>
+            </td>
+            <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
+              {{ $wireClick }}>
+              @if ($user->group === 'superadmin')
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                  Semua Divisi
+                </span>
+              @elseif ($user->adminDivisions && $user->adminDivisions->isNotEmpty())
+                <div class="flex flex-wrap gap-1 max-w-xs">
+                  @foreach ($user->adminDivisions as $ad)
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/50 dark:border-sky-800 dark:text-sky-300">
+                      {{ $ad->name }}
+                    </span>
+                  @endforeach
+                </div>
+              @elseif ($user->division)
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/50 dark:border-sky-800 dark:text-sky-300">
+                  {{ $user->division->name }}
+                </span>
+              @else
+                <span class="text-gray-400 text-xs">-</span>
+              @endif
             </td>
             <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
               {{ $wireClick }}>
@@ -252,51 +277,125 @@
           </div>
         </div>
 
-        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
-          <div class="w-full sm:w-1/3">
-            <x-label for="form.group" value="{{ __('Group') }}" />
-            <x-select id="form.group" class="mt-1 block w-full" wire:model="form.group" required>
-              @foreach ($groups as $group)
-                @if ($group != 'user')
-                  <option value="{{ $group }}" {{ $group == $form->group ? 'selected' : '' }}>
-                    {{ $group }}
+        @if ($form->group === 'admin')
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full sm:w-1/2">
+              <x-label for="form.group" value="{{ __('Group') }}" />
+              <x-select id="form.group" class="mt-1 block w-full" wire:model.live="form.group" required>
+                @foreach ($groups as $group)
+                  @if ($group != 'user')
+                    <option value="{{ $group }}" {{ $group == $form->group ? 'selected' : '' }}>
+                      {{ $group }}
+                    </option>
+                  @endif
+                @endforeach
+              </x-select>
+              @error('form.group')
+                <x-input-error for="form.group" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+            <div class="w-full sm:w-1/2">
+              <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
+              <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
+                <option value="">{{ __('Select Job Title') }}</option>
+                @foreach (App\Models\JobTitle::all() as $jobTitle)
+                  <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
+                    {{ $jobTitle->name }}
                   </option>
-                @endif
+                @endforeach
+              </x-select>
+              @error('form.job_title_id')
+                <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+          </div>
+
+          <!-- Multi-Division Selector for Admin -->
+          <div class="mt-4">
+            <div class="flex items-center justify-between mb-2">
+              <x-label value="Scope Divisi (Bisa pilih lebih dari 1)" class="font-semibold text-gray-700 dark:text-gray-200" />
+              <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-0.5 rounded-full font-bold {{ count($form->division_ids) > 0 ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' }}">
+                  {{ count($form->division_ids) }} dipilih
+                </span>
+                <button type="button" wire:click="$set('form.division_ids', {{ json_encode(App\Models\Division::pluck('id')->toArray()) }})" class="text-[11px] text-sky-600 hover:text-sky-700 dark:text-sky-400 font-semibold hover:underline">
+                  Pilih Semua
+                </button>
+                <span class="text-gray-300 dark:text-gray-600">|</span>
+                <button type="button" wire:click="$set('form.division_ids', [])" class="text-[11px] text-red-500 hover:text-red-600 dark:text-red-400 font-semibold hover:underline">
+                  Hapus Semua
+                </button>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 max-h-52 overflow-y-auto custom-scrollbar-y">
+              @foreach (App\Models\Division::orderBy('name')->get() as $division)
+                @php
+                  $isSelected = in_array((int)$division->id, array_map('intval', (array)$form->division_ids), true);
+                @endphp
+                <label class="flex items-center gap-2.5 p-2 rounded-lg border transition cursor-pointer select-none {{ $isSelected ? 'bg-sky-50/90 border-sky-300 text-sky-900 dark:bg-sky-950/60 dark:border-sky-700 dark:text-sky-200 ring-1 ring-sky-400/30' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100/70 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700/60' }}">
+                  <input type="checkbox"
+                         value="{{ $division->id }}"
+                         wire:model="form.division_ids"
+                         class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer">
+                  <span class="text-xs font-medium truncate">{{ $division->name }}</span>
+                </label>
               @endforeach
-            </x-select>
-            @error('form.group')
-              <x-input-error for="form.group" class="mt-2" message="{{ $message }}" />
+            </div>
+            @error('form.division_ids')
+              <x-input-error for="form.division_ids" class="mt-2" message="{{ $message }}" />
+            @enderror
+            @error('form.division_ids.*')
+              <x-input-error for="form.division_ids.*" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
-          <div class="w-full sm:w-1/3">
-            <x-label for="form.division_id" value="{{ __('Division') }}" />
-            <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
-              <option value="">{{ __('Select Division') }}</option>
-              @foreach (App\Models\Division::all() as $division)
-                <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
-                  {{ $division->name }}
-                </option>
-              @endforeach
-            </x-select>
-            @error('form.division_id')
-              <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
-            @enderror
+        @else
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full sm:w-1/3">
+              <x-label for="form.group" value="{{ __('Group') }}" />
+              <x-select id="form.group" class="mt-1 block w-full" wire:model.live="form.group" required>
+                @foreach ($groups as $group)
+                  @if ($group != 'user')
+                    <option value="{{ $group }}" {{ $group == $form->group ? 'selected' : '' }}>
+                      {{ $group }}
+                    </option>
+                  @endif
+                @endforeach
+              </x-select>
+              @error('form.group')
+                <x-input-error for="form.group" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+            <div class="w-full sm:w-1/3">
+              <x-label for="form.division_id" value="{{ __('Division') }}" />
+              <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
+                <option value="">{{ __('Select Division') }}</option>
+                @foreach (App\Models\Division::all() as $division)
+                  <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
+                    {{ $division->name }}
+                  </option>
+                @endforeach
+              </x-select>
+              @error('form.division_id')
+                <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+            <div class="w-full sm:w-1/3">
+              <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
+              <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
+                <option value="">{{ __('Select Job Title') }}</option>
+                @foreach (App\Models\JobTitle::all() as $jobTitle)
+                  <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
+                    {{ $jobTitle->name }}
+                  </option>
+                @endforeach
+              </x-select>
+              @error('form.job_title_id')
+                <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
           </div>
-          <div class="w-full sm:w-1/3">
-            <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
-            <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
-              <option value="">{{ __('Select Job Title') }}</option>
-              @foreach (App\Models\JobTitle::all() as $jobTitle)
-                <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
-                  {{ $jobTitle->name }}
-                </option>
-              @endforeach
-            </x-select>
-            @error('form.job_title_id')
-              <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
-            @enderror
-          </div>
-        </div>
+        @endif
         <div class="mt-4">
           <x-label for="address">{{ __('Address') }}</x-label>
           <x-input id="address" class="mt-1 block w-full" type="text" wire:model="form.address"
@@ -452,51 +551,125 @@
           </div>
         </div>
 
-        <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
-          <div class="w-full sm:w-1/3">
-            <x-label for="form.group" value="{{ __('Group') }}" />
-            <x-select id="form.group" class="mt-1 block w-full" wire:model="form.group" required>
-              @foreach ($groups as $group)
-                @if ($group != 'user')
-                  <option value="{{ $group }}" {{ $group == $form->group ? 'selected' : '' }}>
-                    {{ $group }}
+        @if ($form->group === 'admin')
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full sm:w-1/2">
+              <x-label for="form.group" value="{{ __('Group') }}" />
+              <x-select id="form.group" class="mt-1 block w-full" wire:model.live="form.group" required>
+                @foreach ($groups as $group)
+                  @if ($group != 'user')
+                    <option value="{{ $group }}" {{ $group == $form->group ? 'selected' : '' }}>
+                      {{ $group }}
+                    </option>
+                  @endif
+                @endforeach
+              </x-select>
+              @error('form.group')
+                <x-input-error for="form.group" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+            <div class="w-full sm:w-1/2">
+              <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
+              <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
+                <option value="">{{ __('Select Job Title') }}</option>
+                @foreach (App\Models\JobTitle::all() as $jobTitle)
+                  <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
+                    {{ $jobTitle->name }}
                   </option>
-                @endif
+                @endforeach
+              </x-select>
+              @error('form.job_title_id')
+                <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+          </div>
+
+          <!-- Multi-Division Selector for Admin -->
+          <div class="mt-4">
+            <div class="flex items-center justify-between mb-2">
+              <x-label value="Scope Divisi (Bisa pilih lebih dari 1)" class="font-semibold text-gray-700 dark:text-gray-200" />
+              <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-0.5 rounded-full font-bold {{ count($form->division_ids) > 0 ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' }}">
+                  {{ count($form->division_ids) }} dipilih
+                </span>
+                <button type="button" wire:click="$set('form.division_ids', {{ json_encode(App\Models\Division::pluck('id')->toArray()) }})" class="text-[11px] text-sky-600 hover:text-sky-700 dark:text-sky-400 font-semibold hover:underline">
+                  Pilih Semua
+                </button>
+                <span class="text-gray-300 dark:text-gray-600">|</span>
+                <button type="button" wire:click="$set('form.division_ids', [])" class="text-[11px] text-red-500 hover:text-red-600 dark:text-red-400 font-semibold hover:underline">
+                  Hapus Semua
+                </button>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 max-h-52 overflow-y-auto custom-scrollbar-y">
+              @foreach (App\Models\Division::orderBy('name')->get() as $division)
+                @php
+                  $isSelected = in_array((int)$division->id, array_map('intval', (array)$form->division_ids), true);
+                @endphp
+                <label class="flex items-center gap-2.5 p-2 rounded-lg border transition cursor-pointer select-none {{ $isSelected ? 'bg-sky-50/90 border-sky-300 text-sky-900 dark:bg-sky-950/60 dark:border-sky-700 dark:text-sky-200 ring-1 ring-sky-400/30' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100/70 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700/60' }}">
+                  <input type="checkbox"
+                         value="{{ $division->id }}"
+                         wire:model="form.division_ids"
+                         class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer">
+                  <span class="text-xs font-medium truncate">{{ $division->name }}</span>
+                </label>
               @endforeach
-            </x-select>
-            @error('form.group')
-              <x-input-error for="form.group" class="mt-2" message="{{ $message }}" />
+            </div>
+            @error('form.division_ids')
+              <x-input-error for="form.division_ids" class="mt-2" message="{{ $message }}" />
+            @enderror
+            @error('form.division_ids.*')
+              <x-input-error for="form.division_ids.*" class="mt-2" message="{{ $message }}" />
             @enderror
           </div>
-          <div class="w-full sm:w-1/3">
-            <x-label for="form.division_id" value="{{ __('Division') }}" />
-            <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
-              <option value="">{{ __('Select Division') }}</option>
-              @foreach (App\Models\Division::all() as $division)
-                <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
-                  {{ $division->name }}
-                </option>
-              @endforeach
-            </x-select>
-            @error('form.division_id')
-              <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
-            @enderror
+        @else
+          <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-3">
+            <div class="w-full sm:w-1/3">
+              <x-label for="form.group" value="{{ __('Group') }}" />
+              <x-select id="form.group" class="mt-1 block w-full" wire:model.live="form.group" required>
+                @foreach ($groups as $group)
+                  @if ($group != 'user')
+                    <option value="{{ $group }}" {{ $group == $form->group ? 'selected' : '' }}>
+                      {{ $group }}
+                    </option>
+                  @endif
+                @endforeach
+              </x-select>
+              @error('form.group')
+                <x-input-error for="form.group" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+            <div class="w-full sm:w-1/3">
+              <x-label for="form.division_id" value="{{ __('Division') }}" />
+              <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
+                <option value="">{{ __('Select Division') }}</option>
+                @foreach (App\Models\Division::all() as $division)
+                  <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
+                    {{ $division->name }}
+                  </option>
+                @endforeach
+              </x-select>
+              @error('form.division_id')
+                <x-input-error for="form.division_id" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
+            <div class="w-full sm:w-1/3">
+              <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
+              <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
+                <option value="">{{ __('Select Job Title') }}</option>
+                @foreach (App\Models\JobTitle::all() as $jobTitle)
+                  <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
+                    {{ $jobTitle->name }}
+                  </option>
+                @endforeach
+              </x-select>
+              @error('form.job_title_id')
+                <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
+              @enderror
+            </div>
           </div>
-          <div class="w-full sm:w-1/3">
-            <x-label for="form.job_title_id" value="{{ __('Job Title') }}" />
-            <x-select id="form.job_title_id" class="mt-1 block w-full" wire:model="form.job_title_id">
-              <option value="">{{ __('Select Job Title') }}</option>
-              @foreach (App\Models\JobTitle::all() as $jobTitle)
-                <option value="{{ $jobTitle->id }}" {{ $jobTitle->id == $form->job_title_id ? 'selected' : '' }}>
-                  {{ $jobTitle->name }}
-                </option>
-              @endforeach
-            </x-select>
-            @error('form.job_title_id')
-              <x-input-error for="form.job_title_id" class="mt-2" message="{{ $message }}" />
-            @enderror
-          </div>
-        </div>
+        @endif
         <div class="mt-4">
           <x-label for="address">{{ __('Address') }}</x-label>
           <x-input id="address" class="mt-1 block w-full" type="text" wire:model="form.address"
@@ -523,9 +696,8 @@
   <x-modal wire:model="showDetail">
     @if ($form->user)
       @php
-        $division = $form->user->division ? json_decode($form->user->division)->name : '-';
-        $jobTitle = $form->user->jobTitle ? json_decode($form->user->jobTitle)->name : '-';
-        $education = $form->user->education ? json_decode($form->user->education)->name : '-';
+        $jobTitle = $form->user->jobTitle ? (is_string($form->user->jobTitle) ? json_decode($form->user->jobTitle)?->name : $form->user->jobTitle?->name) : '-';
+        $education = $form->user->education ? (is_string($form->user->education) ? json_decode($form->user->education)?->name : $form->user->education?->name) : '-';
       @endphp
       <div class="px-6 py-4">
         <div class="my-4 flex items-center justify-center">
@@ -592,11 +764,29 @@
           </div>
           <div class="mt-4">
             <x-label for="job_title_id" value="{{ __('Job Title') }}" />
-            <p>{{ $jobTitle }}</p>
+            <p>{{ $jobTitle ?: '-' }}</p>
           </div>
           <div class="mt-4">
-            <x-label for="division_id" value="{{ __('Division') }}" />
-            <p>{{ $division }}</p>
+            <x-label value="Scope Divisi" />
+            @if ($form->user->group === 'superadmin')
+              <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
+                Semua Divisi (Superadmin)
+              </span>
+            @elseif ($form->user->adminDivisions && $form->user->adminDivisions->isNotEmpty())
+              <div class="flex flex-wrap gap-1.5 mt-1">
+                @foreach ($form->user->adminDivisions as $div)
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                    {{ $div->name }}
+                  </span>
+                @endforeach
+              </div>
+            @elseif ($form->user->division)
+              <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                {{ is_string($form->user->division) ? (json_decode($form->user->division)?->name ?? '-') : ($form->user->division->name ?? '-') }}
+              </span>
+            @else
+              <p class="text-gray-400 text-xs">-</p>
+            @endif
           </div>
         </div>
       </div>

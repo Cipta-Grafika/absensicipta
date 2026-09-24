@@ -102,7 +102,7 @@ class OvertimeApprovalComponent extends Component
             ->where('overtime_date', $formattedDate);
 
         if ($user->group === 'admin') {
-            $query->whereHas('employee', fn ($u) => $u->where('division_id', $user->division_id));
+            $query->whereHas('employee', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
         }
 
         $overtimes = $query->get();
@@ -132,7 +132,7 @@ class OvertimeApprovalComponent extends Component
             ->where('overtime_date', $this->selected_calendar_date);
 
         if ($user->group === 'admin') {
-            $query->whereHas('employee', fn ($u) => $u->where('division_id', $user->division_id));
+            $query->whereHas('employee', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
         }
 
         if (!empty($this->bulk_search)) {
@@ -170,7 +170,7 @@ class OvertimeApprovalComponent extends Component
                     continue;
                 }
 
-                if ($user->group === 'admin' && $overtime->employee?->division_id !== $user->division_id) {
+                if ($user->group === 'admin' && !$user->hasDivisionAccess($overtime->employee?->division_id)) {
                     continue;
                 }
 
@@ -233,7 +233,7 @@ class OvertimeApprovalComponent extends Component
             ->whereBetween('overtime_date', [$calStart->format('Y-m-d'), $calEnd->format('Y-m-d')]);
 
         if ($user->group === 'admin') {
-            $monthOvertimesQuery->whereHas('employee', fn ($u) => $u->where('division_id', $user->division_id));
+            $monthOvertimesQuery->whereHas('employee', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
         }
 
         $monthOvertimes = $monthOvertimesQuery->get()->groupBy(fn($o) => Carbon::parse($o->overtime_date)->format('Y-m-d'));
@@ -245,7 +245,7 @@ class OvertimeApprovalComponent extends Component
                 ->where('overtime_date', $this->selected_calendar_date);
 
             if ($user->group === 'admin') {
-                $modalQuery->whereHas('employee', fn ($u) => $u->where('division_id', $user->division_id));
+                $modalQuery->whereHas('employee', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
             }
 
             if (!empty($this->bulk_search)) {
@@ -264,7 +264,7 @@ class OvertimeApprovalComponent extends Component
 
         if ($user->group === 'admin') {
             $query->whereHas('employee', function ($q) use ($user) {
-                $q->where('division_id', $user->division_id);
+                $q->whereIn('division_id', $user->getAccessibleDivisionIds());
             });
         }
 
@@ -294,7 +294,7 @@ class OvertimeApprovalComponent extends Component
         if ($this->division || $this->jobTitle) {
             $query->whereHas('employee', function ($q) use ($user) {
                 if ($this->division) {
-                    if ($user->group === 'admin' && $this->division != $user->division_id) {
+                    if ($user->group === 'admin' && !$user->hasDivisionAccess($this->division)) {
                         $q->whereRaw('1 = 0');
                     } else {
                         $q->where('division_id', $this->division);
@@ -334,7 +334,7 @@ class OvertimeApprovalComponent extends Component
 
         $overtime = Overtime::with('employee')->findOrFail($id);
 
-        if (Auth::user()->group === 'admin' && $overtime->employee?->division_id !== Auth::user()->division_id) {
+        if (Auth::user()->group === 'admin' && !Auth::user()->hasDivisionAccess($overtime->employee?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak menyetujui lembur divisi Anda.');
         }
 
@@ -365,7 +365,7 @@ class OvertimeApprovalComponent extends Component
 
         $overtime = Overtime::with('employee')->findOrFail($id);
 
-        if (Auth::user()->group === 'admin' && $overtime->employee?->division_id !== Auth::user()->division_id) {
+        if (Auth::user()->group === 'admin' && !Auth::user()->hasDivisionAccess($overtime->employee?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak menolak lembur divisi Anda.');
         }
 
@@ -392,7 +392,7 @@ class OvertimeApprovalComponent extends Component
 
         $overtime = Overtime::with('employee')->findOrFail($id);
 
-        if (Auth::user()->group === 'admin' && $overtime->employee?->division_id !== Auth::user()->division_id) {
+        if (Auth::user()->group === 'admin' && !Auth::user()->hasDivisionAccess($overtime->employee?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak memproses lembur divisi Anda.');
         }
 
@@ -423,7 +423,7 @@ class OvertimeApprovalComponent extends Component
 
         $overtime = Overtime::with('employee')->findOrFail($id);
 
-        if (Auth::user()->group === 'admin' && $overtime->employee?->division_id !== Auth::user()->division_id) {
+        if (Auth::user()->group === 'admin' && !Auth::user()->hasDivisionAccess($overtime->employee?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak menghapus data lembur divisi Anda.');
         }
 
@@ -445,7 +445,7 @@ class OvertimeApprovalComponent extends Component
         
         $overtime = Overtime::with('employee')->findOrFail($this->overtimeToDelete);
 
-        if (Auth::user()->group === 'admin' && $overtime->employee?->division_id !== Auth::user()->division_id) {
+        if (Auth::user()->group === 'admin' && !Auth::user()->hasDivisionAccess($overtime->employee?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak menghapus data lembur divisi Anda.');
         }
         

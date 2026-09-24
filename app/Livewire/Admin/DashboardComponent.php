@@ -54,7 +54,7 @@ class DashboardComponent extends Component
         // For the employees table, we show today's status or the filtered date's status.
         $employees = User::where('group', 'user')
             ->whereIn('status', ['active', 'suspend'])
-            ->when(auth()->user()->group === 'admin', fn ($q) => $q->where('division_id', auth()->user()->division_id))
+            ->when(auth()->user()->group === 'admin', fn ($q) => $q->whereIn('division_id', auth()->user()->getAccessibleDivisionIds()))
             ->paginate(20)
             ->through(function (User $user) use ($currentAttendances) {
                 return $user->setAttribute(

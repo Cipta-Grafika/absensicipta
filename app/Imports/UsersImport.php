@@ -33,6 +33,13 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
             ?? JobTitle::create(['name' => $row['job_title']])?->id;
         $education_id = Education::where('name', $row['education'])->first()?->id
             ?? Education::create(['name' => $row['education']])?->id;
+        $assignedDivisionId = $division_id;
+        if (auth()->user()->group === 'admin') {
+            if (!$division_id || !auth()->user()->hasDivisionAccess($division_id)) {
+                $assignedDivisionId = auth()->user()->division_id;
+            }
+        }
+
         $user = (new User)->forceFill([
             'id' => isset($row['id']) ? $row['id'] : null,
             'nip' => $row['nip'],
@@ -45,7 +52,7 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
             'address' => $row['address'],
             'city' => $row['city'],
             'education_id' => $education_id,
-            'division_id' => auth()->user()->group === 'admin' ? auth()->user()->division_id : $division_id,
+            'division_id' => $assignedDivisionId,
             'job_title_id' => $job_title_id,
             'password' => Hash::make($row['password']),
             'created_at' => $row['created_at'],

@@ -74,6 +74,12 @@ class OvertimesExport implements FromArray, WithHeadings, ShouldAutoSize, WithSt
             $query->whereYear('overtime_date', $this->year);
         }
 
+        if (auth()->check() && auth()->user()->group === 'admin') {
+            $query->whereHas('employee', function (Builder $q) {
+                $q->whereIn('division_id', auth()->user()->getAccessibleDivisionIds());
+            });
+        }
+
         if (!empty($this->division)) {
             $query->whereHas('employee', function (Builder $q) {
                 $q->where('division_id', $this->division);

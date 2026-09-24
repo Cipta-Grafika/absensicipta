@@ -24,7 +24,11 @@ class WorkSchedulesExport implements FromView, ShouldAutoSize, WithStyles
         $query = WorkSchedule::with(['user.division']);
 
         if (auth()->user()->group === 'admin') {
-            $query->whereHas('user', fn($u) => $u->where('division_id', auth()->user()->division_id));
+            if ($this->division_id && auth()->user()->hasDivisionAccess($this->division_id)) {
+                $query->whereHas('user', fn($u) => $u->where('division_id', $this->division_id));
+            } else {
+                $query->whereHas('user', fn($u) => $u->whereIn('division_id', auth()->user()->getAccessibleDivisionIds()));
+            }
         } elseif ($this->division_id) {
             $query->whereHas('user', fn($u) => $u->where('division_id', $this->division_id));
         }

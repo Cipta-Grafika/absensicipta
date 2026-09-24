@@ -71,12 +71,12 @@
             <option value="special-leaves">Cuti Khusus</option>
           </x-select>
         </div>
-        @if (Auth::user()->isSuperadmin)
+        @if (Auth::user()->isSuperadmin || Auth::user()->hasMultipleDivisions())
         <div>
           <x-label for="division" value="Pilih Divisi" class="mb-1"></x-label>
           <x-select id="division" class="w-full" wire:model.live="division">
             <option value="">{{ __('Select Division') }}</option>
-            @foreach (App\Models\Division::all() as $_division)
+            @foreach (Auth::user()->getAccessibleDivisions() as $_division)
               <option value="{{ $_division->id }}" {{ $_division->id == $division ? 'selected' : '' }}>
                 {{ $_division->name }}
               </option>

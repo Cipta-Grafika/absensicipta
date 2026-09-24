@@ -97,8 +97,12 @@ class ImportExportController extends Controller
         $jobTitle = $request->input('job_title');
         $education = $request->input('education');
 
-        if (auth()->user()->group === 'admin' && empty($division)) {
-            $division = auth()->user()->division_id;
+        if (auth()->user()->group === 'admin') {
+            if ($division && !auth()->user()->hasDivisionAccess($division)) {
+                $division = null;
+            } elseif (empty($division) && !auth()->user()->hasMultipleDivisions()) {
+                $division = auth()->user()->division_id;
+            }
         }
 
         return Excel::download(
@@ -122,7 +126,11 @@ class ImportExportController extends Controller
         $status = $request->input('status', 'approved');
 
         if (auth()->user()->group === 'admin') {
-            $division = auth()->user()->division_id;
+            if ($division && !auth()->user()->hasDivisionAccess($division)) {
+                $division = null;
+            } elseif (empty($division) && !auth()->user()->hasMultipleDivisions()) {
+                $division = auth()->user()->division_id;
+            }
         }
 
         $config = [
@@ -167,7 +175,11 @@ class ImportExportController extends Controller
         $status = $request->input('status', 'approved');
 
         if (auth()->user()->group === 'admin') {
-            $division = auth()->user()->division_id;
+            if ($division && !auth()->user()->hasDivisionAccess($division)) {
+                $division = null;
+            } elseif (empty($division) && !auth()->user()->hasMultipleDivisions()) {
+                $division = auth()->user()->division_id;
+            }
         }
 
         $divisionName = $division ? Division::find($division)?->name : null;

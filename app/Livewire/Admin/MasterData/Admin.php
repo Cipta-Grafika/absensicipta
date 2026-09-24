@@ -37,7 +37,7 @@ class Admin extends Component
 
     public function show($id)
     {
-        $this->form->setUser(User::find($id));
+        $this->form->setUser(User::with(['adminDivisions', 'division', 'jobTitle', 'education'])->findOrFail($id));
         $this->showDetail = true;
     }
 
@@ -49,6 +49,7 @@ class Admin extends Component
         $this->creating = true;
         $this->form->password = 'admin';
         $this->form->group = 'admin';
+        $this->form->division_ids = [];
     }
 
     public function create()
@@ -64,7 +65,7 @@ class Admin extends Component
         $this->form->reset();
         $this->editing = true;
         /** @var User $user */
-        $user = User::find($id);
+        $user = User::with('adminDivisions')->findOrFail($id);
         $this->form->setUser($user);
     }
 
@@ -98,7 +99,8 @@ class Admin extends Component
     public function render()
     {
         $users = User::where('group', '!=', 'user')
-            ->when(auth()->user()->group === 'admin', fn($q) => $q->where('division_id', auth()->user()->division_id))
+            ->when(auth()->user()->group === 'admin', fn($q) => $q->whereIn('division_id', auth()->user()->getAccessibleDivisionIds()))
+            ->with(['division', 'adminDivisions', 'jobTitle'])
             ->orderBy('group', 'desc')
             ->paginate(20);
         return view('livewire.admin.master-data.admin', ['users' => $users]);

@@ -71,8 +71,8 @@
       @php 
         $active = request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.savings'); 
         $pendingWithdrawalsCount = \App\Models\SavingWithdrawal::where('status', 'pending')
-            ->when(Auth::user()?->isAdmin && !Auth::user()?->isSuperadmin && Auth::user()?->division_id, function($q) {
-                $q->whereHas('user', fn($sq) => $sq->where('division_id', Auth::user()->division_id));
+            ->when(Auth::user()?->isAdmin && !Auth::user()?->isSuperadmin, function($q) {
+                $q->whereHas('user', fn($sq) => $sq->whereIn('division_id', Auth::user()->getAccessibleDivisionIds()));
             })
             ->count();
       @endphp
@@ -349,8 +349,8 @@
             @php 
               $active = request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.savings'); 
               $pendingWithdrawalsCount = \App\Models\SavingWithdrawal::where('status', 'pending')
-                  ->when(Auth::user()?->isAdmin && !Auth::user()?->isSuperadmin && Auth::user()?->division_id, function($q) {
-                      $q->whereHas('user', fn($sq) => $sq->where('division_id', Auth::user()->division_id));
+                  ->when(Auth::user()?->isAdmin && !Auth::user()?->isSuperadmin, function($q) {
+                      $q->whereHas('user', fn($sq) => $sq->whereIn('division_id', Auth::user()->getAccessibleDivisionIds()));
                   })
                   ->count();
             @endphp

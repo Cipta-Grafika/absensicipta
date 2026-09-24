@@ -52,7 +52,7 @@ trait HasAttendanceSummary
 
         $userFilter = function (Builder $q) use ($user, $search, $division, $jobTitle, $attendanceStatus, $date, $week, $month) {
             if ($user->group === 'admin') {
-                $q->where('division_id', $user->division_id);
+                $q->whereIn('division_id', $user->getAccessibleDivisionIds());
             }
             if ($search) {
                 $q->where(function ($sub) use ($search) {
@@ -61,7 +61,7 @@ trait HasAttendanceSummary
                 });
             }
             if ($division) {
-                if ($user->group === 'admin' && $division != $user->division_id) {
+                if ($user->group === 'admin' && !$user->hasDivisionAccess($division)) {
                     $q->whereRaw('1 = 0');
                 } else {
                     $q->where('division_id', $division);

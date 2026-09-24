@@ -51,7 +51,7 @@ class AttendanceController extends Controller
         }
         $employees = User::where('group', 'user')
             ->whereIn('status', ['active', 'suspend'])
-            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
+            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->whereIn('division_id', auth()->user()->getAccessibleDivisionIds()))
             ->when($request->search, function (Builder $q) use ($request) {
                 return $q->where(function (Builder $query) use ($request) {
                     $query->where('name', 'like', '%' . $request->search . '%')
@@ -59,7 +59,7 @@ class AttendanceController extends Controller
                 });
             })
             ->when($request->division, function (Builder $q) use ($request) {
-                if (auth()->user()->group === 'admin' && $request->division != auth()->user()->division_id) {
+                if (auth()->user()->group === 'admin' && !auth()->user()->hasDivisionAccess($request->division)) {
                     return $q->whereRaw('1 = 0');
                 }
                 return $q->where('division_id', $request->division);

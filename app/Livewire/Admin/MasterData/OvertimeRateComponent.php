@@ -28,7 +28,7 @@ class OvertimeRateComponent extends Component
         $this->form->reset();
 
         $user = Auth::user();
-        if (!$user->isSuperadmin) {
+        if (!$user->isSuperadmin && !$user->hasMultipleDivisions()) {
             $this->form->division_id = $user->division_id;
         }
 
@@ -48,7 +48,7 @@ class OvertimeRateComponent extends Component
         /** @var OvertimeRate $rate */
         $rate = OvertimeRate::findOrFail($id);
 
-        if (!$user->isSuperadmin && $rate->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($rate->division_id)) {
             return abort(403);
         }
 
@@ -70,7 +70,7 @@ class OvertimeRateComponent extends Component
         /** @var OvertimeRate $rate */
         $rate = OvertimeRate::findOrFail($id);
 
-        if (!$user->isSuperadmin && $rate->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($rate->division_id)) {
             return abort(403);
         }
 
@@ -95,10 +95,13 @@ class OvertimeRateComponent extends Component
         if ($user->isSuperadmin) {
             $rates = $query->orderBy('min_hours', 'asc')->get();
         } else {
-            $rates = $query->where('division_id', $user->division_id)->orderBy('min_hours', 'asc')->get();
+            $rates = $query->where(function ($q) use ($user) {
+                $q->whereIn('division_id', $user->getAccessibleDivisionIds())
+                  ->orWhereNull('division_id');
+            })->orderBy('min_hours', 'asc')->get();
         }
 
-        $divisions = $user->isSuperadmin ? Division::orderBy('name')->get() : collect();
+        $divisions = $user->getAccessibleDivisions();
 
         return view('livewire.admin.master-data.overtime-rate', [
             'rates' => $rates,

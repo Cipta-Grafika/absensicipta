@@ -17,10 +17,10 @@
             </div>
           </div>
           <div class="mb-4 grid grid-cols-3 gap-2 lg:gap-4">
-            @if(Auth::user()->isSuperadmin)
+            @if(Auth::user()->isSuperadmin || Auth::user()->hasMultipleDivisions())
             <x-select id="division" name="division" class="w-full" wire:model.live="division">
-              <option value="">{{ __('Select Division') }}</option>
-              @foreach (App\Models\Division::all() as $division)
+              <option value="">{{ __('Semua Divisi') }}</option>
+              @foreach (Auth::user()->getAccessibleDivisions() as $division)
                 <option value="{{ $division->id }}">
                   {{ $division->name }}
                 </option>

@@ -21,7 +21,7 @@ class UsersExport implements FromView
             ->with(['division', 'education', 'jobTitle']);
         
         if (auth()->user()->group === 'admin') {
-            $query->where('division_id', auth()->user()->division_id)
+            $query->whereIn('division_id', auth()->user()->getAccessibleDivisionIds())
                   ->where('group', '!=', 'superadmin');
         }
 

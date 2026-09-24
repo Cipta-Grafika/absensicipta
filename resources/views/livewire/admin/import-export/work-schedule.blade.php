@@ -28,7 +28,7 @@
             </div>
           </div>
 
-          @if(Auth::user()->isSuperadmin)
+          @if(Auth::user()->isSuperadmin || Auth::user()->hasMultipleDivisions())
             <div class="mb-4">
               <x-label for="division" value="Pilih Divisi" class="mb-1" />
               <x-select id="division" name="division" class="w-full" wire:model.live="division">

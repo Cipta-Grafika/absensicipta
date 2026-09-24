@@ -118,7 +118,7 @@ class EmployeeComponent extends Component
     public function render()
     {
         $baseQuery = User::where('group', 'user')
-            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id));
+            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->whereIn('division_id', auth()->user()->getAccessibleDivisionIds()));
 
         $activeSuspendCount = (clone $baseQuery)->whereIn('status', ['active', 'suspend'])->count();
         $suspendCount = (clone $baseQuery)->where('status', 'suspend')->count();
@@ -144,7 +144,7 @@ class EmployeeComponent extends Component
                 });
             })
             ->when($this->division, function (Builder $q) {
-                if (auth()->user()->group === 'admin' && $this->division != auth()->user()->division_id) {
+                if (auth()->user()->group === 'admin' && !auth()->user()->hasDivisionAccess($this->division)) {
                     return $q->whereRaw('1 = 0');
                 }
                 return $q->where('division_id', $this->division);

@@ -108,7 +108,7 @@ class TelegramBotHandler
             }
 
             if ($user->group === 'admin' && !$user->isOwner && !$user->isSyirkah && !$user->isPayroll) {
-                if (!$user->division_id || $withdrawal->user?->division_id !== $user->division_id) {
+                if (!$user->hasDivisionAccess($withdrawal->user?->division_id)) {
                     TelegramNotificationService::sendMessage(
                         $chatId,
                         "⛔ <b>Akses Ditolak</b>\nAnda hanya berwenang memproses pengajuan karyawan di divisi Anda."
@@ -1404,7 +1404,8 @@ class TelegramBotHandler
 
         // 2. ADMIN DIVISI (STRICT DIVISION SCOPE)
         if ($user->group === 'admin' && !$user->isOwner && !$user->isSyirkah && !$user->isPayroll) {
-            if (!$user->division_id) {
+            $accessibleDivisionIds = $user->getAccessibleDivisionIds();
+            if (empty($accessibleDivisionIds)) {
                 TelegramNotificationService::sendMessage(
                     $chatId,
                     "⚠️ <b>Divisi Belum Diatur</b>\nAkun Admin Anda belum terhubung ke divisi tertentu. Silakan hubungi Superadmin."
@@ -1412,11 +1413,11 @@ class TelegramBotHandler
                 return;
             }
 
-            $user->loadMissing('division');
-            $divName = $user->division?->name ?? 'Divisi Anda';
+            $divNames = $user->getAccessibleDivisions()->pluck('name')->implode(', ');
+            $divName = $divNames ?: 'Divisi Anda';
 
             $txQuery = SavingTransaction::where('status', 'approved')
-                ->whereHas('user', fn($q) => $q->where('division_id', $user->division_id));
+                ->whereHas('user', fn($q) => $q->whereIn('division_id', $accessibleDivisionIds));
 
             $depMan = (float) (clone $txQuery)->where('transaction_type', 'deposit')->sum('mandatory_amount');
             $wdMan = (float) (clone $txQuery)->where('transaction_type', 'withdrawal')->sum('mandatory_amount');
@@ -1591,7 +1592,8 @@ class TelegramBotHandler
         // 2. ADMIN DIVISI (STRICT DIVISION SCOPE - ONLY PENDING OF THIS DIVISION)
         // =========================================================================
         if ($user->group === 'admin' && !$user->isOwner && !$user->isSyirkah && !$user->isPayroll) {
-            if (!$user->division_id) {
+            $accessibleDivisionIds = $user->getAccessibleDivisionIds();
+            if (empty($accessibleDivisionIds)) {
                 TelegramNotificationService::sendMessage(
                     $chatId,
                     "⚠️ <b>Divisi Belum Terhubung</b>\nAkun Admin Anda belum terhubung ke divisi tertentu. Pengajuan tidak dapat ditampilkan."
@@ -1599,12 +1601,12 @@ class TelegramBotHandler
                 return;
             }
 
-            $user->loadMissing('division');
-            $divName = $user->division?->name ?? 'Divisi';
+            $divNames = $user->getAccessibleDivisions()->pluck('name')->implode(', ');
+            $divName = $divNames ?: 'Divisi';
 
             $pendingList = SavingWithdrawal::with(['user.division', 'masterSaving'])
                 ->where('status', 'pending')
-                ->whereHas('user', fn($q) => $q->where('division_id', $user->division_id))
+                ->whereHas('user', fn($q) => $q->whereIn('division_id', $accessibleDivisionIds))
                 ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get();

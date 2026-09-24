@@ -202,7 +202,7 @@ class SavingTransactionComponent extends Component
         $tx = SavingTransaction::with('user')->findOrFail($transactionId);
 
         if ($user->group === 'admin' && !$user->isSyirkah && !$user->isOwner && !$user->isPayroll) {
-            if ($tx->user?->division_id !== $user->division_id) {
+            if (!$user->hasDivisionAccess($tx->user?->division_id)) {
                 abort(403, 'Akses Ditolak: Anda hanya berwenang menyetujui mutasi karyawan di divisi Anda.');
             }
         } elseif (!$user->isSyirkah && !$user->isOwner && !$user->isPayroll) {
@@ -223,7 +223,7 @@ class SavingTransactionComponent extends Component
         $tx = SavingTransaction::with('user')->findOrFail($transactionId);
 
         if ($user->group === 'admin' && !$user->isSyirkah && !$user->isOwner && !$user->isPayroll) {
-            if ($tx->user?->division_id !== $user->division_id) {
+            if (!$user->hasDivisionAccess($tx->user?->division_id)) {
                 abort(403, 'Akses Ditolak: Anda hanya berwenang menolak mutasi karyawan di divisi Anda.');
             }
         } elseif (!$user->isSyirkah && !$user->isOwner && !$user->isPayroll) {
@@ -284,7 +284,7 @@ class SavingTransactionComponent extends Component
         } else {
             $tx = SavingTransaction::with('user')->findOrFail($this->rejectTransactionId);
             if ($user->group === 'admin' && !$user->isSyirkah && !$user->isOwner && !$user->isPayroll) {
-                if ($tx->user?->division_id !== $user->division_id) {
+                if (!$user->hasDivisionAccess($tx->user?->division_id)) {
                     abort(403, 'Akses Ditolak: Anda hanya berwenang menolak mutasi karyawan di divisi Anda.');
                 }
             } elseif (!$user->isSyirkah && !$user->isOwner && !$user->isPayroll) {
@@ -562,7 +562,7 @@ class SavingTransactionComponent extends Component
 
         // Division Admin can only manage employees in their division
         if ($currentUser->group === 'admin') {
-            if ($withdrawal->user?->division_id !== $currentUser->division_id) {
+            if (!$currentUser->hasDivisionAccess($withdrawal->user?->division_id)) {
                 abort(403, 'Akses Ditolak: Anda hanya berwenang memproses pengajuan karyawan di divisi Anda.');
             }
             return;
@@ -862,15 +862,12 @@ class SavingTransactionComponent extends Component
     {
         $currentUser = Auth::user();
         if ($currentUser && $currentUser->group === 'admin' && !$currentUser->isSuperadmin && !$currentUser->isSyirkah && !$currentUser->isOwner && !$currentUser->isPayroll) {
+            $accessibleIds = $currentUser->getAccessibleDivisionIds();
             if ($userRelation === null) {
-                if ($currentUser->division_id) {
-                    $query->where('division_id', $currentUser->division_id);
-                }
+                $query->whereIn('division_id', $accessibleIds);
             } else {
-                $query->whereHas($userRelation, function($q) use ($currentUser) {
-                    if ($currentUser->division_id) {
-                        $q->where('division_id', $currentUser->division_id);
-                    }
+                $query->whereHas($userRelation, function($q) use ($accessibleIds) {
+                    $q->whereIn('division_id', $accessibleIds);
                 });
             }
         }
@@ -967,7 +964,7 @@ class SavingTransactionComponent extends Component
     {
         $currentUser = Auth::user();
         $isDivisionScoped = ($currentUser && $currentUser->group === 'admin' && !$currentUser->isSuperadmin && !$currentUser->isSyirkah && !$currentUser->isOwner && !$currentUser->isPayroll);
-        $adminDivisionName = $isDivisionScoped ? ($currentUser->division?->name ?? 'Divisi Anda') : null;
+        $adminDivisionName = $isDivisionScoped ? ($currentUser->hasMultipleDivisions() ? $currentUser->getAccessibleDivisions()->pluck('name')->implode(', ') : ($currentUser->division?->name ?? 'Divisi Anda')) : null;
 
         // 1. Transactions List
         $transactionsQuery = $this->buildTransactionsQuery();
@@ -984,8 +981,8 @@ class SavingTransactionComponent extends Component
         $savingsList = Saving::orderBy('savings_name')->get();
 
         $divisionsListQuery = Division::orderBy('name');
-        if ($isDivisionScoped && $currentUser->division_id) {
-            $divisionsListQuery->where('id', $currentUser->division_id);
+        if ($isDivisionScoped) {
+            $divisionsListQuery->whereIn('id', $currentUser->getAccessibleDivisionIds());
         }
         $divisionsList = $divisionsListQuery->get();
 

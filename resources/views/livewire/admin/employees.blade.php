@@ -56,12 +56,12 @@
             <option value="fired">Dipecat (Fired)</option>
           </x-select>
         </div>
-        @if (Auth::user()->isSuperadmin)
+        @if (Auth::user()->isSuperadmin || Auth::user()->hasMultipleDivisions())
         <div>
           <x-label for="division_filter" value="Pilih Divisi" class="mb-1"></x-label>
           <x-select id="division_filter" class="w-full" wire:model.live="division">
             <option value="">{{ __('Select Division') }}</option>
-            @foreach (App\Models\Division::all() as $_division)
+            @foreach (Auth::user()->getAccessibleDivisions() as $_division)
               <option value="{{ $_division->id }}" {{ $_division->id == $division ? 'selected' : '' }}>
                 {{ $_division->name }}
               </option>
@@ -435,7 +435,7 @@
             <x-label for="form.division_id" value="{{ __('Division') }}" />
             <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
               <option value="">{{ __('Select Division') }}</option>
-              @foreach (App\Models\Division::all() as $division)
+              @foreach (Auth::user()->getAccessibleDivisions() as $division)
                 <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
                   {{ $division->name }}
                 </option>
@@ -693,7 +693,7 @@
             <x-label for="form.division_id" value="{{ __('Division') }}" />
             <x-select id="form.division_id" class="mt-1 block w-full" wire:model="form.division_id">
               <option value="">{{ __('Select Division') }}</option>
-              @foreach (App\Models\Division::all() as $division)
+              @foreach (Auth::user()->getAccessibleDivisions() as $division)
                 <option value="{{ $division->id }}" {{ $division->id == $form->division_id ? 'selected' : '' }}>
                   {{ $division->name }}
                 </option>

@@ -84,7 +84,14 @@ class OvertimeRateForm extends Form
         }
 
         if (!$user->isSuperadmin) {
-            $this->division_id = $user->division_id;
+            if ($user->hasMultipleDivisions()) {
+                if (!$this->division_id || !$user->hasDivisionAccess($this->division_id)) {
+                    $this->addError('division_id', 'Pilih divisi yang sesuai dengan akses Anda.');
+                    return;
+                }
+            } else {
+                $this->division_id = $user->division_id;
+            }
         }
 
         $this->sanitizeNumericFields();
@@ -113,12 +120,19 @@ class OvertimeRateForm extends Form
             return abort(403);
         }
 
-        if (!$user->isSuperadmin && $this->rate->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($this->rate->division_id)) {
             return abort(403);
         }
 
         if (!$user->isSuperadmin) {
-            $this->division_id = $user->division_id;
+            if ($user->hasMultipleDivisions()) {
+                if (!$this->division_id || !$user->hasDivisionAccess($this->division_id)) {
+                    $this->addError('division_id', 'Pilih divisi yang sesuai dengan akses Anda.');
+                    return;
+                }
+            } else {
+                $this->division_id = $user->division_id;
+            }
         }
 
         $this->sanitizeNumericFields();
@@ -147,7 +161,7 @@ class OvertimeRateForm extends Form
             return abort(403);
         }
 
-        if (!$user->isSuperadmin && $this->rate->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($this->rate->division_id)) {
             return abort(403);
         }
 

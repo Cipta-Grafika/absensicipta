@@ -116,8 +116,8 @@
         </x-select>
       </div>
 
-      <!-- Divisi (SuperAdmin Only) -->
-      @if (Auth::user()->isSuperadmin)
+      <!-- Divisi -->
+      @if (Auth::user()->isSuperadmin || Auth::user()->hasMultipleDivisions())
         <div>
           <x-label for="division" value="Divisi" class="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-1" />
           <x-select id="division" wire:model.live="division" class="w-full text-xs rounded-xl">

@@ -67,8 +67,8 @@ class WorkSchedulesImport implements ToModel, WithHeadingRow, WithValidation, Sk
         // 4. Validate Admin Scope
         $authUser = Auth::user();
         if ($authUser && $authUser->group === 'admin') {
-            if ($user->division_id !== $authUser->division_id) {
-                throw new \Exception("Gagal Import (Akses Ditolak): Karyawan '{$user->name}' berada di luar divisi Anda.");
+            if (!$authUser->hasDivisionAccess($user->division_id)) {
+                throw new \Exception("Gagal Import (Akses Ditolak): Karyawan '{$user->name}' berada di luar divisi yang Anda kelola.");
             }
         }
 

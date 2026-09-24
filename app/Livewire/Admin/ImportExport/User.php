@@ -93,7 +93,7 @@ class User extends Component
             $query = UserModel::whereIn('group', empty($this->groups) ? ['__none__'] : $this->groups);
             
             if (Auth::user()->group === 'admin') {
-                $query->where('division_id', Auth::user()->division_id)
+                $query->whereIn('division_id', Auth::user()->getAccessibleDivisionIds())
                       ->where('group', '!=', 'superadmin');
             }
             

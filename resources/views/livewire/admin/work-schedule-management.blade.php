@@ -218,7 +218,7 @@
 
         <x-slot name="content">
           <div class="flex flex-col gap-6">
-            @if(auth()->user()->isSuperadmin)
+            @if(auth()->user()->isSuperadmin || auth()->user()->hasMultipleDivisions())
               <div>
                 <x-label for="filter_division_id" value="Pilih Divisi" class="mb-1"></x-label>
                 <x-select id="filter_division_id" class="w-full" wire:model.live="filter_division_id">

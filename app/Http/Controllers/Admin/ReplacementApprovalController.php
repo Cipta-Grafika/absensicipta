@@ -34,7 +34,7 @@ class ReplacementApprovalController extends Controller
 
         if (Auth::user()->group === 'admin') {
             $query->whereHas('user', function (Builder $q) {
-                $q->where('division_id', Auth::user()->division_id);
+                $q->whereIn('division_id', Auth::user()->getAccessibleDivisionIds());
             });
         }
 
@@ -57,7 +57,11 @@ class ReplacementApprovalController extends Controller
         if ($request->division || $request->jobTitle) {
             $query->whereHas('user', function (Builder $q) use ($request) {
                 if ($request->division) {
-                    $q->where('division_id', $request->division);
+                    if (Auth::user()->group === 'admin' && !Auth::user()->hasDivisionAccess($request->division)) {
+                        $q->whereRaw('1 = 0');
+                    } else {
+                        $q->where('division_id', $request->division);
+                    }
                 }
                 if ($request->jobTitle) {
                     $q->where('job_title_id', $request->jobTitle);

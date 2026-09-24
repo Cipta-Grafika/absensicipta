@@ -28,6 +28,7 @@ class UserForm extends Form
     public $birth_place = '';
     public $status = 'active';
     public $division_id = null;
+    public array $division_ids = [];
     public $education_id = null;
     public $job_title_id = null;
     public $photo = null;
@@ -39,7 +40,7 @@ class UserForm extends Form
         $requiredOrNullable = $this->group === 'user' ? 'required' : 'nullable';
         $allowedGroups = Auth::user()?->isSuperadmin ? User::$groups : ['user'];
 
-        return [
+        $rules = [
             'name' => [
                 'required',
                 'string',
@@ -71,6 +72,8 @@ class UserForm extends Form
             'birth_place' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:active,inactive,resign,suspend,fired'],
             'division_id' => ['nullable', 'exists:divisions,id'],
+            'division_ids' => ['nullable', 'array'],
+            'division_ids.*' => ['integer', 'exists:divisions,id'],
             'education_id' => ['nullable', 'exists:educations,id'],
             'job_title_id' => ['nullable', 'exists:job_titles,id'],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
@@ -78,6 +81,12 @@ class UserForm extends Form
             'off_days' => ['nullable', 'array'],
             'off_days.*' => ['string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
         ];
+
+        if ($this->group === 'admin') {
+            $rules['division_ids'] = ['required', 'array', 'min:1'];
+        }
+
+        return $rules;
     }
 
     public function setUser(User $user)
@@ -101,6 +110,10 @@ class UserForm extends Form
         $this->birth_place = $user->birth_place;
         $this->status = $user->status ?? 'active';
         $this->division_id = $user->division_id;
+        $this->division_ids = $user->adminDivisions()->pluck('divisions.id')->map(fn($id) => (int)$id)->toArray();
+        if (empty($this->division_ids) && $user->division_id) {
+            $this->division_ids = [(int)$user->division_id];
+        }
         $this->education_id = $user->education_id;
         $this->job_title_id = $user->job_title_id;
         $this->count_wfo = (bool) $user->count_wfo;
@@ -122,20 +135,40 @@ class UserForm extends Form
             $data['address'] = $data['address'] ?: '-';
         }
 
-        if (Auth::user()?->group === 'admin') {
-            $data['division_id'] = Auth::user()->division_id;
+        $authUser = Auth::user();
+        if ($authUser?->group === 'admin') {
+            if ($authUser->hasMultipleDivisions() && $this->division_id && $authUser->hasDivisionAccess($this->division_id)) {
+                $data['division_id'] = $this->division_id;
+            } else {
+                $accessible = $authUser->getAccessibleDivisionIds();
+                $data['division_id'] = !empty($accessible) ? $accessible[0] : $authUser->division_id;
+            }
         }
 
-        if (!Auth::user()?->isSuperadmin) {
+        if ($this->group === 'admin' && !empty($this->division_ids)) {
+            $data['division_id'] = (int) $this->division_ids[0];
+        }
+
+        if (!$authUser?->isSuperadmin) {
             $data['group'] = 'user';
             unset($data['count_wfo']);
         }
+
+        unset($data['division_ids']);
 
         /** @var User $user */
         $user = User::create([
             ...$data,
             'password' => Hash::make($this->password ?? 'password'),
         ]);
+
+        if ($user->group === 'admin') {
+            $intDivisionIds = !empty($this->division_ids)
+                ? array_map('intval', (array)$this->division_ids)
+                : ($user->division_id ? [(int)$user->division_id] : []);
+            $user->adminDivisions()->sync($intDivisionIds);
+        }
+
         if (isset($this->photo)) $user->updateProfilePhoto($this->photo);
         $this->reset();
     }
@@ -154,14 +187,26 @@ class UserForm extends Form
             $data['address'] = $data['address'] ?: '-';
         }
 
-        if (Auth::user()?->group === 'admin') {
-            $data['division_id'] = Auth::user()->division_id;
+        $authUser = Auth::user();
+        if ($authUser?->group === 'admin') {
+            if ($authUser->hasMultipleDivisions() && $this->division_id && $authUser->hasDivisionAccess($this->division_id)) {
+                $data['division_id'] = $this->division_id;
+            } else {
+                $accessible = $authUser->getAccessibleDivisionIds();
+                $data['division_id'] = !empty($accessible) ? $accessible[0] : $authUser->division_id;
+            }
         }
 
-        if (!Auth::user()?->isSuperadmin) {
+        if ($this->group === 'admin' && !empty($this->division_ids)) {
+            $data['division_id'] = (int) $this->division_ids[0];
+        }
+
+        if (!$authUser?->isSuperadmin) {
             $data['group'] = 'user';
             unset($data['count_wfo']);
         }
+
+        unset($data['division_ids']);
 
         $updateData = [...$data];
         if (!empty($this->password)) {
@@ -171,6 +216,16 @@ class UserForm extends Form
         }
 
         $this->user->update($updateData);
+
+        if ($this->user->group === 'admin') {
+            $intDivisionIds = !empty($this->division_ids)
+                ? array_map('intval', (array)$this->division_ids)
+                : ($this->user->division_id ? [(int)$this->user->division_id] : []);
+            $this->user->adminDivisions()->sync($intDivisionIds);
+        } else {
+            $this->user->adminDivisions()->detach();
+        }
+
         if (isset($this->photo)) $this->user->updateProfilePhoto($this->photo);
         $this->reset();
     }
@@ -216,8 +271,8 @@ class UserForm extends Form
                 return false;
             }
 
-            // Non-Superadmin CANNOT edit users from another division
-            if ($this->user && $this->user->division_id !== $authUser->division_id) {
+            // Non-Superadmin CANNOT edit users from another division outside their access
+            if ($this->user && !$authUser->hasDivisionAccess($this->user->division_id)) {
                 return false;
             }
 

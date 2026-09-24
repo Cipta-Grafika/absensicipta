@@ -276,10 +276,14 @@
         </div>
 
         <div class="mt-4">
-          @if(auth()->user()->isSuperadmin)
+          @if(auth()->user()->isSuperadmin || auth()->user()->hasMultipleDivisions())
             <x-label for="division_id">Divisi Scope</x-label>
             <x-select id="division_id" wire:model="form.division_id" class="mt-1 block w-full">
-              <option value="">Global (Semua Divisi)</option>
+              @if(auth()->user()->isSuperadmin)
+                <option value="">Global (Semua Divisi)</option>
+              @else
+                <option value="">Pilih Divisi</option>
+              @endif
               @foreach ($divisions as $division)
                 <option value="{{ $division->id }}">{{ $division->name }}</option>
               @endforeach
@@ -444,10 +448,14 @@
         </div>
 
         <div class="mt-4">
-          @if(auth()->user()->isSuperadmin)
+          @if(auth()->user()->isSuperadmin || auth()->user()->hasMultipleDivisions())
             <x-label for="edit_division_id">Divisi Scope</x-label>
             <x-select id="edit_division_id" wire:model="form.division_id" class="mt-1 block w-full">
-              <option value="">Global (Semua Divisi)</option>
+              @if(auth()->user()->isSuperadmin)
+                <option value="">Global (Semua Divisi)</option>
+              @else
+                <option value="">Pilih Divisi</option>
+              @endif
               @foreach ($divisions as $division)
                 <option value="{{ $division->id }}">{{ $division->name }}</option>
               @endforeach

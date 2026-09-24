@@ -63,7 +63,9 @@ class Overtime extends Component
         $this->month = date('Y-m');
 
         if (Auth::user()->group === 'admin') {
-            $this->division = Auth::user()->division_id;
+            if (!Auth::user()->hasMultipleDivisions()) {
+                $this->division = Auth::user()->division_id;
+            }
             if ($this->division) {
                 $this->division_subaccount_code = sprintf('%02d', (int)$this->division);
             }
@@ -84,7 +86,7 @@ class Overtime extends Component
         $this->job_title = null;
         $this->status = 'approved';
 
-        if (Auth::user()->group === 'admin') {
+        if (Auth::user()->group === 'admin' && !Auth::user()->hasMultipleDivisions()) {
             $this->division = Auth::user()->division_id;
         } else {
             $this->division = null;
@@ -94,7 +96,13 @@ class Overtime extends Component
     protected function getEffectiveDivisionId()
     {
         if (Auth::user()->group === 'admin') {
-            return Auth::user()->division_id;
+            if ($this->division && Auth::user()->hasDivisionAccess($this->division)) {
+                return $this->division;
+            }
+            if (!Auth::user()->hasMultipleDivisions()) {
+                return Auth::user()->division_id;
+            }
+            return null;
         }
         return $this->division;
     }
@@ -207,7 +215,7 @@ class Overtime extends Component
         $peachtreeHeadings = $peachtreeExport->headings();
         $peachtreeRows = $this->preview_tab === 'peachtree' ? $peachtreeExport->array() : [];
 
-        $divisions = Auth::user()->isSuperadmin ? Division::all() : collect();
+        $divisions = Auth::user()->getAccessibleDivisions();
         $jobTitles = JobTitle::all();
 
         return view('livewire.admin.import-export.overtime', [

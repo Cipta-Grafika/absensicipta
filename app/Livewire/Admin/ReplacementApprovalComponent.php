@@ -90,7 +90,7 @@ class ReplacementApprovalComponent extends Component
             ->where('replaced_date', $formattedDate);
 
         if ($user->group === 'admin') {
-            $query->whereHas('user', fn ($u) => $u->where('division_id', $user->division_id));
+            $query->whereHas('user', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
         }
 
         $replacements = $query->get();
@@ -120,7 +120,7 @@ class ReplacementApprovalComponent extends Component
             ->where('replaced_date', $this->selected_calendar_date);
 
         if ($user->group === 'admin') {
-            $query->whereHas('user', fn ($u) => $u->where('division_id', $user->division_id));
+            $query->whereHas('user', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
         }
 
         if (!empty($this->bulk_search)) {
@@ -156,7 +156,7 @@ class ReplacementApprovalComponent extends Component
                     continue;
                 }
 
-                if ($user->group === 'admin' && $replacement->user?->division_id !== $user->division_id) {
+                if ($user->group === 'admin' && !$user->hasDivisionAccess($replacement->user?->division_id)) {
                     continue;
                 }
 
@@ -225,7 +225,7 @@ class ReplacementApprovalComponent extends Component
             ->whereBetween('replaced_date', [$calStart->format('Y-m-d'), $calEnd->format('Y-m-d')]);
 
         if ($user->group === 'admin') {
-            $monthReplacementsQuery->whereHas('user', fn ($u) => $u->where('division_id', $user->division_id));
+            $monthReplacementsQuery->whereHas('user', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
         }
 
         $monthReplacements = $monthReplacementsQuery->get()->groupBy(fn($r) => Carbon::parse($r->replaced_date)->format('Y-m-d'));
@@ -236,7 +236,7 @@ class ReplacementApprovalComponent extends Component
 
         if ($user->group === 'admin') {
             $query->whereHas('user', function ($q) use ($user) {
-                $q->where('division_id', $user->division_id);
+                $q->whereIn('division_id', $user->getAccessibleDivisionIds());
             });
         }
 
@@ -269,7 +269,7 @@ class ReplacementApprovalComponent extends Component
         if ($this->division || $this->jobTitle) {
             $query->whereHas('user', function ($q) use ($user) {
                 if ($this->division) {
-                    if ($user->group === 'admin' && $this->division != $user->division_id) {
+                    if ($user->group === 'admin' && !$user->hasDivisionAccess($this->division)) {
                         $q->whereRaw('1 = 0');
                     } else {
                         $q->where('division_id', $this->division);
@@ -291,7 +291,7 @@ class ReplacementApprovalComponent extends Component
                 ->where('replaced_date', $this->selected_calendar_date);
 
             if ($user->group === 'admin') {
-                $mQuery->whereHas('user', fn ($u) => $u->where('division_id', $user->division_id));
+                $mQuery->whereHas('user', fn ($u) => $u->whereIn('division_id', $user->getAccessibleDivisionIds()));
             }
 
             if (!empty($this->bulk_search)) {
@@ -324,7 +324,7 @@ class ReplacementApprovalComponent extends Component
 
         $replacement = ReplacementHour::with(['shift', 'user'])->findOrFail($id);
 
-        if ($user->group === 'admin' && $replacement->user?->division_id !== $user->division_id) {
+        if ($user->group === 'admin' && !$user->hasDivisionAccess($replacement->user?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak menyetujui ganti jam divisi Anda.');
         }
 
@@ -376,7 +376,7 @@ class ReplacementApprovalComponent extends Component
 
         $replacement = ReplacementHour::with('user')->findOrFail($id);
 
-        if ($user->group === 'admin' && $replacement->user?->division_id !== $user->division_id) {
+        if ($user->group === 'admin' && !$user->hasDivisionAccess($replacement->user?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak menolak ganti jam divisi Anda.');
         }
 
@@ -414,7 +414,7 @@ class ReplacementApprovalComponent extends Component
 
         $replacement = ReplacementHour::with('user')->findOrFail($id);
 
-        if ($user->group === 'admin' && $replacement->user?->division_id !== $user->division_id) {
+        if ($user->group === 'admin' && !$user->hasDivisionAccess($replacement->user?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak menghapus data ganti jam divisi Anda.');
         }
 
@@ -437,7 +437,7 @@ class ReplacementApprovalComponent extends Component
         
         $replacement = ReplacementHour::with('user')->findOrFail($this->replacementToDelete);
 
-        if ($user->group === 'admin' && $replacement->user?->division_id !== $user->division_id) {
+        if ($user->group === 'admin' && !$user->hasDivisionAccess($replacement->user?->division_id)) {
             abort(403, 'Akses Ditolak: Anda hanya berhak menghapus data ganti jam divisi Anda.');
         }
         

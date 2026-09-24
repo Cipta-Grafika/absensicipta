@@ -221,6 +221,84 @@ class User extends Authenticatable
         return $this->belongsTo(Division::class);
     }
 
+    public function adminDivisions()
+    {
+        return $this->belongsToMany(Division::class, 'admin_divisions', 'user_id', 'division_id')->withTimestamps();
+    }
+
+    /**
+     * Get all division IDs accessible by this user/admin.
+     * - Superadmin: returns all division IDs
+     * - Admin: returns array of division IDs from adminDivisions (and fallback division_id)
+     * - Regular User: returns [$this->division_id] if present
+     */
+    public function getAccessibleDivisionIds(): array
+    {
+        if ($this->isSuperadmin) {
+            return Division::pluck('id')->map(fn($id) => (int)$id)->toArray();
+        }
+
+        $pivotIds = $this->adminDivisions->pluck('id')->map(fn($id) => (int)$id)->toArray();
+        if (!empty($pivotIds)) {
+            if ($this->division_id && !in_array((int)$this->division_id, $pivotIds, true)) {
+                $pivotIds[] = (int)$this->division_id;
+            }
+            return array_values(array_unique($pivotIds));
+        }
+
+        if ($this->division_id) {
+            return [(int)$this->division_id];
+        }
+
+        return [];
+    }
+
+    /**
+     * Get collection of Division models accessible by this user/admin.
+     */
+    public function getAccessibleDivisions()
+    {
+        if ($this->isSuperadmin) {
+            return Division::orderBy('name')->get();
+        }
+
+        $divisionIds = $this->getAccessibleDivisionIds();
+        if (empty($divisionIds)) {
+            return Division::orderBy('name')->get();
+        }
+
+        return Division::whereIn('id', $divisionIds)->orderBy('name')->get();
+    }
+
+    /**
+     * Check whether this user/admin has access to more than 1 division.
+     */
+    public function hasMultipleDivisions(): bool
+    {
+        if ($this->isSuperadmin) {
+            return true;
+        }
+        return count($this->getAccessibleDivisionIds()) > 1;
+    }
+
+    /**
+     * Check if the user/admin has access to a specific division ID.
+     */
+    public function hasDivisionAccess($divisionId): bool
+    {
+        if ($this->isSuperadmin) {
+            return true;
+        }
+        $accessibleIds = $this->getAccessibleDivisionIds();
+        if (empty($accessibleIds)) {
+            return true;
+        }
+        if (empty($divisionId)) {
+            return false;
+        }
+        return in_array((int)$divisionId, $accessibleIds, true);
+    }
+
     public function jobTitle()
     {
         return $this->belongsTo(JobTitle::class);

@@ -27,7 +27,7 @@ class ShiftComponent extends Component
         $this->form->reset();
         
         $user = Auth::user();
-        if (!$user->isSuperadmin) {
+        if (!$user->isSuperadmin && !$user->hasMultipleDivisions()) {
             $this->form->division_id = $user->division_id;
         }
 
@@ -47,7 +47,7 @@ class ShiftComponent extends Component
         /** @var Shift $shift */
         $shift = Shift::findOrFail($id);
 
-        if (!$user->isSuperadmin && $shift->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($shift->division_id)) {
             return abort(403);
         }
 
@@ -69,7 +69,7 @@ class ShiftComponent extends Component
         /** @var Shift $shift */
         $shift = Shift::findOrFail($id);
 
-        if (!$user->isSuperadmin && $shift->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($shift->division_id)) {
             return abort(403);
         }
 
@@ -94,10 +94,13 @@ class ShiftComponent extends Component
         if ($user->isSuperadmin) {
             $shifts = $query->get();
         } else {
-            $shifts = $query->where('division_id', $user->division_id)->get();
+            $shifts = $query->where(function ($q) use ($user) {
+                $q->whereIn('division_id', $user->getAccessibleDivisionIds())
+                  ->orWhereNull('division_id');
+            })->get();
         }
 
-        $divisions = $user->isSuperadmin ? \App\Models\Division::orderBy('name')->get() : collect();
+        $divisions = $user->getAccessibleDivisions();
 
         return view('livewire.admin.master-data.shift', [
             'shifts' => $shifts,

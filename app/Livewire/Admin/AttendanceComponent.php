@@ -64,7 +64,7 @@ class AttendanceComponent extends Component
 
         $user = User::findOrFail($userId);
         
-        if (auth()->user()->group === 'admin' && $user->division_id !== auth()->user()->division_id) {
+        if (auth()->user()->group === 'admin' && !auth()->user()->hasDivisionAccess($user->division_id)) {
             abort(403);
         }
 
@@ -121,7 +121,7 @@ class AttendanceComponent extends Component
         }
 
         $user = User::findOrFail($this->formAttendance['user_id']);
-        if (auth()->user()->group === 'admin' && $user->division_id !== auth()->user()->division_id) {
+        if (auth()->user()->group === 'admin' && !auth()->user()->hasDivisionAccess($user->division_id)) {
             abort(403);
         }
 
@@ -247,7 +247,7 @@ class AttendanceComponent extends Component
         }
         $employees = User::where('group', 'user')
             ->whereIn('status', ['active', 'suspend'])
-            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->where('division_id', auth()->user()->division_id))
+            ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->whereIn('division_id', auth()->user()->getAccessibleDivisionIds()))
             ->when($this->search, function (Builder $q) {
                 return $q->where(function (Builder $query) {
                     $query->where('name', 'like', '%' . $this->search . '%')
@@ -255,7 +255,7 @@ class AttendanceComponent extends Component
                 });
             })
             ->when($this->division, function (Builder $q) {
-                if (auth()->user()->group === 'admin' && $this->division != auth()->user()->division_id) {
+                if (auth()->user()->group === 'admin' && !auth()->user()->hasDivisionAccess($this->division)) {
                     return $q->whereRaw('1 = 0');
                 }
                 return $q->where('division_id', $this->division);

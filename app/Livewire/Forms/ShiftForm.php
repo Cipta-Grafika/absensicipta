@@ -49,7 +49,14 @@ class ShiftForm extends Form
         }
 
         if (!$user->isSuperadmin) {
-            $this->division_id = $user->division_id;
+            if ($user->hasMultipleDivisions()) {
+                if (!$this->division_id || !$user->hasDivisionAccess($this->division_id)) {
+                    $this->addError('division_id', 'Pilih divisi yang sesuai dengan akses Anda.');
+                    return;
+                }
+            } else {
+                $this->division_id = $user->division_id;
+            }
         }
 
         $this->validate();
@@ -64,12 +71,19 @@ class ShiftForm extends Form
             return abort(403);
         }
 
-        if (!$user->isSuperadmin && $this->shift->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($this->shift->division_id)) {
             return abort(403);
         }
 
         if (!$user->isSuperadmin) {
-            $this->division_id = $user->division_id;
+            if ($user->hasMultipleDivisions()) {
+                if (!$this->division_id || !$user->hasDivisionAccess($this->division_id)) {
+                    $this->addError('division_id', 'Pilih divisi yang sesuai dengan akses Anda.');
+                    return;
+                }
+            } else {
+                $this->division_id = $user->division_id;
+            }
         }
 
         $this->validate();
@@ -84,7 +98,7 @@ class ShiftForm extends Form
             return abort(403);
         }
 
-        if (!$user->isSuperadmin && $this->shift->division_id !== $user->division_id) {
+        if (!$user->isSuperadmin && !$user->hasDivisionAccess($this->shift->division_id)) {
             return abort(403);
         }
 

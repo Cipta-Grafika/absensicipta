@@ -98,7 +98,14 @@ class Attendance extends Component
                     return $attendanceImport->model($row->toArray());
                 });
         } else if ($this->previewing && $this->mode == 'export') {
-            $divisionId = Auth::user()->group === 'admin' ? Auth::user()->division_id : $this->division;
+            $divisionId = $this->division;
+            if (Auth::user()->group === 'admin') {
+                if ($this->division && !Auth::user()->hasDivisionAccess($this->division)) {
+                    $divisionId = null;
+                } elseif (!$this->division && !Auth::user()->hasMultipleDivisions()) {
+                    $divisionId = Auth::user()->division_id;
+                }
+            }
             $attendances = AttendanceModel::filter(
                 month: $this->month,
                 year: $this->year,
@@ -138,7 +145,14 @@ class Attendance extends Component
             abort(403);
         }
 
-        $divisionId = Auth::user()->group === 'admin' ? Auth::user()->division_id : $this->division;
+        $divisionId = $this->division;
+        if (Auth::user()->group === 'admin') {
+            if ($this->division && !Auth::user()->hasDivisionAccess($this->division)) {
+                $divisionId = null;
+            } elseif (!$this->division && !Auth::user()->hasMultipleDivisions()) {
+                $divisionId = Auth::user()->division_id;
+            }
+        }
         $division = $divisionId ? Division::find($divisionId)?->name : null;
         $job_title = $this->job_title ? JobTitle::find($this->job_title)?->name : null;
         $education = $this->education ? Education::find($this->education)?->name : null;
