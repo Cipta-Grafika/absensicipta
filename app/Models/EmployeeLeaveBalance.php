@@ -79,7 +79,18 @@ class EmployeeLeaveBalance extends Model
                 $q->whereBetween('date', [$startDate, $endDate])
                   ->orWhereYear('date', $this->year);
             })
-            ->whereIn('status', ['leave'])
+            ->where(function ($q) {
+                $q->whereIn('status', ['leave'])
+                  ->orWhere(function ($sub) {
+                      $sub->whereIn('status', ['excused'])
+                          ->where(function ($noteQ) {
+                              $noteQ->where('note', 'like', '%cuti tahunan%')
+                                    ->orWhere('note', 'like', '%cuti tahun%')
+                                    ->orWhere('note', 'like', '%ambil cuti%')
+                                    ->orWhere('note', 'like', '%annual leave%');
+                          });
+                  });
+            })
             ->count();
 
         $this->update(['used_quota' => $usedCount]);
@@ -114,9 +125,9 @@ class EmployeeLeaveBalance extends Model
                 'used_quota' => 0,
                 'note' => 'Inisialisasi kuota otomatis ' . $year,
             ]);
-
-            $balance->syncUsedQuota();
         }
+
+        $balance->syncUsedQuota();
 
         return $balance;
     }

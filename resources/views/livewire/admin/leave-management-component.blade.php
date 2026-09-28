@@ -443,10 +443,22 @@
                       <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/80 dark:text-purple-300 dark:border-purple-800">
                         Cuti Khusus
                       </span>
-                    @else
+                    @elseif ($hist->status === 'leave')
                       <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-200 dark:bg-sky-950/80 dark:text-sky-300 dark:border-sky-800">
                         Cuti Tahunan (Potong Kuota)
                       </span>
+                    @else
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800">
+                          {{ ucfirst($hist->status) }} (Izin Cuti)
+                        </span>
+                        <button type="button"
+                                wire:click="updateLeaveStatus({{ $hist->id }}, 'leave')"
+                                class="text-[9px] font-semibold text-sky-600 hover:text-sky-800 dark:text-sky-400 underline cursor-pointer"
+                                title="Ubah status menjadi Cuti Tahunan resmi yang memotong kuota">
+                          Jadikan Cuti Tahunan
+                        </button>
+                      </div>
                     @endif
                   </td>
                   <td class="py-2.5 px-3 text-gray-600 dark:text-gray-300">
@@ -463,13 +475,31 @@
                     @endif
                   </td>
                   <td class="py-2.5 px-3 text-center">
-                    <button type="button"
-                            wire:click="deleteLeaveRecord({{ $hist->id }})"
-                            wire:confirm="Yakin ingin membatalkan/menghapus cuti tanggal {{ \Carbon\Carbon::parse($hist->date)->format('d/m/Y') }}? Kuota cuti akan otomatis dikembalikan."
-                            class="inline-flex items-center text-rose-600 hover:text-rose-800 dark:text-rose-400 p-1 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded"
-                            title="Hapus cuti ini dan kembalikan kuota">
-                      <x-heroicon-o-trash class="h-4 w-4" />
-                    </button>
+                    <div class="flex items-center justify-center gap-1">
+                      @if ($hist->status === 'special-leaves')
+                        <button type="button"
+                                wire:click="updateLeaveStatus({{ $hist->id }}, 'leave')"
+                                class="inline-flex items-center text-sky-600 hover:text-sky-800 dark:text-sky-400 p-1 hover:bg-sky-50 dark:hover:bg-sky-950/60 rounded text-[10px] font-semibold"
+                                title="Ubah menjadi Cuti Tahunan (Potong Kuota)">
+                          &rarr; Tahunan
+                        </button>
+                      @elseif ($hist->status === 'leave')
+                        <button type="button"
+                                wire:click="updateLeaveStatus({{ $hist->id }}, 'special-leaves')"
+                                class="inline-flex items-center text-purple-600 hover:text-purple-800 dark:text-purple-400 p-1 hover:bg-purple-50 dark:hover:bg-purple-950/60 rounded text-[10px] font-semibold"
+                                title="Ubah menjadi Cuti Khusus (Tidak Potong Kuota)">
+                          &rarr; Khusus
+                        </button>
+                      @endif
+
+                      <button type="button"
+                              wire:click="deleteLeaveRecord({{ $hist->id }})"
+                              wire:confirm="Yakin ingin membatalkan/menghapus cuti tanggal {{ \Carbon\Carbon::parse($hist->date)->format('d/m/Y') }}? Kuota cuti akan otomatis dikembalikan."
+                              class="inline-flex items-center text-rose-600 hover:text-rose-800 dark:text-rose-400 p-1 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded"
+                              title="Hapus cuti ini dan kembalikan kuota">
+                        <x-heroicon-o-trash class="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               @empty

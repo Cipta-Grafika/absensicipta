@@ -145,7 +145,11 @@ class LeaveManagementComponent extends Component
                 $q->whereBetween('date', [$startDate, $endDate])
                   ->orWhereYear('date', $this->year);
             })
-            ->whereIn('status', ['leave', 'special-leaves'])
+            ->where(function ($q) {
+                $q->whereIn('status', ['leave', 'special-leaves'])
+                  ->orWhere('note', 'like', '%cuti%')
+                  ->orWhere('note', 'like', '%leave%');
+            })
             ->orderBy('date', 'desc')
             ->get();
     }
@@ -157,6 +161,26 @@ class LeaveManagementComponent extends Component
         $this->selectedUser = null;
         $this->selectedUserBalance = null;
         $this->userLeaveHistory = [];
+    }
+
+    /**
+     * Switch leave status (e.g., between Cuti Tahunan and Cuti Khusus).
+     */
+    public function updateLeaveStatus(int $attendanceId, string $newStatus): void
+    {
+        $att = Attendance::find($attendanceId);
+        if ($att && in_array($newStatus, ['leave', 'special-leaves', 'excused'])) {
+            $att->update(['status' => $newStatus]);
+            Attendance::clearUserAttendanceCache(User::find($att->user_id), Carbon::parse($att->date));
+
+            if ($this->selectedUserBalance) {
+                $this->selectedUserBalance->syncUsedQuota();
+                $this->selectedUserBalance->refresh();
+            }
+
+            $this->loadUserLeaveHistory();
+            $this->banner('Status cuti tanggal ' . Carbon::parse($att->date)->format('d/m/Y') . ' berhasil diubah ke ' . ($newStatus === 'leave' ? 'Cuti Tahunan (Potong Kuota)' : ($newStatus === 'special-leaves' ? 'Cuti Khusus' : 'Izin')) . '.');
+        }
     }
 
     /**

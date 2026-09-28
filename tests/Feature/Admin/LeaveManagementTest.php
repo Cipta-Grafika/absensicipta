@@ -271,4 +271,26 @@ class LeaveManagementTest extends TestCase
             ->assertSet('isHistoryModalOpen', true)
             ->assertCount('userLeaveHistory', 4);
     }
+
+    public function test_superadmin_can_toggle_leave_status_and_track_legacy_cuti(): void
+    {
+        $employee = User::factory()->create(['group' => 'user', 'status' => 'active']);
+        $att = Attendance::create([
+            'user_id' => $employee->id,
+            'date' => '2026-07-22',
+            'status' => 'special-leaves',
+            'note' => 'Izin Cuti Khusus',
+        ]);
+
+        $component = Livewire::actingAs($this->superadmin)
+            ->test(LeaveManagementComponent::class)
+            ->call('openHistoryModal', $employee->id)
+            ->call('updateLeaveStatus', $att->id, 'leave');
+
+        $att->refresh();
+        $this->assertEquals('leave', $att->status);
+
+        $balance = $employee->leaveBalanceForYear(2026);
+        $this->assertEquals(1, $balance->used_quota);
+    }
 }
