@@ -366,6 +366,45 @@
       </div>
     </div>
 
+    <!-- 4.5 CARD INFORMASI CUTI & SISA KUOTA (POSISI TEPAT DI BAWAH JAM MASUK & JAM KELUAR) -->
+    @if ($leaveBalance && $leaveBalance->total_quota > 0)
+      <div 
+        x-data
+        @click.prevent="$dispatch('open-apply-cuti-modal')"
+        title="Klik untuk melihat detail cuti atau mengajukan cuti"
+        class="group relative flex items-center justify-between gap-3 rounded-xl bg-slate-50/90 dark:bg-gray-800/90 px-4 py-3 text-gray-800 dark:text-white border border-slate-200 dark:border-gray-700 shadow-xs cursor-pointer hover:shadow-md hover:border-sky-300 dark:hover:border-sky-600 hover:scale-[1.005] active:scale-[0.99] transition-all duration-200">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="rounded-lg bg-sky-500/15 dark:bg-sky-500/20 p-2 text-sky-600 dark:text-sky-400 shrink-0 group-hover:scale-110 transition-transform">
+            <x-heroicon-o-calendar-days class="h-5 w-5 sm:h-6 sm:w-6" />
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <h4 class="text-sm font-bold sm:text-base text-gray-900 dark:text-white">Informasi Cuti ({{ $leaveBalance->year }})</h4>
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold {{
+                $leaveBalance->remaining_quota > 2
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                  : ($leaveBalance->remaining_quota > 0
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300')
+              }}">
+                <span class="mr-1 inline-block h-1.5 w-1.5 rounded-full {{ $leaveBalance->remaining_quota > 2 ? 'bg-emerald-500' : ($leaveBalance->remaining_quota > 0 ? 'bg-amber-500' : 'bg-rose-500') }}"></span>
+                {{ $leaveBalance->remaining_quota }} Hari Sisa
+              </span>
+            </div>
+            <div class="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300 truncate">
+              <span>Terpakai: <strong class="text-amber-600 dark:text-amber-400 font-mono">{{ $leaveBalance->used_quota }}</strong> hari</span>
+              <span class="text-gray-400 dark:text-gray-500 mx-1">&bull;</span>
+              <span>Total Kuota: <strong class="text-indigo-600 dark:text-indigo-400 font-mono">{{ $leaveBalance->total_quota }}</strong> hari</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1 text-xs font-semibold text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform shrink-0">
+          <span class="hidden sm:inline">Ajukan Cuti</span>
+          <x-heroicon-o-chevron-right class="h-4 w-4" />
+        </div>
+      </div>
+    @endif
+
     <!-- 5. NAVIGATION BUTTONS: ABSENSI, SLIP GAJI, SYIRKAH, LEMBUR & GANTI JAM (Hidden on mobile - available in bottom nav bar) -->
     <div class="hidden md:grid grid-cols-5 gap-3 pt-2">
       <a href="{{ route('attendance-history') }}" class="col-span-1 cursor-pointer">

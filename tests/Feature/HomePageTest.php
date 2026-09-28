@@ -125,11 +125,48 @@ class HomePageTest extends TestCase
             'date' => date('Y-m-d'),
             'time_in' => null,
             'time_out' => null,
-            'status' => 'izin',
+            'status' => 'excused',
         ]);
 
         $response = $this->actingAs($user)->get('/home');
         $response->assertStatus(200);
         $response->assertSee('Presensi Hari Ini Terkunci');
+    }
+
+    public function test_home_page_displays_leave_info_card_for_user_with_quota()
+    {
+        $user = User::factory()->create([
+            'name' => 'Karyawan Cuti',
+            'group' => 'user',
+            'status' => 'active',
+        ]);
+
+        $balance = $user->current_leave_balance;
+        $balance->update([
+            'initial_quota' => 12,
+        ]);
+
+        Attendance::create([
+            'user_id' => $user->id,
+            'date' => '2026-03-01',
+            'status' => 'leave',
+        ]);
+        Attendance::create([
+            'user_id' => $user->id,
+            'date' => '2026-05-01',
+            'status' => 'leave',
+        ]);
+        Attendance::create([
+            'user_id' => $user->id,
+            'date' => '2026-07-01',
+            'status' => 'leave',
+        ]);
+
+        $response = $this->actingAs($user)->get('/home');
+        $response->assertStatus(200);
+        $response->assertSee('Informasi Cuti');
+        $response->assertSee('9 Hari Sisa');
+        $response->assertSee('Terpakai:');
+        $response->assertSee('Total Kuota:');
     }
 }

@@ -895,7 +895,7 @@ class ScanComponent extends Component
 
         /** @var Attendance */
         $attendance = Attendance::where('user_id', $user->id)
-            ->where('date', date('Y-m-d'))->first();
+            ->where('date', Carbon::today()->toDateString())->first();
         if ($attendance) {
             $this->setAttendance($attendance);
         } else {
@@ -1302,17 +1302,19 @@ class ScanComponent extends Component
     public function render()
     {
         $this->ensureShiftSelected();
+        $user = Auth::user();
 
         return view('livewire.scan', [
             'attendance' => $this->attendance,
             'shift_id' => $this->shift_id,
-            'shifts' => $this->shifts ?: Shift::getCandidateShiftsForUser(Auth::user()),
+            'shifts' => $this->shifts ?: Shift::getCandidateShiftsForUser($user),
             'currentLiveCoords' => $this->currentLiveCoords,
             'successMsg' => $this->successMsg,
             'isAbsence' => $this->isAbsence,
             'showMotivationModal' => $this->showMotivationModal,
             'showLocationMapModal' => $this->showLocationMapModal,
             'realtimeDeduction' => $this->getRealtimeDeduction(),
+            'leaveBalance' => $user && $user->group === 'user' ? $user->current_leave_balance : null,
             'errors' => session('errors', new \Illuminate\Support\ViewErrorBag),
         ]);
     }
