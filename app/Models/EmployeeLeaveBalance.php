@@ -67,12 +67,18 @@ class EmployeeLeaveBalance extends Model
     }
 
     /**
-     * Recalculate and update the used quota based on attendances for this year.
+     * Recalculate and update the used quota based on attendances across the full year (January - December).
      */
     public function syncUsedQuota(): int
     {
+        $startDate = sprintf('%04d-01-01', $this->year);
+        $endDate = sprintf('%04d-12-31', $this->year);
+
         $usedCount = Attendance::where('user_id', $this->user_id)
-            ->whereYear('date', $this->year)
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('date', [$startDate, $endDate])
+                  ->orWhereYear('date', $this->year);
+            })
             ->whereIn('status', ['leave'])
             ->count();
 
@@ -146,7 +152,7 @@ class EmployeeLeaveBalance extends Model
             ->get();
 
         foreach ($employees as $emp) {
-            static::getOrCreateForUser($emp, $year);
+            static::syncForUserAndYear($emp->id, $year);
         }
     }
 }

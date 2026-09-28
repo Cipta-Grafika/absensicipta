@@ -72,6 +72,9 @@ class LeaveManagementComponent extends Component
         $this->year = (int) date('Y');
         $this->addLeaveFrom = date('Y-m-d');
         $this->addLeaveTo = date('Y-m-d');
+
+        // Automatically sync all active employees' annual leave balances across the entire year
+        EmployeeLeaveBalance::syncAllForYear($this->year);
     }
 
     public function updatingSearch(): void
@@ -89,9 +92,12 @@ class LeaveManagementComponent extends Component
         $this->resetPage();
     }
 
-    public function updatingYear(): void
+    public function updatedYear($value): void
     {
         $this->resetPage();
+        if ($value) {
+            EmployeeLeaveBalance::syncAllForYear((int) $value);
+        }
     }
 
     public function updatingPerPage(): void
@@ -131,8 +137,14 @@ class LeaveManagementComponent extends Component
             return;
         }
 
+        $startDate = sprintf('%04d-01-01', $this->year);
+        $endDate = sprintf('%04d-12-31', $this->year);
+
         $this->userLeaveHistory = Attendance::where('user_id', $this->selectedUserId)
-            ->whereYear('date', $this->year)
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('date', [$startDate, $endDate])
+                  ->orWhereYear('date', $this->year);
+            })
             ->whereIn('status', ['leave', 'special-leaves'])
             ->orderBy('date', 'desc')
             ->get();

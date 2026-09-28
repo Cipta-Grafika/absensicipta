@@ -242,4 +242,33 @@ class LeaveManagementTest extends TestCase
             ->dispatch('bulk-sync-all')
             ->assertHasNoErrors();
     }
+
+    public function test_annual_leave_tracks_all_months_across_entire_year(): void
+    {
+        $year = 2026;
+        $employee = User::factory()->create(['group' => 'user', 'status' => 'active']);
+
+        // Create leave records spanning multiple past months across 2026
+        Attendance::create(['user_id' => $employee->id, 'date' => '2026-01-15', 'status' => 'leave', 'note' => 'Cuti Januari']);
+        Attendance::create(['user_id' => $employee->id, 'date' => '2026-03-20', 'status' => 'leave', 'note' => 'Cuti Maret']);
+        Attendance::create(['user_id' => $employee->id, 'date' => '2026-06-10', 'status' => 'leave', 'note' => 'Cuti Juni']);
+        Attendance::create(['user_id' => $employee->id, 'date' => '2026-09-05', 'status' => 'leave', 'note' => 'Cuti September']);
+        // Leave in another year (2025) should not be counted in 2026
+        Attendance::create(['user_id' => $employee->id, 'date' => '2025-11-12', 'status' => 'leave', 'note' => 'Cuti 2025']);
+
+        // Synchronize for 2026
+        EmployeeLeaveBalance::syncAllForYear($year);
+
+        $balance2026 = $employee->leaveBalanceForYear(2026);
+        $this->assertEquals(4, $balance2026->used_quota, 'Harus menghitung 4 hari cuti dari bulan Jan, Mar, Jun, Sep 2026.');
+        $this->assertEquals(12 - 4, $balance2026->remaining_quota);
+
+        // Verify history modal loads all 4 records across the year
+        Livewire::actingAs($this->superadmin)
+            ->test(LeaveManagementComponent::class)
+            ->set('year', 2026)
+            ->call('openHistoryModal', $employee->id)
+            ->assertSet('isHistoryModalOpen', true)
+            ->assertCount('userLeaveHistory', 4);
+    }
 }
