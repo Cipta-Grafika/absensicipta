@@ -90,6 +90,10 @@ Route::middleware([
                 ->name('hr.masters.scan-feedback');
             Route::get('/masterdata/admin', [MasterDataController::class, 'admin'])
                 ->name('hr.masters.admin');
+
+            // Leave Management (Superadmin ONLY)
+            Route::get('/leave-management', \App\Livewire\Admin\LeaveManagementComponent::class)
+                ->name('hr.leave-management');
         });
 
         // User/Employee/Karyawan

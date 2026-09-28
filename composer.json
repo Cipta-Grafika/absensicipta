@@ -22,7 +22,7 @@
         "laravel/tinker": "^2.9",
         "league/commonmark": "^2.10.0",
         "livewire/livewire": "^3.0",
-        "maatwebsite/excel": "^3.1"
+        "maatwebsite/excel": "^3.1.70"
     },
     "require-dev": {
         "laravel-lang/common": "^6.3",
@@ -74,9 +74,6 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
-        },
-        "audit": {
-            "block-insecure": false
         }
     },
     "minimum-stability": "stable",

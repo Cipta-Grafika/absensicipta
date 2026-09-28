@@ -25,11 +25,40 @@
                             <x-input-error for="status" class="mt-2" />
                         </div>
                     @elseif($modalMode === 'cuti')
+                        @if($leaveBalance)
+                            <div class="sm:col-span-2 p-3.5 rounded-xl bg-sky-50/80 dark:bg-gray-800 border border-sky-200 dark:border-gray-700 shadow-xs">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="h-8 w-8 rounded-lg bg-sky-500 flex items-center justify-center text-white shadow-xs">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="text-xs font-semibold text-gray-800 dark:text-gray-100">Saldo Cuti Tahunan ({{ $leaveBalance->year }})</div>
+                                            <div class="text-[11px] text-gray-500 dark:text-gray-400">Total Kuota: <span class="font-bold text-gray-700 dark:text-gray-300">{{ $leaveBalance->total_quota }} hari</span> | Terpakai: <span class="font-bold text-amber-600 dark:text-amber-400">{{ $leaveBalance->used_quota }} hari</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold {{
+                                            $leaveBalance->remaining_quota > 2
+                                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/90 dark:text-emerald-300 dark:border-emerald-700'
+                                                : ($leaveBalance->remaining_quota > 0
+                                                    ? 'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/90 dark:text-amber-300 dark:border-amber-700'
+                                                    : 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950/90 dark:text-rose-300 dark:border-rose-700')
+                                        }}">
+                                            Sisa: {{ $leaveBalance->remaining_quota }} Hari
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="sm:col-span-2">
                             <x-label for="status" value="{{ __('Jenis Cuti') }}" />
                             <x-select id="status" class="mt-1 block w-full" wire:model.live="status" required>
-                                <option value="leave">Cuti</option>
-                                <option value="special-leaves">Cuti Khusus</option>
+                                <option value="leave">Cuti Tahunan (Memotong Kuota Saldo Cuti)</option>
+                                <option value="special-leaves">Cuti Khusus (Menikah, Melahirkan, Duka, dsb. - Tidak Memotong Kuota Tahunan)</option>
                             </x-select>
                             <x-input-error for="status" class="mt-2" />
                         </div>

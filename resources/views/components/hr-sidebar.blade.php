@@ -66,6 +66,16 @@
       <span class="truncate">Karyawan</span>
     </a>
 
+    <!-- 7. MANAJEMEN CUTI (SUPERADMIN ONLY) -->
+    @if (Auth::user()?->isSuperadmin)
+      @php $active = request()->routeIs('hr.leave-management'); @endphp
+      <a href="{{ route('hr.leave-management') }}"
+         class="group flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-600 hover:bg-gray-100/80 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/60 dark:hover:text-gray-200' }}">
+        <x-heroicon-o-briefcase class="h-5 w-5 shrink-0 {{ $active ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-300' }}" />
+        <span class="truncate">Manajemen Cuti</span>
+      </a>
+    @endif
+
     <!-- 7. SYIRKAH (APPROVAL & MUTASI) -->
     @if (!Auth::user()?->isSuperadmin)
       @php 
@@ -343,6 +353,16 @@
             <x-heroicon-o-user-group class="h-5 w-5 shrink-0 {{ $active ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-300' }}" />
             <span class="truncate">Karyawan</span>
           </a>
+
+          <!-- 7. MANAJEMEN CUTI (SUPERADMIN ONLY) -->
+          @if (Auth::user()?->isSuperadmin)
+            @php $active = request()->routeIs('hr.leave-management'); @endphp
+            <a href="{{ route('hr.leave-management') }}"
+               class="group flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 {{ $active ? 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 font-bold' : 'text-gray-600 hover:bg-gray-100/80 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/60 dark:hover:text-gray-200' }}">
+              <x-heroicon-o-briefcase class="h-5 w-5 shrink-0 {{ $active ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-300' }}" />
+              <span class="truncate">Manajemen Cuti</span>
+            </a>
+          @endif
 
           <!-- 7. SYIRKAH (APPROVAL & MUTASI) -->
           @if (!Auth::user()?->isSuperadmin)

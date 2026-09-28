@@ -33,6 +33,11 @@
             <x-nav-link class="hidden md:inline-flex" href="{{ route('hr.employees') }}" :active="request()->routeIs('hr.employees')">
               {{ __('Employee') }}
             </x-nav-link>
+            @if (Auth::user()?->isSuperadmin)
+              <x-nav-link class="hidden md:inline-flex" href="{{ route('hr.leave-management') }}" :active="request()->routeIs('hr.leave-management')">
+                Manajemen Cuti
+              </x-nav-link>
+            @endif
             @if (!Auth::user()?->isSuperadmin)
               <x-nav-link class="hidden md:inline-flex" href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
                 Syirkah
@@ -381,6 +386,11 @@
         <x-responsive-nav-link href="{{ route('hr.employees') }}" :active="request()->routeIs('hr.employees')">
           {{ __('Employee') }}
         </x-responsive-nav-link>
+        @if (Auth::user()?->isSuperadmin)
+          <x-responsive-nav-link href="{{ route('hr.leave-management') }}" :active="request()->routeIs('hr.leave-management')">
+            Manajemen Cuti
+          </x-responsive-nav-link>
+        @endif
         @if (!Auth::user()?->isSuperadmin)
           <x-responsive-nav-link href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
             Syirkah

@@ -169,6 +169,24 @@ class ApplyLeaveModalComponent extends Component
                 }
             }
 
+            if ($this->modalMode === 'cuti' && $this->status === 'leave') {
+                $user = Auth::user();
+                $year = $fromDate->year;
+                $leaveBalance = \App\Models\EmployeeLeaveBalance::getOrCreateForUser($user, $year);
+                $daysCount = $fromDate->diffInDays($toDate) + 1;
+                
+                $existingLeavesInRange = Attendance::where('user_id', $user->id)
+                    ->whereBetween('date', [$fromDate->format('Y-m-d'), $toDate->format('Y-m-d')])
+                    ->where('status', 'leave')
+                    ->count();
+                $additionalDaysNeeded = $daysCount - $existingLeavesInRange;
+
+                if ($additionalDaysNeeded > 0 && $leaveBalance->remaining_quota < $additionalDaysNeeded) {
+                    $this->addError('from', "Sisa kuota cuti tahunan Anda tidak mencukupi (Sisa: {$leaveBalance->remaining_quota} hari, Pengajuan: {$additionalDaysNeeded} hari). Silakan hubungi HR / Superadmin.");
+                    return;
+                }
+            }
+
             $fromDate->range($toDate)
                 ->forEach(function (Carbon $date) use ($newAttachment, $parsedImpDurationMinutes) {
                     $existing = Attendance::where('user_id', Auth::user()->id)
@@ -229,11 +247,19 @@ class ApplyLeaveModalComponent extends Component
     public function render()
     {
         $shifts = collect();
+        $user = Auth::user();
+        $leaveBalance = null;
+        $leaveTypes = collect();
 
-        // Only query shifts from DB when modal is actually open and in IMP mode
-        if ($this->isModalOpen && $this->modalMode === 'imp') {
-            $user = Auth::user();
-            if ($user) {
+        if ($user) {
+            if ($this->isModalOpen && $this->modalMode === 'cuti') {
+                $year = $this->from ? Carbon::parse($this->from)->year : (int) date('Y');
+                $leaveBalance = \App\Models\EmployeeLeaveBalance::getOrCreateForUser($user, $year);
+                $leaveTypes = \App\Models\LeaveType::active()->get();
+            }
+
+            // Only query shifts from DB when modal is actually open and in IMP mode
+            if ($this->isModalOpen && $this->modalMode === 'imp') {
                 $shifts = Shift::forUser($user)
                     ->orderByRaw('CASE WHEN division_id = ? THEN 0 ELSE 1 END', [$user->division_id ?? 0])
                     ->orderBy('name', 'asc')
@@ -243,6 +269,8 @@ class ApplyLeaveModalComponent extends Component
 
         return view('livewire.user.apply-leave-modal-component', [
             'shifts' => $shifts,
+            'leaveBalance' => $leaveBalance,
+            'leaveTypes' => $leaveTypes,
             'modalMode' => $this->modalMode,
             'status' => $this->status,
             'note' => $this->note,

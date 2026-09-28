@@ -349,6 +349,36 @@ class User extends Authenticatable
         return $this->hasMany(ErrorDeduction::class);
     }
 
+    public function leaveBalances()
+    {
+        return $this->hasMany(EmployeeLeaveBalance::class, 'user_id');
+    }
+
+    public function leaveBalanceForYear(?int $year = null): EmployeeLeaveBalance
+    {
+        return EmployeeLeaveBalance::getOrCreateForUser($this, $year);
+    }
+
+    public function getCurrentLeaveBalanceAttribute(): EmployeeLeaveBalance
+    {
+        return $this->leaveBalanceForYear((int) date('Y'));
+    }
+
+    public function getRemainingLeaveAttribute(): int
+    {
+        return $this->current_leave_balance->remaining_quota;
+    }
+
+    public function getUsedLeaveAttribute(): int
+    {
+        return $this->current_leave_balance->used_quota;
+    }
+
+    public function getTotalLeaveQuotaAttribute(): int
+    {
+        return $this->current_leave_balance->total_quota;
+    }
+
     /**
      * Scope query to only include working employees (active or suspend).
      */

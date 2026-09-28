@@ -22,10 +22,27 @@ class Attendance extends Model
     {
         static::saved(function ($attendance) {
             \App\Services\DeductionNotificationService::notify($attendance->user_id);
+            if ($attendance->user_id && $attendance->date) {
+                $year = \Illuminate\Support\Carbon::parse($attendance->date)->year;
+                \App\Models\EmployeeLeaveBalance::syncForUserAndYear($attendance->user_id, $year);
+                if ($attendance->wasChanged('date')) {
+                    $origDate = $attendance->getOriginal('date');
+                    if ($origDate) {
+                        $origYear = \Illuminate\Support\Carbon::parse($origDate)->year;
+                        if ($origYear !== $year) {
+                            \App\Models\EmployeeLeaveBalance::syncForUserAndYear($attendance->user_id, $origYear);
+                        }
+                    }
+                }
+            }
         });
 
         static::deleted(function ($attendance) {
             \App\Services\DeductionNotificationService::notify($attendance->user_id);
+            if ($attendance->user_id && $attendance->date) {
+                $year = \Illuminate\Support\Carbon::parse($attendance->date)->year;
+                \App\Models\EmployeeLeaveBalance::syncForUserAndYear($attendance->user_id, $year);
+            }
         });
     }
 
