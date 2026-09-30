@@ -157,6 +157,205 @@
       </div>
     </div>
 
+    <!-- KARTU RINGKASAN & APPROVAL SYIRKAH (SHORTCUT KHUSUS OWNER / PAYROLL) -->
+    <div class="mb-6 overflow-hidden rounded-none sm:rounded-2xl border-t border-b sm:border border-emerald-200/80 bg-white/70 backdrop-blur-xl shadow-2xl shadow-black/5 dark:border-emerald-900/40 dark:bg-gray-900/70">
+      <!-- Header Card -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-transparent px-5 py-4 dark:border-emerald-900/40 dark:from-emerald-950/40 dark:via-teal-950/20">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/20">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-gray-900 dark:text-gray-100 text-base sm:text-lg">
+                Ringkasan & Persetujuan Syirkah
+              </h3>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/50 dark:border-emerald-800/60">
+                Payroll {{ $currentMonth }}
+              </span>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Shortcut persetujuan mutasi simpanan syirkah karyawan dari generate payroll
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Buttons on Header -->
+        <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-start sm:justify-end">
+          <a href="{{ route('payroll.saving-transactions') }}"
+             class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-xl transition-colors">
+            <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            <span>Buka Mutasi</span>
+          </a>
+
+          @if ($syirkahSummary['pending_count'] > 0)
+            <button type="button"
+                    wire:click="openBulkApproveModal('current_month')"
+                    class="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-lg shadow-emerald-600/25 transition-all duration-150 transform active:scale-95 cursor-pointer">
+              <svg class="h-4 w-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Setujui Semua ({{ $syirkahSummary['pending_count'] }})</span>
+            </button>
+          @elseif ($syirkahSummary['total_count'] > 0 && $syirkahSummary['approved_count'] === $syirkahSummary['total_count'])
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/70 border border-emerald-300/50 dark:border-emerald-800/60 rounded-xl">
+              <svg class="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+              Semua Mutasi Telah Disetujui
+            </span>
+          @else
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-100 dark:text-gray-400 dark:bg-gray-800 rounded-xl">
+              Belum Ada Mutasi Payroll
+            </span>
+          @endif
+        </div>
+      </div>
+
+      <!-- Card Grid Metrics -->
+      <div class="grid grid-cols-1 divide-y divide-gray-200 dark:divide-gray-800 sm:grid-cols-2 lg:grid-cols-4 sm:divide-y-0 sm:divide-x">
+        
+        <!-- 1. Menunggu Persetujuan (Pending) -->
+        <div class="p-5 transition-colors hover:bg-emerald-50/40 dark:hover:bg-gray-800/40 relative group">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold tracking-wider text-amber-700 dark:text-amber-400 uppercase">
+              Perlu Persetujuan
+            </span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-950/70 dark:text-amber-400">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+          </div>
+          <div class="mt-2">
+            <div class="flex items-baseline gap-2">
+              <span class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">
+                {{ $syirkahSummary['pending_count'] }}
+              </span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Mutasi Pending</span>
+            </div>
+            <p class="mt-1 text-sm font-bold text-amber-600 dark:text-amber-400">
+              Rp {{ number_format($syirkahSummary['pending_total'], 0, ',', '.') }}
+            </p>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <span>Wajib: Rp {{ number_format($syirkahSummary['pending_mandatory'], 0, ',', '.') }}</span>
+            <span>Sukarela: Rp {{ number_format($syirkahSummary['pending_secondary'], 0, ',', '.') }}</span>
+          </div>
+        </div>
+
+        <!-- 2. Potongan Simpanan Wajib -->
+        <div class="p-5 transition-colors hover:bg-emerald-50/40 dark:hover:bg-gray-800/40">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold tracking-wider text-gray-500 dark:text-gray-400 uppercase">
+              Simpanan Wajib (Pokok)
+            </span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-400">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </span>
+          </div>
+          <div class="mt-2">
+            <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+              Rp {{ number_format($syirkahSummary['total_mandatory'], 0, ',', '.') }}
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Total potongan pokok periode {{ $currentMonth }}
+            </p>
+          </div>
+          <div class="mt-3 flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium pt-2 border-t border-gray-100 dark:border-gray-800">
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{{ $syirkahSummary['total_count'] }} Transaksi terdata</span>
+          </div>
+        </div>
+
+        <!-- 3. Potongan Simpanan Sukarela -->
+        <div class="p-5 transition-colors hover:bg-emerald-50/40 dark:hover:bg-gray-800/40">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold tracking-wider text-gray-500 dark:text-gray-400 uppercase">
+              Simpanan Sukarela
+            </span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-950/70 dark:text-teal-400">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+          </div>
+          <div class="mt-2">
+            <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+              Rp {{ number_format($syirkahSummary['total_secondary'], 0, ',', '.') }}
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Total sukarela tambahan periode {{ $currentMonth }}
+            </p>
+          </div>
+          <div class="mt-3 flex items-center gap-1.5 text-[11px] text-teal-600 dark:text-teal-400 font-medium pt-2 border-t border-gray-100 dark:border-gray-800">
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Masuk ke saldo simpanan sukarela</span>
+          </div>
+        </div>
+
+        <!-- 4. Grand Total Syirkah -->
+        <div class="p-5 transition-colors hover:bg-emerald-50/40 dark:hover:bg-gray-800/40 bg-emerald-500/5 dark:bg-emerald-950/20">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold tracking-wider text-emerald-800 dark:text-emerald-300 uppercase">
+              Total Potongan Syirkah
+            </span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+          </div>
+          <div class="mt-2">
+            <p class="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              Rp {{ number_format($syirkahSummary['total_amount'], 0, ',', '.') }}
+            </p>
+            <div class="mt-1 flex items-center gap-2 text-xs">
+              <span class="font-bold text-emerald-700 dark:text-emerald-300">{{ $syirkahSummary['approved_count'] }} Disetujui</span>
+              <span class="text-gray-400">&bull;</span>
+              <span class="font-bold text-amber-600 dark:text-amber-400">{{ $syirkahSummary['pending_count'] }} Pending</span>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <span>Total: {{ $syirkahSummary['total_count'] }} slip</span>
+            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">
+              {{ $syirkahSummary['total_count'] > 0 ? round(($syirkahSummary['approved_count'] / $syirkahSummary['total_count']) * 100) : 0 }}% Disetujui
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+      @if ($allPendingSummary['count'] > $syirkahSummary['pending_count'])
+      <!-- Notice jika ada transaksi pending di luar bulan ini -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-5 py-3 bg-amber-500/10 border-t border-amber-300/40 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300">
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>
+            Terdapat <strong>{{ $allPendingSummary['count'] - $syirkahSummary['pending_count'] }} mutasi syirkah pending lainnya</strong> di luar periode ini (Total: Rp {{ number_format($allPendingSummary['total_amount'] - $syirkahSummary['pending_total'], 0, ',', '.') }}).
+          </span>
+        </div>
+        <button type="button"
+                wire:click="openBulkApproveModal('all_pending')"
+                class="font-bold underline hover:text-amber-900 dark:hover:text-amber-200 cursor-pointer shrink-0">
+          Setujui Semua Pending Sistem ({{ $allPendingSummary['count'] }}) &rarr;
+        </button>
+      </div>
+      @endif
+    </div>
+
     <!-- Info Banner -->
     <div class="mt-6 overflow-hidden rounded-none sm:rounded-2xl border-t border-b sm:border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
       <div class="p-6">
@@ -184,5 +383,86 @@
         </div>
       </div>
     </div>
+
+    <!-- DIALOG MODAL KONFIRMASI APPROVAL BULK SYIRKAH -->
+    <x-dialog-modal wire:model.live="bulkApproveModalOpen" maxWidth="md">
+      <x-slot name="title">
+        <div class="flex items-center gap-2.5">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-400">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <span class="font-bold text-gray-900 dark:text-gray-100">Konfirmasi Persetujuan Massal Syirkah</span>
+        </div>
+      </x-slot>
+
+      <x-slot name="content">
+        @php
+          $targetCount = $bulkApproveScope === 'all_pending' ? $allPendingSummary['count'] : $syirkahSummary['pending_count'];
+          $targetMandatory = $bulkApproveScope === 'all_pending' ? $allPendingSummary['total_mandatory'] : $syirkahSummary['pending_mandatory'];
+          $targetSecondary = $bulkApproveScope === 'all_pending' ? $allPendingSummary['total_secondary'] : $syirkahSummary['pending_secondary'];
+          $targetTotal = $bulkApproveScope === 'all_pending' ? $allPendingSummary['total_amount'] : $syirkahSummary['pending_total'];
+        @endphp
+
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+          Apakah Anda yakin ingin menyetujui mutasi simpanan syirkah berikut secara massal?
+        </p>
+
+        <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/60 p-4 space-y-2.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-500 dark:text-gray-400">Cakupan Persetujuan:</span>
+            <span class="font-bold text-gray-800 dark:text-gray-200">
+              {{ $bulkApproveScope === 'all_pending' ? 'Seluruh Mutasi Pending di Sistem' : 'Payroll Periode ' . $currentMonth }}
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-500 dark:text-gray-400">Jumlah Transaksi:</span>
+            <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ $targetCount }} Transaksi</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-500 dark:text-gray-400">Simpanan Wajib:</span>
+            <span class="font-semibold text-gray-800 dark:text-gray-200">Rp {{ number_format($targetMandatory, 0, ',', '.') }}</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-500 dark:text-gray-400">Simpanan Sukarela:</span>
+            <span class="font-semibold text-gray-800 dark:text-gray-200">Rp {{ number_format($targetSecondary, 0, ',', '.') }}</span>
+          </div>
+          <div class="pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm">
+            <span class="font-bold text-gray-900 dark:text-white">Total Nominal Disetujui:</span>
+            <span class="font-extrabold text-emerald-600 dark:text-emerald-400">Rp {{ number_format($targetTotal, 0, ',', '.') }}</span>
+          </div>
+        </div>
+
+        <div class="mt-3 flex items-start gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+          <svg class="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            Status mutasi akan diperbarui menjadi <strong>Approved</strong> dan saldo simpanan karyawan akan dihitung ulang otomatis.
+          </span>
+        </div>
+      </x-slot>
+
+      <x-slot name="footer">
+        <div class="flex items-center justify-end gap-3">
+          <x-secondary-button wire:click="closeBulkApproveModal" wire:loading.attr="disabled">
+            Batal
+          </x-secondary-button>
+
+          <button type="button"
+                  wire:click="confirmBulkApprove"
+                  wire:loading.attr="disabled"
+                  class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-lg shadow-emerald-600/25 transition-all duration-150 transform active:scale-95 disabled:opacity-50 cursor-pointer">
+            <svg wire:loading wire:target="confirmBulkApprove" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span wire:loading.remove wire:target="confirmBulkApprove">Ya, Setujui Sekarang</span>
+            <span wire:loading wire:target="confirmBulkApprove">Memproses...</span>
+          </button>
+        </div>
+      </x-slot>
+    </x-dialog-modal>
   </div>
 </div>

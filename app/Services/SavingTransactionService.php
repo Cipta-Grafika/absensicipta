@@ -264,7 +264,7 @@ class SavingTransactionService
 
         return DB::transaction(function () use ($transactionIds, $approverId) {
             $affectedTransactions = SavingTransaction::whereIn('id', $transactionIds)->get();
-            $affectedUsers = [];
+            $affectedUserSavings = [];
 
             foreach ($affectedTransactions as $tx) {
                 $tx->update([
@@ -274,11 +274,16 @@ class SavingTransactionService
                     'rejection_reason' => null,
                     'updated_at' => now(),
                 ]);
-                $affectedUsers[$tx->user_id] = $tx->savings_id;
+                if (!isset($affectedUserSavings[$tx->user_id])) {
+                    $affectedUserSavings[$tx->user_id] = [];
+                }
+                $affectedUserSavings[$tx->user_id][$tx->savings_id] = true;
             }
 
-            foreach ($affectedUsers as $uId => $sId) {
-                self::recalculateUserTransactions($uId, $sId);
+            foreach ($affectedUserSavings as $uId => $sIds) {
+                foreach (array_keys($sIds) as $sId) {
+                    self::recalculateUserTransactions($uId, $sId);
+                }
             }
 
             return $affectedTransactions->count();
@@ -294,7 +299,7 @@ class SavingTransactionService
 
         return DB::transaction(function () use ($transactionIds, $approverId, $reason) {
             $affectedTransactions = SavingTransaction::whereIn('id', $transactionIds)->get();
-            $affectedUsers = [];
+            $affectedUserSavings = [];
 
             foreach ($affectedTransactions as $tx) {
                 $tx->update([
@@ -304,11 +309,16 @@ class SavingTransactionService
                     'rejection_reason' => $reason,
                     'updated_at' => now(),
                 ]);
-                $affectedUsers[$tx->user_id] = $tx->savings_id;
+                if (!isset($affectedUserSavings[$tx->user_id])) {
+                    $affectedUserSavings[$tx->user_id] = [];
+                }
+                $affectedUserSavings[$tx->user_id][$tx->savings_id] = true;
             }
 
-            foreach ($affectedUsers as $uId => $sId) {
-                self::recalculateUserTransactions($uId, $sId);
+            foreach ($affectedUserSavings as $uId => $sIds) {
+                foreach (array_keys($sIds) as $sId) {
+                    self::recalculateUserTransactions($uId, $sId);
+                }
             }
 
             return $affectedTransactions->count();
