@@ -152,21 +152,34 @@
       <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         @if($activeTab === 'transactions')
           <!-- 1. Saldo / Mutasi Wajib -->
-          <div class="overflow-hidden rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 p-4 sm:p-5 shadow-xs">
-            <div class="flex items-center justify-between gap-1">
-              <dt class="truncate text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                Total {{ $type === 'deposit' ? 'Setoran Wajib' : ($type === 'withdrawal' ? 'Penarikan Wajib' : 'Saldo Wajib') }} {{ $statusLabel }}
-              </dt>
-              @if($month)
-                <span class="inline-flex items-center rounded-md bg-indigo-100 dark:bg-indigo-900/60 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800 dark:text-indigo-300 shrink-0">
-                  {{ \Carbon\Carbon::parse($month)->translatedFormat('M Y') }}
-                </span>
-              @endif
+          <div class="overflow-hidden rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <dt class="truncate text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Total {{ $type === 'deposit' ? 'Setoran Wajib' : ($type === 'withdrawal' ? 'Penarikan Wajib' : 'Saldo Wajib') }} {{ $statusLabel }}
+                </dt>
+                @if($month)
+                  <span class="inline-flex items-center rounded-md bg-indigo-100 dark:bg-indigo-900/60 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800 dark:text-indigo-300 shrink-0">
+                    {{ \Carbon\Carbon::parse($month)->translatedFormat('M Y') }}
+                  </span>
+                @endif
+              </div>
+              <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-indigo-950 dark:text-indigo-100">
+                Rp {{ number_format($totalWajib, 0, ',', '.') }}
+              </dd>
+              <!-- Value Masuk & Keluar Wajib (Stacked) -->
+              <div class="mt-2.5 space-y-1 text-xs">
+                <div class="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+                  <span class="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-white text-[9px] font-black shrink-0">↓</span>
+                  <span>+ Rp {{ number_format($wajibCredit, 0, ',', '.') }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 font-bold text-rose-600 dark:text-rose-400">
+                  <span class="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-600 text-white text-[9px] font-black shrink-0">↑</span>
+                  <span>- Rp {{ number_format($wajibDebit, 0, ',', '.') }}</span>
+                </div>
+              </div>
             </div>
-            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-indigo-950 dark:text-indigo-100">
-              Rp {{ number_format($totalWajib, 0, ',', '.') }}
-            </dd>
-            <div class="mt-1 flex items-center gap-1.5 text-[11px] text-indigo-700/80 dark:text-indigo-300/80 truncate">
+            <div class="mt-2 flex items-center gap-1.5 text-[11px] text-indigo-700/80 dark:text-indigo-300/80 truncate">
               <span>{{ $periodLabel }}</span>
               @if($divLabel)
                 <span>• Divisi {{ $divLabel }}</span>
@@ -175,21 +188,34 @@
           </div>
 
           <!-- 2. Saldo / Mutasi Sukarela -->
-          <div class="overflow-hidden rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-4 sm:p-5 shadow-xs">
-            <div class="flex items-center justify-between gap-1">
-              <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                Total {{ $type === 'deposit' ? 'Setoran Sukarela' : ($type === 'withdrawal' ? 'Penarikan Sukarela' : 'Saldo Sukarela') }} {{ $statusLabel }}
-              </dt>
-              @if($month)
-                <span class="inline-flex items-center rounded-md bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 shrink-0">
-                  {{ \Carbon\Carbon::parse($month)->translatedFormat('M Y') }}
-                </span>
-              @endif
+          <div class="overflow-hidden rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Total {{ $type === 'deposit' ? 'Setoran Sukarela' : ($type === 'withdrawal' ? 'Penarikan Sukarela' : 'Saldo Sukarela') }} {{ $statusLabel }}
+                </dt>
+                @if($month)
+                  <span class="inline-flex items-center rounded-md bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 shrink-0">
+                    {{ \Carbon\Carbon::parse($month)->translatedFormat('M Y') }}
+                  </span>
+                @endif
+              </div>
+              <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
+                Rp {{ number_format($totalSukarela, 0, ',', '.') }}
+              </dd>
+              <!-- Value Masuk & Keluar Sukarela (Stacked) -->
+              <div class="mt-2.5 space-y-1 text-xs">
+                <div class="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+                  <span class="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-white text-[9px] font-black shrink-0">↓</span>
+                  <span>+ Rp {{ number_format($sukarelaCredit, 0, ',', '.') }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 font-bold text-rose-600 dark:text-rose-400">
+                  <span class="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-600 text-white text-[9px] font-black shrink-0">↑</span>
+                  <span>- Rp {{ number_format($sukarelaDebit, 0, ',', '.') }}</span>
+                </div>
+              </div>
             </div>
-            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
-              Rp {{ number_format($totalSukarela, 0, ',', '.') }}
-            </dd>
-            <div class="mt-1 flex items-center gap-1.5 text-[11px] text-emerald-700/80 dark:text-emerald-300/80 truncate">
+            <div class="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-700/80 dark:text-emerald-300/80 truncate">
               <span>{{ $periodLabel }}</span>
               @if($divLabel)
                 <span>• Divisi {{ $divLabel }}</span>
@@ -198,19 +224,32 @@
           </div>
 
           <!-- 3. Total Akumulasi Mutasi / Transaksi -->
-          <div class="overflow-hidden rounded-xl bg-sky-50/80 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/50 p-4 sm:p-5 shadow-xs">
-            <div class="flex items-center justify-between gap-1">
-              <dt class="truncate text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                {{ $type === 'deposit' ? 'Total Setoran (Kredit)' : ($type === 'withdrawal' ? 'Total Penarikan (Debit)' : 'Total Mutasi (Net)') }}
-              </dt>
-              <span class="inline-flex items-center rounded-md bg-sky-100 dark:bg-sky-900/60 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 dark:text-sky-300 shrink-0">
-                {{ $filteredTransactionsCount }} Data
-              </span>
+          <div class="overflow-hidden rounded-xl bg-sky-50/80 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/50 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <dt class="truncate text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                  {{ $type === 'deposit' ? 'Total Setoran (Kredit)' : ($type === 'withdrawal' ? 'Total Penarikan (Debit)' : 'Total Mutasi (Net)') }}
+                </dt>
+                <span class="inline-flex items-center rounded-md bg-sky-100 dark:bg-sky-900/60 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 dark:text-sky-300 shrink-0">
+                  {{ $filteredTransactionsCount }} Data
+                </span>
+              </div>
+              <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-sky-950 dark:text-sky-100">
+                Rp {{ number_format($totalMutasiAmount, 0, ',', '.') }}
+              </dd>
+              <!-- Value Masuk & Keluar Total (Wajib + Sukarela Stacked) -->
+              <div class="mt-2.5 space-y-1 text-xs">
+                <div class="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+                  <span class="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-white text-[9px] font-black shrink-0">↓</span>
+                  <span>+ Rp {{ number_format($totalCredit, 0, ',', '.') }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 font-bold text-rose-600 dark:text-rose-400">
+                  <span class="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-600 text-white text-[9px] font-black shrink-0">↑</span>
+                  <span>- Rp {{ number_format($totalDebit, 0, ',', '.') }}</span>
+                </div>
+              </div>
             </div>
-            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-sky-950 dark:text-sky-100">
-              Rp {{ number_format($totalMutasiAmount, 0, ',', '.') }}
-            </dd>
-            <div class="mt-1 text-[11px] text-sky-700/80 dark:text-sky-300/80 truncate">
+            <div class="mt-2 text-[11px] text-sky-700/80 dark:text-sky-300/80 truncate">
               {{ $filteredTransactionsCount }} Transaksi Sesuai Filter
             </div>
           </div>

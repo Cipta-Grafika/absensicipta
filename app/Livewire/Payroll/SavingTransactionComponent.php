@@ -1187,12 +1187,24 @@ class SavingTransactionComponent extends Component
 
             $totalDebit = (float) (clone $debitQuery)->where('status', 'approved')->sum(DB::raw('mandatory_amount + secondary_amount'));
             $debitCount = (clone $debitQuery)->where('status', 'approved')->count();
+
+            $wajibCredit = (float) (clone $creditQuery)->where('status', 'approved')->sum('mandatory_amount');
+            $wajibDebit = (float) (clone $debitQuery)->where('status', 'approved')->sum('mandatory_amount');
+
+            $sukarelaCredit = (float) (clone $creditQuery)->where('status', 'approved')->sum('secondary_amount');
+            $sukarelaDebit = (float) (clone $debitQuery)->where('status', 'approved')->sum('secondary_amount');
         } else {
             $totalCredit = (float) (clone $creditQuery)->sum(DB::raw('mandatory_amount + secondary_amount'));
             $creditCount = (clone $creditQuery)->count();
 
             $totalDebit = (float) (clone $debitQuery)->sum(DB::raw('mandatory_amount + secondary_amount'));
             $debitCount = (clone $debitQuery)->count();
+
+            $wajibCredit = (float) (clone $creditQuery)->sum('mandatory_amount');
+            $wajibDebit = (float) (clone $debitQuery)->sum('mandatory_amount');
+
+            $sukarelaCredit = (float) (clone $creditQuery)->sum('secondary_amount');
+            $sukarelaDebit = (float) (clone $debitQuery)->sum('secondary_amount');
         }
 
         // 4. Withdrawals Metrics (Scoped to withdrawalMonth, withdrawalDivision, withdrawalSearch)
@@ -1251,6 +1263,10 @@ class SavingTransactionComponent extends Component
             'totalWajib' => $totalWajib,
             'totalSukarela' => $totalSukarela,
             'totalMutasiAmount' => $totalMutasiAmount,
+            'wajibCredit' => $wajibCredit,
+            'wajibDebit' => $wajibDebit,
+            'sukarelaCredit' => $sukarelaCredit,
+            'sukarelaDebit' => $sukarelaDebit,
             'totalCredit' => $totalCredit,
             'totalDebit' => $totalDebit,
             'creditCount' => $creditCount,
