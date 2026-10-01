@@ -215,47 +215,47 @@
             </div>
           </div>
 
-          <!-- 4. Ringkasan Status Persetujuan -->
-          <div class="overflow-hidden rounded-xl {{ $pendingCount > 0 ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 ring-2 ring-amber-400/40' : 'bg-gray-50/80 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700' }} border p-4 sm:p-5 shadow-xs">
-            <div class="flex items-center justify-between gap-1">
-              <dt class="truncate text-xs font-semibold uppercase tracking-wider {{ $pendingCount > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400' }}">
-                @if($statusFilter === 'pending')
-                  Menunggu Persetujuan
-                @elseif($statusFilter === 'approved')
-                  Mutasi Disetujui
-                @elseif($statusFilter === 'rejected')
-                  Mutasi Ditolak
-                @else
-                  Status Persetujuan
+          <!-- 4. Ringkasan Arus Kas (Debit & Kredit / Masuk & Keluar) -->
+          <div class="overflow-hidden rounded-xl bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <dt class="truncate text-xs font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                  <x-heroicon-o-arrows-right-left class="h-4 w-4" />
+                  <span>Arus Kas (Masuk & Keluar)</span>
+                </dt>
+                @if($statusFilter)
+                  <span class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold {{ $statusFilter === 'approved' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' : ($statusFilter === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300') }} shrink-0">
+                    {{ ucfirst($statusFilter) }}
+                  </span>
                 @endif
-              </dt>
-              @if($pendingCount > 0)
-                <span class="inline-flex items-center rounded-full bg-amber-200/90 px-2 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 animate-pulse shrink-0">
-                  {{ $pendingCount }} Pending
-                </span>
-              @endif
+              </div>
+
+              <div class="space-y-1.5 mt-2.5">
+                <!-- Value Masuk / Kredit (Deposit) -->
+                <div class="flex items-center gap-2.5 p-2 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60">
+                  <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[11px] font-black shrink-0 shadow-xs">
+                    ↓
+                  </span>
+                  <span class="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+                    + Rp {{ number_format($totalCredit, 0, ',', '.') }}
+                  </span>
+                </div>
+
+                <!-- Value Keluar / Debit (Withdrawal) -->
+                <div class="flex items-center gap-2.5 p-2 rounded-lg bg-rose-50/80 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60">
+                  <span class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-white text-[11px] font-black shrink-0 shadow-xs">
+                    ↑
+                  </span>
+                  <span class="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 tracking-tight">
+                    - Rp {{ number_format($totalDebit, 0, ',', '.') }}
+                  </span>
+                </div>
+              </div>
             </div>
-            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight {{ $pendingCount > 0 ? 'text-amber-950 dark:text-amber-100' : 'text-gray-900 dark:text-gray-100' }}">
-              @if($statusFilter === 'pending')
-                Rp {{ number_format($pendingNominal, 0, ',', '.') }}
-              @elseif($statusFilter === 'approved')
-                Rp {{ number_format($approvedNominal, 0, ',', '.') }}
-              @elseif($statusFilter === 'rejected')
-                Rp {{ number_format($rejectedNominal, 0, ',', '.') }}
-              @else
-                {{ $pendingCount }} Menunggu ACC
-              @endif
-            </dd>
-            <div class="mt-1 text-[11px] {{ $pendingCount > 0 ? 'text-amber-800/80 dark:text-amber-300/80' : 'text-gray-500 dark:text-gray-400' }} truncate">
-              @if($statusFilter === 'pending')
-                {{ $pendingCount }} Transaksi Menunggu
-              @elseif($statusFilter === 'approved')
-                {{ $approvedCount }} Transaksi Disetujui
-              @elseif($statusFilter === 'rejected')
-                {{ $rejectedCount }} Transaksi Ditolak
-              @else
-                {{ $approvedCount }} Disetujui • {{ $rejectedCount }} Ditolak
-              @endif
+
+            <div class="mt-2 flex items-center justify-between text-[11px] text-purple-700/80 dark:text-purple-300/80 truncate">
+              <span>{{ $periodLabel }}</span>
+              <span>{{ $creditCount + $debitCount }} Total Mutasi</span>
             </div>
           </div>
         @else
@@ -396,18 +396,18 @@
            TAB 1: MUTASI REKENING (BUKU KAS)
            ========================================================================= -->
       @if($activeTab === 'transactions')
-        <!-- Status Filter Tabs & Search Bar -->
+        <!-- Status Filter Tabs & Search Bar (Bersebelahan) -->
         <div class="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <!-- Status Tabs -->
-          <div class="inline-flex rounded-lg bg-gray-100 dark:bg-gray-900 p-1 text-xs font-medium">
+          <!-- Status & Type Tabs -->
+          <div class="inline-flex items-center rounded-xl bg-gray-100 dark:bg-gray-900 p-1 text-xs font-medium overflow-x-auto shrink-0">
             <button type="button" 
                     wire:click="$set('statusFilter', '')" 
-                    class="rounded-md px-3 py-1.5 transition-colors {{ $statusFilter === '' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200' }}">
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $statusFilter === '' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200' }}">
               Semua
             </button>
             <button type="button" 
                     wire:click="$set('statusFilter', 'pending')" 
-                    class="relative rounded-md px-3 py-1.5 transition-colors {{ $statusFilter === 'pending' ? 'bg-amber-500 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400' }}">
+                    class="relative rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $statusFilter === 'pending' ? 'bg-amber-500 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400' }}">
               Menunggu
               @if($pendingCount > 0)
                 <span class="ml-1 rounded-full bg-amber-100 px-1.5 py-0.2 text-[10px] font-bold text-amber-800 {{ $statusFilter === 'pending' ? 'bg-white text-amber-900' : '' }}">
@@ -417,26 +417,40 @@
             </button>
             <button type="button" 
                     wire:click="$set('statusFilter', 'approved')" 
-                    class="rounded-md px-3 py-1.5 transition-colors {{ $statusFilter === 'approved' ? 'bg-emerald-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400' }}">
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $statusFilter === 'approved' ? 'bg-emerald-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400' }}">
               Disetujui
             </button>
             <button type="button" 
                     wire:click="$set('statusFilter', 'rejected')" 
-                    class="rounded-md px-3 py-1.5 transition-colors {{ $statusFilter === 'rejected' ? 'bg-rose-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400' }}">
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $statusFilter === 'rejected' ? 'bg-rose-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400' }}">
               Ditolak
+            </button>
+
+            <span class="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-1"></span>
+
+            <button type="button" 
+                    wire:click="$set('type', '{{ $type === 'withdrawal' ? '' : 'withdrawal' }}')" 
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap flex items-center gap-1 {{ $type === 'withdrawal' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400' }}"
+                    title="Filter khusus mutasi Penarikan / Pencairan">
+              <span>Penarikan</span>
+              @if($withdrawalTxCount > 0)
+                <span class="rounded-full px-1.5 py-0.2 text-[10px] font-bold {{ $type === 'withdrawal' ? 'bg-white text-rose-700' : 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300' }}">
+                  {{ $withdrawalTxCount }}
+                </span>
+              @endif
             </button>
           </div>
 
-          <!-- Search Bar -->
-          <div class="relative flex-1 sm:max-w-xs">
+          <!-- Search Bar (Bersebelahan, flex-1) -->
+          <div class="relative flex-1 min-w-[200px]">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <x-input type="text" class="block w-full pl-9 pr-8 text-xs sm:text-sm" name="search" id="search" autocomplete="off" wire:model.live.debounce.300ms="search" placeholder="Cari Karyawan, NIP..." />
+            <x-input type="text" class="block w-full pl-9 pr-8 text-xs sm:text-sm rounded-xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs" name="search" id="search" autocomplete="off" wire:model.live.debounce.300ms="search" placeholder="Cari Karyawan, NIP..." />
             @if ($search)
-              <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600 focus:outline-none">
+              <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none">
                 <x-heroicon-o-x-mark class="size-4" />
               </button>
             @endif
@@ -638,47 +652,47 @@
            TAB 2: PENGAJUAN PENARIKAN KARYAWAN (APPROVAL LIFECYCLE)
            ========================================================================= -->
       @else
-        <!-- Withdrawal Filters & Search -->
+        <!-- Withdrawal Filters & Search (Bersebelahan) -->
         <div class="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <!-- Status Filter Tabs -->
-          <div class="inline-flex rounded-lg bg-gray-100 dark:bg-gray-900 p-1 text-xs font-medium overflow-x-auto">
+          <div class="inline-flex rounded-xl bg-gray-100 dark:bg-gray-900 p-1 text-xs font-medium overflow-x-auto shrink-0">
             <button type="button" 
                     wire:click="$set('withdrawalStatusFilter', '')" 
-                    class="rounded-md px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === '' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900' }}">
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === '' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900' }}">
               Semua
             </button>
             <button type="button" 
                     wire:click="$set('withdrawalStatusFilter', 'pending')" 
-                    class="rounded-md px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'pending' ? 'bg-amber-500 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-amber-600' }}">
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'pending' ? 'bg-amber-500 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-amber-600' }}">
               Menunggu ({{ $pendingWithdrawalsCount }})
             </button>
             <button type="button" 
                     wire:click="$set('withdrawalStatusFilter', 'accepted')" 
-                    class="rounded-md px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'accepted' ? 'bg-blue-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-blue-600' }}">
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'accepted' ? 'bg-blue-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-blue-600' }}">
               Disetujui / Belum Bayar ({{ $acceptedWithdrawalsCount }})
             </button>
             <button type="button" 
                     wire:click="$set('withdrawalStatusFilter', 'paid')" 
-                    class="rounded-md px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'paid' ? 'bg-emerald-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-600' }}">
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'paid' ? 'bg-emerald-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-600' }}">
               Selesai Dibayar ({{ $paidWithdrawalsCount }})
             </button>
             <button type="button" 
                     wire:click="$set('withdrawalStatusFilter', 'rejected')" 
-                    class="rounded-md px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'rejected' ? 'bg-rose-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-rose-600' }}">
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'rejected' ? 'bg-rose-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-rose-600' }}">
               Ditolak ({{ $rejectedWithdrawalsCount }})
             </button>
           </div>
 
-          <!-- Search Bar -->
-          <div class="relative flex-1 sm:max-w-xs">
+          <!-- Search Bar (Bersebelahan, flex-1) -->
+          <div class="relative flex-1 min-w-[200px]">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <x-input type="text" class="block w-full pl-9 pr-8 text-xs sm:text-sm" name="withdrawalSearch" id="withdrawalSearch" autocomplete="off" wire:model.live.debounce.300ms="withdrawalSearch" placeholder="Cari Karyawan, Alasan..." />
+            <x-input type="text" class="block w-full pl-9 pr-8 text-xs sm:text-sm rounded-xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-teal-500 focus:border-teal-500 shadow-2xs" name="withdrawalSearch" id="withdrawalSearch" autocomplete="off" wire:model.live.debounce.300ms="withdrawalSearch" placeholder="Cari Karyawan, Alasan..." />
             @if ($withdrawalSearch)
-              <button type="button" wire:click="$set('withdrawalSearch', '')" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600 focus:outline-none">
+              <button type="button" wire:click="$set('withdrawalSearch', '')" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none">
                 <x-heroicon-o-x-mark class="size-4" />
               </button>
             @endif

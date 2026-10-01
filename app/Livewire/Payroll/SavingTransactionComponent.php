@@ -1175,6 +1175,25 @@ class SavingTransactionComponent extends Component
         $approvedNominal = (float) (clone $txFilterWithoutStatus)->where('status', 'approved')->sum(DB::raw('mandatory_amount + secondary_amount'));
         $rejectedCount = (clone $txFilterWithoutStatus)->where('status', 'rejected')->count();
         $rejectedNominal = (float) (clone $txFilterWithoutStatus)->where('status', 'rejected')->sum(DB::raw('mandatory_amount + secondary_amount'));
+        $withdrawalTxCount = (clone $txFilterWithoutStatus)->where('transaction_type', 'withdrawal')->count();
+
+        // Debit (Keluar) & Credit (Masuk) metrics for currently active filter
+        $creditQuery = (clone $txStatsQuery)->where('transaction_type', 'deposit');
+        $debitQuery = (clone $txStatsQuery)->where('transaction_type', 'withdrawal');
+
+        if (!$this->statusFilter) {
+            $totalCredit = (float) (clone $creditQuery)->where('status', 'approved')->sum(DB::raw('mandatory_amount + secondary_amount'));
+            $creditCount = (clone $creditQuery)->where('status', 'approved')->count();
+
+            $totalDebit = (float) (clone $debitQuery)->where('status', 'approved')->sum(DB::raw('mandatory_amount + secondary_amount'));
+            $debitCount = (clone $debitQuery)->where('status', 'approved')->count();
+        } else {
+            $totalCredit = (float) (clone $creditQuery)->sum(DB::raw('mandatory_amount + secondary_amount'));
+            $creditCount = (clone $creditQuery)->count();
+
+            $totalDebit = (float) (clone $debitQuery)->sum(DB::raw('mandatory_amount + secondary_amount'));
+            $debitCount = (clone $debitQuery)->count();
+        }
 
         // 4. Withdrawals Metrics (Scoped to withdrawalMonth, withdrawalDivision, withdrawalSearch)
         $wdFilterWithoutStatus = SavingWithdrawal::whereHas('user', fn($q) => $q->onlyEmployee());
@@ -1232,6 +1251,11 @@ class SavingTransactionComponent extends Component
             'totalWajib' => $totalWajib,
             'totalSukarela' => $totalSukarela,
             'totalMutasiAmount' => $totalMutasiAmount,
+            'totalCredit' => $totalCredit,
+            'totalDebit' => $totalDebit,
+            'creditCount' => $creditCount,
+            'debitCount' => $debitCount,
+            'withdrawalTxCount' => $withdrawalTxCount,
             'filteredTransactionsCount' => $filteredTransactionsCount,
             'pendingCount' => $pendingCount,
             'pendingNominal' => $pendingNominal,
