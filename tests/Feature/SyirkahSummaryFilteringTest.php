@@ -122,5 +122,14 @@ class SyirkahSummaryFilteringTest extends TestCase
             ->assertSet('withdrawalStatusFilter', '')
             ->assertSet('withdrawalDivision', '')
             ->assertSet('withdrawalSearch', '');
+
+        // 4. Test exportExcel triggers download
+        $component = Livewire::test(SavingTransactionComponent::class)
+            ->set('month', '2026-08')
+            ->set('division', $div1->id)
+            ->call('exportExcel');
+
+        $component->assertFileDownloaded();
     }
 }
+

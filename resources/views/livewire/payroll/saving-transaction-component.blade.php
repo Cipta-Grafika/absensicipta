@@ -7,6 +7,12 @@
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola mutasi buku kas syirkah dan persetujuan pengajuan penarikan dana karyawan</p>
     </div>
     <div class="flex items-center gap-2">
+      <x-secondary-button wire:click="exportExcel" class="!bg-emerald-600 hover:!bg-emerald-700 !text-white !border-transparent shadow-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Export Excel
+      </x-secondary-button>
       <x-button type="button" class="bg-indigo-600 hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800" x-data @click.prevent="$dispatch('open-deposit-modal')">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -489,19 +495,27 @@
             </button>
           </div>
 
-          <!-- Search Bar (Bersebelahan, flex-1) -->
-          <div class="relative flex-1 min-w-[200px]">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+          <!-- Search Bar & Export (Bersebelahan, flex-1) -->
+          <div class="flex items-center gap-2 flex-1 min-w-[220px]">
+            <div class="relative flex-1">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <x-input type="text" class="block w-full pl-9 pr-8 text-xs sm:text-sm rounded-xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs" name="search" id="search" autocomplete="off" wire:model.live.debounce.300ms="search" placeholder="Cari Karyawan, NIP..." />
+              @if ($search)
+                <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none">
+                  <x-heroicon-o-x-mark class="size-4" />
+                </button>
+              @endif
             </div>
-            <x-input type="text" class="block w-full pl-9 pr-8 text-xs sm:text-sm rounded-xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs" name="search" id="search" autocomplete="off" wire:model.live.debounce.300ms="search" placeholder="Cari Karyawan, NIP..." />
-            @if ($search)
-              <button type="button" wire:click="$set('search', '')" class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none">
-                <x-heroicon-o-x-mark class="size-4" />
-              </button>
-            @endif
+            <button type="button" wire:click="exportExcel" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 shadow-2xs transition whitespace-nowrap" title="Export Excel Data Mutasi">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span class="hidden sm:inline">Export Excel</span>
+            </button>
           </div>
         </div>
 

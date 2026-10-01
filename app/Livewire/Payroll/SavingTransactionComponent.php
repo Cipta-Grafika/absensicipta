@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Models\Saving;
 use App\Models\Division;
 use App\Services\SavingTransactionService;
+use App\Exports\SavingTransactionsExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -214,6 +216,34 @@ class SavingTransactionComponent extends Component
         $this->selectAll = false;
         $this->resetPage('transactionsPage');
         $this->resetPage('withdrawalsPage');
+    }
+
+    public function exportExcel()
+    {
+        $user = Auth::user();
+        if (!$user || $user->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Role Superadmin tidak memiliki akses ke fitur Syirkah.');
+        }
+
+        if ($user->group === 'admin' && !$user->isSyirkah && !$user->isOwner && !$user->isPayroll) {
+            $divisionFilter = $user->hasMultipleDivisions() ? null : $user->division_id;
+        } else {
+            $divisionFilter = $this->division ? (int) $this->division : null;
+        }
+
+        $dateSuffix = $this->month ? str_replace('-', '', $this->month) : date('Ymd');
+        $filename = 'Laporan_Mutasi_Syirkah_' . $dateSuffix . '_' . date('His') . '.xlsx';
+
+        return Excel::download(
+            new SavingTransactionsExport(
+                month: $this->month ?: null,
+                type: $this->type ?: null,
+                divisionId: $divisionFilter,
+                statusFilter: $this->statusFilter ?: null,
+                search: $this->search ?: null
+            ),
+            $filename
+        );
     }
 
     /* =========================================================================
