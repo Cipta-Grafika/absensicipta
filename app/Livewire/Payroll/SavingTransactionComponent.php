@@ -199,6 +199,23 @@ class SavingTransactionComponent extends Component
         $this->resetPage('withdrawalsPage');
     }
 
+    public function resetFilters()
+    {
+        $this->search = '';
+        $this->month = '';
+        $this->type = '';
+        $this->division = '';
+        $this->statusFilter = '';
+        $this->withdrawalSearch = '';
+        $this->withdrawalMonth = '';
+        $this->withdrawalStatusFilter = '';
+        $this->withdrawalDivision = '';
+        $this->selectedTransactions = [];
+        $this->selectAll = false;
+        $this->resetPage('transactionsPage');
+        $this->resetPage('withdrawalsPage');
+    }
+
     /* =========================================================================
      * MUTASI TRANSACTIONS ACTIONS
      * ========================================================================= */

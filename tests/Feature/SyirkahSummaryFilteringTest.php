@@ -103,5 +103,24 @@ class SyirkahSummaryFilteringTest extends TestCase
             ->assertSee('Rp 50.000')
             ->assertSee('Rp 25.000')
             ->assertSee('Rp 75.000');
+
+        // 3. Test resetFilters clears all filters
+        Livewire::test(SavingTransactionComponent::class)
+            ->set('activeTab', 'transactions')
+            ->set('month', '2026-08')
+            ->set('type', 'deposit')
+            ->set('division', $div1->id)
+            ->set('statusFilter', 'approved')
+            ->set('search', 'Test')
+            ->call('resetFilters')
+            ->assertSet('month', '')
+            ->assertSet('type', '')
+            ->assertSet('division', '')
+            ->assertSet('statusFilter', '')
+            ->assertSet('search', '')
+            ->assertSet('withdrawalMonth', '')
+            ->assertSet('withdrawalStatusFilter', '')
+            ->assertSet('withdrawalDivision', '')
+            ->assertSet('withdrawalSearch', '');
     }
 }
