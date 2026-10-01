@@ -7,11 +7,16 @@
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola mutasi buku kas syirkah dan persetujuan pengajuan penarikan dana karyawan</p>
     </div>
     <div class="flex items-center gap-2">
-      <x-secondary-button wire:click="exportExcel" class="!bg-emerald-600 hover:!bg-emerald-700 !text-white !border-transparent shadow-xs">
-        <svg xmlns="http://www.w3.org/2000/svg" class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <x-secondary-button type="button" x-data @click.prevent="$dispatch('trigger-export-excel')" wire:loading.attr="disabled" wire:target="exportExcel" class="!bg-emerald-600 hover:!bg-emerald-700 !text-white !border-transparent shadow-xs cursor-pointer disabled:opacity-50">
+        <svg wire:loading.remove wire:target="exportExcel" xmlns="http://www.w3.org/2000/svg" class="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        Export Excel
+        <svg wire:loading wire:target="exportExcel" class="animate-spin mr-1.5 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span wire:loading.remove wire:target="exportExcel">Export Excel</span>
+        <span wire:loading wire:target="exportExcel">Mengekspor...</span>
       </x-secondary-button>
       <x-button type="button" class="bg-indigo-600 hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800" x-data @click.prevent="$dispatch('open-deposit-modal')">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
@@ -33,7 +38,8 @@
   </div>
 </x-slot>
 
-<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-deposit-modal.window="$wire.openDepositModal()" @open-withdrawal-modal.window="$wire.openWithdrawalModal()">
+<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-deposit-modal.window="$wire.openDepositModal()" @open-withdrawal-modal.window="$wire.openWithdrawalModal()" @trigger-export-excel.window="$wire.exportExcel()">
+
   <div class="w-full sm:px-6 lg:px-8">
 
     <!-- SIDEBAR FILTER -->
@@ -510,11 +516,16 @@
                 </button>
               @endif
             </div>
-            <button type="button" wire:click="exportExcel" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 shadow-2xs transition whitespace-nowrap" title="Export Excel Data Mutasi">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button type="button" wire:click="exportExcel" wire:loading.attr="disabled" wire:target="exportExcel" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 shadow-2xs transition whitespace-nowrap cursor-pointer disabled:opacity-50" title="Export Excel Data Mutasi">
+              <svg wire:loading.remove wire:target="exportExcel" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span class="hidden sm:inline">Export Excel</span>
+              <svg wire:loading wire:target="exportExcel" class="animate-spin h-4 w-4 text-emerald-600 dark:text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span class="hidden sm:inline" wire:loading.remove wire:target="exportExcel">Export Excel</span>
+              <span class="hidden sm:inline" wire:loading wire:target="exportExcel">Mengekspor...</span>
             </button>
           </div>
         </div>
