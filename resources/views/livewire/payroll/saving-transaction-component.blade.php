@@ -357,25 +357,10 @@
         @endif
       </div>
 
-      <!-- 2. PRIMARY NAVIGATION TABS (PENGAJUAN PENARIKAN VS MUTASI) -->
+      <!-- 2. PRIMARY NAVIGATION TABS (MUTASI VS PENGAJUAN PENARIKAN) -->
       <div class="mb-5 border-b border-gray-200 dark:border-gray-700">
         <nav class="-mb-px flex space-x-4 sm:space-x-8">
-          <!-- Tab 1: Pengajuan Penarikan Karyawan -->
-          <button
-            type="button"
-            wire:click="setActiveTab('withdrawals')"
-            class="whitespace-nowrap py-3 px-1 border-b-2 font-bold text-xs sm:text-sm flex items-center gap-2 transition {{ $activeTab === 'withdrawals' ? 'border-teal-500 text-teal-600 dark:text-teal-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200' }}"
-          >
-            <x-heroicon-o-arrow-up-tray class="h-4 w-4 sm:h-5 sm:w-5" />
-            <span>Pengajuan Penarikan Karyawan</span>
-            @if($pendingWithdrawalsCount > 0)
-              <span class="rounded-full bg-amber-500 text-white px-2 py-0.5 text-[11px] font-extrabold animate-pulse">
-                {{ $pendingWithdrawalsCount }} Baru
-              </span>
-            @endif
-          </button>
-
-          <!-- Tab 2: Mutasi Rekening Syirkah -->
+          <!-- Tab 1: Mutasi Rekening Syirkah (Buku Kas) -->
           <button
             type="button"
             wire:click="setActiveTab('transactions')"
@@ -386,6 +371,21 @@
             @if($pendingCount > 0)
               <span class="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 px-2 py-0.5 text-[11px] font-bold">
                 {{ $pendingCount }}
+              </span>
+            @endif
+          </button>
+
+          <!-- Tab 2: Pengajuan Penarikan Karyawan -->
+          <button
+            type="button"
+            wire:click="setActiveTab('withdrawals')"
+            class="whitespace-nowrap py-3 px-1 border-b-2 font-bold text-xs sm:text-sm flex items-center gap-2 transition {{ $activeTab === 'withdrawals' ? 'border-teal-500 text-teal-600 dark:text-teal-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200' }}"
+          >
+            <x-heroicon-o-arrow-up-tray class="h-4 w-4 sm:h-5 sm:w-5" />
+            <span>Pengajuan Penarikan Karyawan</span>
+            @if($pendingWithdrawalsCount > 0)
+              <span class="rounded-full bg-amber-500 text-white px-2 py-0.5 text-[11px] font-extrabold animate-pulse">
+                {{ $pendingWithdrawalsCount }} Baru
               </span>
             @endif
           </button>

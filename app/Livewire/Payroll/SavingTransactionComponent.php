@@ -19,8 +19,8 @@ class SavingTransactionComponent extends Component
 {
     use WithPagination, WithFileUploads;
 
-    // Active View Tab ('withdrawals' or 'transactions') - Default to withdrawals
-    public $activeTab = 'withdrawals';
+    // Active View Tab ('transactions' or 'withdrawals') - Default to transactions
+    public $activeTab = 'transactions';
 
     // Filters for Mutasi Transaksi
     public $search = '';
@@ -112,7 +112,7 @@ class SavingTransactionComponent extends Component
     public $selectedWithdrawal = null;
 
     protected $queryString = [
-        'activeTab' => ['except' => 'withdrawals'],
+        'activeTab' => ['except' => 'transactions'],
         'statusFilter' => ['except' => ''],
         'month' => ['except' => ''],
         'type' => ['except' => ''],
