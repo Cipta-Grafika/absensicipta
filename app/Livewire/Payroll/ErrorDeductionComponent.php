@@ -242,6 +242,7 @@ class ErrorDeductionComponent extends Component
     public function render()
     {
         $employees = User::onlyWorkingEmployee()
+            ->where('is_attendance_required', true)
             ->with('division')
             ->orderBy('name')
             ->get();

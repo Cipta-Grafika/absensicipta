@@ -576,7 +576,7 @@ class WorkScheduleManagementComponent extends Component
         $divisions = $user->getAccessibleDivisions();
 
         // Scope employee options for modal & filters based on user role
-        $usersQuery = User::where('group', 'user')->whereIn('status', ['active', 'suspend']);
+        $usersQuery = User::where('group', 'user')->whereIn('status', ['active', 'suspend'])->where('is_attendance_required', true);
         if (!$user->isSuperadmin && !empty($user->getAccessibleDivisionIds())) {
             $usersQuery->whereIn('division_id', $user->getAccessibleDivisionIds());
         }

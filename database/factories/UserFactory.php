@@ -49,6 +49,7 @@ class UserFactory extends Factory
             'education_id' => Education::inRandomOrder()->first()?->id,
             'division_id' => Division::inRandomOrder()->first()?->id,
             'job_title_id' => JobTitle::inRandomOrder()->first()?->id,
+            'is_attendance_required' => true,
         ];
     }
 

@@ -66,11 +66,22 @@ class SavingTransactionComponent extends Component
     public $proofTargetModel = null;
     public $newTransferProof = null;
 
+    // Modal Setoran Langsung (Admin Mutasi / Anggota Non-Absen)
+    public $depositModalOpen = false;
+    public $deposit_user_id = '';
+    public $deposit_savings_id = '';
+    public $deposit_mandatory_amount = 0;
+    public $deposit_secondary_amount = 0;
+    public $deposit_description = '';
+    public $deposit_date = '';
+    public $deposit_transfer_proof = null;
+
     // Modal Edit Nominal (Khusus Syirkah Group / Owner)
     public $editNominalModalOpen = false;
     public $editingTransactionId = null;
     public $edit_mandatory_amount = 0;
     public $edit_secondary_amount = 0;
+    public $edit_description = '';
     public $editingTransaction = null;
 
     // Modal Reject Mutasi
@@ -388,6 +399,7 @@ class SavingTransactionComponent extends Component
         $this->editingTransaction = $tx;
         $this->edit_mandatory_amount = (float) $tx->mandatory_amount;
         $this->edit_secondary_amount = (float) $tx->secondary_amount;
+        $this->edit_description = $tx->description ?: '';
         $this->editNominalModalOpen = true;
     }
 
@@ -396,7 +408,7 @@ class SavingTransactionComponent extends Component
         $this->editNominalModalOpen = false;
         $this->editingTransactionId = null;
         $this->editingTransaction = null;
-        $this->reset(['edit_mandatory_amount', 'edit_secondary_amount']);
+        $this->reset(['edit_mandatory_amount', 'edit_secondary_amount', 'edit_description']);
     }
 
     public function updateNominal()
@@ -409,6 +421,7 @@ class SavingTransactionComponent extends Component
         $this->validate([
             'edit_mandatory_amount' => 'required|numeric|min:0',
             'edit_secondary_amount' => 'required|numeric|min:0',
+            'edit_description' => 'nullable|string|max:255',
         ], [
             'edit_mandatory_amount.required' => 'Nominal Mutasi Wajib wajib diisi.',
             'edit_mandatory_amount.numeric' => 'Nominal Mutasi Wajib harus berupa angka.',
@@ -424,6 +437,7 @@ class SavingTransactionComponent extends Component
             $tx->update([
                 'mandatory_amount' => $this->edit_mandatory_amount,
                 'secondary_amount' => $this->edit_secondary_amount,
+                'description' => $this->edit_description ?: $tx->description,
                 'updated_at' => now(),
             ]);
 
@@ -431,9 +445,102 @@ class SavingTransactionComponent extends Component
         });
 
         $this->closeEditNominalModal();
-        $this->dispatch('notify', 'Nominal mutasi syirkah berhasil diperbarui.');
+        $this->dispatch('notify', 'Data mutasi syirkah berhasil diperbarui.');
     }
 
+    #[On('open-deposit-modal')]
+    public function openDepositModal()
+    {
+        $this->reset(['deposit_user_id', 'deposit_savings_id', 'deposit_mandatory_amount', 'deposit_secondary_amount', 'deposit_description', 'deposit_date', 'deposit_transfer_proof']);
+        $this->deposit_date = date('Y-m-d');
+        $this->depositModalOpen = true;
+    }
+
+    public function closeDepositModal()
+    {
+        $this->depositModalOpen = false;
+        $this->deposit_transfer_proof = null;
+    }
+
+    public function processDeposit()
+    {
+        $user = Auth::user();
+        if (!$user || $user->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Role Superadmin tidak memiliki akses ke fitur Syirkah.');
+        }
+
+        $this->validate([
+            'deposit_user_id' => 'required|exists:users,id',
+            'deposit_savings_id' => 'required|exists:savings,id',
+            'deposit_mandatory_amount' => 'required|numeric|min:0',
+            'deposit_secondary_amount' => 'required|numeric|min:0',
+            'deposit_date' => 'nullable|date',
+            'deposit_transfer_proof' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+        ], [
+            'deposit_user_id.required' => 'Pilih karyawan / anggota syirkah.',
+            'deposit_savings_id.required' => 'Pilih program syirkah.',
+            'deposit_transfer_proof.mimes' => 'Format bukti transfer harus JPG, PNG, WEBP, atau PDF.',
+            'deposit_transfer_proof.max' => 'Ukuran bukti transfer maksimal 5MB.',
+        ]);
+
+        $mandAmount = (float) $this->deposit_mandatory_amount;
+        $secAmount = (float) $this->deposit_secondary_amount;
+
+        if ($mandAmount <= 0 && $secAmount <= 0) {
+            $this->addError('deposit_mandatory_amount', 'Salah satu nominal (Wajib atau Sukarela) harus lebih dari 0.');
+            return;
+        }
+
+        $targetUser = User::onlyWorkingEmployee()->findOrFail($this->deposit_user_id);
+
+        if ($user->group === 'admin' && !$user->isSyirkah && !$user->isOwner && !$user->isPayroll) {
+            if (!$user->hasDivisionAccess($targetUser->division_id)) {
+                abort(403, 'Akses Ditolak: Anda hanya berwenang mencatat setoran anggota di divisi Anda.');
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $isDirectApproved = $user->isSyirkah || $user->isOwner || $user->isPayroll;
+
+            $proofPath = null;
+            if ($this->deposit_transfer_proof) {
+                $proofPath = $this->deposit_transfer_proof->store('syirkah/proofs', 'public');
+            }
+
+            $txDate = !empty($this->deposit_date) ? Carbon::parse($this->deposit_date . ' ' . date('H:i:s')) : now();
+
+            $tx = SavingTransaction::create([
+                'user_id' => $this->deposit_user_id,
+                'savings_id' => $this->deposit_savings_id,
+                'transaction_type' => 'deposit',
+                'mandatory_amount' => $mandAmount,
+                'secondary_amount' => $secAmount,
+                'balance_mandatory' => 0,
+                'balance_secondary' => 0,
+                'status' => $isDirectApproved ? 'approved' : 'pending',
+                'approved_by' => $isDirectApproved ? Auth::id() : null,
+                'approval_date' => $isDirectApproved ? now() : null,
+                'description' => $this->deposit_description ?: 'Setoran Syirkah Manual',
+                'transfer_proof' => $proofPath,
+                'created_at' => $txDate,
+                'updated_at' => now(),
+            ]);
+
+            if ($isDirectApproved) {
+                SavingTransactionService::recalculateUserTransactions($this->deposit_user_id, $this->deposit_savings_id);
+            }
+
+            DB::commit();
+            $this->closeDepositModal();
+            $this->dispatch('notify', 'Setoran syirkah manual berhasil dicatat & saldo diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->addError('deposit_user_id', 'Gagal memproses setoran: ' . $e->getMessage());
+        }
+    }
+
+    #[On('open-withdrawal-modal')]
     public function openWithdrawalModal()
     {
         $this->reset(['withdrawal_user_id', 'withdrawal_savings_id', 'withdrawal_amount', 'withdrawal_description', 'withdrawal_type', 'withdrawal_transfer_proof']);

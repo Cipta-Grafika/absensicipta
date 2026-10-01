@@ -59,7 +59,17 @@ class User extends Authenticatable
         'profile_photo_path',
         'status',
         'count_wfo',
+        'is_attendance_required',
         'off_days',
+    ];
+
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array
+     */
+    protected $attributes = [
+        'is_attendance_required' => true,
     ];
 
     public function getTelegramTargetAttribute(): ?string
@@ -150,6 +160,7 @@ class User extends Authenticatable
             'birth_date' => 'datetime:Y-m-d',
             'password' => 'hashed',
             'count_wfo' => 'boolean',
+            'is_attendance_required' => 'boolean',
             'off_days' => 'array',
         ];
     }
@@ -394,5 +405,23 @@ class User extends Authenticatable
     public function scopeOnlyWorkingEmployee($query)
     {
         return $query->where('group', 'user')->whereIn('status', ['active', 'suspend']);
+    }
+
+    /**
+     * Scope query to only include employees that require attendance tracking.
+     */
+    public function scopeAttendanceRequired($query)
+    {
+        return $query->where('is_attendance_required', true);
+    }
+
+    /**
+     * Scope query to only include active employees that require attendance tracking.
+     */
+    public function scopeOnlyAttendanceEmployees($query)
+    {
+        return $query->where('group', 'user')
+            ->whereIn('status', ['active', 'suspend'])
+            ->where('is_attendance_required', true);
     }
 }

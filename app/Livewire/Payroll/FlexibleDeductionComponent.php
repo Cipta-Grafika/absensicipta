@@ -349,6 +349,7 @@ class FlexibleDeductionComponent extends Component
 
         // Fetch master employees with their flexible deduction for selected program & month
         $employees = User::onlyEmployee()
+            ->where('is_attendance_required', true)
             ->when($this->status, function ($query) {
                 if ($this->status === 'all') {
                     return $query;

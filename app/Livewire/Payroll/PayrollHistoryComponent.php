@@ -132,6 +132,7 @@ class PayrollHistoryComponent extends Component
     public function selectAllAvailableEmployees()
     {
         $this->selected_employee_ids = \App\Models\User::onlyWorkingEmployee()
+            ->where('is_attendance_required', true)
             ->whereHas('salary')
             ->pluck('id')
             ->map(fn($id) => (string)$id)
@@ -146,6 +147,7 @@ class PayrollHistoryComponent extends Component
     public function toggleAllEmployees()
     {
         $allIds = \App\Models\User::onlyWorkingEmployee()
+            ->where('is_attendance_required', true)
             ->whereHas('salary')
             ->pluck('id')
             ->map(fn($id) => (string)$id)
@@ -372,8 +374,9 @@ class PayrollHistoryComponent extends Component
         try {
             $generatedCount = 0;
             \Illuminate\Support\Facades\DB::transaction(function () use (&$generatedCount) {
-                // Get active/suspend working employees who have a salary setup
+                // Get active/suspend working employees who have a salary setup and require attendance
                 $employeesQuery = \App\Models\User::onlyWorkingEmployee()
+                    ->where('is_attendance_required', true)
                     ->whereHas('salary')
                     ->with(['salary.savings', 'salary.taxMaster']);
 
@@ -1291,6 +1294,7 @@ class PayrollHistoryComponent extends Component
         $payrolls = $this->getPayrollQuery()->paginate(15);
 
         $availableEmployees = \App\Models\User::onlyWorkingEmployee()
+            ->where('is_attendance_required', true)
             ->whereHas('salary')
             ->with(['division', 'jobTitle'])
             ->orderBy('name')

@@ -175,6 +175,10 @@ class ScanComponent extends Component
 
     protected function executeScan(string $barcode, string $action = 'auto')
     {
+        if (Auth::user() && !Auth::user()->is_attendance_required) {
+            return __('Absen Tidak Diperlukan: Akun Anda terdaftar sebagai anggota non-absensi.');
+        }
+
         if ($this->isAbsence || ($this->attendance && in_array(strtolower(trim((string)$this->attendance->status)), self::$lockedStatuses))) {
             return __('Absen Gagal: Presensi terkunci karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.');
         }
@@ -416,6 +420,11 @@ class ScanComponent extends Component
         }
 
         try {
+            if (Auth::user() && !Auth::user()->is_attendance_required) {
+                $this->dangerBanner(__('Absen Tidak Diperlukan: Akun Anda terdaftar sebagai anggota non-absensi.'));
+                return;
+            }
+
             if ($this->isAbsence) {
                 $this->dangerBanner(__('Absen Masuk gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
                 return;
@@ -593,6 +602,11 @@ class ScanComponent extends Component
         }
 
         try {
+            if (Auth::user() && !Auth::user()->is_attendance_required) {
+                $this->dangerBanner(__('Absen Tidak Diperlukan: Akun Anda terdaftar sebagai anggota non-absensi.'));
+                return;
+            }
+
             if ($this->isAbsence) {
                 $this->dangerBanner(__('Absen Keluar gagal: Operasi tidak dapat dilakukan karena status Anda hari ini terdaftar sebagai ' . strtoupper($this->attendance?->status ?? 'IZIN/CUTI/SAKIT/WFH') . '.'));
                 return;
@@ -893,13 +907,15 @@ class ScanComponent extends Component
         $user = Auth::user();
         $this->shifts = Shift::getCandidateShiftsForUser($user);
 
-        /** @var Attendance */
-        $attendance = Attendance::where('user_id', $user->id)
-            ->where('date', Carbon::today()->toDateString())->first();
-        if ($attendance) {
-            $this->setAttendance($attendance);
-        } else {
-            $this->ensureShiftSelected();
+        if ($user) {
+            /** @var Attendance */
+            $attendance = Attendance::where('user_id', $user->id)
+                ->where('date', Carbon::today()->toDateString())->first();
+            if ($attendance) {
+                $this->setAttendance($attendance);
+            } else {
+                $this->ensureShiftSelected();
+            }
         }
     }
 

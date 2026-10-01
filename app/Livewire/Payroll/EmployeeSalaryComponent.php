@@ -151,6 +151,7 @@ class EmployeeSalaryComponent extends Component
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
 
         $employees = User::onlyEmployee()
+            ->where('is_attendance_required', true)
             ->when($this->status, function ($query) {
                 if ($this->status === 'all') {
                     return $query;

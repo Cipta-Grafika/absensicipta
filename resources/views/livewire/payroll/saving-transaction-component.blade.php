@@ -7,6 +7,12 @@
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola mutasi buku kas syirkah dan persetujuan pengajuan penarikan dana karyawan</p>
     </div>
     <div class="flex items-center gap-2">
+      <x-button type="button" class="bg-indigo-600 hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800" wire:click="openDepositModal">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Setoran Langsung
+      </x-button>
       <x-button type="button" x-data @click.prevent="$dispatch('open-withdrawal-modal')">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1372,6 +1378,12 @@
             <x-input type="number" id="edit_secondary_amount" wire:model.live="edit_secondary_amount" min="0" class="w-full mt-1 text-xs sm:text-sm font-semibold" />
             <x-input-error for="edit_secondary_amount" class="mt-1" />
           </div>
+
+          <div>
+            <x-label for="edit_description" value="Keterangan Mutasi" class="text-xs font-semibold" />
+            <x-input type="text" id="edit_description" wire:model.live="edit_description" class="w-full mt-1 text-xs sm:text-sm" placeholder="Keterangan mutasi transaksi" />
+            <x-input-error for="edit_description" class="mt-1" />
+          </div>
         </div>
       @endif
     </x-slot>
@@ -1403,6 +1415,82 @@
       <div class="flex items-center justify-end gap-2">
         <x-secondary-button wire:click="closeDeleteModal">Batal</x-secondary-button>
         <x-danger-button wire:click="confirmDelete">Hapus Permanen</x-danger-button>
+      </div>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- MODAL SETORAN LANGSUNG (MANUAL SYIRKAH DEPOSIT) -->
+  <x-dialog-modal wire:model.live="depositModalOpen" maxWidth="md">
+    <x-slot name="title">
+      <div class="flex items-center gap-2 text-gray-900 dark:text-white font-bold">
+        <x-heroicon-o-plus-circle class="h-5 w-5 text-indigo-600" />
+        {{ __('Setoran Saldo Syirkah Manual') }}
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      <div class="space-y-4 text-xs">
+        <div>
+          <x-label for="deposit_user_id" value="Pilih Karyawan / Anggota" class="text-xs font-semibold" />
+          <x-select id="deposit_user_id" wire:model.live="deposit_user_id" class="w-full mt-1 text-xs sm:text-sm">
+            <option value="">-- Pilih Karyawan / Anggota --</option>
+            @foreach($users as $u)
+              <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->nip }}) - {{ $u->division->name ?? '-' }}{{ !$u->is_attendance_required ? ' [Non-Absen]' : '' }}</option>
+            @endforeach
+          </x-select>
+          <x-input-error for="deposit_user_id" class="mt-1" />
+        </div>
+
+        <div>
+          <x-label for="deposit_savings_id" value="Program Syirkah" class="text-xs font-semibold" />
+          <x-select id="deposit_savings_id" wire:model.live="deposit_savings_id" class="w-full mt-1 text-xs sm:text-sm">
+            <option value="">-- Pilih Program Syirkah --</option>
+            @foreach($savingsList as $s)
+              <option value="{{ $s->id }}">{{ $s->savings_name }}</option>
+            @endforeach
+          </x-select>
+          <x-input-error for="deposit_savings_id" class="mt-1" />
+        </div>
+
+        <div>
+          <x-label for="deposit_date" value="Tanggal Transaksi / Mutasi" class="text-xs font-semibold" />
+          <x-input type="date" id="deposit_date" wire:model.live="deposit_date" class="w-full mt-1 text-xs sm:text-sm" />
+          <x-input-error for="deposit_date" class="mt-1" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <x-label for="deposit_mandatory_amount" value="Setoran Wajib (Rp)" class="text-xs font-semibold" />
+            <x-input type="number" id="deposit_mandatory_amount" wire:model.live="deposit_mandatory_amount" min="0" class="w-full mt-1 text-xs sm:text-sm font-semibold" placeholder="0" />
+            <x-input-error for="deposit_mandatory_amount" class="mt-1" />
+          </div>
+
+          <div>
+            <x-label for="deposit_secondary_amount" value="Setoran Sukarela (Rp)" class="text-xs font-semibold" />
+            <x-input type="number" id="deposit_secondary_amount" wire:model.live="deposit_secondary_amount" min="0" class="w-full mt-1 text-xs sm:text-sm font-semibold" placeholder="0" />
+            <x-input-error for="deposit_secondary_amount" class="mt-1" />
+          </div>
+        </div>
+
+        <div>
+          <x-label for="deposit_description" value="Keterangan Setoran" class="text-xs font-semibold" />
+          <x-input type="text" id="deposit_description" wire:model.live="deposit_description" class="w-full mt-1 text-xs sm:text-sm" placeholder="Contoh: Setoran manual syirkah anggota" />
+          <x-input-error for="deposit_description" class="mt-1" />
+        </div>
+
+        <div>
+          <x-label for="deposit_transfer_proof" value="Upload Bukti Transfer (Opsional)" class="text-xs font-semibold" />
+          <input type="file" id="deposit_transfer_proof" wire:model="deposit_transfer_proof" accept="image/*,application/pdf" class="w-full mt-1 text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-950/40 dark:file:text-indigo-300 cursor-pointer" />
+          <div wire:loading wire:target="deposit_transfer_proof" class="text-[11px] text-indigo-600 mt-1">Mengunggah bukti...</div>
+          <x-input-error for="deposit_transfer_proof" class="mt-1" />
+        </div>
+      </div>
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-end gap-2">
+        <x-secondary-button wire:click="closeDepositModal">Batal</x-secondary-button>
+        <x-button wire:click="processDeposit" class="bg-indigo-600 hover:bg-indigo-700">Simpan Setoran</x-button>
       </div>
     </x-slot>
   </x-dialog-modal>

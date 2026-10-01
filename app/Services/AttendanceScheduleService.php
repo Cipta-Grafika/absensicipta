@@ -52,6 +52,14 @@ class AttendanceScheduleService
      */
     public static function getScheduleDetails(User $user, Carbon|string $date): array
     {
+        if (isset($user->is_attendance_required) && !$user->is_attendance_required) {
+            return [
+                'is_working_day' => false,
+                'reason' => 'Non-Attendance Member',
+                'type' => 'non_attendance',
+            ];
+        }
+
         $carbonDate = is_string($date) ? Carbon::parse($date) : $date->copy();
         $dateStr = $carbonDate->format('Y-m-d');
         $dayName = strtolower($carbonDate->format('l'));
@@ -235,6 +243,14 @@ class AttendanceScheduleContext
 
     public function getScheduleDetails(User $user, Carbon|string $date): array
     {
+        if (isset($user->is_attendance_required) && !$user->is_attendance_required) {
+            return [
+                'is_working_day' => false,
+                'reason' => 'Non-Attendance Member',
+                'type' => 'non_attendance',
+            ];
+        }
+
         $carbonDate = is_string($date) ? Carbon::parse($date) : $date->copy();
         $dateStr = $carbonDate->format('Y-m-d');
         $dayName = strtolower($carbonDate->format('l'));

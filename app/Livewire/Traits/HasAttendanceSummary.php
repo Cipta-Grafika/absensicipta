@@ -51,6 +51,7 @@ trait HasAttendanceSummary
         $user = auth()->user();
 
         $userFilter = function (Builder $q) use ($user, $search, $division, $jobTitle, $attendanceStatus, $date, $week, $month) {
+            $q->where('is_attendance_required', true);
             if ($user->group === 'admin') {
                 $q->whereIn('division_id', $user->getAccessibleDivisionIds());
             }

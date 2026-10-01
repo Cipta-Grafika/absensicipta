@@ -247,6 +247,7 @@ class AttendanceComponent extends Component
         }
         $employees = User::where('group', 'user')
             ->whereIn('status', ['active', 'suspend'])
+            ->where('is_attendance_required', true)
             ->when(auth()->user()->group === 'admin', fn (Builder $q) => $q->whereIn('division_id', auth()->user()->getAccessibleDivisionIds()))
             ->when($this->search, function (Builder $q) {
                 return $q->where(function (Builder $query) {
