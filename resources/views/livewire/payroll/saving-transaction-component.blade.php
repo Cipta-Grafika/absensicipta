@@ -7,7 +7,7 @@
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola mutasi buku kas syirkah dan persetujuan pengajuan penarikan dana karyawan</p>
     </div>
     <div class="flex items-center gap-2">
-      <x-button type="button" class="bg-indigo-600 hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800" wire:click="openDepositModal">
+      <x-button type="button" class="bg-indigo-600 hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800" x-data @click.prevent="$dispatch('open-deposit-modal')">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
@@ -27,7 +27,7 @@
   </div>
 </x-slot>
 
-<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true">
+<div class="pt-3.5 pb-6 sm:py-6" x-data="{ filterOpen: false }" @open-filter.window="filterOpen = true" @open-deposit-modal.window="$wire.openDepositModal()" @open-withdrawal-modal.window="$wire.openWithdrawalModal()">
   <div class="w-full sm:px-6 lg:px-8">
 
     <!-- SIDEBAR FILTER -->

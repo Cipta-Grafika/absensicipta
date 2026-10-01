@@ -470,7 +470,28 @@ class SavingTransactionComponent extends Component
     {
         $this->reset(['deposit_user_id', 'deposit_savings_id', 'deposit_mandatory_amount', 'deposit_secondary_amount', 'deposit_description', 'deposit_date', 'deposit_transfer_proof']);
         $this->deposit_date = date('Y-m-d');
+        $defaultSaving = Saving::first();
+        if ($defaultSaving) {
+            $this->deposit_savings_id = $defaultSaving->id;
+            $this->deposit_mandatory_amount = (float)$defaultSaving->mandatory_savings;
+            $this->deposit_secondary_amount = (float)$defaultSaving->secondary_savings;
+        }
         $this->depositModalOpen = true;
+    }
+
+    public function updatedDepositSavingsId($val)
+    {
+        if ($val) {
+            $s = Saving::find($val);
+            if ($s) {
+                if ($this->deposit_mandatory_amount == 0) {
+                    $this->deposit_mandatory_amount = (float)$s->mandatory_savings;
+                }
+                if ($this->deposit_secondary_amount == 0) {
+                    $this->deposit_secondary_amount = (float)$s->secondary_savings;
+                }
+            }
+        }
     }
 
     public function closeDepositModal()
@@ -561,6 +582,8 @@ class SavingTransactionComponent extends Component
     public function openWithdrawalModal()
     {
         $this->reset(['withdrawal_user_id', 'withdrawal_savings_id', 'withdrawal_amount', 'withdrawal_description', 'withdrawal_type', 'withdrawal_transfer_proof']);
+        $this->withdrawal_savings_id = Saving::first()?->id ?? '';
+        $this->withdrawal_type = 'secondary';
         $this->withdrawalModalOpen = true;
     }
 
