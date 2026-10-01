@@ -126,59 +126,229 @@
         </div>
       @endif
 
+      @php
+        $typeLabel = match($type) {
+            'deposit' => 'Setoran',
+            'withdrawal' => 'Penarikan',
+            default => 'Saldo Mutasi (Net)',
+        };
+        $statusLabel = match($statusFilter) {
+            'pending' => '(Menunggu)',
+            'approved' => '(Disetujui)',
+            'rejected' => '(Ditolak)',
+            default => ($type === '' ? '(Disetujui)' : '(Semua Status)'),
+        };
+        $periodLabel = $month ? \Carbon\Carbon::parse($month)->translatedFormat('F Y') : 'Semua Periode';
+        $divLabel = $isDivisionScoped ? $adminDivisionName : ($selectedDivisionName ?? null);
+      @endphp
+
       <!-- 1. SUMMARY CARDS -->
       <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <!-- Saldo Wajib -->
-        <div class="overflow-hidden rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 p-4 sm:p-5 shadow-xs">
-          <dt class="truncate text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Total Saldo Wajib (Disetujui){{ $isDivisionScoped ? ' - ' . $adminDivisionName : '' }}</dt>
-          <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-indigo-950 dark:text-indigo-100">Rp {{ number_format($totalWajib, 0, ',', '.') }}</dd>
-        </div>
-
-        <!-- Saldo Sukarela -->
-        <div class="overflow-hidden rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-4 sm:p-5 shadow-xs">
-          <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Total Saldo Sukarela (Disetujui){{ $isDivisionScoped ? ' - ' . $adminDivisionName : '' }}</dt>
-          <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">Rp {{ number_format($totalSukarela, 0, ',', '.') }}</dd>
-        </div>
-
-        <!-- Antrean Pengajuan Penarikan -->
-        <div 
-          wire:click="setActiveTab('withdrawals')"
-          class="cursor-pointer overflow-hidden rounded-xl {{ $pendingWithdrawalsCount > 0 ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 ring-2 ring-amber-400/40' : 'bg-gray-50/80 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700' }} border p-4 sm:p-5 shadow-xs transition hover:scale-[1.01]"
-        >
-          <div class="flex items-center justify-between">
-            <dt class="truncate text-xs font-semibold uppercase tracking-wider {{ $pendingWithdrawalsCount > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400' }}">
-              Antrean Pengajuan Tarik
-            </dt>
-            @if($pendingWithdrawalsCount > 0)
-              <span class="inline-flex items-center rounded-full bg-amber-200/90 px-2 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 animate-pulse">
-                {{ $pendingWithdrawalsCount }} Baru
-              </span>
-            @endif
+        @if($activeTab === 'transactions')
+          <!-- 1. Saldo / Mutasi Wajib -->
+          <div class="overflow-hidden rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 p-4 sm:p-5 shadow-xs">
+            <div class="flex items-center justify-between gap-1">
+              <dt class="truncate text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                Total {{ $type === 'deposit' ? 'Setoran Wajib' : ($type === 'withdrawal' ? 'Penarikan Wajib' : 'Saldo Wajib') }} {{ $statusLabel }}
+              </dt>
+              @if($month)
+                <span class="inline-flex items-center rounded-md bg-indigo-100 dark:bg-indigo-900/60 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800 dark:text-indigo-300 shrink-0">
+                  {{ \Carbon\Carbon::parse($month)->translatedFormat('M Y') }}
+                </span>
+              @endif
+            </div>
+            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-indigo-950 dark:text-indigo-100">
+              Rp {{ number_format($totalWajib, 0, ',', '.') }}
+            </dd>
+            <div class="mt-1 flex items-center gap-1.5 text-[11px] text-indigo-700/80 dark:text-indigo-300/80 truncate">
+              <span>{{ $periodLabel }}</span>
+              @if($divLabel)
+                <span>• Divisi {{ $divLabel }}</span>
+              @endif
+            </div>
           </div>
-          <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight {{ $pendingWithdrawalsCount > 0 ? 'text-amber-950 dark:text-amber-100' : 'text-gray-700 dark:text-gray-300' }}">
-            Rp {{ number_format($pendingWithdrawalsNominal, 0, ',', '.') }}
-          </dd>
-        </div>
 
-        <!-- Pengajuan Disetujui (Belum Bayar) -->
-        <div 
-          wire:click="setActiveTab('withdrawals')"
-          class="cursor-pointer overflow-hidden rounded-xl {{ $acceptedWithdrawalsCount > 0 ? 'bg-blue-50/90 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700/60' : 'bg-gray-50/80 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700' }} border p-4 sm:p-5 shadow-xs transition hover:scale-[1.01]"
-        >
-          <div class="flex items-center justify-between">
-            <dt class="truncate text-xs font-semibold uppercase tracking-wider {{ $acceptedWithdrawalsCount > 0 ? 'text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-400' }}">
-              Disetujui (Belum Bayar)
-            </dt>
-            @if($acceptedWithdrawalsCount > 0)
-              <span class="inline-flex items-center rounded-full bg-blue-200 px-2 py-0.5 text-xs font-bold text-blue-900 dark:bg-blue-900/80 dark:text-blue-200">
-                {{ $acceptedWithdrawalsCount }} ACC
-              </span>
-            @endif
+          <!-- 2. Saldo / Mutasi Sukarela -->
+          <div class="overflow-hidden rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-4 sm:p-5 shadow-xs">
+            <div class="flex items-center justify-between gap-1">
+              <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Total {{ $type === 'deposit' ? 'Setoran Sukarela' : ($type === 'withdrawal' ? 'Penarikan Sukarela' : 'Saldo Sukarela') }} {{ $statusLabel }}
+              </dt>
+              @if($month)
+                <span class="inline-flex items-center rounded-md bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 shrink-0">
+                  {{ \Carbon\Carbon::parse($month)->translatedFormat('M Y') }}
+                </span>
+              @endif
+            </div>
+            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
+              Rp {{ number_format($totalSukarela, 0, ',', '.') }}
+            </dd>
+            <div class="mt-1 flex items-center gap-1.5 text-[11px] text-emerald-700/80 dark:text-emerald-300/80 truncate">
+              <span>{{ $periodLabel }}</span>
+              @if($divLabel)
+                <span>• Divisi {{ $divLabel }}</span>
+              @endif
+            </div>
           </div>
-          <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight {{ $acceptedWithdrawalsCount > 0 ? 'text-blue-950 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300' }}">
-            {{ $acceptedWithdrawalsCount }} Pengajuan
-          </dd>
-        </div>
+
+          <!-- 3. Total Akumulasi Mutasi / Transaksi -->
+          <div class="overflow-hidden rounded-xl bg-sky-50/80 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/50 p-4 sm:p-5 shadow-xs">
+            <div class="flex items-center justify-between gap-1">
+              <dt class="truncate text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                {{ $type === 'deposit' ? 'Total Setoran (Kredit)' : ($type === 'withdrawal' ? 'Total Penarikan (Debit)' : 'Total Mutasi (Net)') }}
+              </dt>
+              <span class="inline-flex items-center rounded-md bg-sky-100 dark:bg-sky-900/60 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 dark:text-sky-300 shrink-0">
+                {{ $filteredTransactionsCount }} Data
+              </span>
+            </div>
+            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-sky-950 dark:text-sky-100">
+              Rp {{ number_format($totalMutasiAmount, 0, ',', '.') }}
+            </dd>
+            <div class="mt-1 text-[11px] text-sky-700/80 dark:text-sky-300/80 truncate">
+              {{ $filteredTransactionsCount }} Transaksi Sesuai Filter
+            </div>
+          </div>
+
+          <!-- 4. Ringkasan Status Persetujuan -->
+          <div class="overflow-hidden rounded-xl {{ $pendingCount > 0 ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 ring-2 ring-amber-400/40' : 'bg-gray-50/80 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700' }} border p-4 sm:p-5 shadow-xs">
+            <div class="flex items-center justify-between gap-1">
+              <dt class="truncate text-xs font-semibold uppercase tracking-wider {{ $pendingCount > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400' }}">
+                @if($statusFilter === 'pending')
+                  Menunggu Persetujuan
+                @elseif($statusFilter === 'approved')
+                  Mutasi Disetujui
+                @elseif($statusFilter === 'rejected')
+                  Mutasi Ditolak
+                @else
+                  Status Persetujuan
+                @endif
+              </dt>
+              @if($pendingCount > 0)
+                <span class="inline-flex items-center rounded-full bg-amber-200/90 px-2 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 animate-pulse shrink-0">
+                  {{ $pendingCount }} Pending
+                </span>
+              @endif
+            </div>
+            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight {{ $pendingCount > 0 ? 'text-amber-950 dark:text-amber-100' : 'text-gray-900 dark:text-gray-100' }}">
+              @if($statusFilter === 'pending')
+                Rp {{ number_format($pendingNominal, 0, ',', '.') }}
+              @elseif($statusFilter === 'approved')
+                Rp {{ number_format($approvedNominal, 0, ',', '.') }}
+              @elseif($statusFilter === 'rejected')
+                Rp {{ number_format($rejectedNominal, 0, ',', '.') }}
+              @else
+                {{ $pendingCount }} Menunggu ACC
+              @endif
+            </dd>
+            <div class="mt-1 text-[11px] {{ $pendingCount > 0 ? 'text-amber-800/80 dark:text-amber-300/80' : 'text-gray-500 dark:text-gray-400' }} truncate">
+              @if($statusFilter === 'pending')
+                {{ $pendingCount }} Transaksi Menunggu
+              @elseif($statusFilter === 'approved')
+                {{ $approvedCount }} Transaksi Disetujui
+              @elseif($statusFilter === 'rejected')
+                {{ $rejectedCount }} Transaksi Ditolak
+              @else
+                {{ $approvedCount }} Disetujui • {{ $rejectedCount }} Ditolak
+              @endif
+            </div>
+          </div>
+        @else
+          <!-- ==================== WITHDRAWALS TAB CARDS ==================== -->
+          @php
+            $wdPeriodLabel = $withdrawalMonth ? \Carbon\Carbon::parse($withdrawalMonth)->translatedFormat('F Y') : 'Semua Periode';
+            $wdDivLabel = $isDivisionScoped ? $adminDivisionName : ($selectedWithdrawalDivisionName ?? null);
+          @endphp
+
+          <!-- 1. Antrean Pengajuan Tarik (Pending) -->
+          <div class="overflow-hidden rounded-xl {{ $pendingWithdrawalsCount > 0 ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 ring-2 ring-amber-400/40' : 'bg-gray-50/80 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700' }} border p-4 sm:p-5 shadow-xs">
+            <div class="flex items-center justify-between gap-1">
+              <dt class="truncate text-xs font-semibold uppercase tracking-wider {{ $pendingWithdrawalsCount > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400' }}">
+                Antrean Pengajuan Tarik
+              </dt>
+              @if($pendingWithdrawalsCount > 0)
+                <span class="inline-flex items-center rounded-full bg-amber-200/90 px-2 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 animate-pulse shrink-0">
+                  {{ $pendingWithdrawalsCount }} Baru
+                </span>
+              @endif
+            </div>
+            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight {{ $pendingWithdrawalsCount > 0 ? 'text-amber-950 dark:text-amber-100' : 'text-gray-700 dark:text-gray-300' }}">
+              Rp {{ number_format($pendingWithdrawalsNominal, 0, ',', '.') }}
+            </dd>
+            <div class="mt-1 text-[11px] {{ $pendingWithdrawalsCount > 0 ? 'text-amber-800/80 dark:text-amber-300/80' : 'text-gray-500 dark:text-gray-400' }} truncate">
+              {{ $pendingWithdrawalsCount }} Pengajuan Menunggu Approval
+            </div>
+          </div>
+
+          <!-- 2. Pengajuan Disetujui (Belum Bayar) -->
+          <div class="overflow-hidden rounded-xl {{ $acceptedWithdrawalsCount > 0 ? 'bg-blue-50/90 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700/60' : 'bg-gray-50/80 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700' }} border p-4 sm:p-5 shadow-xs">
+            <div class="flex items-center justify-between gap-1">
+              <dt class="truncate text-xs font-semibold uppercase tracking-wider {{ $acceptedWithdrawalsCount > 0 ? 'text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-400' }}">
+                Disetujui (Belum Bayar)
+              </dt>
+              @if($acceptedWithdrawalsCount > 0)
+                <span class="inline-flex items-center rounded-full bg-blue-200 px-2 py-0.5 text-xs font-bold text-blue-900 dark:bg-blue-900/80 dark:text-blue-200 shrink-0">
+                  {{ $acceptedWithdrawalsCount }} ACC
+                </span>
+              @endif
+            </div>
+            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight {{ $acceptedWithdrawalsCount > 0 ? 'text-blue-950 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300' }}">
+              Rp {{ number_format($acceptedWithdrawalsNominal, 0, ',', '.') }}
+            </dd>
+            <div class="mt-1 text-[11px] {{ $acceptedWithdrawalsCount > 0 ? 'text-blue-800/80 dark:text-blue-300/80' : 'text-gray-500 dark:text-gray-400' }} truncate">
+              {{ $acceptedWithdrawalsCount }} Pengajuan Siap Ditransfer
+            </div>
+          </div>
+
+          <!-- 3. Selesai Dibayar (Paid) -->
+          <div class="overflow-hidden rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-4 sm:p-5 shadow-xs">
+            <div class="flex items-center justify-between gap-1">
+              <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Selesai Dibayar (Paid)
+              </dt>
+              @if($paidWithdrawalsCount > 0)
+                <span class="inline-flex items-center rounded-full bg-emerald-200 px-2 py-0.5 text-xs font-bold text-emerald-900 dark:bg-emerald-900/80 dark:text-emerald-200 shrink-0">
+                  {{ $paidWithdrawalsCount }} Selesai
+                </span>
+              @endif
+            </div>
+            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
+              Rp {{ number_format($paidWithdrawalsNominal, 0, ',', '.') }}
+            </dd>
+            <div class="mt-1 text-[11px] text-emerald-700/80 dark:text-emerald-300/80 truncate">
+              {{ $paidWithdrawalsCount }} Pengajuan Selesai Ditransfer
+            </div>
+          </div>
+
+          <!-- 4. Total Pengajuan Penarikan / Ditolak -->
+          <div class="overflow-hidden rounded-xl bg-violet-50/80 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/50 p-4 sm:p-5 shadow-xs">
+            <div class="flex items-center justify-between gap-1">
+              <dt class="truncate text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                @if($withdrawalStatusFilter === 'rejected')
+                  Pengajuan Ditolak
+                @else
+                  Total Pengajuan Penarikan
+                @endif
+              </dt>
+              <span class="inline-flex items-center rounded-md bg-violet-100 dark:bg-violet-900/60 px-1.5 py-0.5 text-[10px] font-bold text-violet-800 dark:text-violet-300 shrink-0">
+                {{ $totalWithdrawalsCount }} Total
+              </span>
+            </div>
+            <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-violet-950 dark:text-violet-100">
+              @if($withdrawalStatusFilter === 'rejected')
+                Rp {{ number_format($rejectedWithdrawalsNominal, 0, ',', '.') }}
+              @else
+                Rp {{ number_format($totalWithdrawalsNominal, 0, ',', '.') }}
+              @endif
+            </dd>
+            <div class="mt-1 text-[11px] text-violet-700/80 dark:text-violet-300/80 truncate">
+              @if($withdrawalStatusFilter === 'rejected')
+                {{ $rejectedWithdrawalsCount }} Pengajuan Ditolak
+              @else
+                {{ $wdPeriodLabel }}{{ $wdDivLabel ? ' • Divisi ' . $wdDivLabel : '' }} ({{ $rejectedWithdrawalsCount }} Ditolak)
+              @endif
+            </div>
+          </div>
+        @endif
       </div>
 
       <!-- 2. PRIMARY NAVIGATION TABS (PENGAJUAN PENARIKAN VS MUTASI) -->

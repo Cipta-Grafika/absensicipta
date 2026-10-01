@@ -986,55 +986,135 @@ class SavingTransactionComponent extends Component
         }
         $divisionsList = $divisionsListQuery->get();
 
-        // 3. True balances calculated dynamically from approved transactions (Scoped per division for admin)
-        $approvedDepositQuery = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'approved')->where('transaction_type', 'deposit');
-        $approvedWithdrawalQuery = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'approved')->where('transaction_type', 'withdrawal');
+        // 3. Transactions Metrics (Fully scoped and respecting all filters: month, type, statusFilter, division, search)
+        $txStatsQuery = $this->buildTransactionsQuery();
+        $filteredTransactionsCount = (clone $txStatsQuery)->count();
 
-        $approvedDepositQuery = $this->applyDivisionScope($approvedDepositQuery, 'user');
-        $approvedWithdrawalQuery = $this->applyDivisionScope($approvedWithdrawalQuery, 'user');
+        // Calculate Wajib, Sukarela, and Total based on current filters
+        if ($this->type === 'deposit') {
+            $totalWajib = (float) (clone $txStatsQuery)->sum('mandatory_amount');
+            $totalSukarela = (float) (clone $txStatsQuery)->sum('secondary_amount');
+            $totalMutasiAmount = $totalWajib + $totalSukarela;
+        } elseif ($this->type === 'withdrawal') {
+            $totalWajib = (float) (clone $txStatsQuery)->sum('mandatory_amount');
+            $totalSukarela = (float) (clone $txStatsQuery)->sum('secondary_amount');
+            $totalMutasiAmount = $totalWajib + $totalSukarela;
+        } else {
+            // All types (deposit & withdrawal)
+            if ($this->statusFilter && $this->statusFilter !== 'approved') {
+                // When explicitly viewing pending or rejected across all types, sum the exact transaction nominals
+                $totalWajib = (float) (clone $txStatsQuery)->sum('mandatory_amount');
+                $totalSukarela = (float) (clone $txStatsQuery)->sum('secondary_amount');
+                $totalMutasiAmount = $totalWajib + $totalSukarela;
+            } else {
+                // If viewing approved (or all status without explicit non-approved filter):
+                // Net Saldo / Mutasi: Total Deposit - Total Withdrawal
+                if (!$this->statusFilter) {
+                    $depWajib = (float) (clone $txStatsQuery)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('mandatory_amount');
+                    $withdWajib = (float) (clone $txStatsQuery)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('mandatory_amount');
+                    $depSukarela = (float) (clone $txStatsQuery)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
+                    $withdSukarela = (float) (clone $txStatsQuery)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+                } else {
+                    $depWajib = (float) (clone $txStatsQuery)->where('transaction_type', 'deposit')->sum('mandatory_amount');
+                    $withdWajib = (float) (clone $txStatsQuery)->where('transaction_type', 'withdrawal')->sum('mandatory_amount');
+                    $depSukarela = (float) (clone $txStatsQuery)->where('transaction_type', 'deposit')->sum('secondary_amount');
+                    $withdSukarela = (float) (clone $txStatsQuery)->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+                }
+
+                $totalWajib = max(0.0, $depWajib - $withdWajib);
+                $totalSukarela = max(0.0, $depSukarela - $withdSukarela);
+                $totalMutasiAmount = $totalWajib + $totalSukarela;
+            }
+        }
+
+        // Status Breakdown for Transactions (Scoped to month, type, division, search)
+        $txFilterWithoutStatus = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee());
+        $txFilterWithoutStatus = $this->applyDivisionScope($txFilterWithoutStatus, 'user');
 
         if ($this->search) {
-            $searchFilter = function($q) {
-                $q->whereHas('user', function($subQ) {
-                    $subQ->where('name', 'like', '%' . $this->search . '%')
-                         ->orWhere('nip', 'like', '%' . $this->search . '%');
+            $search = $this->search;
+            $txFilterWithoutStatus->where(function($q) use ($search) {
+                $q->whereHas('user', function($subQ) use ($search) {
+                    $subQ->where('name', 'like', '%' . $search . '%')
+                         ->orWhere('nip', 'like', '%' . $search . '%');
                 })
-                ->orWhereHas('masterSaving', function($subQ) {
-                    $subQ->where('savings_name', 'like', '%' . $this->search . '%');
+                ->orWhereHas('masterSaving', function($subQ) use ($search) {
+                    $subQ->where('savings_name', 'like', '%' . $search . '%');
                 });
-            };
-            $approvedDepositQuery->where($searchFilter);
-            $approvedWithdrawalQuery->where($searchFilter);
+            });
+        }
+
+        if ($this->month) {
+            try {
+                $date = Carbon::parse($this->month);
+                $txFilterWithoutStatus->whereYear('created_at', $date->year)
+                      ->whereMonth('created_at', $date->month);
+            } catch (\Exception $e) {}
+        }
+
+        if ($this->type) {
+            $txFilterWithoutStatus->where('transaction_type', $this->type);
         }
 
         if ($this->division) {
-            $divisionFilter = function($q) {
-                $q->whereHas('user', function($subQ) {
-                    $subQ->where('division_id', $this->division);
-                });
-            };
-            $approvedDepositQuery->where($divisionFilter);
-            $approvedWithdrawalQuery->where($divisionFilter);
+            $txFilterWithoutStatus->whereHas('user', function($q) {
+                $q->where('division_id', $this->division);
+            });
         }
 
-        $totalWajib = max(0.0, (float) $approvedDepositQuery->sum('mandatory_amount') - (float) $approvedWithdrawalQuery->sum('mandatory_amount'));
-        $totalSukarela = max(0.0, (float) $approvedDepositQuery->sum('secondary_amount') - (float) $approvedWithdrawalQuery->sum('secondary_amount'));
+        $pendingCount = (clone $txFilterWithoutStatus)->where('status', 'pending')->count();
+        $pendingNominal = (float) (clone $txFilterWithoutStatus)->where('status', 'pending')->sum(DB::raw('mandatory_amount + secondary_amount'));
+        $approvedCount = (clone $txFilterWithoutStatus)->where('status', 'approved')->count();
+        $approvedNominal = (float) (clone $txFilterWithoutStatus)->where('status', 'approved')->sum(DB::raw('mandatory_amount + secondary_amount'));
+        $rejectedCount = (clone $txFilterWithoutStatus)->where('status', 'rejected')->count();
+        $rejectedNominal = (float) (clone $txFilterWithoutStatus)->where('status', 'rejected')->sum(DB::raw('mandatory_amount + secondary_amount'));
 
-        // Pending Mutasi Counter (Scoped)
-        $pendingQuery = SavingTransaction::whereHas('user', fn($q) => $q->onlyEmployee())->where('status', 'pending');
-        $pendingQuery = $this->applyDivisionScope($pendingQuery, 'user');
-        $pendingCount = $pendingQuery->count();
-        $pendingNominal = (float) $pendingQuery->sum(DB::raw('mandatory_amount + secondary_amount'));
+        // 4. Withdrawals Metrics (Scoped to withdrawalMonth, withdrawalDivision, withdrawalSearch)
+        $wdFilterWithoutStatus = SavingWithdrawal::whereHas('user', fn($q) => $q->onlyEmployee());
+        $wdFilterWithoutStatus = $this->applyDivisionScope($wdFilterWithoutStatus, 'user');
 
-        // Withdrawal Counters (Scoped)
-        $scopedWdBase = SavingWithdrawal::whereHas('user', fn($q) => $q->onlyEmployee());
-        $scopedWdBase = $this->applyDivisionScope($scopedWdBase, 'user');
+        if ($this->withdrawalSearch) {
+            $wdSearch = $this->withdrawalSearch;
+            $wdFilterWithoutStatus->where(function($q) use ($wdSearch) {
+                $q->whereHas('user', function($subQ) use ($wdSearch) {
+                    $subQ->where('name', 'like', '%' . $wdSearch . '%')
+                         ->orWhere('nip', 'like', '%' . $wdSearch . '%');
+                })
+                ->orWhere('reason', 'like', '%' . $wdSearch . '%');
+            });
+        }
 
-        $pendingWithdrawalsCount = (clone $scopedWdBase)->where('status', 'pending')->count();
-        $pendingWithdrawalsNominal = (float) (clone $scopedWdBase)->where('status', 'pending')->sum('total_amount');
-        $acceptedWithdrawalsCount = (clone $scopedWdBase)->where('status', 'accepted')->count();
-        $paidWithdrawalsCount = (clone $scopedWdBase)->where('status', 'paid')->count();
-        $rejectedWithdrawalsCount = (clone $scopedWdBase)->where('status', 'rejected')->count();
+        if ($this->withdrawalMonth) {
+            try {
+                $date = Carbon::parse($this->withdrawalMonth);
+                $wdFilterWithoutStatus->whereYear('created_at', $date->year)
+                      ->whereMonth('created_at', $date->month);
+            } catch (\Exception $e) {}
+        }
+
+        if ($this->withdrawalDivision) {
+            $wdFilterWithoutStatus->whereHas('user', function($q) {
+                $q->where('division_id', $this->withdrawalDivision);
+            });
+        }
+
+        $pendingWithdrawalsCount = (clone $wdFilterWithoutStatus)->where('status', 'pending')->count();
+        $pendingWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->where('status', 'pending')->sum('total_amount');
+        $acceptedWithdrawalsCount = (clone $wdFilterWithoutStatus)->where('status', 'accepted')->count();
+        $acceptedWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->where('status', 'accepted')->sum('total_amount');
+        $paidWithdrawalsCount = (clone $wdFilterWithoutStatus)->where('status', 'paid')->count();
+        $paidWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->where('status', 'paid')->sum('total_amount');
+        $rejectedWithdrawalsCount = (clone $wdFilterWithoutStatus)->where('status', 'rejected')->count();
+        $rejectedWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->where('status', 'rejected')->sum('total_amount');
+
+        $totalWithdrawalsCount = (clone $wdFilterWithoutStatus)->count();
+        $totalWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->sum('total_amount');
+
+        // Selected division name for context label
+        $selectedDivisionModel = $this->division ? Division::find($this->division) : null;
+        $selectedDivisionName = $selectedDivisionModel?->name;
+        $selectedWithdrawalDivisionModel = $this->withdrawalDivision ? Division::find($this->withdrawalDivision) : null;
+        $selectedWithdrawalDivisionName = $selectedWithdrawalDivisionModel?->name;
 
         return view('livewire.payroll.saving-transaction-component', [
             'transactions' => $transactions,
@@ -1044,13 +1124,26 @@ class SavingTransactionComponent extends Component
             'divisionsList' => $divisionsList,
             'totalWajib' => $totalWajib,
             'totalSukarela' => $totalSukarela,
+            'totalMutasiAmount' => $totalMutasiAmount,
+            'filteredTransactionsCount' => $filteredTransactionsCount,
             'pendingCount' => $pendingCount,
             'pendingNominal' => $pendingNominal,
+            'approvedCount' => $approvedCount,
+            'approvedNominal' => $approvedNominal,
+            'rejectedCount' => $rejectedCount,
+            'rejectedNominal' => $rejectedNominal,
             'pendingWithdrawalsCount' => $pendingWithdrawalsCount,
             'pendingWithdrawalsNominal' => $pendingWithdrawalsNominal,
             'acceptedWithdrawalsCount' => $acceptedWithdrawalsCount,
+            'acceptedWithdrawalsNominal' => $acceptedWithdrawalsNominal,
             'paidWithdrawalsCount' => $paidWithdrawalsCount,
+            'paidWithdrawalsNominal' => $paidWithdrawalsNominal,
             'rejectedWithdrawalsCount' => $rejectedWithdrawalsCount,
+            'rejectedWithdrawalsNominal' => $rejectedWithdrawalsNominal,
+            'totalWithdrawalsCount' => $totalWithdrawalsCount,
+            'totalWithdrawalsNominal' => $totalWithdrawalsNominal,
+            'selectedDivisionName' => $selectedDivisionName,
+            'selectedWithdrawalDivisionName' => $selectedWithdrawalDivisionName,
             'isDivisionScoped' => $isDivisionScoped,
             'adminDivisionName' => $adminDivisionName,
         ])->layout('layouts.app');
