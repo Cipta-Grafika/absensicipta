@@ -29,6 +29,9 @@ class Loan extends Model
         'installment_amount',
         'remaining_balance',
         'payment_source',
+        'disbursement_source',
+        'syirkah_destination',
+        'saving_transaction_id',
         'status',
         'approved_by',
         'approval_date',
@@ -43,6 +46,8 @@ class Loan extends Model
         'remaining_balance' => 'float',
         'tenor_months' => 'integer',
         'payment_source' => 'string',
+        'disbursement_source' => 'string',
+        'syirkah_destination' => 'string',
     ];
 
     public function getPaymentSourceLabelAttribute(): string
@@ -53,6 +58,32 @@ class Loan extends Model
             'syirkah_all' => 'Syirkah (Wajib + SSR)',
             default => 'Payroll Bulanan',
         };
+    }
+
+    public function getDisbursementSourceLabelAttribute(): string
+    {
+        return match ($this->disbursement_source) {
+            'syirkah_pool' => 'Kas Pool Syirkah (Talangan Bersama)',
+            'syirkah_secondary' => 'Saldo Syirkah SSR Pribadi',
+            'syirkah_mandatory' => 'Saldo Syirkah Wajib Pribadi',
+            'syirkah_all' => 'Saldo Syirkah (Wajib + SSR) Pribadi',
+            default => 'Kas Perusahaan (Non-Syirkah)',
+        };
+    }
+
+    public function getSyirkahDestinationLabelAttribute(): string
+    {
+        return match ($this->syirkah_destination) {
+            'syirkah_pool' => 'Kas Pool Syirkah (Pengembalian Talangan)',
+            'syirkah_secondary' => 'Saldo Syirkah SSR Anggota',
+            'syirkah_mandatory' => 'Saldo Syirkah Wajib Anggota',
+            default => 'Kas Perusahaan (Bukan Syirkah)',
+        };
+    }
+
+    public function disbursementSavingTransaction()
+    {
+        return $this->belongsTo(SavingTransaction::class, 'saving_transaction_id');
     }
 
     public function user()

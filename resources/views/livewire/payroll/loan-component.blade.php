@@ -216,11 +216,11 @@
               @endif
               <th scope="col" class="px-4 py-3 min-w-[130px] whitespace-nowrap text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tgl Pengajuan</th>
               <th scope="col" class="px-4 py-3 min-w-[190px] whitespace-nowrap text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Karyawan</th>
-              <th scope="col" class="px-4 py-3 min-w-[150px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Pinjaman</th>
-              <th scope="col" class="px-4 py-3 min-w-[140px] whitespace-nowrap text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Sumber Dana</th>
+              <th scope="col" class="px-4 py-3 min-w-[140px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Pinjaman</th>
+              <th scope="col" class="px-4 py-3 min-w-[160px] whitespace-nowrap text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Sumber & Alur Syirkah</th>
               <th scope="col" class="px-4 py-3 min-w-[90px] whitespace-nowrap text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tenor</th>
-              <th scope="col" class="px-4 py-3 min-w-[140px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Cicilan/Bulan</th>
-              <th scope="col" class="px-4 py-3 min-w-[140px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Sisa Saldo</th>
+              <th scope="col" class="px-4 py-3 min-w-[130px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Cicilan/Bulan</th>
+              <th scope="col" class="px-4 py-3 min-w-[130px] whitespace-nowrap text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Sisa Saldo</th>
               <th scope="col" class="px-4 py-3 min-w-[140px] whitespace-nowrap text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
               <th scope="col" class="px-4 py-3 min-w-[160px] whitespace-nowrap text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Keterangan</th>
               <th scope="col" class="px-4 py-3 min-w-[130px] whitespace-nowrap text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Aksi</th>
@@ -245,26 +245,49 @@
                   Rp {{ number_format($loan->loan_amount, 0, ',', '.') }}
                 </td>
                 <td class="whitespace-nowrap px-4 py-4 text-center text-xs">
-                  @if($loan->payment_source === 'syirkah_mandatory')
-                    <span class="inline-flex rounded-full bg-purple-100 dark:bg-purple-900/60 px-2 py-0.5 text-[11px] font-semibold text-purple-800 dark:text-purple-200">
-                      Syirkah Wajib
-                    </span>
-                  @elseif($loan->payment_source === 'syirkah_secondary')
-                    <span class="inline-flex rounded-full bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 text-[11px] font-semibold text-indigo-800 dark:text-indigo-200">
-                      Syirkah SSR
-                    </span>
-                  @elseif($loan->payment_source === 'syirkah_all')
-                    <span class="inline-flex rounded-full bg-violet-100 dark:bg-violet-900/60 px-2 py-0.5 text-[11px] font-semibold text-violet-800 dark:text-violet-200">
-                      Wajib + SSR
-                    </span>
-                  @else
-                    <span class="inline-flex rounded-full bg-sky-100 dark:bg-sky-900/60 px-2 py-0.5 text-[11px] font-semibold text-sky-800 dark:text-sky-200">
-                      Payroll
-                    </span>
-                  @endif
+                  <div class="flex flex-col items-center gap-1">
+                    <!-- Sumber Pencairan -->
+                    @if($loan->disbursement_source === 'syirkah_pool')
+                      <span class="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:text-emerald-300" title="Ditalangi dari Kas Pool Syirkah">
+                        Kas Pool Syirkah
+                      </span>
+                    @elseif($loan->disbursement_source === 'syirkah_secondary')
+                      <span class="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-950/60 border border-indigo-300 dark:border-indigo-800 px-2 py-0.5 text-[10px] font-semibold text-indigo-800 dark:text-indigo-300">
+                        Syirkah SSR
+                      </span>
+                    @elseif($loan->disbursement_source === 'syirkah_mandatory')
+                      <span class="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800 px-2 py-0.5 text-[10px] font-semibold text-purple-800 dark:text-purple-300">
+                        Syirkah Wajib
+                      </span>
+                    @elseif($loan->disbursement_source === 'syirkah_all')
+                      <span class="inline-flex items-center rounded-full bg-violet-100 dark:bg-violet-950/60 border border-violet-300 dark:border-violet-800 px-2 py-0.5 text-[10px] font-semibold text-violet-800 dark:text-violet-300">
+                        Wajib + SSR
+                      </span>
+                    @else
+                      <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-2 py-0.5 text-[10px] font-medium text-gray-700 dark:text-gray-300">
+                        Kas Perusahaan
+                      </span>
+                    @endif
+
+                    <!-- Skema Pelunasan & Setoran -->
+                    @if($loan->payment_source === 'payroll')
+                      <div class="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
+                        <span class="font-medium text-sky-600 dark:text-sky-400">Payroll</span>
+                        @if($loan->syirkah_destination === 'syirkah_secondary')
+                          <span>➔ <b class="text-indigo-600 dark:text-indigo-400">SSR</b></span>
+                        @elseif($loan->syirkah_destination === 'syirkah_pool')
+                          <span>➔ <b class="text-emerald-600 dark:text-emerald-400">Kas Pool</b></span>
+                        @elseif($loan->syirkah_destination === 'syirkah_mandatory')
+                          <span>➔ <b class="text-purple-600 dark:text-purple-400">Wajib</b></span>
+                        @endif
+                      </div>
+                    @else
+                      <span class="text-[10px] text-purple-600 dark:text-purple-400 font-medium">Potong Langsung</span>
+                    @endif
+                  </div>
                 </td>
                 <td class="whitespace-nowrap px-4 py-4 text-center text-xs text-gray-800 dark:text-gray-200 font-medium">
-                  {{ $loan->payment_source === 'payroll' ? $loan->tenor_months . ' Bln' : '-' }}
+                  {{ $loan->payment_source === 'payroll' ? $loan->tenor_months . ' Bln' : '1x' }}
                 </td>
                 <td class="whitespace-nowrap px-4 py-4 text-right text-xs text-gray-700 dark:text-gray-300 font-medium">
                   Rp {{ number_format($loan->installment_amount, 0, ',', '.') }}
@@ -441,11 +464,11 @@
   <!-- Modal Buat Pinjaman -->
   <x-dialog-modal wire:model.live="createModalOpen" maxWidth="lg">
     <x-slot name="title">
-      Form Pengajuan Pinjaman Karyawan (Kasbon)
+      Form Pengajuan Pinjaman & Talangan Syirkah (Kasbon)
     </x-slot>
 
     <x-slot name="content">
-      <div class="grid grid-cols-1 gap-6">
+      <div class="grid grid-cols-1 gap-5">
         <div>
           <x-label for="user_id" value="Pilih Karyawan" />
           <x-select id="user_id" class="mt-1 block w-full text-sm" wire:model.live="user_id">
@@ -455,17 +478,6 @@
             @endforeach
           </x-select>
           <x-input-error for="user_id" class="mt-2" />
-        </div>
-
-        <div>
-          <x-label for="payment_source" value="Sumber Pemotongan Dana Pinjaman" />
-          <x-select id="payment_source" class="mt-1 block w-full text-sm" wire:model.live="payment_source">
-            <option value="payroll">Potong Gaji di Payroll (Cicilan Bulanan sesuai Tenor)</option>
-            <option value="syirkah_mandatory">Potong Saldo Syirkah Wajib</option>
-            <option value="syirkah_secondary">Potong Saldo Syirkah Sukarela (SSR)</option>
-            <option value="syirkah_all">Potong Saldo Syirkah (Wajib + SSR)</option>
-          </x-select>
-          <x-input-error for="payment_source" class="mt-2" />
         </div>
 
         @if($user_id)
@@ -481,16 +493,72 @@
           </div>
         @endif
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Sumber Pencairan Pinjaman -->
+          <div>
+            <x-label for="disbursement_source" value="Sumber Pencairan Dana" />
+            <x-select id="disbursement_source" class="mt-1 block w-full text-sm" wire:model.live="disbursement_source">
+              <option value="syirkah_pool">Kas Pool Syirkah (Talangan Kolektif)</option>
+              <option value="syirkah_secondary">Saldo Syirkah SSR Pribadi</option>
+              <option value="syirkah_mandatory">Saldo Syirkah Wajib Pribadi</option>
+              <option value="syirkah_all">Saldo Syirkah (Wajib + SSR) Pribadi</option>
+              <option value="company_cash">Kas Perusahaan (Non-Syirkah)</option>
+            </x-select>
+            <x-input-error for="disbursement_source" class="mt-1" />
+            <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+              @if($disbursement_source === 'syirkah_pool')
+                <span class="text-emerald-600 dark:text-emerald-400 font-medium">Dana ditarik dari kas bersama Syirkah (Program Trip).</span>
+              @elseif(str_starts_with($disbursement_source, 'syirkah_'))
+                <span class="text-indigo-600 dark:text-indigo-400 font-medium">Saldo tabungan syirkah karyawan akan dipotong saat disetujui.</span>
+              @else
+                <span>Dana dikeluarkan langsung dari kas perusahaan.</span>
+              @endif
+            </p>
+          </div>
+
+          <!-- Metode Pelunasan -->
+          <div>
+            <x-label for="payment_source" value="Metode Pelunasan" />
+            <x-select id="payment_source" class="mt-1 block w-full text-sm" wire:model.live="payment_source">
+              <option value="payroll">Potong Gaji di Payroll (Cicilan Bulanan)</option>
+              <option value="syirkah_secondary">Potong Saldo SSR (Langsung Lunas)</option>
+              <option value="syirkah_mandatory">Potong Saldo Wajib (Langsung Lunas)</option>
+              <option value="syirkah_all">Potong Saldo Wajib+SSR (Langsung Lunas)</option>
+            </x-select>
+            <x-input-error for="payment_source" class="mt-1" />
+          </div>
+        </div>
+
+        @if($payment_source === 'payroll')
+          <!-- Tujuan Setoran Otomatis saat Payroll Terpotong -->
+          <div class="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 rounded-xl">
+            <x-label for="syirkah_destination" value="Tujuan Pengembalian Setoran Payroll" class="text-indigo-950 dark:text-indigo-200 font-semibold" />
+            <x-select id="syirkah_destination" class="mt-1 block w-full text-sm bg-white dark:bg-gray-800" wire:model.live="syirkah_destination">
+              <option value="syirkah_secondary">Masuk ke Saldo Syirkah Sukarela (SSR) Karyawan</option>
+              <option value="syirkah_pool">Masuk Kembali ke Kas Pool Syirkah (Pelunasan Talangan)</option>
+              <option value="syirkah_mandatory">Masuk ke Saldo Syirkah Wajib Karyawan</option>
+              <option value="none">Kas Perusahaan (Bukan Syirkah)</option>
+            </x-select>
+            <x-input-error for="syirkah_destination" class="mt-1" />
+            <p class="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1.5 flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Saat status Payroll <b>Paid</b>, potongan otomatis tercatat sebagai mutasi <b>Deposit Syirkah</b>.</span>
+            </p>
+          </div>
+        @endif
+
         <div>
           <x-label for="loan_amount" value="Total Nominal Pinjaman (Rp)" />
-          <x-input id="loan_amount" type="number" class="mt-1 block w-full text-sm" wire:model.live.debounce.500ms="loan_amount" placeholder="Contoh: 1000000" />
+          <x-input id="loan_amount" type="number" class="mt-1 block w-full text-sm" wire:model.live.debounce.500ms="loan_amount" placeholder="Contoh: 3120000" />
           <x-input-error for="loan_amount" class="mt-2" />
         </div>
 
         @if($payment_source === 'payroll')
           <div>
             <x-label for="tenor_months" value="Tenor (Bulan)" />
-            <x-input id="tenor_months" type="number" class="mt-1 block w-full text-sm" wire:model.live.debounce.500ms="tenor_months" placeholder="Berapa bulan dicicil" />
+            <x-input id="tenor_months" type="number" class="mt-1 block w-full text-sm" wire:model.live.debounce.500ms="tenor_months" placeholder="Contoh: 6" />
             <x-input-error for="tenor_months" class="mt-2" />
           </div>
 
@@ -511,8 +579,8 @@
         @endif
 
         <div>
-          <x-label for="description" value="Keterangan / Alasan" />
-          <x-input id="description" type="text" class="mt-1 block w-full text-sm" wire:model="description" placeholder="Contoh: Biaya pendidikan anak" />
+          <x-label for="description" value="Keterangan / Nama Program" />
+          <x-input id="description" type="text" class="mt-1 block w-full text-sm" wire:model="description" placeholder="Contoh: Trip Singapore 2026 / Pinjaman Pendidikan" />
           <x-input-error for="description" class="mt-2" />
         </div>
       </div>

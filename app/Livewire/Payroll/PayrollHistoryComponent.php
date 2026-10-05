@@ -183,10 +183,7 @@ class PayrollHistoryComponent extends Component
         abort_unless(auth()->user()->isPayroll || auth()->user()->isSuperadmin || auth()->user()->isOwner, 403);
         
         $payroll = Payroll::findOrFail($id);
-        $payroll->update([
-            'status' => 'paid',
-            'payment_date' => now(),
-        ]);
+        $this->processPayrollsMarkedAsPaid(collect([$payroll]));
         
         $this->banner('Status gaji berhasil diubah menjadi Paid (Telah Dibayar).');
     }
@@ -216,7 +213,7 @@ class PayrollHistoryComponent extends Component
                 $payrollIds = $payrolls->pluck('id')->toArray();
                 $empIds = $payrolls->pluck('employee_id')->unique()->toArray();
 
-                \App\Models\LoanInstallment::whereIn('payroll_id', $payrollIds)->delete();
+                $this->processPayrollsRollbackLoans($payrollIds);
                 \App\Models\SavingTransaction::where('reference_type', 'payroll')->whereIn('reference_id', $payrollIds)->delete();
 
                 $existingFlexIds = \App\Models\FlexibleDeduction::whereIn('payroll_id', $payrollIds)->pluck('id');
@@ -254,12 +251,11 @@ class PayrollHistoryComponent extends Component
             return;
         }
 
-        $count = Payroll::whereIn('id', $this->selectedPayrolls)->where('status', 'draft')->update([
-            'status' => 'paid',
-            'payment_date' => now(),
-        ]);
+        $payrolls = Payroll::whereIn('id', $this->selectedPayrolls)->where('status', 'draft')->get();
+        $count = $payrolls->count();
 
         if ($count > 0) {
+            $this->processPayrollsMarkedAsPaid($payrolls);
             $this->banner("{$count} data gaji terpilih berhasil diubah statusnya menjadi Paid.");
         } else {
             session()->flash('flash.banner', 'Tidak ada data berstatus Draft di antara data yang dipilih.');
@@ -289,7 +285,7 @@ class PayrollHistoryComponent extends Component
             if ($payroll) {
                 $empId = $payroll->employee_id;
 
-                \App\Models\LoanInstallment::where('payroll_id', $payroll->id)->delete();
+                $this->processPayrollsRollbackLoans([$payroll->id]);
                 \App\Models\SavingTransaction::where('reference_type', 'payroll')->where('reference_id', $payroll->id)->delete();
                 
                 $existingFlexIds = \App\Models\FlexibleDeduction::where('payroll_id', $payroll->id)->pluck('id');
@@ -327,17 +323,103 @@ class PayrollHistoryComponent extends Component
             $query->where('period_month', $this->month);
         }
         
-        $count = $query->count();
+        $payrolls = $query->get();
+        $count = $payrolls->count();
         
         if ($count > 0) {
-            $query->update([
-                'status' => 'paid',
-                'payment_date' => now(),
-            ]);
+            $this->processPayrollsMarkedAsPaid($payrolls);
             $this->banner("$count data gaji berhasil ditandai sebagai Paid.");
         } else {
             session()->flash('flash.banner', 'Tidak ada data draft untuk bulan ini.');
             session()->flash('flash.bannerStyle', 'danger');
+        }
+    }
+
+    private function processPayrollsMarkedAsPaid($payrolls): void
+    {
+        $savingProgram = \App\Models\Saving::first();
+        $affectedUserIds = [];
+
+        foreach ($payrolls as $payroll) {
+            $payroll->update([
+                'status' => 'paid',
+                'payment_date' => now(),
+            ]);
+
+            // Process LoanInstallments
+            $pendingInstallments = \App\Models\LoanInstallment::where('payroll_id', $payroll->id)
+                ->where('status', 'pending')
+                ->with('loan')
+                ->get();
+
+            foreach ($pendingInstallments as $inst) {
+                $inst->update(['status' => 'paid']);
+                $loan = $inst->loan;
+                if ($loan) {
+                    $newRemaining = max(0.0, (float) $loan->remaining_balance - (float) $inst->amount_paid);
+                    $loan->update([
+                        'remaining_balance' => $newRemaining,
+                        'status' => ($newRemaining <= 0 ? 'paid_off' : 'active'),
+                    ]);
+
+                    // Check if loan repayment should be deposited into Syirkah
+                    if ($loan->syirkah_destination && !in_array($loan->syirkah_destination, ['none', 'company_cash']) && $savingProgram) {
+                        $mandAmount = ($loan->syirkah_destination === 'syirkah_mandatory') ? $inst->amount_paid : 0;
+                        $secAmount = in_array($loan->syirkah_destination, ['syirkah_secondary', 'syirkah_pool']) ? $inst->amount_paid : 0;
+
+                        $savingTx = \App\Models\SavingTransaction::create([
+                            'user_id' => $loan->user_id,
+                            'savings_id' => $savingProgram->id,
+                            'transaction_type' => 'deposit',
+                            'mandatory_amount' => $mandAmount,
+                            'secondary_amount' => $secAmount,
+                            'status' => 'approved',
+                            'period_month' => $payroll->period_month,
+                            'reference_type' => 'loan_installment',
+                            'reference_id' => $inst->id,
+                            'description' => 'Setoran Cicilan (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
+                            'approved_by' => auth()->id(),
+                            'approval_date' => now(),
+                        ]);
+
+                        $inst->update(['saving_transaction_id' => $savingTx->id]);
+                        $affectedUserIds[] = $loan->user_id;
+                    }
+                }
+            }
+        }
+
+        foreach (array_unique(array_filter($affectedUserIds)) as $uId) {
+            \App\Services\SavingTransactionService::recalculateUserTransactions($uId);
+        }
+    }
+
+    private function processPayrollsRollbackLoans(array $payrollIds): void
+    {
+        $installments = \App\Models\LoanInstallment::whereIn('payroll_id', $payrollIds)->with('loan')->get();
+        $affectedUserIds = [];
+
+        foreach ($installments as $inst) {
+            if ($inst->status === 'paid' && $inst->loan) {
+                $loan = $inst->loan;
+                $loan->increment('remaining_balance', $inst->amount_paid);
+                if ($loan->status === 'paid_off') {
+                    $loan->update(['status' => 'active']);
+                }
+            }
+
+            if ($inst->saving_transaction_id) {
+                \App\Models\SavingTransaction::where('id', $inst->saving_transaction_id)->delete();
+                $affectedUserIds[] = $inst->loan?->user_id;
+            }
+
+            $inst->delete();
+        }
+
+        \App\Models\SavingTransaction::where('reference_type', 'loan_installment')->whereIn('reference_id', $installments->pluck('id'))->delete();
+
+        foreach (array_unique(array_filter($affectedUserIds)) as $uId) {
+            \App\Services\SavingTransactionService::recalculateUserTransactions($uId);
         }
     }
 
@@ -435,7 +517,7 @@ class PayrollHistoryComponent extends Component
 
                 $existingPayrollIds = $allExistingPayrolls->pluck('id');
                 if ($existingPayrollIds->isNotEmpty()) {
-                    \App\Models\LoanInstallment::whereIn('payroll_id', $existingPayrollIds)->delete();
+                    $this->processPayrollsRollbackLoans($existingPayrollIds->toArray());
                     \App\Models\SavingTransaction::where('reference_type', 'payroll')->whereIn('reference_id', $existingPayrollIds)->delete();
                     
                     $existingFlexIds = \App\Models\FlexibleDeduction::whereIn('payroll_id', $existingPayrollIds)->pluck('id');
@@ -807,7 +889,7 @@ class PayrollHistoryComponent extends Component
                             'payroll_id' => $payroll->id,
                             'status' => 'pending',
                         ]);
-                        $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Cicilan Pinjaman', 'amount' => $item['amount'], 'created_at' => now(), 'updated_at' => now()];
+                        $allPayrollDetailsToInsert[] = ['payroll_id' => $payroll->id, 'type' => 'deduction', 'name' => 'Cicilan: ' . ($item['loan']->description ?: 'Pinjaman'), 'amount' => $item['amount'], 'created_at' => now(), 'updated_at' => now()];
                     }
 
                     // Save Flexible Deductions to Payroll Details & Update Status
@@ -1021,10 +1103,10 @@ class PayrollHistoryComponent extends Component
                 }
 
                 // Check loans
-                $loanInst = \App\Models\LoanInstallment::where('payroll_id', $payroll->id)->get();
+                $loanInst = \App\Models\LoanInstallment::where('payroll_id', $payroll->id)->with('loan')->get();
                 foreach ($loanInst as $li) {
                     $deductions[] = [
-                        'name' => 'Cicilan Pinjaman',
+                        'name' => 'Cicilan: ' . ($li->loan?->description ?: 'Pinjaman'),
                         'amount' => (float) $li->amount_paid,
                     ];
                 }
