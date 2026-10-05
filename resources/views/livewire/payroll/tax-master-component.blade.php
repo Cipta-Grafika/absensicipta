@@ -1,15 +1,9 @@
 <x-slot name="header">
   <div class="relative flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-600 text-white shadow-md shadow-indigo-500/20">
-        <x-heroicon-o-calculator class="h-6 w-6" />
-      </div>
-      <div>
-        <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
-          Master Pajak PPh 21
-        </h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Manajemen Tarif Efektif Rata-rata (TER) dan Pajak Penghasilan Karyawan</p>
-      </div>
+    <div>
+      <h2 class="text-xl font-bold leading-tight text-gray-800 dark:text-gray-200">
+        Master Pajak PPh 21
+      </h2>
     </div>
     <div class="flex items-center gap-2">
       <x-secondary-button href="#" x-data @click.prevent="$dispatch('open-filter')">

@@ -4,7 +4,6 @@
       <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
         Pinjaman Karyawan (Kasbon)
       </h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola pengajuan, persetujuan, dan pemotongan cicilan pinjaman karyawan</p>
     </div>
     <div class="flex items-center gap-2">
       @if(Auth::user()?->isSyirkah || Auth::user()?->isPayroll || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)

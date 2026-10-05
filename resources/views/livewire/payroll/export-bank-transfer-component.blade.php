@@ -12,9 +12,6 @@
             Export Transfer Bank (BCA MAT)
           </h2>
         </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Export data penggajian ke format resmi Multi Auto Transfer (MAT) / Multi Payroll Bank BCA.
-        </p>
       </div>
 
       <div class="flex items-center gap-3">

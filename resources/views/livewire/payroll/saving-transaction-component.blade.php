@@ -4,7 +4,6 @@
       <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
         Mutasi & Pengajuan Syirkah
       </h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola mutasi buku kas syirkah dan persetujuan pengajuan penarikan dana karyawan</p>
     </div>
     <div class="flex items-center gap-2">
       <x-secondary-button type="button" x-data @click.prevent="$dispatch('trigger-export-excel')" wire:loading.attr="disabled" wire:target="exportExcel" class="!bg-emerald-600 hover:!bg-emerald-700 !text-white !border-transparent shadow-xs cursor-pointer disabled:opacity-50">

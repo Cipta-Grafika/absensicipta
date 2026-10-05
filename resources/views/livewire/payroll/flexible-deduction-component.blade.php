@@ -4,7 +4,6 @@
       <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
         Potongan Gaji Fleksibel
       </h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola pemotongan gaji kustom bulanan (Galang Dana, Infaq, Iuran, dll.) dengan master karyawan</p>
     </div>
     <div class="flex items-center gap-2">
       <x-button type="button" wire:click="openProgramModal" class="bg-sky-600 hover:bg-sky-700">

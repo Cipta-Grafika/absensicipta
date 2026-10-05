@@ -4,7 +4,6 @@
       <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
         Program Syirkah & Nominal Sukarela
       </h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola paket syirkah dan kustomisasi nominal syirkah sukarela (override) per karyawan</p>
     </div>
     @if($activeTab === 'master')
       <x-button x-data @click="$dispatch('open-saving-modal')" class="bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white cursor-pointer">
