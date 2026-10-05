@@ -65,9 +65,9 @@
       
       <!-- SUMMARY STATS -->
       <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="overflow-hidden rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 p-4 sm:p-5 shadow-xs">
+        <div wire:click="$set('status', 'active')" class="cursor-pointer group overflow-hidden rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border {{ $status === 'active' ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-blue-200 dark:border-blue-800/50 hover:border-blue-300' }} p-4 sm:p-5 shadow-xs transition-all">
           <div class="flex items-center justify-between">
-            <dt class="truncate text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Pinjaman Aktif</dt>
+            <dt class="truncate text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 group-hover:text-blue-700">Pinjaman Aktif</dt>
             <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
               {{ $activeCount }} Akun
             </span>
@@ -75,10 +75,10 @@
           <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-blue-950 dark:text-blue-100">
             Rp {{ number_format($activeBalance, 0, ',', '.') }}
           </dd>
-          <p class="text-[11px] text-blue-500 dark:text-blue-400 mt-1">Sisa saldo belum lunas</p>
+          <p class="text-[11px] text-blue-500 dark:text-blue-400 mt-1">Sisa saldo belum lunas &bull; <span class="underline group-hover:text-blue-700">Klik filter</span></p>
         </div>
 
-        <div class="overflow-hidden rounded-xl {{ $pendingCount > 0 ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60' : 'bg-gray-50/80 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700' }} border p-4 sm:p-5 shadow-xs transition-colors">
+        <div wire:click="$set('status', 'pending')" class="cursor-pointer group overflow-hidden rounded-xl {{ $status === 'pending' ? 'bg-amber-100/80 border-amber-500 ring-2 ring-amber-500/30 dark:bg-amber-950/60' : ($pendingCount > 0 ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 hover:border-amber-400' : 'bg-gray-50/80 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700') }} border p-4 sm:p-5 shadow-xs transition-all">
           <div class="flex items-center justify-between">
             <dt class="truncate text-xs font-semibold uppercase tracking-wider {{ $pendingCount > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400' }}">Menunggu Approval</dt>
             @if($pendingCount > 0)
@@ -90,23 +90,33 @@
           <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight {{ $pendingCount > 0 ? 'text-amber-950 dark:text-amber-100' : 'text-gray-700 dark:text-gray-300' }}">
             Rp {{ number_format($pendingNominal, 0, ',', '.') }}
           </dd>
-          <p class="text-[11px] text-amber-600/80 dark:text-amber-400/80 mt-1">Butuh konfirmasi syirkah/payroll</p>
+          <p class="text-[11px] text-amber-600/80 dark:text-amber-400/80 mt-1">Butuh konfirmasi syirkah/payroll &bull; <span class="underline group-hover:text-amber-800">Klik filter</span></p>
         </div>
 
-        <div class="overflow-hidden rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 p-4 sm:p-5 shadow-xs">
-          <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Pinjaman Lunas</dt>
+        <div wire:click="$set('status', 'paid_off')" class="cursor-pointer group overflow-hidden rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border {{ $status === 'paid_off' ? 'border-emerald-500 ring-2 ring-emerald-500/30' : 'border-emerald-200 dark:border-emerald-800/50 hover:border-emerald-300' }} p-4 sm:p-5 shadow-xs transition-all">
+          <div class="flex items-center justify-between">
+            <dt class="truncate text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700">Pinjaman Lunas</dt>
+            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+              {{ $paidOffCount }}
+            </span>
+          </div>
           <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
             {{ $paidOffCount }} Pinjaman
           </dd>
-          <p class="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1">Telah selesai dilunasi</p>
+          <p class="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1">Telah selesai dilunasi &bull; <span class="underline group-hover:text-emerald-700">Klik filter</span></p>
         </div>
 
-        <div class="overflow-hidden rounded-xl bg-sky-50/80 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/50 p-4 sm:p-5 shadow-xs">
-          <dt class="truncate text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">Total Transaksi Pinjaman</dt>
+        <div wire:click="$set('status', '')" class="cursor-pointer group overflow-hidden rounded-xl bg-sky-50/80 dark:bg-sky-950/40 border {{ $status === '' ? 'border-sky-500 ring-2 ring-sky-500/30' : 'border-sky-200 dark:border-sky-800/50 hover:border-sky-300' }} p-4 sm:p-5 shadow-xs transition-all">
+          <div class="flex items-center justify-between">
+            <dt class="truncate text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 group-hover:text-sky-700">Total Transaksi</dt>
+            <span class="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-800 dark:bg-sky-900/60 dark:text-sky-200">
+              Semua
+            </span>
+          </div>
           <dd class="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-sky-950 dark:text-sky-100">
             {{ $loans->total() }} Record
           </dd>
-          <p class="text-[11px] text-sky-600/80 dark:text-sky-400/80 mt-1">Keseluruhan riwayat kasbon</p>
+          <p class="text-[11px] text-sky-600/80 dark:text-sky-400/80 mt-1">Keseluruhan riwayat kasbon &bull; <span class="underline group-hover:text-sky-700">Tampilkan semua</span></p>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ namespace App\Livewire\Payroll;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Url;
 use App\Models\Loan;
 use App\Models\User;
 use App\Models\Saving;
@@ -17,8 +18,13 @@ class LoanComponent extends Component
 {
     use WithPagination;
 
+    #[Url(as: 'q', except: '')]
     public $search = '';
+
+    #[Url(as: 'status', except: '')]
     public $status = '';
+
+    #[Url(as: 'division', except: '')]
     public $division = '';
 
     // Bulk selection state
@@ -32,7 +38,7 @@ class LoanComponent extends Component
     public $tenor_months = 1;
     public $payment_source = 'payroll';
     public $disbursement_source = 'syirkah_pool_secondary';
-    public $syirkah_destination = 'syirkah_secondary';
+    public $syirkah_destination = 'syirkah_pool_secondary';
     public $description = '';
 
     // Real-time Syirkah Balance for Selected User
@@ -53,7 +59,11 @@ class LoanComponent extends Component
     // Computed Properties for Loan
     public $installment_amount = 0;
 
-    protected $updatesQueryString = ['status', 'division'];
+    protected $queryString = [
+        'status' => ['except' => ''],
+        'search' => ['except' => '', 'as' => 'q'],
+        'division' => ['except' => ''],
+    ];
 
     public function updatedSelectAll($value)
     {
