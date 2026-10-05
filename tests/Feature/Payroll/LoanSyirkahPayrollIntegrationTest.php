@@ -418,7 +418,7 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
         Livewire::test(LoanComponent::class)
             ->call('openEditModal', $loan->id)
             ->assertSet('isEditMode', true)
-            ->assertSet('editingLoanStatus', 'approved')
+            ->assertSet('editingLoanStatus', 'active')
             ->set('loan_amount', 4500000)
             ->set('tenor_months', 3)
             ->set('description', 'Kasbon Aktif Revisi')
@@ -433,5 +433,153 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
         $savingTx->refresh();
         $this->assertEquals(4500000, $savingTx->secondary_amount);
         $this->assertStringContainsString('Kasbon Aktif Revisi', $savingTx->description);
+    }
+
+    public function test_two_month_payroll_deduction_automatically_settles_loan_to_paid_off()
+    {
+        $this->actingAs($this->admin);
+
+        // Employee has a 2 million loan with 2 months tenor (1 million per month)
+        $loan = Loan::create([
+            'user_id' => $this->employee->id,
+            'loan_amount' => 2000000,
+            'tenor_months' => 2,
+            'installment_amount' => 1000000,
+            'remaining_balance' => 2000000,
+            'payment_source' => 'payroll',
+            'disbursement_source' => 'company_cash',
+            'syirkah_destination' => 'none',
+            'status' => 'active',
+            'approved_by' => $this->admin->id,
+            'approval_date' => now(),
+            'description' => 'Pinjaman 2 Juta',
+        ]);
+
+        // Month 1 Attendance & Payroll Generation
+        \App\Models\Attendance::create([
+            'user_id' => $this->employee->id,
+            'date' => '2026-09-01',
+            'status' => 'present',
+            'time_in' => '08:00:00',
+            'time_out' => '17:00:00',
+        ]);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-09')
+            ->set('generate_start_date', '2026-09-01')
+            ->set('generate_end_date', '2026-09-30')
+            ->set('generate_target', 'specific')
+            ->set('selected_employee_ids', [$this->employee->id])
+            ->call('generatePayroll');
+
+        $payroll1 = Payroll::where('employee_id', $this->employee->id)->where('period_month', '2026-09')->first();
+        $this->assertNotNull($payroll1);
+
+        // Mark Month 1 as Paid
+        Livewire::test(PayrollHistoryComponent::class)
+            ->call('markAsPaid', $payroll1->id);
+
+        $loan->refresh();
+        $this->assertEquals(1000000, $loan->remaining_balance);
+        $this->assertEquals('active', $loan->status);
+
+        // Month 2 Attendance & Payroll Generation
+        \App\Models\Attendance::create([
+            'user_id' => $this->employee->id,
+            'date' => '2026-10-01',
+            'status' => 'present',
+            'time_in' => '08:00:00',
+            'time_out' => '17:00:00',
+        ]);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-10')
+            ->set('generate_start_date', '2026-10-01')
+            ->set('generate_end_date', '2026-10-31')
+            ->set('generate_target', 'specific')
+            ->set('selected_employee_ids', [$this->employee->id])
+            ->call('generatePayroll');
+
+        $payroll2 = Payroll::where('employee_id', $this->employee->id)->where('period_month', '2026-10')->first();
+        $this->assertNotNull($payroll2);
+
+        // Mark Month 2 as Paid
+        Livewire::test(PayrollHistoryComponent::class)
+            ->call('markAsPaid', $payroll2->id);
+
+        $loan->refresh();
+        $this->assertEquals(0, $loan->remaining_balance);
+        $this->assertEquals('paid_off', $loan->status);
+
+        // Now test rendering LoanComponent ensures status is paid_off (LUNAS)
+        Livewire::test(LoanComponent::class)
+            ->assertSee('Lunas');
+    }
+
+    public function test_self_healing_sync_loans_fixes_out_of_sync_loans()
+    {
+        $this->actingAs($this->admin);
+
+        // Loan initially shows 2 million active
+        $loan = Loan::create([
+            'user_id' => $this->employee->id,
+            'loan_amount' => 2000000,
+            'tenor_months' => 2,
+            'installment_amount' => 1000000,
+            'remaining_balance' => 2000000,
+            'payment_source' => 'payroll',
+            'disbursement_source' => 'company_cash',
+            'syirkah_destination' => 'none',
+            'status' => 'active',
+            'description' => 'Pinjaman Out of Sync',
+        ]);
+
+        // Two paid payrolls already exist with deduction details
+        $p1 = Payroll::create([
+            'employee_id' => $this->employee->id,
+            'period_month' => '2026-08',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-31',
+            'basic_salary_earned' => 5000000,
+            'total_allowance' => 1500000,
+            'total_overtime_pay' => 0,
+            'total_deduction' => 1000000,
+            'net_salary' => 5500000,
+            'status' => 'paid',
+            'payment_date' => now(),
+        ]);
+        \App\Models\PayrollDetail::create([
+            'payroll_id' => $p1->id,
+            'type' => 'deduction',
+            'name' => 'Cicilan Pinjaman',
+            'amount' => 1000000,
+        ]);
+
+        $p2 = Payroll::create([
+            'employee_id' => $this->employee->id,
+            'period_month' => '2026-09',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+            'basic_salary_earned' => 5000000,
+            'total_allowance' => 1500000,
+            'total_overtime_pay' => 0,
+            'total_deduction' => 1000000,
+            'net_salary' => 5500000,
+            'status' => 'paid',
+            'payment_date' => now(),
+        ]);
+        \App\Models\PayrollDetail::create([
+            'payroll_id' => $p2->id,
+            'type' => 'deduction',
+            'name' => 'Cicilan Pinjaman',
+            'amount' => 1000000,
+        ]);
+
+        // Run sync
+        \App\Services\LoanService::syncLoan($loan);
+
+        $loan->refresh();
+        $this->assertEquals(0, $loan->remaining_balance);
+        $this->assertEquals('paid_off', $loan->status);
     }
 }

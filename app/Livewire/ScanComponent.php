@@ -1180,7 +1180,8 @@ class ScanComponent extends Component
 
         // Active Loans (Kasbon / Pinjaman)
         $activeLoans = \App\Models\Loan::where('user_id', $user->id)
-            ->where('status', 'active')
+            ->whereIn('status', ['approved', 'active'])
+            ->where('payment_source', 'payroll')
             ->where('remaining_balance', '>', 0)
             ->get();
         foreach ($activeLoans as $loan) {

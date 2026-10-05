@@ -13,11 +13,20 @@ class Payroll extends Model
     protected static function booted()
     {
         static::saved(function ($payroll) {
+            if ($payroll->wasChanged('status')) {
+                if ($payroll->status === 'paid') {
+                    \App\Services\LoanService::processPayrollPaid($payroll);
+                } elseif ($payroll->getOriginal('status') === 'paid' && $payroll->status !== 'paid') {
+                    \App\Services\LoanService::processPayrollRollback($payroll);
+                }
+            }
+
             \App\Services\DeductionNotificationService::notify($payroll->employee_id);
             \App\Services\DeductionNotificationService::notifyGlobal();
         });
 
         static::deleted(function ($payroll) {
+            \App\Services\LoanService::processPayrollRollback($payroll);
             \App\Services\DeductionNotificationService::notify($payroll->employee_id);
             \App\Services\DeductionNotificationService::notifyGlobal();
         });

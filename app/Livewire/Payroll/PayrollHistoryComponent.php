@@ -337,96 +337,20 @@ class PayrollHistoryComponent extends Component
 
     private function processPayrollsMarkedAsPaid($payrolls): void
     {
-        $savingProgram = \App\Models\Saving::first();
-        $affectedUserIds = [];
-
         foreach ($payrolls as $payroll) {
             $payroll->update([
                 'status' => 'paid',
                 'payment_date' => now(),
             ]);
 
-            // Process LoanInstallments
-            $pendingInstallments = \App\Models\LoanInstallment::where('payroll_id', $payroll->id)
-                ->where('status', 'pending')
-                ->with('loan')
-                ->get();
-
-            foreach ($pendingInstallments as $inst) {
-                $inst->update(['status' => 'paid']);
-                $loan = $inst->loan;
-                if ($loan) {
-                    $newRemaining = max(0.0, (float) $loan->remaining_balance - (float) $inst->amount_paid);
-                    $loan->update([
-                        'remaining_balance' => $newRemaining,
-                        'status' => ($newRemaining <= 0 ? 'paid_off' : 'active'),
-                    ]);
-
-                    // Check if loan repayment should be deposited into Syirkah
-                    if ($loan->syirkah_destination && !in_array($loan->syirkah_destination, ['none', 'company_cash']) && $savingProgram) {
-                        $mandAmount = in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_pool_mandatory']) ? $inst->amount_paid : 0;
-                        $secAmount = in_array($loan->syirkah_destination, ['syirkah_secondary', 'syirkah_pool', 'syirkah_pool_secondary']) ? $inst->amount_paid : 0;
-
-                        $desc = match ($loan->syirkah_destination) {
-                            'syirkah_pool_secondary', 'syirkah_pool' => 'Pengembalian Talangan Kas Bersama SSR (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
-                            'syirkah_pool_mandatory' => 'Pengembalian Talangan Kas Bersama Wajib (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
-                            'syirkah_mandatory' => 'Setoran Tabungan Syirkah Wajib Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
-                            default => 'Setoran Tabungan Syirkah SSR Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
-                        };
-
-                        $savingTx = \App\Models\SavingTransaction::create([
-                            'user_id' => $loan->user_id,
-                            'savings_id' => $savingProgram->id,
-                            'transaction_type' => 'deposit',
-                            'mandatory_amount' => $mandAmount,
-                            'secondary_amount' => $secAmount,
-                            'status' => 'approved',
-                            'period_month' => $payroll->period_month,
-                            'reference_type' => 'loan_installment',
-                            'reference_id' => $inst->id,
-                            'description' => $desc,
-                            'approved_by' => auth()->id(),
-                            'approval_date' => now(),
-                        ]);
-
-                        $inst->update(['saving_transaction_id' => $savingTx->id]);
-                        $affectedUserIds[] = $loan->user_id;
-                    }
-                }
-            }
-        }
-
-        foreach (array_unique(array_filter($affectedUserIds)) as $uId) {
-            \App\Services\SavingTransactionService::recalculateUserTransactions($uId);
+            \App\Services\LoanService::processPayrollPaid($payroll);
         }
     }
 
     private function processPayrollsRollbackLoans(array $payrollIds): void
     {
-        $installments = \App\Models\LoanInstallment::whereIn('payroll_id', $payrollIds)->with('loan')->get();
-        $affectedUserIds = [];
-
-        foreach ($installments as $inst) {
-            if ($inst->status === 'paid' && $inst->loan) {
-                $loan = $inst->loan;
-                $loan->increment('remaining_balance', $inst->amount_paid);
-                if ($loan->status === 'paid_off') {
-                    $loan->update(['status' => 'active']);
-                }
-            }
-
-            if ($inst->saving_transaction_id) {
-                \App\Models\SavingTransaction::where('id', $inst->saving_transaction_id)->delete();
-                $affectedUserIds[] = $inst->loan?->user_id;
-            }
-
-            $inst->delete();
-        }
-
-        \App\Models\SavingTransaction::where('reference_type', 'loan_installment')->whereIn('reference_id', $installments->pluck('id'))->delete();
-
-        foreach (array_unique(array_filter($affectedUserIds)) as $uId) {
-            \App\Services\SavingTransactionService::recalculateUserTransactions($uId);
+        foreach ($payrollIds as $payrollId) {
+            \App\Services\LoanService::processPayrollRollback($payrollId);
         }
     }
 
@@ -497,7 +421,9 @@ class PayrollHistoryComponent extends Component
                     ->groupBy('employee_id');
 
                 $allActiveLoans = \App\Models\Loan::whereIn('user_id', $employeeIds)
-                    ->where('status', 'active')
+                    ->whereIn('status', ['approved', 'active'])
+                    ->where('payment_source', 'payroll')
+                    ->where('remaining_balance', '>', 0)
                     ->lockForUpdate()
                     ->get()
                     ->groupBy('user_id');

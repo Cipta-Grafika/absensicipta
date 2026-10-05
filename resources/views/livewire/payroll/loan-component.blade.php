@@ -7,6 +7,15 @@
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola pengajuan, persetujuan, dan pemotongan cicilan pinjaman karyawan</p>
     </div>
     <div class="flex items-center gap-2">
+      @if(Auth::user()?->isSyirkah || Auth::user()?->isPayroll || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
+        <x-secondary-button type="button" wire:click="syncLoans" wire:loading.attr="disabled" title="Sinkronkan status cicilan dan saldo dengan data potongan payroll">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4 text-sky-600" wire:loading.class="animate-spin">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          <span class="hidden sm:inline">Sinkronkan Data</span>
+          <span class="sm:hidden">Sync</span>
+        </x-secondary-button>
+      @endif
       <x-button type="button" x-data @click.prevent="$dispatch('open-create-modal')">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-4 w-4">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

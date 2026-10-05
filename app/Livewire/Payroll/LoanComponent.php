@@ -694,7 +694,17 @@ class LoanComponent extends Component
             'status' => 'paid_off',
             'remaining_balance' => 0,
         ]);
+        \App\Services\LoanService::syncLoan($loan);
         $this->dispatch('notify', 'Status pinjaman menjadi lunas.');
+    }
+
+    public function syncLoans()
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403);
+        }
+        \App\Services\LoanService::syncAllLoans();
+        $this->dispatch('notify', 'Seluruh data pinjaman dan potongan payroll berhasil disinkronkan.');
     }
 
     private function buildQuery()
@@ -732,6 +742,14 @@ class LoanComponent extends Component
     {
         $query = $this->buildQuery();
         $loans = $query->latest()->paginate(15);
+
+        // Auto-sync displayed loans with their actual paid payroll deductions
+        foreach ($loans as $loan) {
+            if ($loan->status !== 'rejected') {
+                \App\Services\LoanService::syncLoan($loan);
+            }
+        }
+
         $users = User::onlyWorkingEmployee()
             ->orderBy('name')
             ->get();
