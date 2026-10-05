@@ -31,7 +31,7 @@ class LoanComponent extends Component
     public $loan_amount = 0;
     public $tenor_months = 1;
     public $payment_source = 'payroll';
-    public $disbursement_source = 'syirkah_pool';
+    public $disbursement_source = 'syirkah_pool_secondary';
     public $syirkah_destination = 'syirkah_secondary';
     public $description = '';
 
@@ -135,10 +135,21 @@ class LoanComponent extends Component
         }
     }
 
+    public function updatedDisbursementSource($value)
+    {
+        if ($value === 'syirkah_pool_mandatory' || $value === 'syirkah_mandatory') {
+            $this->syirkah_destination = 'syirkah_mandatory';
+        } elseif ($value === 'syirkah_pool_secondary' || $value === 'syirkah_pool' || $value === 'syirkah_secondary') {
+            $this->syirkah_destination = 'syirkah_secondary';
+        } elseif ($value === 'company_cash' || $value === 'none') {
+            $this->syirkah_destination = 'none';
+        }
+    }
+
     public function openCreateModal()
     {
         $this->reset(['user_id', 'loan_amount', 'tenor_months', 'payment_source', 'disbursement_source', 'syirkah_destination', 'installment_amount', 'description', 'user_syirkah_mandatory', 'user_syirkah_secondary']);
-        $this->disbursement_source = 'syirkah_pool';
+        $this->disbursement_source = 'syirkah_pool_secondary';
         $this->syirkah_destination = 'syirkah_secondary';
         $this->payment_source = 'payroll';
         $this->createModalOpen = true;
@@ -155,8 +166,8 @@ class LoanComponent extends Component
             'user_id' => 'required|exists:users,id',
             'loan_amount' => 'required|numeric|min:1',
             'payment_source' => 'required|in:payroll,syirkah_mandatory,syirkah_secondary,syirkah_all',
-            'disbursement_source' => 'required|in:none,company_cash,syirkah_pool,syirkah_mandatory,syirkah_secondary,syirkah_all',
-            'syirkah_destination' => 'required|in:none,company_cash,syirkah_pool,syirkah_secondary,syirkah_mandatory',
+            'disbursement_source' => 'required|in:none,company_cash,syirkah_pool,syirkah_pool_secondary,syirkah_pool_mandatory,syirkah_mandatory,syirkah_secondary,syirkah_all',
+            'syirkah_destination' => 'required|in:none,company_cash,syirkah_pool,syirkah_pool_secondary,syirkah_pool_mandatory,syirkah_secondary,syirkah_mandatory',
         ];
 
         if ($this->payment_source === 'payroll') {
@@ -222,13 +233,13 @@ class LoanComponent extends Component
             if ($loan->payment_source === 'payroll') {
                 $savingTx = null;
                 // If funds are disbursed from Syirkah, record the withdrawal
-                if (in_array($loan->disbursement_source, ['syirkah_pool', 'syirkah_mandatory', 'syirkah_secondary', 'syirkah_all']) && $savingProgram) {
+                if (in_array($loan->disbursement_source, ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory', 'syirkah_mandatory', 'syirkah_secondary', 'syirkah_all']) && $savingProgram) {
                     $mandAmount = 0;
                     $secAmount = 0;
 
-                    if ($loan->disbursement_source === 'syirkah_mandatory') {
+                    if ($loan->disbursement_source === 'syirkah_mandatory' || $loan->disbursement_source === 'syirkah_pool_mandatory') {
                         $mandAmount = $loan->loan_amount;
-                    } elseif ($loan->disbursement_source === 'syirkah_secondary' || $loan->disbursement_source === 'syirkah_pool') {
+                    } elseif ($loan->disbursement_source === 'syirkah_secondary' || $loan->disbursement_source === 'syirkah_pool' || $loan->disbursement_source === 'syirkah_pool_secondary') {
                         $secAmount = $loan->loan_amount;
                     } elseif ($loan->disbursement_source === 'syirkah_all') {
                         $depSec = (float) SavingTransaction::where('user_id', $loan->user_id)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
@@ -240,10 +251,11 @@ class LoanComponent extends Component
                     }
 
                     $descLabel = match ($loan->disbursement_source) {
-                        'syirkah_pool' => 'Pencairan Pinjaman (Talangan Kas Pool Syirkah): ' . ($loan->description ?: 'Kasbon'),
-                        'syirkah_mandatory' => 'Pencairan Pinjaman via Syirkah Wajib: ' . ($loan->description ?: 'Kasbon'),
-                        'syirkah_secondary' => 'Pencairan Pinjaman via Syirkah SSR: ' . ($loan->description ?: 'Kasbon'),
-                        'syirkah_all' => 'Pencairan Pinjaman via Syirkah (Wajib + SSR): ' . ($loan->description ?: 'Kasbon'),
+                        'syirkah_pool_secondary', 'syirkah_pool' => 'Pencairan Pinjaman (Kas Talangan Syirkah Sukarela): ' . ($loan->description ?: 'Kasbon'),
+                        'syirkah_pool_mandatory' => 'Pencairan Pinjaman (Kas Talangan Syirkah Wajib): ' . ($loan->description ?: 'Kasbon'),
+                        'syirkah_mandatory' => 'Pencairan Pinjaman via Syirkah Wajib Pribadi: ' . ($loan->description ?: 'Kasbon'),
+                        'syirkah_secondary' => 'Pencairan Pinjaman via Syirkah SSR Pribadi: ' . ($loan->description ?: 'Kasbon'),
+                        'syirkah_all' => 'Pencairan Pinjaman via Syirkah (Wajib + SSR) Pribadi: ' . ($loan->description ?: 'Kasbon'),
                         default => 'Pencairan Pinjaman: ' . ($loan->description ?: 'Kasbon'),
                     };
 
@@ -262,9 +274,7 @@ class LoanComponent extends Component
                         'approval_date' => now(),
                     ]);
 
-                    if ($loan->disbursement_source !== 'syirkah_pool') {
-                        SavingTransactionService::recalculateUserTransactions($loan->user_id);
-                    }
+                    SavingTransactionService::recalculateUserTransactions($loan->user_id);
                 }
 
                 $loan->update([

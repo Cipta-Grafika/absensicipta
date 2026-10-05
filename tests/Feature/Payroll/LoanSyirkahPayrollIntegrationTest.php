@@ -71,7 +71,7 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
         ]);
     }
 
-    public function test_create_and_approve_loan_with_syirkah_pool_disbursement()
+    public function test_create_and_approve_loan_with_syirkah_pool_secondary_disbursement()
     {
         $this->actingAs($this->admin);
 
@@ -80,9 +80,9 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
             ->set('loan_amount', 3120000)
             ->set('tenor_months', 6)
             ->set('payment_source', 'payroll')
-            ->set('disbursement_source', 'syirkah_pool')
+            ->set('disbursement_source', 'syirkah_pool_secondary')
             ->set('syirkah_destination', 'syirkah_secondary')
-            ->set('description', 'Trip Singapore 2026')
+            ->set('description', 'Trip Singapore 2026 (SSR)')
             ->call('storeLoan');
 
         $loan = Loan::where('user_id', $this->employee->id)->first();
@@ -90,7 +90,7 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
         $this->assertEquals(3120000, $loan->loan_amount);
         $this->assertEquals(520000, $loan->installment_amount);
         $this->assertEquals('pending', $loan->status);
-        $this->assertEquals('syirkah_pool', $loan->disbursement_source);
+        $this->assertEquals('syirkah_pool_secondary', $loan->disbursement_source);
         $this->assertEquals('syirkah_secondary', $loan->syirkah_destination);
 
         // Approve loan
@@ -105,8 +105,43 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
         $tx = SavingTransaction::find($loan->saving_transaction_id);
         $this->assertNotNull($tx);
         $this->assertEquals('withdrawal', $tx->transaction_type);
+        $this->assertEquals(0, $tx->mandatory_amount);
         $this->assertEquals(3120000, $tx->secondary_amount);
         $this->assertEquals('loan_disbursement', $tx->reference_type);
+    }
+
+    public function test_create_and_approve_loan_with_syirkah_pool_mandatory_disbursement()
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(LoanComponent::class)
+            ->set('user_id', $this->employee->id)
+            ->set('loan_amount', 3120000)
+            ->set('tenor_months', 6)
+            ->set('payment_source', 'payroll')
+            ->set('disbursement_source', 'syirkah_pool_mandatory')
+            ->set('syirkah_destination', 'syirkah_mandatory')
+            ->set('description', 'Trip Singapore 2026 (Wajib)')
+            ->call('storeLoan');
+
+        $loan = Loan::where('user_id', $this->employee->id)->first();
+        $this->assertNotNull($loan);
+        $this->assertEquals('syirkah_pool_mandatory', $loan->disbursement_source);
+        $this->assertEquals('syirkah_mandatory', $loan->syirkah_destination);
+
+        // Approve loan
+        Livewire::test(LoanComponent::class)
+            ->call('approveLoan', $loan->id);
+
+        $loan->refresh();
+        $this->assertEquals('active', $loan->status);
+
+        // Check withdrawal transaction created in syirkah (mandatory amount)
+        $tx = SavingTransaction::find($loan->saving_transaction_id);
+        $this->assertNotNull($tx);
+        $this->assertEquals('withdrawal', $tx->transaction_type);
+        $this->assertEquals(3120000, $tx->mandatory_amount);
+        $this->assertEquals(0, $tx->secondary_amount);
     }
 
     public function test_payroll_paid_transition_decrements_loan_and_creates_syirkah_deposit()
@@ -170,7 +205,70 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
         $depositTx = SavingTransaction::find($installment->saving_transaction_id);
         $this->assertNotNull($depositTx);
         $this->assertEquals('deposit', $depositTx->transaction_type);
+        $this->assertEquals(0, $depositTx->mandatory_amount);
         $this->assertEquals(520000, $depositTx->secondary_amount);
+        $this->assertEquals('approved', $depositTx->status);
+    }
+
+    public function test_payroll_paid_transition_with_mandatory_syirkah_destination()
+    {
+        $this->actingAs($this->admin);
+
+        // Create active loan targeting mandatory syirkah
+        $loan = Loan::create([
+            'user_id' => $this->employee->id,
+            'loan_amount' => 3120000,
+            'tenor_months' => 6,
+            'installment_amount' => 520000,
+            'remaining_balance' => 3120000,
+            'payment_source' => 'payroll',
+            'disbursement_source' => 'syirkah_pool_mandatory',
+            'syirkah_destination' => 'syirkah_mandatory',
+            'status' => 'active',
+            'approved_by' => $this->admin->id,
+            'approval_date' => now(),
+            'description' => 'Trip Singapore 2026',
+        ]);
+
+        // Create draft payroll
+        $payroll = Payroll::create([
+            'employee_id' => $this->employee->id,
+            'period_month' => '2026-10',
+            'start_date' => '2026-10-01',
+            'end_date' => '2026-10-31',
+            'basic_salary_earned' => 5000000,
+            'total_allowance' => 1500000,
+            'total_overtime_pay' => 0,
+            'total_deduction' => 520000,
+            'net_salary' => 5980000,
+            'status' => 'draft',
+        ]);
+
+        $installment = LoanInstallment::create([
+            'loan_id' => $loan->id,
+            'amount_paid' => 520000,
+            'payment_method' => 'payroll_deduction',
+            'payroll_id' => $payroll->id,
+            'status' => 'pending',
+        ]);
+
+        // Mark payroll as paid
+        Livewire::test(PayrollHistoryComponent::class)
+            ->call('markAsPaid', $payroll->id);
+
+        $payroll->refresh();
+        $this->assertEquals('paid', $payroll->status);
+
+        $installment->refresh();
+        $this->assertEquals('paid', $installment->status);
+        $this->assertNotNull($installment->saving_transaction_id);
+
+        // Verify deposit in Syirkah Wajib
+        $depositTx = SavingTransaction::find($installment->saving_transaction_id);
+        $this->assertNotNull($depositTx);
+        $this->assertEquals('deposit', $depositTx->transaction_type);
+        $this->assertEquals(520000, $depositTx->mandatory_amount);
+        $this->assertEquals(0, $depositTx->secondary_amount);
         $this->assertEquals('approved', $depositTx->status);
     }
 

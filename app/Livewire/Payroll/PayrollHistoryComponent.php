@@ -364,8 +364,10 @@ class PayrollHistoryComponent extends Component
 
                     // Check if loan repayment should be deposited into Syirkah
                     if ($loan->syirkah_destination && !in_array($loan->syirkah_destination, ['none', 'company_cash']) && $savingProgram) {
-                        $mandAmount = ($loan->syirkah_destination === 'syirkah_mandatory') ? $inst->amount_paid : 0;
-                        $secAmount = in_array($loan->syirkah_destination, ['syirkah_secondary', 'syirkah_pool']) ? $inst->amount_paid : 0;
+                        $mandAmount = in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_pool_mandatory']) ? $inst->amount_paid : 0;
+                        $secAmount = in_array($loan->syirkah_destination, ['syirkah_secondary', 'syirkah_pool', 'syirkah_pool_secondary']) ? $inst->amount_paid : 0;
+
+                        $targetName = in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_pool_mandatory']) ? 'Syirkah Wajib' : 'Syirkah Sukarela (SSR)';
 
                         $savingTx = \App\Models\SavingTransaction::create([
                             'user_id' => $loan->user_id,
@@ -377,7 +379,7 @@ class PayrollHistoryComponent extends Component
                             'period_month' => $payroll->period_month,
                             'reference_type' => 'loan_installment',
                             'reference_id' => $inst->id,
-                            'description' => 'Setoran Cicilan (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
+                            'description' => 'Setoran Cicilan (' . ($loan->description ?: 'Pinjaman') . ') ke ' . $targetName . ' via Payroll ' . $payroll->period_month,
                             'approved_by' => auth()->id(),
                             'approval_date' => now(),
                         ]);
