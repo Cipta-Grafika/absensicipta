@@ -27,12 +27,11 @@ class LoanComponent extends Component
     #[Url(as: 'division', except: '')]
     public $division = '';
 
-    // Bulk selection state
-    public $selectedLoans = [];
-    public $selectAll = false;
-
-    // Modal Create Loan
+    // Modal Create / Edit Loan
     public $createModalOpen = false;
+    public $isEditMode = false;
+    public $editingLoanId = null;
+    public $editingLoanStatus = null;
     public $user_id = '';
     public $loan_amount = 0;
     public $tenor_months = 1;
@@ -58,6 +57,10 @@ class LoanComponent extends Component
 
     // Computed Properties for Loan
     public $installment_amount = 0;
+
+    // Bulk selection properties
+    public $selectedLoans = [];
+    public $selectAll = false;
 
     protected $queryString = [
         'status' => ['except' => ''],
@@ -162,16 +165,52 @@ class LoanComponent extends Component
 
     public function openCreateModal()
     {
-        $this->reset(['user_id', 'loan_amount', 'tenor_months', 'payment_source', 'disbursement_source', 'syirkah_destination', 'installment_amount', 'description', 'user_syirkah_mandatory', 'user_syirkah_secondary']);
+        $this->reset(['isEditMode', 'editingLoanId', 'editingLoanStatus', 'user_id', 'loan_amount', 'tenor_months', 'payment_source', 'disbursement_source', 'syirkah_destination', 'installment_amount', 'description', 'user_syirkah_mandatory', 'user_syirkah_secondary']);
+        $this->isEditMode = false;
         $this->disbursement_source = 'syirkah_pool_secondary';
         $this->syirkah_destination = 'syirkah_pool_secondary';
         $this->payment_source = 'payroll';
         $this->createModalOpen = true;
     }
 
+    public function openEditModal($loanId)
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk mengedit data pinjaman.');
+        }
+
+        $loan = Loan::findOrFail($loanId);
+
+        if (!in_array($loan->status, ['pending', 'approved', 'active'])) {
+            $this->dispatch('notify', 'Pinjaman dengan status ' . $loan->status . ' tidak dapat diedit.');
+            return;
+        }
+
+        $this->isEditMode = true;
+        $this->editingLoanId = $loan->id;
+        $this->editingLoanStatus = $loan->status;
+
+        $this->user_id = (string) $loan->user_id;
+        $this->loan_amount = (float) $loan->loan_amount;
+        $this->tenor_months = (int) $loan->tenor_months;
+        $this->payment_source = $loan->payment_source ?: 'payroll';
+        $this->disbursement_source = $loan->disbursement_source ?: 'syirkah_pool_secondary';
+        $this->syirkah_destination = $loan->syirkah_destination ?: 'syirkah_pool_secondary';
+        $this->description = $loan->description ?? '';
+        $this->installment_amount = (float) $loan->installment_amount;
+
+        $this->loadUserSyirkahBalance($this->user_id);
+        $this->calculateInstallment();
+
+        $this->createModalOpen = true;
+    }
+
     public function closeCreateModal()
     {
         $this->createModalOpen = false;
+        $this->isEditMode = false;
+        $this->editingLoanId = null;
+        $this->editingLoanStatus = null;
     }
 
     public function storeLoan()
@@ -230,6 +269,123 @@ class LoanComponent extends Component
 
         $this->closeCreateModal();
         $this->dispatch('notify', 'Pengajuan pinjaman berhasil dibuat dan menunggu persetujuan.');
+    }
+
+    public function updateLoan()
+    {
+        if (!Auth::user()?->isSyirkah && !Auth::user()?->isPayroll && !Auth::user()?->isSuperadmin && !Auth::user()?->isOwner) {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk mengedit data pinjaman.');
+        }
+
+        $rules = [
+            'user_id' => 'required|exists:users,id',
+            'loan_amount' => 'required|numeric|min:1',
+            'payment_source' => 'required|in:payroll,syirkah_mandatory,syirkah_secondary,syirkah_all',
+            'disbursement_source' => 'required|in:none,company_cash,syirkah_pool,syirkah_pool_secondary,syirkah_pool_mandatory,syirkah_mandatory,syirkah_secondary,syirkah_all',
+            'syirkah_destination' => 'required|in:none,company_cash,syirkah_pool,syirkah_pool_secondary,syirkah_pool_mandatory,syirkah_secondary,syirkah_mandatory',
+        ];
+
+        if ($this->payment_source === 'payroll') {
+            $rules['tenor_months'] = 'required|integer|min:1';
+        }
+
+        $this->validate($rules);
+
+        $loan = Loan::findOrFail($this->editingLoanId);
+
+        DB::transaction(function () use ($loan) {
+            $oldUserId = $loan->user_id;
+            $tenor = $this->payment_source === 'payroll' ? $this->tenor_months : 1;
+            $installment = $this->payment_source === 'payroll' ? ceil($this->loan_amount / $tenor) : $this->loan_amount;
+
+            // Calculate paid amount so far
+            $totalPaidSoFar = (float) $loan->installments()->where('status', 'paid')->sum('amount_paid');
+            $newRemaining = max(0.0, (float) $this->loan_amount - $totalPaidSoFar);
+
+            $savingProgram = Saving::first();
+            $savingsId = $savingProgram?->id ?? 'default_savings';
+
+            // If loan is active and has a disbursement transaction, update or recreate it
+            if (in_array($loan->status, ['approved', 'active']) && in_array($this->disbursement_source, ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory', 'syirkah_mandatory', 'syirkah_secondary', 'syirkah_all']) && $savingProgram) {
+                $mandAmount = 0;
+                $secAmount = 0;
+
+                if ($this->disbursement_source === 'syirkah_mandatory' || $this->disbursement_source === 'syirkah_pool_mandatory') {
+                    $mandAmount = $this->loan_amount;
+                } elseif ($this->disbursement_source === 'syirkah_secondary' || $this->disbursement_source === 'syirkah_pool' || $this->disbursement_source === 'syirkah_pool_secondary') {
+                    $secAmount = $this->loan_amount;
+                } elseif ($this->disbursement_source === 'syirkah_all') {
+                    $depSec = (float) SavingTransaction::where('user_id', $this->user_id)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
+                    $wdSec = (float) SavingTransaction::where('user_id', $this->user_id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+                    $availSec = max(0.0, $depSec - $wdSec);
+
+                    $secAmount = min($this->loan_amount, $availSec);
+                    $mandAmount = max(0.0, $this->loan_amount - $secAmount);
+                }
+
+                $descLabel = match ($this->disbursement_source) {
+                    'syirkah_pool_secondary', 'syirkah_pool' => 'Pencairan Pinjaman (Kas Talangan Syirkah Sukarela): ' . ($this->description ?: 'Kasbon'),
+                    'syirkah_pool_mandatory' => 'Pencairan Pinjaman (Kas Talangan Syirkah Wajib): ' . ($this->description ?: 'Kasbon'),
+                    'syirkah_mandatory' => 'Pencairan Pinjaman via Syirkah Wajib Pribadi: ' . ($this->description ?: 'Kasbon'),
+                    'syirkah_secondary' => 'Pencairan Pinjaman via Syirkah SSR Pribadi: ' . ($this->description ?: 'Kasbon'),
+                    'syirkah_all' => 'Pencairan Pinjaman via Syirkah (Wajib + SSR) Pribadi: ' . ($this->description ?: 'Kasbon'),
+                    default => 'Pencairan Pinjaman: ' . ($this->description ?: 'Kasbon'),
+                };
+
+                if ($loan->saving_transaction_id) {
+                    $tx = SavingTransaction::find($loan->saving_transaction_id);
+                    if ($tx) {
+                        $tx->update([
+                            'user_id' => $this->user_id,
+                            'mandatory_amount' => $mandAmount,
+                            'secondary_amount' => $secAmount,
+                            'description' => $descLabel,
+                        ]);
+                    }
+                } else {
+                    $tx = SavingTransaction::create([
+                        'user_id' => $this->user_id,
+                        'savings_id' => $savingsId,
+                        'transaction_type' => 'withdrawal',
+                        'mandatory_amount' => $mandAmount,
+                        'secondary_amount' => $secAmount,
+                        'status' => 'approved',
+                        'period_month' => now()->format('Y-m'),
+                        'reference_type' => 'loan_disbursement',
+                        'reference_id' => $loan->id,
+                        'description' => $descLabel,
+                        'approved_by' => Auth::id(),
+                        'approval_date' => now(),
+                    ]);
+                    $loan->saving_transaction_id = $tx->id;
+                }
+            } elseif ($loan->saving_transaction_id && in_array($this->disbursement_source, ['none', 'company_cash'])) {
+                // If changed to company_cash, remove previous saving transaction
+                SavingTransaction::where('id', $loan->saving_transaction_id)->delete();
+                $loan->saving_transaction_id = null;
+            }
+
+            $loan->update([
+                'user_id' => $this->user_id,
+                'loan_amount' => $this->loan_amount,
+                'tenor_months' => $tenor,
+                'installment_amount' => $installment,
+                'remaining_balance' => $newRemaining,
+                'payment_source' => $this->payment_source,
+                'disbursement_source' => $this->disbursement_source,
+                'syirkah_destination' => ($this->payment_source === 'payroll' ? $this->syirkah_destination : 'none'),
+                'description' => $this->description,
+                'saving_transaction_id' => $loan->saving_transaction_id,
+            ]);
+
+            SavingTransactionService::recalculateUserTransactions($this->user_id);
+            if ($oldUserId !== $this->user_id) {
+                SavingTransactionService::recalculateUserTransactions($oldUserId);
+            }
+        });
+
+        $this->closeCreateModal();
+        $this->dispatch('notify', 'Data pinjaman berhasil diperbarui.');
     }
 
     public function approveLoan($loanId)

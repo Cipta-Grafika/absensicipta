@@ -350,6 +350,14 @@
                     @if(Auth::user()?->isSyirkah || Auth::user()?->isPayroll || Auth::user()?->isSuperadmin || Auth::user()?->isOwner)
                       @if($loan->status == 'pending')
                         <button type="button" 
+                                wire:click="openEditModal('{{ $loan->id }}')" 
+                                title="Edit Data Pinjaman"
+                                class="inline-flex items-center justify-center p-1.5 rounded-lg bg-sky-100 text-sky-700 hover:bg-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:hover:bg-sky-900 transition-colors cursor-pointer">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                          </svg>
+                        </button>
+                        <button type="button" 
                                 wire:click="approveLoan('{{ $loan->id }}')" 
                                 title="Setujui Pinjaman Ini"
                                 class="inline-flex items-center justify-center p-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900 transition-colors cursor-pointer">
@@ -366,6 +374,14 @@
                           </svg>
                         </button>
                       @elseif(in_array($loan->status, ['approved', 'active']))
+                        <button type="button" 
+                                wire:click="openEditModal('{{ $loan->id }}')" 
+                                title="Edit Data Pinjaman"
+                                class="inline-flex items-center justify-center p-1.5 rounded-lg bg-sky-100 text-sky-700 hover:bg-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:hover:bg-sky-900 transition-colors cursor-pointer">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                          </svg>
+                        </button>
                         <button type="button" 
                                 wire:click="markAsPaidOff('{{ $loan->id }}')" 
                                 onclick="confirm('Yakin ingin menandai pinjaman ini sebagai LUNAS?') || event.stopImmediatePropagation()" 
@@ -479,14 +495,26 @@
     </x-slot>
   </x-dialog-modal>
 
-  <!-- Modal Buat Pinjaman -->
+  <!-- Modal Buat / Edit Pinjaman -->
   <x-dialog-modal wire:model.live="createModalOpen" maxWidth="lg">
     <x-slot name="title">
-      Form Pengajuan Pinjaman & Talangan Syirkah (Kasbon)
+      {{ $isEditMode ? 'Edit Data Pinjaman' : 'Form Pengajuan Pinjaman & Talangan Syirkah (Kasbon)' }}
     </x-slot>
 
     <x-slot name="content">
       <div class="grid grid-cols-1 gap-5">
+        @if($isEditMode && in_array($editingLoanStatus, ['approved', 'active']))
+          <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <span class="font-bold">Mode Edit Pinjaman Aktif:</span>
+              <p class="mt-0.5">Perubahan nominal atau sumber dana akan otomatis menyesuaikan sisa saldo dan sinkronisasi mutasi pencairan Syirkah yang terkait.</p>
+            </div>
+          </div>
+        @endif
+
         <div>
           <x-label for="user_id" value="Pilih Karyawan" />
           <x-select id="user_id" class="mt-1 block w-full text-sm" wire:model.live="user_id">
@@ -637,8 +665,8 @@
         Batal
       </x-secondary-button>
 
-      <x-button class="ms-3 bg-sky-600 hover:bg-sky-700 text-white" wire:click="storeLoan" wire:loading.attr="disabled">
-        Simpan & Ajukan Pinjaman
+      <x-button class="ms-3 bg-sky-600 hover:bg-sky-700 text-white" wire:click="{{ $isEditMode ? 'updateLoan' : 'storeLoan' }}" wire:loading.attr="disabled">
+        {{ $isEditMode ? 'Simpan Perubahan' : 'Simpan & Ajukan Pinjaman' }}
       </x-button>
     </x-slot>
   </x-dialog-modal>

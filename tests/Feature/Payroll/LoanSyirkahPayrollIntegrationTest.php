@@ -340,4 +340,98 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
         $this->assertEquals(520000, $loan->remaining_balance);
         $this->assertEquals('active', $loan->status);
     }
+
+    public function test_edit_pending_loan()
+    {
+        $this->actingAs($this->admin);
+
+        $loan = Loan::create([
+            'user_id' => $this->employee->id,
+            'loan_amount' => 2000000,
+            'tenor_months' => 4,
+            'installment_amount' => 500000,
+            'remaining_balance' => 2000000,
+            'payment_source' => 'payroll',
+            'disbursement_source' => 'syirkah_pool_secondary',
+            'syirkah_destination' => 'syirkah_pool_secondary',
+            'status' => 'pending',
+            'description' => 'Kasbon Awal',
+        ]);
+
+        Livewire::test(LoanComponent::class)
+            ->call('openEditModal', $loan->id)
+            ->assertSet('isEditMode', true)
+            ->assertSet('editingLoanId', $loan->id)
+            ->assertSet('loan_amount', 2000000.0)
+            ->assertSet('tenor_months', 4)
+            ->assertSet('installment_amount', 500000.0)
+            ->set('loan_amount', 6000000)
+            ->set('tenor_months', 6)
+            ->set('description', 'Kasbon Diperbarui')
+            ->call('updateLoan');
+
+        $loan->refresh();
+        $this->assertEquals(6000000, $loan->loan_amount);
+        $this->assertEquals(6, $loan->tenor_months);
+        $this->assertEquals(1000000, $loan->installment_amount);
+        $this->assertEquals(6000000, $loan->remaining_balance);
+        $this->assertEquals('Kasbon Diperbarui', $loan->description);
+        $this->assertEquals('pending', $loan->status);
+    }
+
+    public function test_edit_active_loan_updates_linked_syirkah_transaction()
+    {
+        $this->actingAs($this->admin);
+
+        $loan = Loan::create([
+            'user_id' => $this->employee->id,
+            'loan_amount' => 3000000,
+            'tenor_months' => 3,
+            'installment_amount' => 1000000,
+            'remaining_balance' => 3000000,
+            'payment_source' => 'payroll',
+            'disbursement_source' => 'syirkah_pool_secondary',
+            'syirkah_destination' => 'syirkah_pool_secondary',
+            'status' => 'approved',
+            'approved_by' => $this->admin->id,
+            'approval_date' => now(),
+            'description' => 'Kasbon Aktif',
+        ]);
+
+        $savingTx = SavingTransaction::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'transaction_type' => 'withdrawal',
+            'mandatory_amount' => 0,
+            'secondary_amount' => 3000000,
+            'status' => 'approved',
+            'period_month' => now()->format('Y-m'),
+            'reference_type' => 'loan_disbursement',
+            'reference_id' => $loan->id,
+            'description' => 'Pencairan Pinjaman (Kas Talangan Syirkah Sukarela): Kasbon Aktif',
+            'approved_by' => $this->admin->id,
+            'approval_date' => now(),
+        ]);
+
+        $loan->update(['saving_transaction_id' => $savingTx->id]);
+
+        Livewire::test(LoanComponent::class)
+            ->call('openEditModal', $loan->id)
+            ->assertSet('isEditMode', true)
+            ->assertSet('editingLoanStatus', 'approved')
+            ->set('loan_amount', 4500000)
+            ->set('tenor_months', 3)
+            ->set('description', 'Kasbon Aktif Revisi')
+            ->call('updateLoan');
+
+        $loan->refresh();
+        $this->assertEquals(4500000, $loan->loan_amount);
+        $this->assertEquals(1500000, $loan->installment_amount);
+        $this->assertEquals(4500000, $loan->remaining_balance);
+        $this->assertEquals('Kasbon Aktif Revisi', $loan->description);
+
+        $savingTx->refresh();
+        $this->assertEquals(4500000, $savingTx->secondary_amount);
+        $this->assertStringContainsString('Kasbon Aktif Revisi', $savingTx->description);
+    }
 }
