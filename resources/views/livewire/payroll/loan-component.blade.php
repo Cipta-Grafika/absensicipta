@@ -277,12 +277,16 @@
                     @if($loan->payment_source === 'payroll')
                       <div class="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
                         <span class="font-medium text-sky-600 dark:text-sky-400">Payroll</span>
-                        @if($loan->syirkah_destination === 'syirkah_secondary' || $loan->syirkah_destination === 'syirkah_pool_secondary' || $loan->syirkah_destination === 'syirkah_pool')
-                          <span>➔ <b class="text-indigo-600 dark:text-indigo-400">SSR</b></span>
-                        @elseif($loan->syirkah_destination === 'syirkah_mandatory' || $loan->syirkah_destination === 'syirkah_pool_mandatory')
-                          <span>➔ <b class="text-purple-600 dark:text-purple-400">Wajib</b></span>
+                        @if($loan->syirkah_destination === 'syirkah_pool_secondary' || $loan->syirkah_destination === 'syirkah_pool')
+                          <span>➔ <b class="text-emerald-600 dark:text-emerald-400" title="Kas Bersama Syirkah SSR">Kas Bersama SSR</b></span>
+                        @elseif($loan->syirkah_destination === 'syirkah_pool_mandatory')
+                          <span>➔ <b class="text-amber-600 dark:text-amber-400" title="Kas Bersama Syirkah Wajib">Kas Bersama Wajib</b></span>
+                        @elseif($loan->syirkah_destination === 'syirkah_secondary')
+                          <span>➔ <b class="text-indigo-600 dark:text-indigo-400" title="Buku Tabungan SSR Pribadi Karyawan">SSR Pribadi</b></span>
+                        @elseif($loan->syirkah_destination === 'syirkah_mandatory')
+                          <span>➔ <b class="text-purple-600 dark:text-purple-400" title="Buku Tabungan Wajib Pribadi Karyawan">Wajib Pribadi</b></span>
                         @else
-                          <span>➔ <b class="text-gray-600 dark:text-gray-400">Kas PT</b></span>
+                          <span>➔ <b class="text-gray-600 dark:text-gray-400" title="Kas Internal Perusahaan">Kas PT</b></span>
                         @endif
                       </div>
                     @else
@@ -547,16 +551,36 @@
           <div class="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 rounded-xl">
             <x-label for="syirkah_destination" value="Tujuan Pengembalian Setoran Payroll" class="text-indigo-950 dark:text-indigo-200 font-semibold" />
             <x-select id="syirkah_destination" class="mt-1 block w-full text-sm bg-white dark:bg-gray-800" wire:model.live="syirkah_destination">
-              <option value="syirkah_secondary">Masuk ke Saldo Syirkah Sukarela (SSR) Karyawan</option>
-              <option value="syirkah_mandatory">Masuk ke Saldo Syirkah Wajib Karyawan</option>
-              <option value="none">Kas Perusahaan (Bukan Syirkah)</option>
+              <optgroup label="Pengembalian Kas Bersama / Kolektif (Talangan Syirkah)">
+                <option value="syirkah_pool_secondary">Kas Kolektif Syirkah Sukarela (SSR) - Pengembalian Kas Bersama</option>
+                <option value="syirkah_pool_mandatory">Kas Kolektif Syirkah Wajib - Pengembalian Kas Bersama</option>
+              </optgroup>
+              <optgroup label="Setoran Tabungan Syirkah Perorangan (Buku Tabungan Karyawan)">
+                <option value="syirkah_secondary">Saldo Tabungan Syirkah Sukarela (SSR) Pribadi Karyawan</option>
+                <option value="syirkah_mandatory">Saldo Tabungan Syirkah Wajib Pribadi Karyawan</option>
+              </optgroup>
+              <optgroup label="Kas Non-Syirkah">
+                <option value="none">Kas Perusahaan (Bukan Syirkah / Non-Syirkah)</option>
+              </optgroup>
             </x-select>
             <x-input-error for="syirkah_destination" class="mt-1" />
-            <p class="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1.5 flex items-center gap-1">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <p class="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1.5 flex items-start gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Saat status Payroll <b>Paid</b>, potongan otomatis tercatat sebagai mutasi <b>Deposit Syirkah</b> sesuai target yang dipilih.</span>
+              <span>
+                @if($syirkah_destination === 'syirkah_pool_secondary' || $syirkah_destination === 'syirkah_pool')
+                  <b>Pengembalian Kas Bersama SSR:</b> Potongan cicilan mengembalikan dana talangan ke Kas Kolektif Syirkah Sukarela (impas dengan penarikan awal).
+                @elseif($syirkah_destination === 'syirkah_pool_mandatory')
+                  <b>Pengembalian Kas Bersama Wajib:</b> Potongan cicilan mengembalikan dana talangan ke Kas Kolektif Syirkah Wajib (impas dengan penarikan awal).
+                @elseif($syirkah_destination === 'syirkah_secondary')
+                  <b>Setoran Tabungan SSR Pribadi:</b> Potongan cicilan masuk dan menambah saldo tabungan sukarela pribadi karyawan.
+                @elseif($syirkah_destination === 'syirkah_mandatory')
+                  <b>Setoran Tabungan Wajib Pribadi:</b> Potongan cicilan masuk dan menambah saldo tabungan wajib pribadi karyawan.
+                @else
+                  <b>Kas Perusahaan:</b> Potongan gaji masuk kas internal PT (tidak dicatat di buku syirkah).
+                @endif
+              </span>
             </p>
           </div>
         @endif

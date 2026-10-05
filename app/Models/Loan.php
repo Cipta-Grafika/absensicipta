@@ -75,8 +75,10 @@ class Loan extends Model
     public function getSyirkahDestinationLabelAttribute(): string
     {
         return match ($this->syirkah_destination) {
-            'syirkah_secondary', 'syirkah_pool_secondary', 'syirkah_pool' => 'Masuk Kas / Saldo Syirkah Sukarela (SSR)',
-            'syirkah_mandatory', 'syirkah_pool_mandatory' => 'Masuk Kas / Saldo Syirkah Wajib',
+            'syirkah_pool_secondary', 'syirkah_pool' => 'Kas Kolektif Syirkah SSR (Kas Bersama)',
+            'syirkah_pool_mandatory' => 'Kas Kolektif Syirkah Wajib (Kas Bersama)',
+            'syirkah_secondary', 'syirkah_personal_secondary' => 'Saldo Tabungan SSR Pribadi Karyawan',
+            'syirkah_mandatory', 'syirkah_personal_mandatory' => 'Saldo Tabungan Wajib Pribadi Karyawan',
             default => 'Kas Perusahaan (Bukan Syirkah)',
         };
     }

@@ -367,7 +367,12 @@ class PayrollHistoryComponent extends Component
                         $mandAmount = in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_pool_mandatory']) ? $inst->amount_paid : 0;
                         $secAmount = in_array($loan->syirkah_destination, ['syirkah_secondary', 'syirkah_pool', 'syirkah_pool_secondary']) ? $inst->amount_paid : 0;
 
-                        $targetName = in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_pool_mandatory']) ? 'Syirkah Wajib' : 'Syirkah Sukarela (SSR)';
+                        $desc = match ($loan->syirkah_destination) {
+                            'syirkah_pool_secondary', 'syirkah_pool' => 'Pengembalian Talangan Kas Bersama SSR (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
+                            'syirkah_pool_mandatory' => 'Pengembalian Talangan Kas Bersama Wajib (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
+                            'syirkah_mandatory' => 'Setoran Tabungan Syirkah Wajib Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
+                            default => 'Setoran Tabungan Syirkah SSR Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
+                        };
 
                         $savingTx = \App\Models\SavingTransaction::create([
                             'user_id' => $loan->user_id,
@@ -379,7 +384,7 @@ class PayrollHistoryComponent extends Component
                             'period_month' => $payroll->period_month,
                             'reference_type' => 'loan_installment',
                             'reference_id' => $inst->id,
-                            'description' => 'Setoran Cicilan (' . ($loan->description ?: 'Pinjaman') . ') ke ' . $targetName . ' via Payroll ' . $payroll->period_month,
+                            'description' => $desc,
                             'approved_by' => auth()->id(),
                             'approval_date' => now(),
                         ]);

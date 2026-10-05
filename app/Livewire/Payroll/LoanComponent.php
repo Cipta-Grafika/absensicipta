@@ -137,9 +137,13 @@ class LoanComponent extends Component
 
     public function updatedDisbursementSource($value)
     {
-        if ($value === 'syirkah_pool_mandatory' || $value === 'syirkah_mandatory') {
+        if ($value === 'syirkah_pool_mandatory') {
+            $this->syirkah_destination = 'syirkah_pool_mandatory';
+        } elseif ($value === 'syirkah_pool_secondary' || $value === 'syirkah_pool') {
+            $this->syirkah_destination = 'syirkah_pool_secondary';
+        } elseif ($value === 'syirkah_mandatory') {
             $this->syirkah_destination = 'syirkah_mandatory';
-        } elseif ($value === 'syirkah_pool_secondary' || $value === 'syirkah_pool' || $value === 'syirkah_secondary') {
+        } elseif ($value === 'syirkah_secondary') {
             $this->syirkah_destination = 'syirkah_secondary';
         } elseif ($value === 'company_cash' || $value === 'none') {
             $this->syirkah_destination = 'none';
@@ -150,7 +154,7 @@ class LoanComponent extends Component
     {
         $this->reset(['user_id', 'loan_amount', 'tenor_months', 'payment_source', 'disbursement_source', 'syirkah_destination', 'installment_amount', 'description', 'user_syirkah_mandatory', 'user_syirkah_secondary']);
         $this->disbursement_source = 'syirkah_pool_secondary';
-        $this->syirkah_destination = 'syirkah_secondary';
+        $this->syirkah_destination = 'syirkah_pool_secondary';
         $this->payment_source = 'payroll';
         $this->createModalOpen = true;
     }
