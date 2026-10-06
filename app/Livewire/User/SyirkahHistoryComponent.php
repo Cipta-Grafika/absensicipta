@@ -60,6 +60,11 @@ class SyirkahHistoryComponent extends Component
         'type' => ['except' => ''],
     ];
 
+    public function mount()
+    {
+        \App\Services\LoanService::cleanInvalidPoolTransactions();
+    }
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -364,11 +369,19 @@ class SyirkahHistoryComponent extends Component
     {
         $approvedDepositQuery = SavingTransaction::where('user_id', $userId)
             ->where('status', 'approved')
-            ->where('transaction_type', 'deposit');
+            ->where('transaction_type', 'deposit')
+            ->where(function ($q) {
+                $q->whereNull('description')
+                  ->orWhere('description', 'not like', '%Kas Talangan%');
+            });
 
         $approvedWithdrawalQuery = SavingTransaction::where('user_id', $userId)
             ->where('status', 'approved')
-            ->where('transaction_type', 'withdrawal');
+            ->where('transaction_type', 'withdrawal')
+            ->where(function ($q) {
+                $q->whereNull('description')
+                  ->orWhere('description', 'not like', '%Kas Talangan%');
+            });
 
         $totalMandatoryDeposit = (float) $approvedDepositQuery->sum('mandatory_amount');
         $totalMandatoryWithdrawal = (float) $approvedWithdrawalQuery->sum('mandatory_amount');
@@ -424,7 +437,11 @@ class SyirkahHistoryComponent extends Component
         // 1. Query transactions for ledger table (strictly approved only)
         $query = SavingTransaction::with(['masterSaving', 'approver', 'savingWithdrawal'])
             ->where('user_id', $userId)
-            ->where('status', 'approved');
+            ->where('status', 'approved')
+            ->where(function ($q) {
+                $q->whereNull('description')
+                  ->orWhere('description', 'not like', '%Kas Talangan%');
+            });
 
         if (!empty($this->search)) {
             $search = trim($this->search);

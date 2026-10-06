@@ -388,4 +388,72 @@ class SyirkahHistoryTest extends TestCase
         expect($salary->custom_secondary_savings)->toBeNull()
             ->and($salary->effective_secondary_savings)->toEqual(50000.0);
     }
+
+    public function test_pool_kas_talangan_transactions_are_excluded_and_cleaned_from_user_syirkah_history(): void
+    {
+        $user = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+        ]);
+
+        $saving = Saving::create([
+            'savings_name' => 'Syirkah Mudharabah',
+            'mandatory_savings' => 100000,
+            'secondary_savings' => 50000,
+        ]);
+
+        // Regular deposit
+        SavingTransaction::create([
+            'user_id' => $user->id,
+            'savings_id' => $saving->id,
+            'transaction_type' => 'deposit',
+            'mandatory_amount' => 1900000,
+            'secondary_amount' => 850000,
+            'description' => 'Saldo Awal Syirkah',
+            'status' => 'approved',
+        ]);
+
+        // Create a pool loan
+        $poolLoan = \App\Models\Loan::create([
+            'user_id' => $user->id,
+            'loan_amount' => 3120000,
+            'tenor_months' => 6,
+            'installment_amount' => 520000,
+            'remaining_balance' => 3120000,
+            'payment_source' => 'payroll',
+            'disbursement_source' => 'syirkah_pool_secondary',
+            'syirkah_destination' => 'syirkah_pool_secondary',
+            'status' => 'active',
+            'description' => 'Trip Singapore 2026',
+        ]);
+
+        // Simulate an invalid legacy transaction mentioning Kas Talangan
+        $legacyTx = SavingTransaction::create([
+            'user_id' => $user->id,
+            'savings_id' => $saving->id,
+            'transaction_type' => 'withdrawal',
+            'mandatory_amount' => 0,
+            'secondary_amount' => 3120000,
+            'reference_type' => 'loan_disbursement',
+            'reference_id' => $poolLoan->id,
+            'description' => 'Pencairan Pinjaman (Kas Talangan Syirkah Sukarela): Trip Singapore 2026',
+            'status' => 'approved',
+        ]);
+
+        $this->actingAs($user);
+
+        // Accessing component should trigger cleanup and exclude pool transaction
+        Livewire::test(SyirkahHistoryComponent::class)
+            ->assertSee('Saldo Awal Syirkah')
+            ->assertDontSee('Pencairan Pinjaman (Kas Talangan Syirkah Sukarela)')
+            ->assertDontSee('LOAN_DISBURSEMENT')
+            ->assertViewHas('saldoSukarela', 850000.0)
+            ->assertViewHas('saldoWajib', 1900000.0);
+
+        // Verify that the legacy transaction is cleaned up in DB
+        $this->assertDatabaseMissing('saving_transactions', [
+            'id' => $legacyTx->id,
+        ]);
+    }
 }
+

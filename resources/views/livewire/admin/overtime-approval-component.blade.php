@@ -145,7 +145,8 @@
           </div>
         </div>
 
-        <div class="mb-4">
+        <!-- Search Bar -->
+        <div class="mb-3">
           <div class="flex w-full flex-1 items-center gap-2">
             <div class="relative w-full">
               <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -166,10 +167,52 @@
           </div>
         </div>
 
+        <!-- Quick Status Filter Pills -->
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="inline-flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-gray-900 text-xs font-semibold">
+            <button type="button" 
+                    wire:click="$set('statusFilter', '')" 
+                    class="rounded-lg px-3 py-1.5 transition-all cursor-pointer {{ $statusFilter === '' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200' }}">
+              Aktif (Non-Paid)
+            </button>
+            <button type="button" 
+                    wire:click="$set('statusFilter', 'pending')" 
+                    class="rounded-lg px-3 py-1.5 transition-all cursor-pointer {{ $statusFilter === 'pending' ? 'bg-amber-500 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400' }}">
+              Pending
+            </button>
+            <button type="button" 
+                    wire:click="$set('statusFilter', 'approved')" 
+                    class="rounded-lg px-3 py-1.5 transition-all cursor-pointer {{ $statusFilter === 'approved' ? 'bg-emerald-600 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400' }}">
+              Approved
+            </button>
+            <button type="button" 
+                    wire:click="$set('statusFilter', 'paid')" 
+                    class="rounded-lg px-3 py-1.5 transition-all cursor-pointer {{ $statusFilter === 'paid' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400' }}">
+              Paid (Dibayar)
+            </button>
+            <button type="button" 
+                    wire:click="$set('statusFilter', 'rejected')" 
+                    class="rounded-lg px-3 py-1.5 transition-all cursor-pointer {{ $statusFilter === 'rejected' ? 'bg-rose-600 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400' }}">
+              Rejected
+            </button>
+          </div>
+
+          @if($statusFilter || $month || $week || $date || $division || $jobTitle || $search)
+            <div class="flex items-center gap-2">
+              <button type="button" wire:click="resetFilters" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>Reset Filter</span>
+              </button>
+            </div>
+          @endif
+        </div>
+
   <x-filter-sidebar maxWidth="sm">
     <x-slot name="title">Filter Lemburan</x-slot>
     <x-slot name="actions">
-      <button type="button" wire:click="$set('month', ''); $set('week', ''); $set('date', ''); $set('division', ''); $set('jobTitle', ''); $set('statusFilter', '')" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
+      <button type="button" wire:click="resetFilters" class="rounded-md border p-1 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:outline-none dark:border-gray-600 dark:hover:bg-gray-700" title="Reset Filters">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
         </svg>
@@ -181,11 +224,12 @@
         <div>
           <x-label for="statusFilter" value="Status" class="mb-1"></x-label>
           <x-select id="statusFilter" class="w-full" wire:model.live="statusFilter">
-            <option value="">Semua</option>
+            <option value="">Semua Aktif (Non-Paid)</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="paid">Paid (Dibayar)</option>
             <option value="rejected">Rejected</option>
+            <option value="all">Semua Status (Termasuk Paid)</option>
           </x-select>
         </div>
         <hr class="dark:border-gray-700">
@@ -237,7 +281,7 @@
         Pengajuan Lembur {{ \Carbon\Carbon::parse($calendar_month)->isoFormat('MMMM YYYY') }}
       </h4>
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-        Menampilkan {{ $approvals->total() }} data pengajuan lembur karyawan untuk bulan terpilih.
+        Menampilkan {{ $approvals->total() }} data pengajuan lembur {{ $statusFilter === 'paid' ? '(Status: Paid)' : ($statusFilter === 'all' ? '(Semua Termasuk Paid)' : ($statusFilter ? '(Status: ' . ucfirst($statusFilter) . ')' : '(Non-Paid / Belum Dibayar)')) }}.
       </p>
     </div>
     <div class="flex items-center gap-2">

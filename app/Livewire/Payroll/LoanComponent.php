@@ -68,6 +68,11 @@ class LoanComponent extends Component
         'division' => ['except' => ''],
     ];
 
+    public function mount()
+    {
+        \App\Services\LoanService::cleanInvalidPoolTransactions();
+    }
+
     public function updatedSelectAll($value)
     {
         if ($value) {

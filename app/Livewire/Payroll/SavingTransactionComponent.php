@@ -127,6 +127,8 @@ class SavingTransactionComponent extends Component
         if (Auth::user()?->isSuperadmin) {
             abort(403, 'Akses Ditolak: Role Superadmin tidak memiliki akses ke fitur Syirkah.');
         }
+
+        \App\Services\LoanService::cleanInvalidPoolTransactions();
     }
 
     public function setActiveTab($tab)

@@ -39,7 +39,16 @@ class OvertimeApprovalComponent extends Component
     public bool $isDetailModalOpen = false;
     public ?int $selectedOvertimeId = null;
 
-    protected $updatesQueryString = ['statusFilter'];
+    protected $queryString = [
+        'statusFilter' => ['except' => '', 'as' => 'status'],
+        'search' => ['except' => '', 'as' => 'q'],
+        'month' => ['except' => ''],
+        'week' => ['except' => ''],
+        'date' => ['except' => ''],
+        'division' => ['except' => ''],
+        'jobTitle' => ['except' => ''],
+        'calendar_month' => ['except' => ''],
+    ];
 
     public function showDetail(int $id): void
     {
@@ -63,6 +72,36 @@ class OvertimeApprovalComponent extends Component
         $this->resetPage();
     }
 
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingMonth()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingWeek()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDate()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDivision()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingJobTitle()
+    {
+        $this->resetPage();
+    }
+
     public function updatingCalendarMonth()
     {
         $this->resetPage();
@@ -70,6 +109,12 @@ class OvertimeApprovalComponent extends Component
 
     public function updatingPerPage()
     {
+        $this->resetPage();
+    }
+
+    public function resetFilters(): void
+    {
+        $this->reset(['search', 'month', 'week', 'date', 'division', 'jobTitle', 'statusFilter']);
         $this->resetPage();
     }
 
@@ -268,8 +313,13 @@ class OvertimeApprovalComponent extends Component
             });
         }
 
-        if ($this->statusFilter) {
+        if ($this->statusFilter && $this->statusFilter !== 'all') {
             $query->where('status', $this->statusFilter);
+        } elseif ($this->statusFilter === 'all') {
+            // Include all statuses without restriction
+        } else {
+            // Default when no status filter is selected: exclude 'paid' overtimes so active management is un-cluttered
+            $query->where('status', '!=', 'paid');
         }
         
         if ($this->date) {

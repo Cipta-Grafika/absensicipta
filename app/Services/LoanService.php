@@ -190,7 +190,7 @@ class LoanService
                 }
             }
 
-            // Also clean orphan loan_disbursement transactions
+            // Also clean orphan or pool loan_disbursement transactions
             $orphanDisbursements = SavingTransaction::where('reference_type', 'loan_disbursement')->get();
             foreach ($orphanDisbursements as $tx) {
                 $loan = Loan::find($tx->reference_id);
@@ -198,6 +198,13 @@ class LoanService
                     $affectedUserIds[] = $tx->user_id;
                     $tx->delete();
                 }
+            }
+
+            // Also clean any personal transactions mentioning 'Kas Talangan' in description
+            $kasTalanganTxs = SavingTransaction::where('description', 'like', '%Kas Talangan%')->get();
+            foreach ($kasTalanganTxs as $tx) {
+                $affectedUserIds[] = $tx->user_id;
+                $tx->delete();
             }
 
             // 2. Clean loan installment deposits from pool loans
@@ -210,6 +217,16 @@ class LoanService
                 $inst->update(['saving_transaction_id' => null]);
                 if ($inst->loan) {
                     $affectedUserIds[] = $inst->loan->user_id;
+                }
+            }
+
+            // Also clean orphan or pool loan_installment transactions
+            $orphanInstallments = SavingTransaction::where('reference_type', 'loan_installment')->get();
+            foreach ($orphanInstallments as $tx) {
+                $inst = LoanInstallment::with('loan')->find($tx->reference_id);
+                if (!$inst || !$inst->loan || in_array($inst->loan->syirkah_destination, $poolDestinationTypes)) {
+                    $affectedUserIds[] = $tx->user_id;
+                    $tx->delete();
                 }
             }
 
