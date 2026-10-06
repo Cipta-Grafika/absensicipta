@@ -24,11 +24,11 @@ class ImportSingaporeTripLoansCommand extends Command
         $destOpt = strtolower($this->option('destination'));
 
         $disbursementSource = ($sourceOpt === 'wajib') ? 'syirkah_pool_mandatory' : 'syirkah_pool_secondary';
-        $syirkahDestination = ($destOpt === 'wajib') ? 'syirkah_mandatory' : 'syirkah_secondary';
+        $syirkahDestination = ($destOpt === 'wajib') ? 'syirkah_pool_mandatory' : 'syirkah_pool_secondary';
 
         $this->info("Starting Import of Rekap Biaya Trip Singapore (15 Orang)...");
         $this->info("Sumber Pencairan: " . ($disbursementSource === 'syirkah_pool_mandatory' ? 'Kas Talangan Syirkah Wajib' : 'Kas Talangan Syirkah Sukarela (SSR)'));
-        $this->info("Target Pengembalian: " . ($syirkahDestination === 'syirkah_mandatory' ? 'Syirkah Wajib' : 'Syirkah Sukarela (SSR)'));
+        $this->info("Target Pengembalian: " . ($syirkahDestination === 'syirkah_pool_mandatory' ? 'Kas Talangan Syirkah Wajib' : 'Kas Talangan Syirkah Sukarela (SSR)'));
 
         $participants = [
             ['name' => 'Rangga Jatnika', 'division' => 'Graha', 'amount' => 3120000, 'tenor' => 6, 'installment' => 520000, 'method' => 'payroll', 'disbursement' => $disbursementSource, 'destination' => $syirkahDestination, 'note' => 'Program Trip Singapore 2026'],
@@ -90,32 +90,6 @@ class ImportSingaporeTripLoansCommand extends Command
                     'approval_date' => $autoApprove ? now() : null,
                     'description' => $p['note'],
                 ]);
-
-                if ($autoApprove && in_array($p['disbursement'], ['syirkah_pool_secondary', 'syirkah_pool_mandatory', 'syirkah_pool'])) {
-                    $savingProgram = Saving::first();
-                    if ($savingProgram) {
-                        $mandAmount = ($p['disbursement'] === 'syirkah_pool_mandatory') ? $p['amount'] : 0;
-                        $secAmount = ($p['disbursement'] === 'syirkah_pool_mandatory') ? 0 : $p['amount'];
-                        $sourceLabel = ($p['disbursement'] === 'syirkah_pool_mandatory') ? 'Kas Talangan Syirkah Wajib' : 'Kas Talangan Syirkah Sukarela';
-
-                        $tx = SavingTransaction::create([
-                            'user_id' => $user->id,
-                            'savings_id' => $savingProgram->id,
-                            'transaction_type' => 'withdrawal',
-                            'mandatory_amount' => $mandAmount,
-                            'secondary_amount' => $secAmount,
-                            'status' => 'approved',
-                            'period_month' => now()->format('Y-m'),
-                            'reference_type' => 'loan_disbursement',
-                            'reference_id' => $loan->id,
-                            'description' => 'Pencairan Pinjaman (' . $sourceLabel . '): ' . $p['note'],
-                            'approved_by' => $loan->approved_by,
-                            'approval_date' => now(),
-                        ]);
-                        $loan->update(['saving_transaction_id' => $tx->id]);
-                        SavingTransactionService::recalculateUserTransactions($user->id);
-                    }
-                }
 
                 $createdCount++;
                 $this->info("Created Loan for [{$user->name}] - Plafon: Rp " . number_format($p['amount']) . " - Tenor: {$p['tenor']} Bln");

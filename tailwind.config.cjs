@@ -11,6 +11,9 @@ module.exports = {
     darkMode: 'class',
     theme: {
         extend: {
+            colors: {
+                'gray-750': '#252e3e',
+            },
             fontFamily: {
                 sans: [
                     'SF Pro Display',

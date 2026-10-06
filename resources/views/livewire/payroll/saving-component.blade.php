@@ -25,7 +25,7 @@
         <div class="flex items-center gap-2">
           <button type="button" 
                   wire:click="setTab('master')" 
-                  class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer {{ $activeTab === 'master' ? 'bg-sky-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700' }}">
+                  class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer {{ $activeTab === 'master' ? 'bg-sky-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white border border-transparent dark:border-gray-600/30' }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
@@ -37,7 +37,7 @@
 
           <button type="button" 
                   wire:click="setTab('members')" 
-                  class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer {{ $activeTab === 'members' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700' }}">
+                  class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer {{ $activeTab === 'members' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white border border-transparent dark:border-gray-600/30' }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -92,7 +92,7 @@
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
               @forelse ($savings as $saving)
-                <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-750 transition-colors">
+                <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-700/50 transition-colors">
                   <td class="whitespace-nowrap px-4 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {{ $saving->savings_name ?? '-' }}
                   </td>
@@ -208,7 +208,7 @@
                   $mandatoryAmount = $salary->savings?->mandatory_savings ?? 0;
                   $totalPotongan = $mandatoryAmount + $effectiveSukarela;
                 @endphp
-                <tr class="{{ $hasCustom ? 'bg-amber-50/40 dark:bg-amber-950/20' : '' }} hover:bg-gray-50/80 dark:hover:bg-gray-750 transition-colors">
+                <tr class="{{ $hasCustom ? 'bg-amber-50/40 dark:bg-amber-950/20' : '' }} hover:bg-gray-50/80 dark:hover:bg-gray-700/50 transition-colors">
                   <td class="whitespace-nowrap px-4 py-4 text-sm text-gray-900 dark:text-gray-300">
                     <div class="font-semibold text-gray-900 dark:text-gray-100">{{ $salary->employee->name ?? '-' }}</div>
                     <div class="text-xs text-gray-500 dark:text-gray-400">{{ $salary->employee->nip ?? '-' }} &bull; {{ $salary->employee->division->name ?? 'No Div' }}</div>
@@ -371,7 +371,7 @@
         <div>
           <x-label value="Pilihan Aturan Nominal Sukarela" class="mb-2" />
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-xs focus:outline-none transition-all {{ $customSukarelaMode === 'default' ? 'border-sky-500 bg-sky-50/70 dark:bg-sky-950/40 ring-2 ring-sky-500 dark:border-sky-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750' }}">
+            <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-xs focus:outline-none transition-all {{ $customSukarelaMode === 'default' ? 'border-sky-500 bg-sky-50/70 dark:bg-sky-950/40 ring-2 ring-sky-500 dark:border-sky-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50' }}">
               <input type="radio" wire:model.live="customSukarelaMode" value="default" class="sr-only" />
               <span class="flex flex-1 flex-col">
                 <span class="block text-xs font-bold text-gray-900 dark:text-gray-100">Gunakan Default Master</span>
@@ -381,7 +381,7 @@
               </span>
             </label>
 
-            <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-xs focus:outline-none transition-all {{ $customSukarelaMode === 'custom' ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 ring-2 ring-amber-500 dark:border-amber-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750' }}">
+            <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-xs focus:outline-none transition-all {{ $customSukarelaMode === 'custom' ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 ring-2 ring-amber-500 dark:border-amber-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50' }}">
               <input type="radio" wire:model.live="customSukarelaMode" value="custom" class="sr-only" />
               <span class="flex flex-1 flex-col">
                 <span class="block text-xs font-bold text-amber-900 dark:text-amber-200">Kustomisasi Khusus (Override)</span>

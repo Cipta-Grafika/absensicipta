@@ -17,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use App\Livewire\Payroll\LoanComponent;
 use App\Livewire\Payroll\PayrollHistoryComponent;
+use App\Services\SavingTransactionService;
 
 class LoanSyirkahPayrollIntegrationTest extends TestCase
 {
@@ -81,7 +82,7 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
             ->set('tenor_months', 6)
             ->set('payment_source', 'payroll')
             ->set('disbursement_source', 'syirkah_pool_secondary')
-            ->set('syirkah_destination', 'syirkah_secondary')
+            ->set('syirkah_destination', 'syirkah_pool_secondary')
             ->set('description', 'Trip Singapore 2026 (SSR)')
             ->call('storeLoan');
 
@@ -91,6 +92,49 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
         $this->assertEquals(520000, $loan->installment_amount);
         $this->assertEquals('pending', $loan->status);
         $this->assertEquals('syirkah_pool_secondary', $loan->disbursement_source);
+        $this->assertEquals('syirkah_pool_secondary', $loan->syirkah_destination);
+
+        // Approve loan
+        Livewire::test(LoanComponent::class)
+            ->call('approveLoan', $loan->id);
+
+        $loan->refresh();
+        $this->assertEquals('active', $loan->status);
+        // Syirkah Pool loans must NOT deduct from individual employee's savings ledger
+        $this->assertNull($loan->saving_transaction_id);
+        $this->assertEquals(0, SavingTransaction::where('user_id', $this->employee->id)->where('reference_type', 'loan_disbursement')->count());
+    }
+
+    public function test_create_and_approve_loan_with_personal_syirkah_secondary_disbursement()
+    {
+        $this->actingAs($this->admin);
+
+        SavingTransaction::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'transaction_type' => 'deposit',
+            'mandatory_amount' => 500000,
+            'secondary_amount' => 2000000,
+            'status' => 'approved',
+            'period_month' => '2026-09',
+            'reference_type' => 'payroll',
+            'description' => 'Saldo Awal',
+        ]);
+        SavingTransactionService::recalculateUserTransactions($this->employee->id);
+
+        Livewire::test(LoanComponent::class)
+            ->set('user_id', $this->employee->id)
+            ->set('loan_amount', 1000000)
+            ->set('tenor_months', 2)
+            ->set('payment_source', 'payroll')
+            ->set('disbursement_source', 'syirkah_secondary')
+            ->set('syirkah_destination', 'syirkah_secondary')
+            ->set('description', 'Pinjaman Potong Tabungan Pribadi')
+            ->call('storeLoan');
+
+        $loan = Loan::where('user_id', $this->employee->id)->first();
+        $this->assertNotNull($loan);
+        $this->assertEquals('syirkah_secondary', $loan->disbursement_source);
         $this->assertEquals('syirkah_secondary', $loan->syirkah_destination);
 
         // Approve loan
@@ -99,56 +143,20 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
 
         $loan->refresh();
         $this->assertEquals('active', $loan->status);
-        $this->assertNotNull($loan->saving_transaction_id);
 
-        // Check withdrawal transaction created in syirkah
+        // Check withdrawal transaction created in personal syirkah
         $tx = SavingTransaction::find($loan->saving_transaction_id);
         $this->assertNotNull($tx);
         $this->assertEquals('withdrawal', $tx->transaction_type);
         $this->assertEquals(0, $tx->mandatory_amount);
-        $this->assertEquals(3120000, $tx->secondary_amount);
-        $this->assertEquals('loan_disbursement', $tx->reference_type);
+        $this->assertEquals(1000000, $tx->secondary_amount);
     }
 
-    public function test_create_and_approve_loan_with_syirkah_pool_mandatory_disbursement()
+    public function test_payroll_paid_transition_decrements_loan_and_handles_pool_destination()
     {
         $this->actingAs($this->admin);
 
-        Livewire::test(LoanComponent::class)
-            ->set('user_id', $this->employee->id)
-            ->set('loan_amount', 3120000)
-            ->set('tenor_months', 6)
-            ->set('payment_source', 'payroll')
-            ->set('disbursement_source', 'syirkah_pool_mandatory')
-            ->set('syirkah_destination', 'syirkah_mandatory')
-            ->set('description', 'Trip Singapore 2026 (Wajib)')
-            ->call('storeLoan');
-
-        $loan = Loan::where('user_id', $this->employee->id)->first();
-        $this->assertNotNull($loan);
-        $this->assertEquals('syirkah_pool_mandatory', $loan->disbursement_source);
-        $this->assertEquals('syirkah_mandatory', $loan->syirkah_destination);
-
-        // Approve loan
-        Livewire::test(LoanComponent::class)
-            ->call('approveLoan', $loan->id);
-
-        $loan->refresh();
-        $this->assertEquals('active', $loan->status);
-
-        // Check withdrawal transaction created in syirkah (mandatory amount)
-        $tx = SavingTransaction::find($loan->saving_transaction_id);
-        $this->assertNotNull($tx);
-        $this->assertEquals('withdrawal', $tx->transaction_type);
-        $this->assertEquals(3120000, $tx->mandatory_amount);
-        $this->assertEquals(0, $tx->secondary_amount);
-    }
-
-    public function test_payroll_paid_transition_decrements_loan_and_creates_syirkah_deposit()
-    {
-        $this->actingAs($this->admin);
-
-        // Create active loan
+        // Create active loan with syirkah_pool_secondary destination
         $loan = Loan::create([
             'user_id' => $this->employee->id,
             'loan_amount' => 3120000,
@@ -156,8 +164,8 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
             'installment_amount' => 520000,
             'remaining_balance' => 3120000,
             'payment_source' => 'payroll',
-            'disbursement_source' => 'syirkah_pool',
-            'syirkah_destination' => 'syirkah_secondary',
+            'disbursement_source' => 'syirkah_pool_secondary',
+            'syirkah_destination' => 'syirkah_pool_secondary',
             'status' => 'active',
             'approved_by' => $this->admin->id,
             'approval_date' => now(),
@@ -199,22 +207,15 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
 
         $installment->refresh();
         $this->assertEquals('paid', $installment->status);
-        $this->assertNotNull($installment->saving_transaction_id);
-
-        // Verify deposit in Syirkah
-        $depositTx = SavingTransaction::find($installment->saving_transaction_id);
-        $this->assertNotNull($depositTx);
-        $this->assertEquals('deposit', $depositTx->transaction_type);
-        $this->assertEquals(0, $depositTx->mandatory_amount);
-        $this->assertEquals(520000, $depositTx->secondary_amount);
-        $this->assertEquals('approved', $depositTx->status);
+        // Syirkah pool repayments return to collective pool and do not deposit to individual savings
+        $this->assertNull($installment->saving_transaction_id);
     }
 
     public function test_payroll_paid_transition_with_mandatory_syirkah_destination()
     {
         $this->actingAs($this->admin);
 
-        // Create active loan targeting mandatory syirkah
+        // Create active loan targeting personal mandatory syirkah
         $loan = Loan::create([
             'user_id' => $this->employee->id,
             'loan_amount' => 3120000,
@@ -222,7 +223,7 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
             'installment_amount' => 520000,
             'remaining_balance' => 3120000,
             'payment_source' => 'payroll',
-            'disbursement_source' => 'syirkah_pool_mandatory',
+            'disbursement_source' => 'syirkah_mandatory',
             'syirkah_destination' => 'syirkah_mandatory',
             'status' => 'active',
             'approved_by' => $this->admin->id,
@@ -390,8 +391,8 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
             'installment_amount' => 1000000,
             'remaining_balance' => 3000000,
             'payment_source' => 'payroll',
-            'disbursement_source' => 'syirkah_pool_secondary',
-            'syirkah_destination' => 'syirkah_pool_secondary',
+            'disbursement_source' => 'syirkah_secondary',
+            'syirkah_destination' => 'syirkah_secondary',
             'status' => 'approved',
             'approved_by' => $this->admin->id,
             'approval_date' => now(),
@@ -408,7 +409,7 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
             'period_month' => now()->format('Y-m'),
             'reference_type' => 'loan_disbursement',
             'reference_id' => $loan->id,
-            'description' => 'Pencairan Pinjaman (Kas Talangan Syirkah Sukarela): Kasbon Aktif',
+            'description' => 'Pencairan Pinjaman via Syirkah SSR Pribadi: Kasbon Aktif',
             'approved_by' => $this->admin->id,
             'approval_date' => now(),
         ]);
