@@ -100,9 +100,16 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
 
         $loan->refresh();
         $this->assertEquals('active', $loan->status);
-        // Syirkah Pool loans must NOT deduct from individual employee's savings ledger
-        $this->assertNull($loan->saving_transaction_id);
-        $this->assertEquals(0, SavingTransaction::where('user_id', $this->employee->id)->where('reference_type', 'loan_disbursement')->count());
+        // Syirkah Pool loans create a pool disbursement transaction on central syirkah ledger
+        $this->assertNotNull($loan->saving_transaction_id);
+        $tx = SavingTransaction::find($loan->saving_transaction_id);
+        $this->assertNotNull($tx);
+        $this->assertEquals('loan_disbursement_pool', $tx->reference_type);
+        $this->assertEquals('withdrawal', $tx->transaction_type);
+        $this->assertEquals(3120000, $tx->secondary_amount);
+
+        // But employee's personal tabungan balance remains 0 (not negative or deducted)
+        $this->assertEquals(0, \App\Models\SavingSummary::where('user_id', $this->employee->id)->value('total_secondary') ?? 0);
     }
 
     public function test_create_and_approve_loan_with_personal_syirkah_secondary_disbursement()
@@ -207,8 +214,12 @@ class LoanSyirkahPayrollIntegrationTest extends TestCase
 
         $installment->refresh();
         $this->assertEquals('paid', $installment->status);
-        // Syirkah pool repayments return to collective pool and do not deposit to individual savings
-        $this->assertNull($installment->saving_transaction_id);
+        // Syirkah pool repayments return to collective pool on central syirkah ledger
+        $this->assertNotNull($installment->saving_transaction_id);
+        $tx = SavingTransaction::find($installment->saving_transaction_id);
+        $this->assertEquals('loan_installment_pool', $tx->reference_type);
+        $this->assertEquals('deposit', $tx->transaction_type);
+        $this->assertEquals(520000, $tx->secondary_amount);
     }
 
     public function test_payroll_paid_transition_with_mandatory_syirkah_destination()

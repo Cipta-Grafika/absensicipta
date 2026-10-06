@@ -35,40 +35,68 @@ class LoanService
                     $inst->update(['status' => 'pending']);
                 }
 
-                // Ensure Syirkah deposit transaction is created for paid installments ONLY if destination is personal syirkah
-                if ($inst->status === 'paid' && in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_secondary']) && $savingProgram) {
-                    if (!$inst->saving_transaction_id || !SavingTransaction::where('id', $inst->saving_transaction_id)->exists()) {
+                // Handle Syirkah deposit transaction for paid installments
+                if ($inst->status === 'paid' && $savingProgram) {
+                    $isPersonalDest = in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_secondary']);
+                    $isPoolDest = in_array($loan->syirkah_destination, ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory']);
+
+                    if ($isPersonalDest) {
                         $mandAmount = ($loan->syirkah_destination === 'syirkah_mandatory') ? (float) $inst->amount_paid : 0.0;
                         $secAmount = ($loan->syirkah_destination === 'syirkah_secondary') ? (float) $inst->amount_paid : 0.0;
-
                         $desc = match ($loan->syirkah_destination) {
                             'syirkah_mandatory' => 'Setoran Tabungan Syirkah Wajib Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . ($inst->payroll?->period_month ?? ''),
                             default => 'Setoran Tabungan Syirkah SSR Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . ($inst->payroll?->period_month ?? ''),
                         };
 
-                        $tx = SavingTransaction::create([
-                            'user_id' => $loan->user_id,
-                            'savings_id' => $savingProgram->id,
-                            'transaction_type' => 'deposit',
-                            'mandatory_amount' => $mandAmount,
-                            'secondary_amount' => $secAmount,
-                            'status' => 'approved',
-                            'period_month' => $inst->payroll?->period_month ?? now()->format('Y-m'),
-                            'reference_type' => 'loan_installment',
-                            'reference_id' => $inst->id,
-                            'description' => trim($desc),
-                            'approved_by' => Auth::id() ?? $loan->approved_by,
-                            'approval_date' => now(),
-                        ]);
+                        if (!$inst->saving_transaction_id || !SavingTransaction::where('id', $inst->saving_transaction_id)->exists()) {
+                            $tx = SavingTransaction::create([
+                                'user_id' => $loan->user_id,
+                                'savings_id' => $savingProgram->id,
+                                'transaction_type' => 'deposit',
+                                'mandatory_amount' => $mandAmount,
+                                'secondary_amount' => $secAmount,
+                                'status' => 'approved',
+                                'period_month' => $inst->payroll?->period_month ?? now()->format('Y-m'),
+                                'reference_type' => 'loan_installment',
+                                'reference_id' => $inst->id,
+                                'description' => trim($desc),
+                                'approved_by' => Auth::id() ?? $loan->approved_by,
+                                'approval_date' => now(),
+                            ]);
+                            $inst->update(['saving_transaction_id' => $tx->id]);
+                            $affectedUser = true;
+                        }
+                    } elseif ($isPoolDest) {
+                        $mandAmount = ($loan->syirkah_destination === 'syirkah_pool_mandatory') ? (float) $inst->amount_paid : 0.0;
+                        $secAmount = ($loan->syirkah_destination !== 'syirkah_pool_mandatory') ? (float) $inst->amount_paid : 0.0;
+                        $desc = match ($loan->syirkah_destination) {
+                            'syirkah_pool_mandatory' => 'Pengembalian Kas Talangan Syirkah Wajib (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . ($inst->payroll?->period_month ?? ''),
+                            default => 'Pengembalian Kas Talangan Syirkah Sukarela (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . ($inst->payroll?->period_month ?? ''),
+                        };
 
-                        $inst->update(['saving_transaction_id' => $tx->id]);
+                        if (!$inst->saving_transaction_id || !SavingTransaction::where('id', $inst->saving_transaction_id)->exists()) {
+                            $tx = SavingTransaction::create([
+                                'user_id' => $loan->user_id,
+                                'savings_id' => $savingProgram->id,
+                                'transaction_type' => 'deposit',
+                                'mandatory_amount' => $mandAmount,
+                                'secondary_amount' => $secAmount,
+                                'status' => 'approved',
+                                'period_month' => $inst->payroll?->period_month ?? now()->format('Y-m'),
+                                'reference_type' => 'loan_installment_pool',
+                                'reference_id' => $inst->id,
+                                'description' => trim($desc),
+                                'approved_by' => Auth::id() ?? $loan->approved_by,
+                                'approval_date' => now(),
+                            ]);
+                            $inst->update(['saving_transaction_id' => $tx->id]);
+                            $affectedUser = true;
+                        }
+                    } elseif ($inst->saving_transaction_id) {
+                        SavingTransaction::where('id', $inst->saving_transaction_id)->delete();
+                        $inst->update(['saving_transaction_id' => null]);
                         $affectedUser = true;
                     }
-                } elseif ($inst->saving_transaction_id && in_array($loan->syirkah_destination, ['syirkah_pool_secondary', 'syirkah_pool_mandatory', 'syirkah_pool', 'company_cash', 'none'])) {
-                    // For pool repayments or non-syirkah, ensure no personal savings deposit transaction exists
-                    SavingTransaction::where('id', $inst->saving_transaction_id)->delete();
-                    $inst->update(['saving_transaction_id' => null]);
-                    $affectedUser = true;
                 }
             }
 
@@ -107,10 +135,12 @@ class LoanService
                                         'status' => 'paid',
                                     ]);
 
-                                    if (in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_secondary']) && $savingProgram) {
+                                    $isPersonalDest = in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_secondary']);
+                                    $isPoolDest = in_array($loan->syirkah_destination, ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory']);
+
+                                    if ($isPersonalDest && $savingProgram) {
                                         $mandAmount = ($loan->syirkah_destination === 'syirkah_mandatory') ? (float) $d->amount : 0.0;
                                         $secAmount = ($loan->syirkah_destination === 'syirkah_secondary') ? (float) $d->amount : 0.0;
-
                                         $desc = match ($loan->syirkah_destination) {
                                             'syirkah_mandatory' => 'Setoran Tabungan Syirkah Wajib Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $p->period_month,
                                             default => 'Setoran Tabungan Syirkah SSR Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $p->period_month,
@@ -133,6 +163,31 @@ class LoanService
 
                                         $newInst->update(['saving_transaction_id' => $tx->id]);
                                         $affectedUser = true;
+                                    } elseif ($isPoolDest && $savingProgram) {
+                                        $mandAmount = ($loan->syirkah_destination === 'syirkah_pool_mandatory') ? (float) $d->amount : 0.0;
+                                        $secAmount = ($loan->syirkah_destination !== 'syirkah_pool_mandatory') ? (float) $d->amount : 0.0;
+                                        $desc = match ($loan->syirkah_destination) {
+                                            'syirkah_pool_mandatory' => 'Pengembalian Kas Talangan Syirkah Wajib (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $p->period_month,
+                                            default => 'Pengembalian Kas Talangan Syirkah Sukarela (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $p->period_month,
+                                        };
+
+                                        $tx = SavingTransaction::create([
+                                            'user_id' => $loan->user_id,
+                                            'savings_id' => $savingProgram->id,
+                                            'transaction_type' => 'deposit',
+                                            'mandatory_amount' => $mandAmount,
+                                            'secondary_amount' => $secAmount,
+                                            'status' => 'approved',
+                                            'period_month' => $p->period_month,
+                                            'reference_type' => 'loan_installment_pool',
+                                            'reference_id' => $newInst->id,
+                                            'description' => trim($desc),
+                                            'approved_by' => Auth::id() ?? $loan->approved_by,
+                                            'approval_date' => now(),
+                                        ]);
+
+                                        $newInst->update(['saving_transaction_id' => $tx->id]);
+                                        $affectedUser = true;
                                     }
                                 }
                             }
@@ -141,7 +196,66 @@ class LoanService
                 }
             }
 
-            // 3. Recalculate remaining balance & status
+            // 3. Ensure disbursement transaction exists on central syirkah ledger
+            if (in_array($loan->status, ['active', 'approved', 'paid_off']) && $savingProgram) {
+                $isPersonalDisb = in_array($loan->disbursement_source, ['syirkah_mandatory', 'syirkah_secondary', 'syirkah_all']);
+                $isPoolDisb = in_array($loan->disbursement_source, ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory']);
+
+                if ($isPoolDisb) {
+                    $mandAmount = ($loan->disbursement_source === 'syirkah_pool_mandatory') ? (float) $loan->loan_amount : 0.0;
+                    $secAmount = ($loan->disbursement_source !== 'syirkah_pool_mandatory') ? (float) $loan->loan_amount : 0.0;
+                    $desc = ($loan->disbursement_source === 'syirkah_pool_mandatory' ? 'Pencairan Pinjaman (Kas Talangan Syirkah Wajib): ' : 'Pencairan Pinjaman (Kas Talangan Syirkah Sukarela): ') . ($loan->description ?: 'Pinjaman');
+
+                    if ($loan->saving_transaction_id) {
+                        $tx = SavingTransaction::find($loan->saving_transaction_id);
+                        if ($tx) {
+                            $tx->update([
+                                'user_id' => $loan->user_id,
+                                'mandatory_amount' => $mandAmount,
+                                'secondary_amount' => $secAmount,
+                                'reference_type' => 'loan_disbursement_pool',
+                                'description' => $desc,
+                                'status' => 'approved',
+                            ]);
+                        } else {
+                            $tx = SavingTransaction::create([
+                                'user_id' => $loan->user_id,
+                                'savings_id' => $savingProgram->id,
+                                'transaction_type' => 'withdrawal',
+                                'mandatory_amount' => $mandAmount,
+                                'secondary_amount' => $secAmount,
+                                'status' => 'approved',
+                                'period_month' => $loan->created_at ? $loan->created_at->format('Y-m') : now()->format('Y-m'),
+                                'reference_type' => 'loan_disbursement_pool',
+                                'reference_id' => $loan->id,
+                                'description' => $desc,
+                                'approved_by' => $loan->approved_by ?? Auth::id(),
+                                'approval_date' => $loan->approval_date ?? now(),
+                            ]);
+                            $loan->update(['saving_transaction_id' => $tx->id]);
+                        }
+                    } else {
+                        $tx = SavingTransaction::create([
+                            'user_id' => $loan->user_id,
+                            'savings_id' => $savingProgram->id,
+                            'transaction_type' => 'withdrawal',
+                            'mandatory_amount' => $mandAmount,
+                            'secondary_amount' => $secAmount,
+                            'status' => 'approved',
+                            'period_month' => $loan->created_at ? $loan->created_at->format('Y-m') : now()->format('Y-m'),
+                            'reference_type' => 'loan_disbursement_pool',
+                            'reference_id' => $loan->id,
+                            'description' => $desc,
+                            'approved_by' => $loan->approved_by ?? Auth::id(),
+                            'approval_date' => $loan->approval_date ?? now(),
+                        ]);
+                        $loan->update(['saving_transaction_id' => $tx->id]);
+                    }
+                    $affectedUser = true;
+                }
+            }
+
+            // 4. Recalculate remaining balance & status
             $totalPaid = (float) LoanInstallment::where('loan_id', $loan->id)
                 ->where('status', 'paid')
                 ->sum('amount_paid');
@@ -169,64 +283,46 @@ class LoanService
     }
 
     /**
-     * Clean any invalid personal Syirkah transactions linked to Syirkah Pool loans.
-     * Pool loans should not deduct nor deposit to individual employee savings books.
+     * Synchronize and standardize pool transactions.
      */
     public static function cleanInvalidPoolTransactions(): void
     {
         DB::transaction(function () {
-            $poolDisbursementTypes = ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory', 'company_cash', 'none'];
-            $poolDestinationTypes = ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory', 'company_cash', 'none'];
+            $poolDisbursementTypes = ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory'];
+            $poolDestinationTypes = ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory'];
 
             $affectedUserIds = [];
 
-            // 1. Clean loan disbursement transactions from pool loans
-            $poolLoans = Loan::whereIn('disbursement_source', $poolDisbursementTypes)->get();
+            // 1. Standardize pool disbursement transactions
+            $poolLoans = Loan::whereIn('disbursement_source', $poolDisbursementTypes)->whereIn('status', ['active', 'approved', 'paid_off'])->get();
             foreach ($poolLoans as $loan) {
-                if ($loan->saving_transaction_id) {
-                    SavingTransaction::where('id', $loan->saving_transaction_id)->delete();
-                    $loan->update(['saving_transaction_id' => null]);
-                    $affectedUserIds[] = $loan->user_id;
-                }
+                self::syncLoan($loan);
+                $affectedUserIds[] = $loan->user_id;
             }
 
-            // Also clean orphan or pool loan_disbursement transactions
-            $orphanDisbursements = SavingTransaction::where('reference_type', 'loan_disbursement')->get();
+            // Clean orphan pool disbursements
+            $orphanDisbursements = SavingTransaction::whereIn('reference_type', ['loan_disbursement_pool', 'loan_disbursement'])->get();
             foreach ($orphanDisbursements as $tx) {
                 $loan = Loan::find($tx->reference_id);
-                if (!$loan || in_array($loan->disbursement_source, $poolDisbursementTypes)) {
+                if (!$loan) {
                     $affectedUserIds[] = $tx->user_id;
                     $tx->delete();
+                } elseif (in_array($loan->disbursement_source, $poolDisbursementTypes) && $tx->reference_type !== 'loan_disbursement_pool') {
+                    $tx->update(['reference_type' => 'loan_disbursement_pool']);
+                    $affectedUserIds[] = $tx->user_id;
                 }
             }
 
-            // Also clean any personal transactions mentioning 'Kas Talangan' in description
-            $kasTalanganTxs = SavingTransaction::where('description', 'like', '%Kas Talangan%')->get();
-            foreach ($kasTalanganTxs as $tx) {
-                $affectedUserIds[] = $tx->user_id;
-                $tx->delete();
-            }
-
-            // 2. Clean loan installment deposits from pool loans
-            $poolInstallments = LoanInstallment::whereHas('loan', function ($q) use ($poolDestinationTypes) {
-                $q->whereIn('syirkah_destination', $poolDestinationTypes);
-            })->whereNotNull('saving_transaction_id')->get();
-
-            foreach ($poolInstallments as $inst) {
-                SavingTransaction::where('id', $inst->saving_transaction_id)->delete();
-                $inst->update(['saving_transaction_id' => null]);
-                if ($inst->loan) {
-                    $affectedUserIds[] = $inst->loan->user_id;
-                }
-            }
-
-            // Also clean orphan or pool loan_installment transactions
-            $orphanInstallments = SavingTransaction::where('reference_type', 'loan_installment')->get();
+            // 2. Standardize pool installment deposits
+            $orphanInstallments = SavingTransaction::whereIn('reference_type', ['loan_installment_pool', 'loan_installment'])->get();
             foreach ($orphanInstallments as $tx) {
                 $inst = LoanInstallment::with('loan')->find($tx->reference_id);
-                if (!$inst || !$inst->loan || in_array($inst->loan->syirkah_destination, $poolDestinationTypes)) {
+                if (!$inst || !$inst->loan) {
                     $affectedUserIds[] = $tx->user_id;
                     $tx->delete();
+                } elseif (in_array($inst->loan->syirkah_destination, $poolDestinationTypes) && $tx->reference_type !== 'loan_installment_pool') {
+                    $tx->update(['reference_type' => 'loan_installment_pool']);
+                    $affectedUserIds[] = $tx->user_id;
                 }
             }
 
@@ -254,8 +350,6 @@ class LoanService
      */
     public static function syncAllLoans(): void
     {
-        self::cleanInvalidPoolTransactions();
-
         $loans = Loan::all();
         $affectedUsers = [];
 
@@ -284,36 +378,6 @@ class LoanService
 
                 if ($loan) {
                     self::syncLoan($loan);
-
-                    // Create Syirkah transaction ONLY if configured for personal syirkah destination
-                    if (in_array($loan->syirkah_destination, ['syirkah_mandatory', 'syirkah_secondary']) && $savingProgram) {
-                        if (!$inst->saving_transaction_id || !SavingTransaction::where('id', $inst->saving_transaction_id)->exists()) {
-                            $mandAmount = ($loan->syirkah_destination === 'syirkah_mandatory') ? (float) $inst->amount_paid : 0.0;
-                            $secAmount = ($loan->syirkah_destination === 'syirkah_secondary') ? (float) $inst->amount_paid : 0.0;
-
-                            $desc = match ($loan->syirkah_destination) {
-                                'syirkah_mandatory' => 'Setoran Tabungan Syirkah Wajib Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
-                                default => 'Setoran Tabungan Syirkah SSR Pribadi (' . ($loan->description ?: 'Pinjaman') . ') via Payroll ' . $payroll->period_month,
-                            };
-
-                            $tx = SavingTransaction::create([
-                                'user_id' => $loan->user_id,
-                                'savings_id' => $savingProgram->id,
-                                'transaction_type' => 'deposit',
-                                'mandatory_amount' => $mandAmount,
-                                'secondary_amount' => $secAmount,
-                                'status' => 'approved',
-                                'period_month' => $payroll->period_month,
-                                'reference_type' => 'loan_installment',
-                                'reference_id' => $inst->id,
-                                'description' => trim($desc),
-                                'approved_by' => Auth::id(),
-                                'approval_date' => now(),
-                            ]);
-
-                            $inst->update(['saving_transaction_id' => $tx->id]);
-                        }
-                    }
                 }
             }
 

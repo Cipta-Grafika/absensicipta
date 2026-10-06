@@ -109,8 +109,12 @@ class SavingTransactionService
         $runningMandatory = 0.0;
         $runningSecondary = 0.0;
 
+        $poolTypes = ['loan_disbursement_pool', 'loan_installment_pool'];
+
         foreach ($query->orderBy('created_at', 'asc')->orderBy('id', 'asc')->cursor() as $tx) {
-            if ($tx->status === 'approved') {
+            $isPool = in_array($tx->reference_type, $poolTypes);
+
+            if ($tx->status === 'approved' && !$isPool) {
                 if ($tx->transaction_type === 'deposit') {
                     $runningMandatory += (float) $tx->mandatory_amount;
                     $runningSecondary += (float) $tx->secondary_amount;
@@ -132,6 +136,14 @@ class SavingTransactionService
                             'balance_secondary' => $runningSecondary,
                         ]);
                 }
+            } elseif ($isPool) {
+                // For pool transactions, preserve current personal balance snapshot without altering running balance
+                DB::table('saving_transactions')
+                    ->where('id', $tx->id)
+                    ->update([
+                        'balance_mandatory' => $runningMandatory,
+                        'balance_secondary' => $runningSecondary,
+                    ]);
             } else {
                 // For pending or rejected transactions, keep balance as 0 or current running snapshot without incrementing
                 if ((float) $tx->balance_mandatory != 0.0 || (float) $tx->balance_secondary != 0.0) {
@@ -145,7 +157,7 @@ class SavingTransactionService
             }
         }
 
-        // Update SavingSummary strictly from approved transactions
+        // Update SavingSummary strictly from approved personal transactions
         $existingSummarySavingsIds = SavingSummary::where('user_id', $userId)->pluck('savings_id')->toArray();
         $txSavingsIds = SavingTransaction::where('user_id', $userId)->pluck('savings_id')->toArray();
 
@@ -158,30 +170,49 @@ class SavingTransactionService
                 ->where('savings_id', $sId)
                 ->where('status', 'approved')
                 ->where('transaction_type', 'deposit')
+                ->where(function ($q) use ($poolTypes) {
+                    $q->whereNull('reference_type')
+                      ->orWhereNotIn('reference_type', $poolTypes);
+                })
                 ->sum('mandatory_amount');
 
             $wdMan = (float) SavingTransaction::where('user_id', $userId)
                 ->where('savings_id', $sId)
                 ->where('status', 'approved')
                 ->where('transaction_type', 'withdrawal')
+                ->where(function ($q) use ($poolTypes) {
+                    $q->whereNull('reference_type')
+                      ->orWhereNotIn('reference_type', $poolTypes);
+                })
                 ->sum('mandatory_amount');
 
             $depSec = (float) SavingTransaction::where('user_id', $userId)
                 ->where('savings_id', $sId)
                 ->where('status', 'approved')
                 ->where('transaction_type', 'deposit')
+                ->where(function ($q) use ($poolTypes) {
+                    $q->whereNull('reference_type')
+                      ->orWhereNotIn('reference_type', $poolTypes);
+                })
                 ->sum('secondary_amount');
 
             $wdSec = (float) SavingTransaction::where('user_id', $userId)
                 ->where('savings_id', $sId)
                 ->where('status', 'approved')
                 ->where('transaction_type', 'withdrawal')
+                ->where(function ($q) use ($poolTypes) {
+                    $q->whereNull('reference_type')
+                      ->orWhereNotIn('reference_type', $poolTypes);
+                })
                 ->sum('secondary_amount');
 
             $totalMandatory = max(0.0, $depMan - $wdMan);
             $totalSecondary = max(0.0, $depSec - $wdSec);
 
-            if ($totalMandatory == 0.0 && $totalSecondary == 0.0 && !SavingTransaction::where('user_id', $userId)->where('savings_id', $sId)->exists()) {
+            if ($totalMandatory == 0.0 && $totalSecondary == 0.0 && !SavingTransaction::where('user_id', $userId)->where('savings_id', $sId)->where(function ($q) use ($poolTypes) {
+                $q->whereNull('reference_type')
+                  ->orWhereNotIn('reference_type', $poolTypes);
+            })->exists()) {
                 SavingSummary::where('user_id', $userId)->where('savings_id', $sId)->delete();
             } else {
                 SavingSummary::updateOrCreate(

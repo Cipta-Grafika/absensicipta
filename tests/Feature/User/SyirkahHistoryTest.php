@@ -442,7 +442,7 @@ class SyirkahHistoryTest extends TestCase
 
         $this->actingAs($user);
 
-        // Accessing component should trigger cleanup and exclude pool transaction
+        // Accessing component should trigger standardization and exclude pool transaction from user's personal ledger
         Livewire::test(SyirkahHistoryComponent::class)
             ->assertSee('Saldo Awal Syirkah')
             ->assertDontSee('Pencairan Pinjaman (Kas Talangan Syirkah Sukarela)')
@@ -450,10 +450,8 @@ class SyirkahHistoryTest extends TestCase
             ->assertViewHas('saldoSukarela', 850000.0)
             ->assertViewHas('saldoWajib', 1900000.0);
 
-        // Verify that the legacy transaction is cleaned up in DB
-        $this->assertDatabaseMissing('saving_transactions', [
-            'id' => $legacyTx->id,
-        ]);
+        // Verify that the transaction is standardized to loan_disbursement_pool in DB for central ledger
+        $this->assertEquals('loan_disbursement_pool', $legacyTx->fresh()->reference_type);
     }
 }
 

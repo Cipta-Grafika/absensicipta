@@ -367,9 +367,15 @@ class SyirkahHistoryComponent extends Component
 
     private function calculateBalances(string $userId): array
     {
+        $poolTypes = ['loan_disbursement_pool', 'loan_installment_pool'];
+
         $approvedDepositQuery = SavingTransaction::where('user_id', $userId)
             ->where('status', 'approved')
             ->where('transaction_type', 'deposit')
+            ->where(function ($q) use ($poolTypes) {
+                $q->whereNull('reference_type')
+                  ->orWhereNotIn('reference_type', $poolTypes);
+            })
             ->where(function ($q) {
                 $q->whereNull('description')
                   ->orWhere('description', 'not like', '%Kas Talangan%');
@@ -378,6 +384,10 @@ class SyirkahHistoryComponent extends Component
         $approvedWithdrawalQuery = SavingTransaction::where('user_id', $userId)
             ->where('status', 'approved')
             ->where('transaction_type', 'withdrawal')
+            ->where(function ($q) use ($poolTypes) {
+                $q->whereNull('reference_type')
+                  ->orWhereNotIn('reference_type', $poolTypes);
+            })
             ->where(function ($q) {
                 $q->whereNull('description')
                   ->orWhere('description', 'not like', '%Kas Talangan%');
@@ -434,10 +444,16 @@ class SyirkahHistoryComponent extends Component
         $userMasterMandatory = $userSalary ? (float) ($userSalary->savings?->mandatory_savings ?? 0) : 0.0;
         $userSavingsName = $userSalary?->savings?->savings_name ?? 'Syirkah';
 
-        // 1. Query transactions for ledger table (strictly approved only)
+        $poolTypes = ['loan_disbursement_pool', 'loan_installment_pool'];
+
+        // 1. Query transactions for ledger table (strictly approved only, exclude pool loans)
         $query = SavingTransaction::with(['masterSaving', 'approver', 'savingWithdrawal'])
             ->where('user_id', $userId)
             ->where('status', 'approved')
+            ->where(function ($q) use ($poolTypes) {
+                $q->whereNull('reference_type')
+                  ->orWhereNotIn('reference_type', $poolTypes);
+            })
             ->where(function ($q) {
                 $q->whereNull('description')
                   ->orWhere('description', 'not like', '%Kas Talangan%');

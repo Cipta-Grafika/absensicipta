@@ -93,6 +93,8 @@ class ImportSingaporeTripLoansCommand extends Command
 
                 $createdCount++;
                 $this->info("Created Loan for [{$user->name}] - Plafon: Rp " . number_format($p['amount']) . " - Tenor: {$p['tenor']} Bln");
+
+                \App\Services\LoanService::syncLoan($loan);
             });
         }
 

@@ -310,9 +310,12 @@ class LoanComponent extends Component
             $savingProgram = Saving::first();
             $savingsId = $savingProgram?->id ?? 'default_savings';
 
-            // If loan is active and has a personal syirkah disbursement source, update or create it
+            // If loan is active and has a syirkah disbursement source (personal or pool), update or create it
             if (in_array($loan->status, ['approved', 'active'])) {
-                if (in_array($this->disbursement_source, ['syirkah_mandatory', 'syirkah_secondary', 'syirkah_all']) && $savingProgram) {
+                $isPersonal = in_array($this->disbursement_source, ['syirkah_mandatory', 'syirkah_secondary', 'syirkah_all']);
+                $isPool = in_array($this->disbursement_source, ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory']);
+
+                if ($isPersonal && $savingProgram) {
                     $mandAmount = 0;
                     $secAmount = 0;
 
@@ -321,8 +324,8 @@ class LoanComponent extends Component
                     } elseif ($this->disbursement_source === 'syirkah_secondary') {
                         $secAmount = $this->loan_amount;
                     } elseif ($this->disbursement_source === 'syirkah_all') {
-                        $depSec = (float) SavingTransaction::where('user_id', $this->user_id)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
-                        $wdSec = (float) SavingTransaction::where('user_id', $this->user_id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+                        $depSec = (float) SavingTransaction::where('user_id', $this->user_id)->where('status', 'approved')->where('transaction_type', 'deposit')->whereNotIn('reference_type', ['loan_disbursement_pool', 'loan_installment_pool'])->sum('secondary_amount');
+                        $wdSec = (float) SavingTransaction::where('user_id', $this->user_id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->whereNotIn('reference_type', ['loan_disbursement_pool', 'loan_installment_pool'])->sum('secondary_amount');
                         $availSec = max(0.0, $depSec - $wdSec);
 
                         $secAmount = min($this->loan_amount, $availSec);
@@ -343,6 +346,7 @@ class LoanComponent extends Component
                                 'user_id' => $this->user_id,
                                 'mandatory_amount' => $mandAmount,
                                 'secondary_amount' => $secAmount,
+                                'reference_type' => 'loan_disbursement',
                                 'description' => $descLabel,
                             ]);
                         }
@@ -363,9 +367,41 @@ class LoanComponent extends Component
                         ]);
                         $loan->saving_transaction_id = $tx->id;
                     }
+                } elseif ($isPool && $savingProgram) {
+                    $mandAmount = ($this->disbursement_source === 'syirkah_pool_mandatory') ? $this->loan_amount : 0;
+                    $secAmount = ($this->disbursement_source !== 'syirkah_pool_mandatory') ? $this->loan_amount : 0;
+                    $descLabel = ($this->disbursement_source === 'syirkah_pool_mandatory' ? 'Pencairan Pinjaman (Kas Talangan Syirkah Wajib): ' : 'Pencairan Pinjaman (Kas Talangan Syirkah Sukarela): ') . ($this->description ?: 'Kasbon');
+
+                    if ($loan->saving_transaction_id) {
+                        $tx = SavingTransaction::find($loan->saving_transaction_id);
+                        if ($tx) {
+                            $tx->update([
+                                'user_id' => $this->user_id,
+                                'mandatory_amount' => $mandAmount,
+                                'secondary_amount' => $secAmount,
+                                'reference_type' => 'loan_disbursement_pool',
+                                'description' => $descLabel,
+                            ]);
+                        }
+                    } else {
+                        $tx = SavingTransaction::create([
+                            'user_id' => $this->user_id,
+                            'savings_id' => $savingsId,
+                            'transaction_type' => 'withdrawal',
+                            'mandatory_amount' => $mandAmount,
+                            'secondary_amount' => $secAmount,
+                            'status' => 'approved',
+                            'period_month' => now()->format('Y-m'),
+                            'reference_type' => 'loan_disbursement_pool',
+                            'reference_id' => $loan->id,
+                            'description' => $descLabel,
+                            'approved_by' => Auth::id(),
+                            'approval_date' => now(),
+                        ]);
+                        $loan->saving_transaction_id = $tx->id;
+                    }
                 } else {
-                    // For syirkah_pool (Kas Talangan Kolektif), company_cash, or none:
-                    // Remove any previous personal saving transaction to keep employee's savings ledger intact
+                    // For company_cash or none: remove linked transaction
                     if ($loan->saving_transaction_id) {
                         SavingTransaction::where('id', $loan->saving_transaction_id)->delete();
                         $loan->saving_transaction_id = null;
@@ -410,8 +446,10 @@ class LoanComponent extends Component
 
             if ($loan->payment_source === 'payroll') {
                 $savingTx = null;
-                // Only if funds are disbursed from Personal Syirkah, record the withdrawal on user's savings ledger
-                if (in_array($loan->disbursement_source, ['syirkah_mandatory', 'syirkah_secondary', 'syirkah_all']) && $savingProgram) {
+                $isPersonal = in_array($loan->disbursement_source, ['syirkah_mandatory', 'syirkah_secondary', 'syirkah_all']);
+                $isPool = in_array($loan->disbursement_source, ['syirkah_pool', 'syirkah_pool_secondary', 'syirkah_pool_mandatory']);
+
+                if ($isPersonal && $savingProgram) {
                     $mandAmount = 0;
                     $secAmount = 0;
 
@@ -420,8 +458,8 @@ class LoanComponent extends Component
                     } elseif ($loan->disbursement_source === 'syirkah_secondary') {
                         $secAmount = $loan->loan_amount;
                     } elseif ($loan->disbursement_source === 'syirkah_all') {
-                        $depSec = (float) SavingTransaction::where('user_id', $loan->user_id)->where('status', 'approved')->where('transaction_type', 'deposit')->sum('secondary_amount');
-                        $wdSec = (float) SavingTransaction::where('user_id', $loan->user_id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->sum('secondary_amount');
+                        $depSec = (float) SavingTransaction::where('user_id', $loan->user_id)->where('status', 'approved')->where('transaction_type', 'deposit')->whereNotIn('reference_type', ['loan_disbursement_pool', 'loan_installment_pool'])->sum('secondary_amount');
+                        $wdSec = (float) SavingTransaction::where('user_id', $loan->user_id)->where('status', 'approved')->where('transaction_type', 'withdrawal')->whereNotIn('reference_type', ['loan_disbursement_pool', 'loan_installment_pool'])->sum('secondary_amount');
                         $availSec = max(0.0, $depSec - $wdSec);
 
                         $secAmount = min($loan->loan_amount, $availSec);
@@ -444,6 +482,27 @@ class LoanComponent extends Component
                         'status' => 'approved',
                         'period_month' => now()->format('Y-m'),
                         'reference_type' => 'loan_disbursement',
+                        'reference_id' => $loan->id,
+                        'description' => $descLabel,
+                        'approved_by' => Auth::id(),
+                        'approval_date' => now(),
+                    ]);
+
+                    SavingTransactionService::recalculateUserTransactions($loan->user_id);
+                } elseif ($isPool && $savingProgram) {
+                    $mandAmount = ($loan->disbursement_source === 'syirkah_pool_mandatory') ? $loan->loan_amount : 0;
+                    $secAmount = ($loan->disbursement_source !== 'syirkah_pool_mandatory') ? $loan->loan_amount : 0;
+                    $descLabel = ($loan->disbursement_source === 'syirkah_pool_mandatory' ? 'Pencairan Pinjaman (Kas Talangan Syirkah Wajib): ' : 'Pencairan Pinjaman (Kas Talangan Syirkah Sukarela): ') . ($loan->description ?: 'Kasbon');
+
+                    $savingTx = SavingTransaction::create([
+                        'user_id' => $loan->user_id,
+                        'savings_id' => $savingsId,
+                        'transaction_type' => 'withdrawal',
+                        'mandatory_amount' => $mandAmount,
+                        'secondary_amount' => $secAmount,
+                        'status' => 'approved',
+                        'period_month' => now()->format('Y-m'),
+                        'reference_type' => 'loan_disbursement_pool',
                         'reference_id' => $loan->id,
                         'description' => $descLabel,
                         'approved_by' => Auth::id(),
