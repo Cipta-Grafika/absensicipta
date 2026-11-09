@@ -36,19 +36,25 @@ class SyirkahTransferService
             return false;
         }
 
-        // 3. Approver must have role OWNER
+        // 3. Approver must have role OWNER or SUPERADMIN
         $approver = $withdrawal->ownerApprover ?? User::find($withdrawal->owner_approved_by);
-        if (!$approver || ($approver->group !== 'owner' && !$approver->isOwner)) {
-            Log::warning("SyirkahTransferService: Trigger rejected - approver role is '{$approver?->group}', strictly requires 'owner'.", [
+        $isAuthorizedApprover = $approver && (
+            $approver->group === 'owner' 
+            || $approver->isOwner 
+            || $approver->group === 'superadmin' 
+            || $approver->isSuperadmin
+        );
+        if (!$isAuthorizedApprover) {
+            Log::warning("SyirkahTransferService: Trigger rejected - approver role is '{$approver?->group}', strictly requires 'owner' or 'superadmin'.", [
                 'withdrawal_id' => $withdrawal->id,
                 'approver_id' => $withdrawal->owner_approved_by,
             ]);
             return false;
         }
 
-        // 4. If an actor is explicitly passed, verify actor role is OWNER
-        if ($actor && $actor->group !== 'owner' && !$actor->isOwner) {
-            Log::warning("SyirkahTransferService: Trigger rejected - actor role is '{$actor->group}', strictly requires 'owner'.", [
+        // 4. If an actor is explicitly passed, verify actor role is OWNER or SUPERADMIN
+        if ($actor && !in_array($actor->group, ['owner', 'superadmin']) && !$actor->isOwner && !$actor->isSuperadmin) {
+            Log::warning("SyirkahTransferService: Trigger rejected - actor role is '{$actor->group}', strictly requires 'owner' or 'superadmin'.", [
                 'actor_id' => $actor->id,
             ]);
             return false;
@@ -374,9 +380,17 @@ class SyirkahTransferService
 
         $message = "Pengajuan Syirkah {$nama} - {$norek} {$bank} dengan nominal {$nominalFormatted} siap dibayar";
 
-        // Resolve Owner private chat IDs
+        // Resolve Owner & Superadmin private chat IDs
         $ownerChatIds = [];
-        $ownerUsers = User::where('group', 'owner')
+
+        // 1. Always include explicitly configured TELEGRAM_OWNER_CHAT_ID from config / .env
+        $envChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
+        if (!empty($envChatId) && !str_starts_with(trim($envChatId), '-')) {
+            $ownerChatIds[] = trim($envChatId);
+        }
+
+        // 2. Include all users with role owner or superadmin who have a valid numeric chat_code
+        $ownerUsers = User::whereIn('group', ['owner', 'superadmin'])
             ->whereNotNull('chat_code')
             ->where('chat_code', '!=', '')
             ->get();
@@ -384,13 +398,6 @@ class SyirkahTransferService
         foreach ($ownerUsers as $ou) {
             if (!empty($ou->chat_code) && !str_starts_with(trim($ou->chat_code), '-')) {
                 $ownerChatIds[] = trim($ou->chat_code);
-            }
-        }
-
-        if (empty($ownerChatIds)) {
-            $envChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
-            if (!empty($envChatId) && !str_starts_with(trim($envChatId), '-')) {
-                $ownerChatIds[] = trim($envChatId);
             }
         }
 
@@ -417,7 +424,7 @@ class SyirkahTransferService
             ->whereNotNull('owner_approved_by')
             ->whereNotIn('id', $alreadySentIds)
             ->whereHas('ownerApprover', function ($q) {
-                $q->where('group', 'owner');
+                $q->whereIn('group', ['owner', 'superadmin']);
             })
             ->orderBy('owner_approved_at', 'asc')
             ->orderBy('id', 'asc');

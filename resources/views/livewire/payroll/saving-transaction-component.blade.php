@@ -1072,7 +1072,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="8" class="py-8 text-center text-gray-400 dark:text-gray-500">
+                  <td colspan="9" class="py-8 text-center text-gray-400 dark:text-gray-500">
                     Tidak ada data pengajuan penarikan syirkah ditemukan.
                   </td>
                 </tr>
@@ -1120,6 +1120,33 @@
                   <p class="italic text-gray-500 dark:text-gray-400 mt-0.5">"{{ $wd->reason }}"</p>
                 @endif
               </div>
+
+              @if ($wd->transferDelivery || $wd->status === 'approved')
+                <div class="mt-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/80 flex items-center justify-between text-[11px]">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-gray-500 font-semibold">Bot:</span>
+                    @if ($wd->transferDelivery)
+                      @if ($wd->transferDelivery->delivery_status === 'SENT')
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400">✓ SENT (200)</span>
+                      @elseif ($wd->transferDelivery->delivery_status === 'RETRYING')
+                        <span class="font-bold text-amber-600 dark:text-amber-400">↻ RETRY ({{ $wd->transferDelivery->last_http_status ?: '-' }})</span>
+                      @elseif (in_array($wd->transferDelivery->delivery_status, ['FAILED_VALIDATION', 'FAILED_AUTH', 'FAILED_SEND']))
+                        <span class="font-bold text-rose-600 dark:text-rose-400">✕ GAGAL ({{ $wd->transferDelivery->last_http_status ?: '-' }})</span>
+                      @else
+                        <span class="font-bold text-gray-600">{{ $wd->transferDelivery->delivery_status }}</span>
+                      @endif
+                    @else
+                      <span class="text-gray-400">Belum Dikirim</span>
+                    @endif
+                  </div>
+                  <div>
+                    <button type="button" wire:click="openTransferDeliveryModal('{{ $wd->id }}')"
+                      class="text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:underline">
+                      🔍 Cek Respon
+                    </button>
+                  </div>
+                </div>
+              @endif
 
               <div class="mt-3 flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700 text-xs">
                 <span class="text-[10px] text-gray-400">
