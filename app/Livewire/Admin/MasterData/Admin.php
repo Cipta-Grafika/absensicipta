@@ -235,44 +235,30 @@ class Admin extends Component
         }
 
         $adminName = auth()->user()->name ?? 'Super Admin';
-        $adminEmail = auth()->user()->email ?? '-';
-        $wibTime = now()->translatedFormat('d F Y, H:i:s') . ' WIB';
-        $customNote = !empty($this->telegramCustomMessage) ? trim($this->telegramCustomMessage) : 'Halo Tim CG Bank transfer Request! Pesan ini adalah uji coba koneksi webhook CetakiaBot dari sistem AbsensiCipta. Jika pesan ini muncul di grup, maka integrasi bot dan webhook telah aktif dan siap digunakan.';
+        $waktuBayar = now()->translatedFormat('d F Y, H:i') . ' WIB';
+        $note = !empty($this->telegramCustomMessage) 
+            ? trim($this->telegramCustomMessage) 
+            : 'Uji coba pengiriman antrean pencairan syirkah ke grup transfer bank';
 
-        $messageText = "🔔 <b>UJI COBA WEBHOOK & NOTIFIKASI CETAKIABOT</b>\n";
-        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $messageText .= "✅ <b>Status:</b> Integrasi Webhook Aktif\n";
-        $messageText .= "👥 <b>Grup Tujuan:</b> CG Bank transfer Request\n";
-        $messageText .= "🤖 <b>Bot Telegram:</b> CetakiaBot (<code>@cetakia_bot</code>)\n";
-        $messageText .= "👤 <b>Penguji:</b> " . htmlspecialchars($adminName) . " (<code>" . htmlspecialchars($adminEmail) . "</code>)\n";
-        $messageText .= "📅 <b>Waktu Uji:</b> {$wibTime}\n";
-        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $messageText .= "💬 <b>Catatan / Pesan Uji:</b>\n";
-        $messageText .= "<i>\"" . htmlspecialchars($customNote) . "\"</i>\n";
-        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $messageText .= "👉 <i>Pesan ini dikirimkan otomatis melalui tombol 'Test Bot Telegram Grup' pada menu Manajemen Admin AbsensiCipta.</i>";
-
-        $replyMarkup = [
-            'inline_keyboard' => [
-                [
-                    [
-                        'text' => '✅ Test Webhook Berhasil',
-                        'callback_data' => 'test_webhook_success',
-                    ],
-                    [
-                        'text' => '🌐 Buka AbsensiCipta',
-                        'url' => rtrim(config('app.url', 'http://localhost:8000'), '/') . '/hr/masterdata/admin',
-                    ],
-                ],
-            ],
-        ];
+        $messageText = "💵 PENCAIRAN SYIRKAH (UNPAID)\n";
+        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $messageText .= "Dana penarikan syirkah siap ditransfer / dibayarkan oleh Owner/Finance.\n\n";
+        $messageText .= "Nama (Name)  : " . htmlspecialchars($adminName) . "\n";
+        $messageText .= "NIP : 2308407\n";
+        $messageText .= "Divisi    : Cipta Corp\n";
+        $messageText .= "Program   : Syirkah Penuh\n";
+        $messageText .= "Nominal Bayar (Transfer Amount) : Rp 2.000.000 (Pengajuan: Rp 3.000.000)\n";
+        $messageText .= "Dibayar Oleh (Transfer By) : " . htmlspecialchars($adminName) . "\n";
+        $messageText .= "Waktu Bayar : {$waktuBayar}\n";
+        $messageText .= "Notes : \"{$note}\"\n";
+        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $messageText .= "Status: UNPAID";
 
         $payload = [
             'chat_id' => $target,
             'text' => $messageText,
             'parse_mode' => 'HTML',
             'disable_web_page_preview' => false,
-            'reply_markup' => json_encode($replyMarkup),
         ];
 
         $endpoint = "https://api.telegram.org/bot{$botToken}/sendMessage";
@@ -304,7 +290,6 @@ class Admin extends Component
                         'text' => $messageText,
                         'parse_mode' => 'HTML',
                         'disable_web_page_preview' => false,
-                        'reply_markup' => $replyMarkup,
                     ],
                 ],
                 'response' => [

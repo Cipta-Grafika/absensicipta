@@ -381,18 +381,16 @@ class TelegramNotificationService
     }
 
     /**
-     * Send notification for an OWNER-APPROVED withdrawal request (Payment Queue / Antrean Pembayaran).
-     * Includes interactive [ 💵 Tandai Dibayar (PAID) ] inline button.
+     * Send notification for an OWNER-APPROVED withdrawal request (Payment Queue / Ready for Transfer).
+     * Sends formatted UNPAID message to the Bank Transfer Telegram Group,
+     * and interactive action message to Owner private chats.
      */
     public static function notifyOwnerApprovedWithdrawal(SavingWithdrawal $withdrawal): void
     {
         $withdrawal->loadMissing(['user.division', 'user.paymentMethod', 'masterSaving', 'approver', 'ownerApprover']);
-        $user = $withdrawal->user;
-        $division = $user?->division?->name ?? 'Semua Divisi';
-        $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
-        $ownerName = $withdrawal->ownerApprover?->name ?? 'Owner';
 
-        $targetIds = [];
+        // 1. Resolve Dynamic Recipient Targets for Owner Private Chat
+        $privateOwnerIds = [];
         $ownerQuery = User::where('group', 'owner')
             ->where(function ($q) {
                 $q->whereNotNull('chat_code')->where('chat_code', '!=', '')
@@ -403,25 +401,94 @@ class TelegramNotificationService
             ->get();
 
         foreach ($ownerQuery as $ownerUser) {
-            if (!empty($ownerUser->chat_code)) {
-                $targetIds[] = trim($ownerUser->chat_code);
+            if (!empty($ownerUser->chat_code) && !str_starts_with(trim($ownerUser->chat_code), '-')) {
+                $privateOwnerIds[] = trim($ownerUser->chat_code);
             }
         }
 
-        if (empty($targetIds)) {
+        if (empty($privateOwnerIds)) {
             $envChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
-            if (!empty($envChatId)) {
-                $targetIds[] = trim($envChatId);
+            if (!empty($envChatId) && !str_starts_with(trim($envChatId), '-')) {
+                $privateOwnerIds[] = trim($envChatId);
             }
         }
+        $privateOwnerIds = array_unique(array_filter($privateOwnerIds));
 
-        // Include Bank Transfer Group Chat ID if configured
-        if ($grpId = self::getBankTransferGroupChatId()) {
-            $targetIds[] = trim($grpId);
+        // 2. Resolve Bank Transfer Group Chat ID
+        $groupChatId = self::getBankTransferGroupChatId();
+
+        // 3. Send Dedicated Clean UNPAID Transfer Notification to the Group Chat (CG Bank transfer Request)
+        if (!empty($groupChatId)) {
+            self::sendGroupUnpaidTransferNotification($withdrawal, $groupChatId);
         }
 
-        $targetIds = array_unique(array_filter($targetIds));
-        if (empty($targetIds)) return;
+        // 4. Send Interactive Action Message to Owner Private Chats
+        if (!empty($privateOwnerIds)) {
+            self::sendOwnerPrivatePaymentQueueNotification($withdrawal, $privateOwnerIds);
+        }
+    }
+
+    /**
+     * Send clean UNPAID transfer notification specifically to the Telegram Group ("CG Bank transfer Request").
+     * Strictly adheres to the requested template format without extra field emojis.
+     */
+    public static function sendGroupUnpaidTransferNotification(SavingWithdrawal $withdrawal, string|array $groupChatIds): bool
+    {
+        $withdrawal->loadMissing(['user.division', 'masterSaving', 'ownerApprover']);
+
+        $name = $withdrawal->user?->name ?? '-';
+        $nip = $withdrawal->user?->nip ?? '-';
+        $division = $withdrawal->user?->division?->name ?? 'Semua Divisi';
+        $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Penuh';
+
+        $reqNominal = number_format($withdrawal->total_amount, 0, ',', '.');
+        $approvedNominal = number_format($withdrawal->effective_total_amount, 0, ',', '.');
+
+        // Nominal Bayar (Transfer Amount) : Rp 2.000.000 (Pengajuan: Rp 3.000.000)
+        if ((float) $withdrawal->effective_total_amount !== (float) $withdrawal->total_amount) {
+            $nominalBayar = "Rp {$approvedNominal} (Pengajuan: Rp {$reqNominal})";
+        } else {
+            $nominalBayar = "Rp {$approvedNominal}";
+        }
+
+        $ownerName = $withdrawal->ownerApprover?->name 
+            ?: (auth()->user()?->name ?: 'Owner');
+
+        // Waktu Bayar : 20 Oktober 2026, 11:30 WIB
+        $dateSource = $withdrawal->owner_approved_at ?: ($withdrawal->approved_at ?: now());
+        $waktuBayar = $dateSource->translatedFormat('d F Y, H:i') . ' WIB';
+
+        // Notes : "disini masukan description/notes dari owner"
+        $notes = !empty($withdrawal->owner_note)
+            ? htmlspecialchars($withdrawal->owner_note)
+            : '-';
+
+        $message = "💵 PENCAIRAN SYIRKAH (UNPAID)\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "Dana penarikan syirkah siap ditransfer / dibayarkan oleh Owner/Finance.\n\n";
+        $message .= "Nama (Name)  : " . htmlspecialchars($name) . "\n";
+        $message .= "NIP : " . htmlspecialchars($nip) . "\n";
+        $message .= "Divisi    : " . htmlspecialchars($division) . "\n";
+        $message .= "Program   : " . htmlspecialchars($program) . "\n";
+        $message .= "Nominal Bayar (Transfer Amount) : {$nominalBayar}\n";
+        $message .= "Dibayar Oleh (Transfer By) : " . htmlspecialchars($ownerName) . "\n";
+        $message .= "Waktu Bayar : {$waktuBayar}\n";
+        $message .= "Notes : \"{$notes}\"\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "Status: UNPAID";
+
+        return self::sendMessage($groupChatIds, $message, null);
+    }
+
+    /**
+     * Send interactive action message to Owner private chat(s).
+     */
+    public static function sendOwnerPrivatePaymentQueueNotification(SavingWithdrawal $withdrawal, string|array $targetIds): bool
+    {
+        $withdrawal->loadMissing(['user.division', 'user.paymentMethod', 'masterSaving', 'approver', 'ownerApprover']);
+        $user = $withdrawal->user;
+        $division = $user?->division?->name ?? 'Semua Divisi';
+        $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Umum';
 
         // Payment Method info
         $paymentMethod = $user?->paymentMethod;
@@ -482,7 +549,7 @@ class TelegramNotificationService
             ],
         ];
 
-        self::sendMessage($targetIds, $message, $keyboard);
+        return self::sendMessage($targetIds, $message, $keyboard);
     }
 
     /**
@@ -633,11 +700,27 @@ class TelegramNotificationService
      */
     public static function getBankTransferGroupChatId(): ?string
     {
-        return \Illuminate\Support\Facades\Cache::get('telegram_bank_transfer_group_id')
+        $id = \Illuminate\Support\Facades\Cache::get('telegram_bank_transfer_group_id')
             ?: config('services.telegram.bank_transfer_group_id')
             ?: config('services.telegram.group_chat_id')
             ?: env('TELEGRAM_BANK_TRANSFER_GROUP_ID')
             ?: env('TELEGRAM_GROUP_CHAT_ID');
+
+        if (!empty($id)) {
+            return (string) $id;
+        }
+
+        $knownGroups = \Illuminate\Support\Facades\Cache::get('telegram_known_groups', []);
+        if (!empty($knownGroups)) {
+            foreach ($knownGroups as $gid => $grp) {
+                if (stripos($grp['title'] ?? '', 'Bank') !== false || stripos($grp['title'] ?? '', 'transfer') !== false) {
+                    return (string) $gid;
+                }
+            }
+            return (string) array_key_first($knownGroups);
+        }
+
+        return null;
     }
 }
 
