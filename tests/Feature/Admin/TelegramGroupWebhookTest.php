@@ -225,7 +225,7 @@ class TelegramGroupWebhookTest extends TestCase
                 . "Berita: notes catatan alasan pengajuan syirkah dari user employee\n"
                 . "(From Rekening Syirkah)";
 
-            return $text === $expected && empty($data['reply_markup']);
+            return $text === $expected && empty($data['reply_markup']) && ($data['protect_content'] ?? false) === true;
         });
     }
 
@@ -319,5 +319,22 @@ class TelegramGroupWebhookTest extends TestCase
         Cache::forever('telegram_bank_transfer_group_id', '-1009988776655');
 
         $this->assertEquals('-1009988776655', TelegramNotificationService::getBankTransferGroupChatId());
+    }
+
+    public function test_persistent_storage_resolves_bank_transfer_group_id_when_cache_is_cleared()
+    {
+        $targetId = '-1007788990011';
+        TelegramNotificationService::setBankTransferGroupChatId($targetId, 'CG Bank transfer Request');
+
+        // Simulate cache:clear by wiping cache
+        Cache::forget('telegram_bank_transfer_group_id');
+
+        $this->assertEquals($targetId, TelegramNotificationService::getBankTransferGroupChatId());
+
+        // Clean up test file if created
+        $file = storage_path('app/telegram_group_config.json');
+        if (file_exists($file)) {
+            @unlink($file);
+        }
     }
 }

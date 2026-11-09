@@ -632,7 +632,10 @@ class SavingTransactionService
         try {
             TelegramNotificationService::notifyOwnerApprovedWithdrawal($ownerApprovedWithdrawal);
         } catch (\Throwable $e) {
-            // Safe-fail
+            \Illuminate\Support\Facades\Log::error('Telegram notification error in approveByOwnerWithdrawalRequest: ' . $e->getMessage(), [
+                'withdrawal_id' => $ownerApprovedWithdrawal->id,
+                'exception' => $e,
+            ]);
         }
 
         return $ownerApprovedWithdrawal;

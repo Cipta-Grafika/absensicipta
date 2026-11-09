@@ -57,9 +57,8 @@ class TelegramBotHandler
             ];
             Cache::forever('telegram_known_groups', $groups);
 
-            if (stripos($chatTitle, 'CG Bank') !== false || stripos($chatTitle, 'transfer') !== false || empty(Cache::get('telegram_bank_transfer_group_id'))) {
-                Cache::forever('telegram_bank_transfer_group_id', $chatId);
-                Cache::forever('telegram_bank_transfer_group_title', $chatTitle);
+            if (stripos($chatTitle, 'CG Bank') !== false || stripos($chatTitle, 'transfer') !== false || empty(TelegramNotificationService::getBankTransferGroupChatId())) {
+                TelegramNotificationService::setBankTransferGroupChatId($chatId, $chatTitle);
             }
         }
     }
@@ -1860,9 +1859,8 @@ class TelegramBotHandler
             $msg .= "👤 <b>Username</b>      : @" . htmlspecialchars($username ?? 'none') . "\n\n";
             $msg .= "✅ <i>ID Grup <code>{$chatId}</code> berhasil dicatat otomatis oleh AbsensiCipta untuk pengujian webhook & notifikasi transfer bank.</i>";
 
-            // Persist to cache
-            Cache::forever('telegram_bank_transfer_group_id', (string) $chatId);
-            Cache::forever('telegram_bank_transfer_group_title', $title);
+            // Persist to cache and storage
+            TelegramNotificationService::setBankTransferGroupChatId((string) $chatId, $title);
         } else {
             $msg .= "Chat ID Anda : <code>{$fromId}</code> <i>(Klik untuk salin)</i>\n";
             $msg .= "Username     : @" . htmlspecialchars($username ?? 'none') . "\n\n";
@@ -1898,8 +1896,7 @@ class TelegramBotHandler
             $msg .= "🔢 <b>Group Chat ID:</b> <code>{$chatId}</code>\n";
             $msg .= "📑 <b>Tipe:</b> " . ucfirst($chatType) . "\n";
 
-            Cache::forever('telegram_bank_transfer_group_id', (string) $chatId);
-            Cache::forever('telegram_bank_transfer_group_title', $title);
+            TelegramNotificationService::setBankTransferGroupChatId((string) $chatId, $title);
         }
         $msg .= "📅 <b>Waktu Server:</b> {$wib}\n";
         $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";

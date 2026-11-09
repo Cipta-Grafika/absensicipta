@@ -13,7 +13,7 @@ class TelegramNotificationService
     /**
      * Send a raw HTML formatted message to Telegram chat(s) with optional inline keyboard.
      */
-    public static function sendMessage(string|array $chatIds, string $message, ?array $replyMarkup = null): bool
+    public static function sendMessage(string|array $chatIds, string $message, ?array $replyMarkup = null, bool $protectContent = false): bool
     {
         $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
         if (empty($botToken)) {
@@ -40,6 +40,10 @@ class TelegramNotificationService
                     'parse_mode' => 'HTML',
                     'disable_web_page_preview' => false,
                 ];
+
+                if ($protectContent) {
+                    $payload['protect_content'] = true;
+                }
 
                 if (!empty($replyMarkup)) {
                     $payload['reply_markup'] = json_encode($replyMarkup);
@@ -410,6 +414,8 @@ class TelegramNotificationService
         // 3. Send Dedicated Clean UNPAID Transfer Notification to the Group Chat (CG Bank transfer Request)
         if (!empty($groupChatId)) {
             self::sendGroupUnpaidTransferNotification($withdrawal, $groupChatId);
+        } else {
+            Log::warning('TelegramNotificationService: No Bank Transfer Group Chat ID configured. Unable to send payment queue notification to group. Set TELEGRAM_BANK_TRANSFER_GROUP_ID in .env or run /id in the Telegram group.');
         }
 
         // 4. Send Interactive Action Message to Owner Private Chats
@@ -473,7 +479,7 @@ class TelegramNotificationService
         $message .= "Berita: " . htmlspecialchars($employeeReason) . "\n";
         $message .= "(From Rekening Syirkah)";
 
-        return self::sendMessage($groupChatIds, $message, null);
+        return self::sendMessage($groupChatIds, $message, null, true);
     }
 
     /**
@@ -706,6 +712,23 @@ class TelegramNotificationService
             return (string) $id;
         }
 
+        // Check persistent file (survives cache:clear during deployments)
+        try {
+            $file = storage_path('app/telegram_group_config.json');
+            if (file_exists($file)) {
+                $data = json_decode(@file_get_contents($file), true);
+                if (!empty($data['group_id'])) {
+                    \Illuminate\Support\Facades\Cache::forever('telegram_bank_transfer_group_id', (string) $data['group_id']);
+                    if (!empty($data['title'])) {
+                        \Illuminate\Support\Facades\Cache::forever('telegram_bank_transfer_group_title', (string) $data['title']);
+                    }
+                    return (string) $data['group_id'];
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore parse exception
+        }
+
         $knownGroups = \Illuminate\Support\Facades\Cache::get('telegram_known_groups', []);
         if (!empty($knownGroups)) {
             foreach ($knownGroups as $gid => $grp) {
@@ -717,6 +740,35 @@ class TelegramNotificationService
         }
 
         return null;
+    }
+
+    /**
+     * Persistently store the Bank Transfer Telegram Group Chat ID across both Cache and filesystem.
+     */
+    public static function setBankTransferGroupChatId(string $chatId, ?string $title = null): void
+    {
+        $chatId = trim($chatId);
+        if (empty($chatId)) return;
+
+        \Illuminate\Support\Facades\Cache::forever('telegram_bank_transfer_group_id', $chatId);
+        if ($title) {
+            \Illuminate\Support\Facades\Cache::forever('telegram_bank_transfer_group_title', $title);
+        }
+
+        try {
+            $file = storage_path('app/telegram_group_config.json');
+            $dir = dirname($file);
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0755, true);
+            }
+            @file_put_contents($file, json_encode([
+                'group_id' => $chatId,
+                'title' => $title ?: 'CG Bank transfer Request',
+                'updated_at' => now()->toIso8601String(),
+            ], JSON_PRETTY_PRINT));
+        } catch (\Throwable $e) {
+            Log::warning('TelegramNotificationService: Failed to persist telegram group config to file: ' . $e->getMessage());
+        }
     }
 }
 

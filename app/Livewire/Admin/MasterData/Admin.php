@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\MasterData;
 
 use App\Livewire\Forms\UserForm;
 use App\Models\User;
+use App\Services\TelegramNotificationService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\InteractsWithBanner;
@@ -168,10 +169,7 @@ class Admin extends Component
             return;
         }
 
-        Cache::forever('telegram_bank_transfer_group_id', $target);
-        if (isset($this->telegramKnownGroups[$target]['title'])) {
-            Cache::forever('telegram_bank_transfer_group_title', $this->telegramKnownGroups[$target]['title']);
-        }
+        TelegramNotificationService::setBankTransferGroupChatId($target, $this->telegramKnownGroups[$target]['title'] ?? null);
 
         $this->telegramErrorMessage = '';
         $this->banner("Chat ID grup {$target} berhasil disimpan sebagai default untuk notifikasi CG Bank transfer Request.");
@@ -311,11 +309,8 @@ class Admin extends Component
             ];
 
             if ($isSuccess) {
-                // Auto-save this confirmed group
-                Cache::forever('telegram_bank_transfer_group_id', $target);
-                if (!empty($responseJson['result']['chat']['title'])) {
-                    Cache::forever('telegram_bank_transfer_group_title', $responseJson['result']['chat']['title']);
-                }
+                // Auto-save this confirmed group across Cache and persistent file
+                TelegramNotificationService::setBankTransferGroupChatId($target, $responseJson['result']['chat']['title'] ?? null);
 
                 // Add to known groups
                 $groups = Cache::get('telegram_known_groups', []);
