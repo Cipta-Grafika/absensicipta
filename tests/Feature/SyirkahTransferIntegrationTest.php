@@ -341,4 +341,117 @@ class SyirkahTransferIntegrationTest extends TestCase
 
         $this->assertEquals(1, TransferDelivery::where('delivery_status', TransferDelivery::STATUS_SENT)->count());
     }
+
+    public function test_spec_trigger_authorization_cases_b_to_e()
+    {
+        // Case B: Admin approval
+        $withdrawalB = SavingWithdrawal::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 100000,
+            'status' => 'approved',
+            'owner_approved_by' => $this->admin->id,
+            'request_date' => now(),
+        ]);
+        $this->assertFalse(SyirkahTransferService::canTrigger($withdrawalB));
+
+        // Case C: Staff approval
+        $withdrawalC = SavingWithdrawal::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 100000,
+            'status' => 'approved',
+            'owner_approved_by' => $this->employee->id,
+            'request_date' => now(),
+        ]);
+        $this->assertFalse(SyirkahTransferService::canTrigger($withdrawalC));
+
+        // Case D: OWNER approver but status == pending
+        $withdrawalD = SavingWithdrawal::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 100000,
+            'status' => 'pending',
+            'owner_approved_by' => $this->owner->id,
+            'request_date' => now(),
+        ]);
+        $this->assertFalse(SyirkahTransferService::canTrigger($withdrawalD));
+
+        // Case E: Status approved but missing approver (NULL)
+        $withdrawalE = SavingWithdrawal::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 100000,
+            'status' => 'approved',
+            'owner_approved_by' => null,
+            'request_date' => now(),
+        ]);
+        $this->assertFalse(SyirkahTransferService::canTrigger($withdrawalE));
+    }
+
+    public function test_http_200_with_sudah_ada_marks_as_sent_and_stores_ledger()
+    {
+        Http::fake([
+            $this->transferUrl => Http::response([
+                'status' => 'sudah_ada',
+                'pesan' => 'Request sudah pernah diterima sebelumnya',
+                'id_ledger' => 'LDG-998877',
+                'status_ledger' => 'ANTREAN',
+            ], 200),
+            'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
+        ]);
+
+        $withdrawal = SavingWithdrawal::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 100000,
+            'approved_total_amount' => 100000,
+            'reason' => 'Tes sudah ada',
+            'status' => 'approved',
+            'owner_approved_by' => $this->owner->id,
+            'request_date' => now(),
+        ]);
+
+        $delivery = SyirkahTransferService::send($withdrawal);
+
+        $this->assertEquals(TransferDelivery::STATUS_SENT, $delivery->delivery_status);
+        $this->assertEquals(200, $delivery->last_http_status);
+        $this->assertEquals('LDG-998877', $delivery->id_ledger);
+        $this->assertEquals('ANTREAN', $delivery->status_ledger);
+    }
+
+    public function test_retry_window_exhaustion_marks_failed_send_after_24_hours()
+    {
+        Http::fake([
+            $this->transferUrl => Http::response(['error' => 'Service unavailable'], 503),
+        ]);
+
+        $withdrawal = SavingWithdrawal::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 100000,
+            'approved_total_amount' => 100000,
+            'reason' => 'Tes timeout 24 jam',
+            'status' => 'approved',
+            'owner_approved_by' => $this->owner->id,
+            'request_date' => now(),
+        ]);
+
+        // Pre-create delivery with first_failure_at 25 hours ago
+        $delivery = TransferDelivery::create([
+            'application_id' => $withdrawal->id,
+            'id_pengajuan' => 'SYK-' . $withdrawal->id,
+            'delivery_status' => TransferDelivery::STATUS_RETRYING,
+            'retry_count' => 5,
+            'first_failure_at' => now()->subHours(25),
+            'first_attempt_at' => now()->subHours(25),
+            'last_attempt_at' => now()->subHours(1),
+            'next_retry_at' => now()->subMinutes(5),
+        ]);
+
+        $result = SyirkahTransferService::send($withdrawal);
+
+        $this->assertEquals(TransferDelivery::STATUS_FAILED_SEND, $result->delivery_status);
+        $this->assertNull($result->next_retry_at);
+    }
 }

@@ -1084,22 +1084,28 @@
                 <span>Proses Antrean Pembayaran</span>
               </button>
 
-              <button type="button" wire:click="testSyirkahTransferApi" wire:loading.attr="disabled"
+              <button type="button" wire:click="testSyirkahTransferApi(10000)" wire:loading.attr="disabled"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition disabled:opacity-50"
-                title="Kirim pengujian transfer sebesar Rp 1.000 dengan catatan TESTING SAJA">
-                <span wire:loading.remove wire:target="testSyirkahTransferApi">
+                title="Kirim pengujian transfer sebesar Rp 10.000 dengan catatan TESTING SAJA (memenuhi batas minimum validasi n8n)">
+                <span wire:loading.remove wire:target="testSyirkahTransferApi(10000)">
                   <svg class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Test Bot Transfer (Rp 1.000)
+                  Test Bot Transfer (Rp 10.000)
                 </span>
-                <span wire:loading wire:target="testSyirkahTransferApi" class="inline-flex items-center gap-1">
+                <span wire:loading wire:target="testSyirkahTransferApi(10000)" class="inline-flex items-center gap-1">
                   <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                   </svg>
                   Menguji...
                 </span>
+              </button>
+
+              <button type="button" wire:click="testSyirkahTransferApi(1000)" wire:loading.attr="disabled"
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition"
+                title="Kirim pengujian transfer Rp 1.000 (untuk menguji respon penolakan nominal minimum)">
+                <span>Test Rp 1.000</span>
               </button>
             </div>
           </div>

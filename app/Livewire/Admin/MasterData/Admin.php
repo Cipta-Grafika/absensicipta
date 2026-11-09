@@ -364,7 +364,7 @@ class Admin extends Component
         }
     }
 
-    public function testSyirkahTransferApi(): void
+    public function testSyirkahTransferApi(int $testNominal = 10000): void
     {
         $this->syirkahTransferIsLoading = true;
         $this->syirkahTransferTestResult = null;
@@ -391,11 +391,11 @@ class Admin extends Component
                 return;
             }
 
-            // In test mode: strictly Rp 1.000 with note "TESTING SAJA"
+            // Note: Server Pak Fathi enforces minimum nominal 10000.
             $delivery = \App\Services\SyirkahTransferService::send(
                 $withdrawal,
                 isTest: true,
-                testNominal: 1000,
+                testNominal: $testNominal,
                 testNote: 'TESTING SAJA: Uji integrasi Syirkah',
                 actor: $ownerUser
             );

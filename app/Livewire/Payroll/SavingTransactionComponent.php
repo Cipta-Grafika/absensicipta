@@ -63,6 +63,11 @@ class SavingTransactionComponent extends Component
 
     // Modal Upload / Edit Bukti Transfer (Belakangan / Re-upload)
     public $isUploadProofModalOpen = false;
+
+    // Modal Inspector Status Bot Transfer (Pak Fathi)
+    public $transferDeliveryModalOpen = false;
+    public $selectedWithdrawalForDelivery = null;
+    public $selectedTransferDeliveryData = null;
     public $proofTargetType = 'withdrawal'; // 'withdrawal' or 'transaction'
     public $proofTargetId = null;
     public $proofTargetModel = null;
@@ -825,34 +830,89 @@ class SavingTransactionComponent extends Component
 
         try {
             $results = \App\Services\SyirkahTransferService::processPaymentQueue(isTest: false);
-            $this->dispatch('notify', "Antrean transfer syirkah diproses: {$results['processed']} diproses, {$results['success']} sukses, {$results['failed']} gagal/retry.");
+            $this->dispatch('notify', "Antrean transfer syirkah diproses: Ditemukan {$results['total_found']}, {$results['processed']} diproses, {$results['success']} sukses, {$results['failed']} gagal/retry.");
         } catch (\Throwable $e) {
             $this->dispatch('notify', 'Gagal memproses antrean transfer: ' . $e->getMessage());
         }
     }
 
-    public function testBotTransferSingle($withdrawalId): void
+    public function openTransferDeliveryModal($withdrawalId): void
     {
-        $withdrawal = SavingWithdrawal::with(['user.paymentMethod', 'ownerApprover'])->findOrFail($withdrawalId);
+        $withdrawal = SavingWithdrawal::with(['user.division', 'user.paymentMethod', 'ownerApprover', 'transferDelivery'])->findOrFail($withdrawalId);
+        $this->selectedWithdrawalForDelivery = $withdrawal;
+
+        $delivery = $withdrawal->transferDelivery;
+        $this->selectedTransferDeliveryData = $delivery ? [
+            'id' => $delivery->id,
+            'id_pengajuan' => $delivery->id_pengajuan,
+            'status' => $delivery->delivery_status,
+            'http_status' => $delivery->last_http_status,
+            'id_ledger' => $delivery->id_ledger,
+            'status_ledger' => $delivery->status_ledger,
+            'retry_count' => $delivery->retry_count,
+            'next_retry_at' => $delivery->next_retry_at?->format('d M Y, H:i:s'),
+            'last_attempt_at' => $delivery->last_attempt_at?->format('d M Y, H:i:s'),
+            'sent_at' => $delivery->sent_at?->format('d M Y, H:i:s'),
+            'error' => $delivery->last_error_message,
+            'payload' => $delivery->payload,
+            'response' => $delivery->response_body,
+        ] : null;
+
+        $this->transferDeliveryModalOpen = true;
+    }
+
+    public function closeTransferDeliveryModal(): void
+    {
+        $this->transferDeliveryModalOpen = false;
+        $this->selectedWithdrawalForDelivery = null;
+        $this->selectedTransferDeliveryData = null;
+    }
+
+    public function sendSingleToBotTransfer($withdrawalId, bool $isTest = false): void
+    {
         $user = Auth::user();
+        if (!$user || ($user->group !== 'owner' && !$user->isOwner && $user->group !== 'superadmin')) {
+            $this->dispatch('notify', 'Akses ditolak: Hanya Owner atau Superadmin yang berwenang mengirim ke Bot Transfer.');
+            return;
+        }
+
+        $withdrawal = SavingWithdrawal::with(['user.paymentMethod', 'ownerApprover'])->findOrFail($withdrawalId);
 
         try {
+            // Note: In test mode, use nominal 10.000 so n8n validator (>= 10000) does not reject
+            $testNominal = $isTest ? 10000 : null;
+            $testNote = $isTest ? 'TESTING SAJA: Uji integrasi Syirkah' : null;
+
             $delivery = \App\Services\SyirkahTransferService::send(
                 $withdrawal,
-                isTest: true,
-                testNominal: 1000,
-                testNote: 'TESTING SAJA: Uji integrasi Syirkah',
+                isTest: $isTest,
+                testNominal: $testNominal,
+                testNote: $testNote,
                 actor: $user
             );
 
             if ($delivery->isSuccessful()) {
-                $this->dispatch('notify', "Uji coba transfer Rp 1.000 untuk {$withdrawal->user?->name} berhasil terkirim! (Ledger: {$delivery->id_ledger})");
+                $this->dispatch('notify', "Berhasil dikirim ke Bot Transfer Pak Fathi! Status: {$delivery->delivery_status} (Ledger ID: {$delivery->id_ledger})");
             } else {
-                $this->dispatch('notify', "Uji coba transfer: Status {$delivery->delivery_status} (HTTP {$delivery->last_http_status}). " . ($delivery->last_error_message ?: ''));
+                $statusMsg = "Status Bot: {$delivery->delivery_status} (HTTP " . ($delivery->last_http_status ?: '-') . ")";
+                if ($delivery->last_error_message) {
+                    $statusMsg .= ' - ' . substr($delivery->last_error_message, 0, 100);
+                }
+                $this->dispatch('notify', $statusMsg);
+            }
+
+            // Refresh modal if opened
+            if ($this->transferDeliveryModalOpen && $this->selectedWithdrawalForDelivery?->id === $withdrawalId) {
+                $this->openTransferDeliveryModal($withdrawalId);
             }
         } catch (\Throwable $e) {
-            $this->dispatch('notify', 'Gagal uji coba transfer: ' . $e->getMessage());
+            $this->dispatch('notify', 'Gagal memproses kirim bot: ' . $e->getMessage());
         }
+    }
+
+    public function testBotTransferSingle($withdrawalId): void
+    {
+        $this->sendSingleToBotTransfer($withdrawalId, isTest: true);
     }
 
     public function openRejectWithdrawalModal($withdrawalId)
@@ -1141,7 +1201,7 @@ class SavingTransactionComponent extends Component
 
     private function buildWithdrawalsQuery()
     {
-        $query = SavingWithdrawal::with(['user.division', 'masterSaving', 'approver', 'ownerApprover', 'payer', 'savingTransaction'])
+        $query = SavingWithdrawal::with(['user.division', 'user.paymentMethod', 'masterSaving', 'approver', 'ownerApprover', 'payer', 'savingTransaction', 'transferDelivery'])
             ->whereHas('user', function($q) {
                 $q->onlyEmployee();
             });
@@ -1352,6 +1412,8 @@ class SavingTransactionComponent extends Component
         $pendingWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->where('status', 'pending')->sum('total_amount');
         $acceptedWithdrawalsCount = (clone $wdFilterWithoutStatus)->where('status', 'accepted')->count();
         $acceptedWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->where('status', 'accepted')->sum('total_amount');
+        $approvedWithdrawalsCount = (clone $wdFilterWithoutStatus)->where('status', 'approved')->count();
+        $approvedWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->where('status', 'approved')->sum('total_amount');
         $paidWithdrawalsCount = (clone $wdFilterWithoutStatus)->where('status', 'paid')->count();
         $paidWithdrawalsNominal = (float) (clone $wdFilterWithoutStatus)->where('status', 'paid')->sum('total_amount');
         $rejectedWithdrawalsCount = (clone $wdFilterWithoutStatus)->where('status', 'rejected')->count();
@@ -1395,6 +1457,8 @@ class SavingTransactionComponent extends Component
             'pendingWithdrawalsNominal' => $pendingWithdrawalsNominal,
             'acceptedWithdrawalsCount' => $acceptedWithdrawalsCount,
             'acceptedWithdrawalsNominal' => $acceptedWithdrawalsNominal,
+            'approvedWithdrawalsCount' => $approvedWithdrawalsCount,
+            'approvedWithdrawalsNominal' => $approvedWithdrawalsNominal,
             'paidWithdrawalsCount' => $paidWithdrawalsCount,
             'paidWithdrawalsNominal' => $paidWithdrawalsNominal,
             'rejectedWithdrawalsCount' => $rejectedWithdrawalsCount,

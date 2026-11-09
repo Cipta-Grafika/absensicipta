@@ -173,18 +173,35 @@ class SyirkahTransferService
     ): TransferDelivery {
         $withdrawal->loadMissing(['user.paymentMethod', 'ownerApprover']);
 
-        // Check trigger guard
-        if (!self::canTrigger($withdrawal, $actor)) {
-            Log::warning("SyirkahTransferService: Cannot trigger transfer for withdrawal {$withdrawal->id}. Authorization conditions not met.");
+        // Check trigger guard:
+        // Real production transfers STRICTLY require status == APPROVED and role == OWNER.
+        // Test transfers (isTest == true) are diagnostic checks (Rp 1.000 / TESTING SAJA) permitted for Owner/Superadmin.
+        if (!$isTest) {
+            if (!self::canTrigger($withdrawal, $actor)) {
+                Log::warning("SyirkahTransferService: Cannot trigger transfer for withdrawal {$withdrawal->id}. Authorization conditions not met.");
 
-            return TransferDelivery::firstOrCreate(
-                ['application_id' => $withdrawal->id],
-                [
-                    'id_pengajuan' => ($isTest ? 'UJI-' : 'SYK-') . $withdrawal->id,
-                    'delivery_status' => TransferDelivery::STATUS_NOT_SENT,
-                    'last_error_message' => 'Trigger rejected: HANYA approval oleh role OWNER yang dapat memicu integrasi transfer.',
-                ]
-            );
+                return TransferDelivery::firstOrCreate(
+                    ['application_id' => $withdrawal->id],
+                    [
+                        'id_pengajuan' => 'SYK-' . $withdrawal->id,
+                        'delivery_status' => TransferDelivery::STATUS_NOT_SENT,
+                        'last_error_message' => 'Trigger rejected: HANYA approval oleh role OWNER yang dapat memicu integrasi transfer.',
+                    ]
+                );
+            }
+        } else {
+            if ($actor && !in_array($actor->group, ['owner', 'superadmin']) && !$actor->isOwner) {
+                Log::warning("SyirkahTransferService: Test trigger rejected for actor {$actor->id} with group {$actor->group}.");
+
+                return TransferDelivery::firstOrCreate(
+                    ['application_id' => $withdrawal->id],
+                    [
+                        'id_pengajuan' => 'UJI-' . $withdrawal->id,
+                        'delivery_status' => TransferDelivery::STATUS_NOT_SENT,
+                        'last_error_message' => 'Trigger rejected: Pengujian hanya dapat dilakukan oleh role OWNER atau SUPERADMIN.',
+                    ]
+                );
+            }
         }
 
         // Build and validate payload

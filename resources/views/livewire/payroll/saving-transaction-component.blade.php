@@ -736,12 +736,17 @@
             <button type="button" 
                     wire:click="$set('withdrawalStatusFilter', 'pending')" 
                     class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'pending' ? 'bg-amber-500 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-amber-600' }}">
-              Menunggu ({{ $pendingWithdrawalsCount }})
+              Menunggu Admin ({{ $pendingWithdrawalsCount }})
             </button>
             <button type="button" 
                     wire:click="$set('withdrawalStatusFilter', 'accepted')" 
                     class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'accepted' ? 'bg-blue-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-blue-600' }}">
-              Disetujui / Belum Bayar ({{ $acceptedWithdrawalsCount }})
+              Menunggu Owner ({{ $acceptedWithdrawalsCount }})
+            </button>
+            <button type="button" 
+                    wire:click="$set('withdrawalStatusFilter', 'approved')" 
+                    class="rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap {{ $withdrawalStatusFilter === 'approved' ? 'bg-indigo-600 text-white font-semibold shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-indigo-600' }}">
+              Antrean Bayar / Bot ({{ $approvedWithdrawalsCount }})
             </button>
             <button type="button" 
                     wire:click="$set('withdrawalStatusFilter', 'paid')" 
@@ -771,6 +776,39 @@
           </div>
         </div>
 
+        <!-- Quick Action Bar: Bot Transfer Pak Fathi -->
+        @if(Auth::user()?->isOwner || Auth::user()?->group === 'owner' || Auth::user()?->group === 'superadmin')
+          <div class="mb-4 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                🤖 Integrasi Bot Transfer Pak Fathi
+              </span>
+              <span class="text-gray-600 dark:text-gray-300">
+                Antrean siap transfer (Approved): <b>{{ $approvedWithdrawalsCount }}</b> pengajuan
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" wire:click="processBotTransferQueue" wire:loading.attr="disabled"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition disabled:opacity-50"
+                title="Kirim seluruh antrean pengajuan syirkah berstatus APPROVED ke endpoint webhook secara berurutan">
+                <span wire:loading.remove wire:target="processBotTransferQueue" class="inline-flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Proses Seluruh Antrean ke Bot
+                </span>
+                <span wire:loading wire:target="processBotTransferQueue" class="inline-flex items-center gap-1">
+                  <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  </svg>
+                  Memproses Antrean...
+                </span>
+              </button>
+            </div>
+          </div>
+        @endif
+
         <!-- Withdrawals Table (Desktop & Tablet) -->
         <div class="hidden md:block overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-700">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
@@ -783,6 +821,7 @@
                 <th scope="col" class="py-3.5 px-4 font-bold text-right">Sukarela (SSR)</th>
                 <th scope="col" class="py-3.5 px-4 font-bold text-right">Total Penarikan</th>
                 <th scope="col" class="py-3.5 px-4 font-bold text-center">Status</th>
+                <th scope="col" class="py-3.5 px-4 font-bold text-center">Bot Transfer</th>
                 <th scope="col" class="py-3.5 px-4 font-bold text-center">Aksi</th>
               </tr>
             </thead>
@@ -845,6 +884,58 @@
                       {{ $badge['label'] }}
                     </span>
                     <p class="text-[10px] text-gray-400 mt-0.5">{{ $badge['desc'] }}</p>
+                  </td>
+
+                  <td class="py-3 px-4 text-center whitespace-nowrap">
+                    @php
+                      $delivery = $wd->transferDelivery;
+                    @endphp
+                    @if ($delivery)
+                      <div class="space-y-1">
+                        @if ($delivery->delivery_status === 'SENT')
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                            ✓ SENT (200)
+                          </span>
+                          @if ($delivery->id_ledger)
+                            <p class="font-mono text-[9px] text-gray-500 dark:text-gray-400">LDG: {{ $delivery->id_ledger }}</p>
+                          @endif
+                        @elseif ($delivery->delivery_status === 'RETRYING')
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse">
+                            ↻ RETRY ({{ $delivery->last_http_status ?: '-' }})
+                          </span>
+                          <p class="text-[9px] text-amber-600 dark:text-amber-400">Ke-{{ $delivery->retry_count }}</p>
+                        @elseif (in_array($delivery->delivery_status, ['FAILED_VALIDATION', 'FAILED_AUTH', 'FAILED_SEND']))
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                            ✕ GAGAL ({{ $delivery->last_http_status ?: '-' }})
+                          </span>
+                        @else
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                            {{ $delivery->delivery_status }}
+                          </span>
+                        @endif
+
+                        <div>
+                          <button type="button" wire:click="openTransferDeliveryModal('{{ $wd->id }}')"
+                            class="text-[10px] font-medium text-sky-600 dark:text-sky-400 hover:underline">
+                            🔍 Cek Respon
+                          </button>
+                        </div>
+                      </div>
+                    @elseif ($wd->status === 'approved')
+                      <div class="space-y-1">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                          Belum Dikirim
+                        </span>
+                        <div>
+                          <button type="button" wire:click="sendSingleToBotTransfer('{{ $wd->id }}')" wire:loading.attr="disabled"
+                            class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                            Kirim ke Bot
+                          </button>
+                        </div>
+                      </div>
+                    @else
+                      <span class="text-[10px] text-gray-400">-</span>
+                    @endif
                   </td>
 
                   <td class="py-3 px-4 text-center whitespace-nowrap">
@@ -1906,6 +1997,139 @@
           <span wire:loading.remove wire:target="saveTransferProof">Simpan Bukti Transfer</span>
           <span wire:loading wire:target="saveTransferProof">Menyimpan...</span>
         </button>
+      </div>
+    </x-slot>
+  </x-dialog-modal>
+
+  <!-- =========================================================================
+       MODAL INSPECTOR DETAIL BOT TRANSFER PAK FATHI
+       ========================================================================= -->
+  <x-dialog-modal wire:model="transferDeliveryModalOpen" maxWidth="2xl">
+    <x-slot name="title">
+      <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-2">
+          <span class="text-base font-bold text-gray-900 dark:text-white">
+            Detail Integrasi Bot Transfer Pak Fathi
+          </span>
+          @if ($selectedTransferDeliveryData)
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold {{ $selectedTransferDeliveryData['status'] === 'SENT' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' }}">
+              {{ $selectedTransferDeliveryData['status'] }}
+            </span>
+          @endif
+        </div>
+        <button type="button" wire:click="closeTransferDeliveryModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <x-heroicon-o-x-mark class="h-5 w-5" />
+        </button>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      @if ($selectedWithdrawalForDelivery)
+        <div class="space-y-4 text-xs">
+          <!-- Summary Card -->
+          <div class="p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
+            <div class="flex justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Karyawan:</span>
+              <span class="font-bold text-gray-900 dark:text-white">{{ $selectedWithdrawalForDelivery->user?->name }} (NIP: {{ $selectedWithdrawalForDelivery->user?->nip }})</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Nominal Disetujui:</span>
+              <span class="font-bold text-emerald-600 dark:text-emerald-400">Rp {{ number_format($selectedWithdrawalForDelivery->effective_total_amount, 0, ',', '.') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Rekening Tujuan:</span>
+              <span class="font-medium text-gray-800 dark:text-gray-200">
+                {{ $selectedWithdrawalForDelivery->user?->paymentMethod?->bank_account ?: '-' }} 
+                ({{ $selectedWithdrawalForDelivery->user?->paymentMethod?->payment_name ?: '-' }} a.n {{ $selectedWithdrawalForDelivery->user?->paymentMethod?->account_name ?: $selectedWithdrawalForDelivery->user?->name }})
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Disetujui Oleh Owner:</span>
+              <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ $selectedWithdrawalForDelivery->ownerApprover?->name ?: '-' }}</span>
+            </div>
+          </div>
+
+          @if ($selectedTransferDeliveryData)
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div class="p-2.5 bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-gray-100 dark:border-gray-800">
+                <p class="text-gray-400 text-[10px]">ID Pengajuan:</p>
+                <p class="font-mono font-bold text-gray-800 dark:text-gray-200">{{ $selectedTransferDeliveryData['id_pengajuan'] }}</p>
+              </div>
+              <div class="p-2.5 bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-gray-100 dark:border-gray-800">
+                <p class="text-gray-400 text-[10px]">HTTP Status / Ledger ID:</p>
+                <p class="font-mono font-bold text-gray-800 dark:text-gray-200">
+                  HTTP {{ $selectedTransferDeliveryData['http_status'] ?: '-' }} 
+                  @if($selectedTransferDeliveryData['id_ledger'])
+                    • <span class="text-emerald-600 dark:text-emerald-400">{{ $selectedTransferDeliveryData['id_ledger'] }}</span>
+                  @endif
+                </p>
+              </div>
+              @if($selectedTransferDeliveryData['next_retry_at'])
+                <div class="col-span-2 p-2.5 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200">
+                  <p class="font-bold">Jadwal Retry Berikutnya:</p>
+                  <p>{{ $selectedTransferDeliveryData['next_retry_at'] }} (Percobaan ke-{{ $selectedTransferDeliveryData['retry_count'] }})</p>
+                </div>
+              @endif
+            </div>
+
+            @if($selectedTransferDeliveryData['error'])
+              <div class="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300">
+                <p class="font-bold">Keterangan Error / Balasan Server:</p>
+                <p class="font-mono text-[11px] mt-0.5 break-all">{{ $selectedTransferDeliveryData['error'] }}</p>
+              </div>
+            @endif
+
+            <div x-data="{ tab: 'response' }" class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-xs">
+              <div class="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-3">
+                <button type="button" @click="tab = 'response'"
+                  class="py-2 px-3 text-xs font-bold border-b-2"
+                  :class="tab === 'response' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500'">
+                  Response Balik Endpoint Pak Fathi
+                </button>
+                <button type="button" @click="tab = 'payload'"
+                  class="py-2 px-3 text-xs font-bold border-b-2"
+                  :class="tab === 'payload' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500'">
+                  Payload Yang Dikirim
+                </button>
+              </div>
+              <div x-show="tab === 'response'" class="p-3">
+                <pre class="p-2.5 rounded-lg bg-gray-950 text-gray-100 font-mono text-[11px] overflow-x-auto max-h-48"><code>{{ json_encode($selectedTransferDeliveryData['response'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
+              </div>
+              <div x-show="tab === 'payload'" class="p-3" style="display: none;">
+                <pre class="p-2.5 rounded-lg bg-gray-950 text-gray-100 font-mono text-[11px] overflow-x-auto max-h-48"><code>{{ json_encode($selectedTransferDeliveryData['payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
+              </div>
+            </div>
+          @else
+            <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-center space-y-2">
+              <p class="text-amber-800 dark:text-amber-200 font-medium">Pengajuan ini belum pernah dikirimkan ke Bot Transfer Pak Fathi.</p>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400">Anda dapat memicu pengiriman langsung sekarang menggunakan tombol di bawah.</p>
+            </div>
+          @endif
+        </div>
+      @endif
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-between w-full">
+        <div class="text-[11px] text-gray-500 dark:text-gray-400">
+          Endpoint: <code>SYIRKAH_TRANSFER_URL</code>
+        </div>
+        <div class="flex items-center gap-2">
+          @if ($selectedWithdrawalForDelivery && $selectedWithdrawalForDelivery->status === 'approved')
+            <button type="button" wire:click="sendSingleToBotTransfer('{{ $selectedWithdrawalForDelivery->id }}', false)" wire:loading.attr="disabled"
+              class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition">
+              Kirim Riil ke Bot
+            </button>
+            <button type="button" wire:click="sendSingleToBotTransfer('{{ $selectedWithdrawalForDelivery->id }}', true)" wire:loading.attr="disabled"
+              class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition"
+              title="Kirim pengujian Rp 10.000 dengan catatan TESTING SAJA">
+              Test Kirim (Rp 10.000)
+            </button>
+          @endif
+          <x-secondary-button wire:click="closeTransferDeliveryModal">
+            Tutup
+          </x-secondary-button>
+        </div>
       </div>
     </x-slot>
   </x-dialog-modal>
