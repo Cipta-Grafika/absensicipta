@@ -809,9 +809,49 @@ class SavingTransactionComponent extends Component
                 $this->ownerApproveNote ?: 'Disetujui oleh Owner'
             );
             $this->closeOwnerApproveModal();
-            $this->dispatch('notify', 'Pengajuan berhasil disetujui Owner (APPROVED) dan masuk ke antrean pembayaran.');
+            $this->dispatch('notify', 'Pengajuan berhasil disetujui Owner (APPROVED), masuk ke antrean pembayaran, dan diproses ke Bot Transfer.');
         } catch (\Exception $e) {
             $this->dispatch('notify', 'Gagal menyimpan persetujuan Owner: ' . $e->getMessage());
+        }
+    }
+
+    public function processBotTransferQueue(): void
+    {
+        $user = Auth::user();
+        if (!$user || ($user->group !== 'owner' && !$user->isOwner && $user->group !== 'superadmin')) {
+            $this->dispatch('notify', 'Akses ditolak: Hanya Owner/Superadmin yang berwenang memproses antrean transfer.');
+            return;
+        }
+
+        try {
+            $results = \App\Services\SyirkahTransferService::processPaymentQueue(isTest: false);
+            $this->dispatch('notify', "Antrean transfer syirkah diproses: {$results['processed']} diproses, {$results['success']} sukses, {$results['failed']} gagal/retry.");
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', 'Gagal memproses antrean transfer: ' . $e->getMessage());
+        }
+    }
+
+    public function testBotTransferSingle($withdrawalId): void
+    {
+        $withdrawal = SavingWithdrawal::with(['user.paymentMethod', 'ownerApprover'])->findOrFail($withdrawalId);
+        $user = Auth::user();
+
+        try {
+            $delivery = \App\Services\SyirkahTransferService::send(
+                $withdrawal,
+                isTest: true,
+                testNominal: 1000,
+                testNote: 'TESTING SAJA: Uji integrasi Syirkah',
+                actor: $user
+            );
+
+            if ($delivery->isSuccessful()) {
+                $this->dispatch('notify', "Uji coba transfer Rp 1.000 untuk {$withdrawal->user?->name} berhasil terkirim! (Ledger: {$delivery->id_ledger})");
+            } else {
+                $this->dispatch('notify', "Uji coba transfer: Status {$delivery->delivery_status} (HTTP {$delivery->last_http_status}). " . ($delivery->last_error_message ?: ''));
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', 'Gagal uji coba transfer: ' . $e->getMessage());
         }
     }
 

@@ -93,6 +93,11 @@ class SavingWithdrawal extends Model
         return $this->belongsTo(SavingTransaction::class, 'saving_transaction_id');
     }
 
+    public function transferDelivery()
+    {
+        return $this->hasOne(TransferDelivery::class, 'application_id');
+    }
+
     public function getEffectiveTotalAmountAttribute(): float
     {
         if ($this->approved_total_amount !== null) {

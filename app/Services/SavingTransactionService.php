@@ -638,6 +638,16 @@ class SavingTransactionService
             ]);
         }
 
+        // Trigger Transfer Integration to Pak Fathi's Bot Transfer API (Strictly for OWNER approval)
+        try {
+            \App\Services\SyirkahTransferService::send($ownerApprovedWithdrawal);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('SyirkahTransferService error in approveByOwnerWithdrawalRequest: ' . $e->getMessage(), [
+                'withdrawal_id' => $ownerApprovedWithdrawal->id,
+                'exception' => $e,
+            ]);
+        }
+
         return $ownerApprovedWithdrawal;
     }
 

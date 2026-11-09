@@ -36,6 +36,10 @@ class Admin extends Component
     public ?array $telegramWebhookInfo = null;
     public string $telegramErrorMessage = '';
 
+    // Syirkah Bot Transfer Integration Tester
+    public ?array $syirkahTransferTestResult = null;
+    public bool $syirkahTransferIsLoading = false;
+
     public function __construct()
     {
         $this->groups = User::$groups;
@@ -357,6 +361,80 @@ class Admin extends Component
             $this->telegramErrorMessage = 'Exception: ' . $e->getMessage();
         } finally {
             $this->telegramIsLoading = false;
+        }
+    }
+
+    public function testSyirkahTransferApi(): void
+    {
+        $this->syirkahTransferIsLoading = true;
+        $this->syirkahTransferTestResult = null;
+        $this->telegramErrorMessage = '';
+
+        try {
+            // Find an approved withdrawal, or latest withdrawal to test with
+            $withdrawal = \App\Models\SavingWithdrawal::with(['user.paymentMethod', 'ownerApprover'])
+                ->where('status', 'approved')
+                ->latest()
+                ->first();
+
+            $ownerUser = auth()->user();
+            if (!$ownerUser || ($ownerUser->group !== 'owner' && !$ownerUser->isOwner)) {
+                $ownerUser = User::where('group', 'owner')->first() ?: $ownerUser;
+            }
+
+            if (!$withdrawal) {
+                $withdrawal = \App\Models\SavingWithdrawal::with(['user.paymentMethod'])->latest()->first();
+            }
+
+            if (!$withdrawal) {
+                $this->telegramErrorMessage = 'Tidak ada data pengajuan syirkah dalam database untuk diuji.';
+                return;
+            }
+
+            // In test mode: strictly Rp 1.000 with note "TESTING SAJA"
+            $delivery = \App\Services\SyirkahTransferService::send(
+                $withdrawal,
+                isTest: true,
+                testNominal: 1000,
+                testNote: 'TESTING SAJA: Uji integrasi Syirkah',
+                actor: $ownerUser
+            );
+
+            $this->syirkahTransferTestResult = [
+                'success' => $delivery->isSuccessful(),
+                'status' => $delivery->delivery_status,
+                'http_status' => $delivery->last_http_status,
+                'id_pengajuan' => $delivery->id_pengajuan,
+                'id_ledger' => $delivery->id_ledger,
+                'payload' => $delivery->payload,
+                'response' => $delivery->response_body,
+                'error' => $delivery->last_error_message,
+                'next_retry_at' => $delivery->next_retry_at?->format('Y-m-d H:i:s'),
+            ];
+
+            if ($delivery->isSuccessful()) {
+                $this->banner("Uji coba transfer Rp 1.000 ke Bot Transfer berhasil terkirim! (Status: {$delivery->delivery_status})");
+            } else {
+                $this->telegramErrorMessage = "Uji coba transfer: Status {$delivery->delivery_status} (HTTP {$delivery->last_http_status}). " . ($delivery->last_error_message ?: '');
+            }
+        } catch (\Throwable $e) {
+            $this->telegramErrorMessage = 'Gagal menguji Bot Transfer: ' . $e->getMessage();
+        } finally {
+            $this->syirkahTransferIsLoading = false;
+        }
+    }
+
+    public function processAllApprovedSyirkahTransfers(): void
+    {
+        $this->syirkahTransferIsLoading = true;
+        $this->telegramErrorMessage = '';
+        try {
+            $results = \App\Services\SyirkahTransferService::processPaymentQueue(isTest: false);
+            $this->banner("Antrean transfer syirkah berhasil diproses: {$results['processed']} diproses, {$results['success']} sukses, {$results['failed']} gagal/retry.");
+        } catch (\Throwable $e) {
+            $this->telegramErrorMessage = 'Gagal memproses antrean transfer: ' . $e->getMessage();
+        } finally {
+            $this->syirkahTransferIsLoading = false;
         }
     }
 

@@ -1062,6 +1062,108 @@
             </div>
           </div>
         @endif
+
+        <!-- Syirkah Bot Transfer Integration Section -->
+        <div class="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700/80 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                🤖 Integrasi Bot Transfer Pak Fathi
+              </span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">
+                Endpoint: <code>SYIRKAH_TRANSFER_URL</code>
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" wire:click="processAllApprovedSyirkahTransfers" wire:loading.attr="disabled"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition disabled:opacity-50"
+                title="Kirim seluruh antrean pembayaran syirkah berstatus APPROVED secara berurutan">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Proses Antrean Pembayaran</span>
+              </button>
+
+              <button type="button" wire:click="testSyirkahTransferApi" wire:loading.attr="disabled"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition disabled:opacity-50"
+                title="Kirim pengujian transfer sebesar Rp 1.000 dengan catatan TESTING SAJA">
+                <span wire:loading.remove wire:target="testSyirkahTransferApi">
+                  <svg class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Test Bot Transfer (Rp 1.000)
+                </span>
+                <span wire:loading wire:target="testSyirkahTransferApi" class="inline-flex items-center gap-1">
+                  <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  </svg>
+                  Menguji...
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div class="p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl border border-gray-200 dark:border-gray-700/70 text-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 dark:text-gray-400">Target Webhook URL:</span>
+              <span class="font-mono font-medium text-emerald-600 dark:text-emerald-400">{{ config('services.syirkah.transfer_url', env('SYIRKAH_TRANSFER_URL', '-')) }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500 dark:text-gray-400">API Secret Key (X-Syirkah-Kunci):</span>
+              <span class="font-mono text-gray-700 dark:text-gray-300">
+                @php
+                  $sec = config('services.syirkah.transfer_secret', env('API_KEY', env('SYIRKAH_TRANSFER_SECRET', '')));
+                  $maskedSec = strlen($sec) > 8 ? substr($sec, 0, 4) . '...' . substr($sec, -4) : ($sec ? 'Tersedia' : 'Belum Diatur');
+                @endphp
+                {{ $maskedSec }}
+              </span>
+            </div>
+            <p class="text-[11px] text-gray-500 dark:text-gray-400">
+              * Mode testing otomatis mengirimkan nominal tepat <b>Rp 1.000</b> dengan catatan <code>TESTING SAJA</code> dan prefix <code>UJI-</code> sesuai spesifikasi integrasi.
+            </p>
+          </div>
+
+          <!-- Syirkah Transfer Test Result Inspector -->
+          @if ($syirkahTransferTestResult)
+            <div class="p-4 rounded-xl border {{ $syirkahTransferTestResult['success'] ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20' : 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20' }} space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold {{ $syirkahTransferTestResult['success'] ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white' }}">
+                    Status: {{ $syirkahTransferTestResult['status'] }}
+                  </span>
+                  <span class="text-xs font-mono text-gray-600 dark:text-gray-300">HTTP {{ $syirkahTransferTestResult['http_status'] }}</span>
+                </div>
+                <span class="font-mono text-xs font-bold text-gray-700 dark:text-gray-300">{{ $syirkahTransferTestResult['id_pengajuan'] }}</span>
+              </div>
+
+              @if ($syirkahTransferTestResult['error'])
+                <p class="text-xs text-amber-700 dark:text-amber-300">Keterangan: {{ $syirkahTransferTestResult['error'] }}</p>
+              @endif
+
+              <div x-data="{ tab: 'response' }" class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm text-xs">
+                <div class="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-3">
+                  <button type="button" @click="tab = 'response'"
+                    class="py-2 px-3 text-xs font-bold border-b-2"
+                    :class="tab === 'response' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500'">
+                    Response Bot Transfer
+                  </button>
+                  <button type="button" @click="tab = 'payload'"
+                    class="py-2 px-3 text-xs font-bold border-b-2"
+                    :class="tab === 'payload' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500'">
+                    Payload Request
+                  </button>
+                </div>
+                <div x-show="tab === 'response'" class="p-3">
+                  <pre class="p-2.5 rounded-lg bg-gray-950 text-gray-100 font-mono text-[11px] overflow-x-auto max-h-48"><code>{{ json_encode($syirkahTransferTestResult['response'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
+                </div>
+                <div x-show="tab === 'payload'" class="p-3" style="display: none;">
+                  <pre class="p-2.5 rounded-lg bg-gray-950 text-gray-100 font-mono text-[11px] overflow-x-auto max-h-48"><code>{{ json_encode($syirkahTransferTestResult['payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</code></pre>
+                </div>
+              </div>
+            </div>
+          @endif
+        </div>
       </div>
     </x-slot>
 

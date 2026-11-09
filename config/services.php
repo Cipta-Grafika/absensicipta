@@ -43,4 +43,9 @@ return [
         'bank_transfer_group_id' => env('TELEGRAM_BANK_TRANSFER_GROUP_ID', env('TELEGRAM_GROUP_CHAT_ID')),
     ],
 
+    'syirkah' => [
+        'transfer_url' => env('SYIRKAH_TRANSFER_URL', 'https://wick-unlined-gooey.ngrok-free.dev/webhook/syirkah-transfer'),
+        'transfer_secret' => env('API_KEY', env('SYIRKAH_TRANSFER_SECRET')),
+    ],
+
 ];
