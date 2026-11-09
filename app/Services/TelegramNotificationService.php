@@ -434,12 +434,34 @@ class TelegramNotificationService
      */
     public static function sendGroupUnpaidTransferNotification(SavingWithdrawal $withdrawal, string|array $groupChatIds): bool
     {
-        $withdrawal->loadMissing(['user.division', 'masterSaving', 'ownerApprover']);
+        $withdrawal->loadMissing(['user.division', 'user.paymentMethod', 'masterSaving', 'ownerApprover']);
 
         $name = $withdrawal->user?->name ?? '-';
         $nip = $withdrawal->user?->nip ?? '-';
         $division = $withdrawal->user?->division?->name ?? 'Semua Divisi';
         $program = $withdrawal->masterSaving?->savings_name ?? 'Syirkah Penuh';
+
+        // Account Bank Info from user's payment method with verification
+        $paymentMethod = $withdrawal->user?->paymentMethod;
+        if ($paymentMethod && !empty($paymentMethod->bank_account)) {
+            $bankAccount = trim($paymentMethod->bank_account);
+            $bankName = trim($paymentMethod->payment_name ?: 'Bank');
+            $accountName = trim($paymentMethod->account_name ?: $name);
+
+            // Verifikasi kesesuaian nama pemilik rekening dengan nama karyawan untuk keamanan transfer
+            $cleanUserName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $name));
+            $cleanAccName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $accountName));
+            $isNameMatch = ($cleanUserName === $cleanAccName)
+                || ($cleanUserName !== '' && $cleanAccName !== '' && (str_contains($cleanAccName, $cleanUserName) || str_contains($cleanUserName, $cleanAccName)));
+
+            if ($isNameMatch) {
+                $accountBankText = "{$bankAccount} ({$bankName} a.n {$accountName})";
+            } else {
+                $accountBankText = "{$bankAccount} ({$bankName} a.n {$accountName} - PERHATIAN: Nama rekening berbeda dengan karyawan)";
+            }
+        } else {
+            $accountBankText = "Belum Diatur (Rekening belum terdaftar)";
+        }
 
         $reqNominal = number_format($withdrawal->total_amount, 0, ',', '.');
         $approvedNominal = number_format($withdrawal->effective_total_amount, 0, ',', '.');
@@ -470,6 +492,7 @@ class TelegramNotificationService
         $message .= "NIP : " . htmlspecialchars($nip) . "\n";
         $message .= "Divisi    : " . htmlspecialchars($division) . "\n";
         $message .= "Program   : " . htmlspecialchars($program) . "\n";
+        $message .= "Account Bank : " . htmlspecialchars($accountBankText) . "\n";
         $message .= "Nominal Bayar (Transfer Amount) : {$nominalBayar}\n";
         $message .= "Dibayar Oleh (Transfer By) : " . htmlspecialchars($ownerName) . "\n";
         $message .= "Waktu Bayar : {$waktuBayar}\n";

@@ -234,11 +234,22 @@ class Admin extends Component
             return;
         }
 
-        $adminName = auth()->user()->name ?? 'Super Admin';
+        $admin = auth()->user();
+        $adminName = $admin->name ?? 'Super Admin';
         $waktuBayar = now()->translatedFormat('d F Y, H:i') . ' WIB';
         $note = !empty($this->telegramCustomMessage) 
             ? trim($this->telegramCustomMessage) 
             : 'Uji coba pengiriman antrean pencairan syirkah ke grup transfer bank';
+
+        $paymentMethod = $admin?->paymentMethod;
+        if ($paymentMethod && !empty($paymentMethod->bank_account)) {
+            $bankAccount = trim($paymentMethod->bank_account);
+            $bankName = trim($paymentMethod->payment_name ?: 'BCA');
+            $accountName = trim($paymentMethod->account_name ?: $adminName);
+            $accountBankText = "{$bankAccount} ({$bankName} a.n {$accountName})";
+        } else {
+            $accountBankText = "23346234 (BCA a.n {$adminName})";
+        }
 
         $messageText = "💵 PENCAIRAN SYIRKAH (UNPAID)\n";
         $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
@@ -247,6 +258,7 @@ class Admin extends Component
         $messageText .= "NIP : 2308407\n";
         $messageText .= "Divisi    : Cipta Corp\n";
         $messageText .= "Program   : Syirkah Penuh\n";
+        $messageText .= "Account Bank : " . htmlspecialchars($accountBankText) . "\n";
         $messageText .= "Nominal Bayar (Transfer Amount) : Rp 2.000.000 (Pengajuan: Rp 3.000.000)\n";
         $messageText .= "Dibayar Oleh (Transfer By) : " . htmlspecialchars($adminName) . "\n";
         $messageText .= "Waktu Bayar : {$waktuBayar}\n";

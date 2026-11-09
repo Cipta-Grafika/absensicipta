@@ -127,6 +127,13 @@ class TelegramGroupWebhookTest extends TestCase
             'division_id' => $division->id,
         ]);
 
+        \App\Models\PaymentMethod::create([
+            'user_id' => $employee->id,
+            'payment_name' => 'BCA',
+            'bank_account' => '23346234',
+            'account_name' => 'Nurlinda Meiyuni',
+        ]);
+
         $owner = User::factory()->create([
             'name' => 'Fathi Bawazier',
             'group' => 'owner',
@@ -169,6 +176,7 @@ class TelegramGroupWebhookTest extends TestCase
                 && str_contains($text, 'NIP : 2308407')
                 && str_contains($text, 'Divisi    : Cipta Corp')
                 && str_contains($text, 'Program   : Syirkah Penuh')
+                && str_contains($text, 'Account Bank : 23346234 (BCA a.n Nurlinda Meiyuni)')
                 && str_contains($text, 'Nominal Bayar (Transfer Amount) : Rp 2.000.000 (Pengajuan: Rp 3.000.000)')
                 && str_contains($text, 'Dibayar Oleh (Transfer By) : Fathi Bawazier')
                 && str_contains($text, 'Waktu Bayar :')
@@ -176,6 +184,64 @@ class TelegramGroupWebhookTest extends TestCase
                 && str_contains($text, 'Status: UNPAID')
                 // Strictly ensure no reply markup in group chat
                 && empty($data['reply_markup']);
+        });
+    }
+
+    public function test_notify_owner_approved_withdrawal_flags_mismatched_bank_account_name()
+    {
+        $groupChatId = '-1009887766554';
+        Cache::forever('telegram_bank_transfer_group_id', $groupChatId);
+
+        $division = \App\Models\Division::factory()->create(['name' => 'Cipta Corp']);
+        $employee = User::factory()->create([
+            'name' => 'Nurlinda Meiyuni',
+            'nip' => '2308407',
+            'division_id' => $division->id,
+        ]);
+
+        // Mismatched account name
+        \App\Models\PaymentMethod::create([
+            'user_id' => $employee->id,
+            'payment_name' => 'BCA',
+            'bank_account' => '23346234',
+            'account_name' => 'Budi Santoso',
+        ]);
+
+        $owner = User::factory()->create([
+            'name' => 'Fathi Bawazier',
+            'group' => 'owner',
+        ]);
+
+        $saving = \App\Models\Saving::create([
+            'savings_name' => 'Syirkah Penuh',
+            'mandatory_amount' => 50000,
+        ]);
+
+        $withdrawal = \App\Models\SavingWithdrawal::create([
+            'user_id' => $employee->id,
+            'savings_id' => $saving->id,
+            'withdrawal_type' => 'secondary',
+            'total_amount' => 2000000,
+            'approved_total_amount' => 2000000,
+            'owner_approved_by' => $owner->id,
+            'owner_approved_at' => now(),
+            'status' => 'approved',
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 12345]], 200),
+        ]);
+
+        TelegramNotificationService::notifyOwnerApprovedWithdrawal($withdrawal);
+
+        Http::assertSent(function ($request) use ($groupChatId) {
+            $data = $request->data();
+            if ($data['chat_id'] !== $groupChatId) {
+                return false;
+            }
+
+            $text = $data['text'];
+            return str_contains($text, 'Account Bank : 23346234 (BCA a.n Budi Santoso - PERHATIAN: Nama rekening berbeda dengan karyawan)');
         });
     }
 
