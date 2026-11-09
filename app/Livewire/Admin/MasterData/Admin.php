@@ -4,6 +4,8 @@ namespace App\Livewire\Admin\MasterData;
 
 use App\Livewire\Forms\UserForm;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\InteractsWithBanner;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -22,6 +24,16 @@ class Admin extends Component
     public $confirmingDeletion = false;
     public $selectedId = null;
     public $showDetail = null;
+
+    // Telegram Webhook & Bot Group Tester
+    public bool $showTelegramModal = false;
+    public string $telegramTargetGroup = '';
+    public string $telegramCustomMessage = '';
+    public ?array $telegramTestResult = null;
+    public bool $telegramIsLoading = false;
+    public array $telegramKnownGroups = [];
+    public ?array $telegramWebhookInfo = null;
+    public string $telegramErrorMessage = '';
 
     public function __construct()
     {
@@ -94,6 +106,276 @@ class Admin extends Component
         $this->form->setUser($user)->delete();
         $this->confirmingDeletion = false;
         $this->banner(__('Deleted successfully.'));
+    }
+
+    #[On('show-telegram-tester')]
+    public function showTelegramTester(): void
+    {
+        $this->showTelegramModal = true;
+        $this->telegramTestResult = null;
+        $this->telegramErrorMessage = '';
+        $this->refreshTelegramGroups();
+
+        if (empty($this->telegramTargetGroup)) {
+            $defaultId = Cache::get('telegram_bank_transfer_group_id')
+                ?: config('services.telegram.bank_transfer_group_id')
+                ?: config('services.telegram.group_chat_id')
+                ?: env('TELEGRAM_BANK_TRANSFER_GROUP_ID')
+                ?: env('TELEGRAM_GROUP_CHAT_ID', '');
+
+            if (!empty($defaultId)) {
+                $this->telegramTargetGroup = (string) $defaultId;
+            } elseif (!empty($this->telegramKnownGroups)) {
+                foreach ($this->telegramKnownGroups as $id => $grp) {
+                    if (stripos($grp['title'] ?? '', 'Bank') !== false || stripos($grp['title'] ?? '', 'transfer') !== false) {
+                        $this->telegramTargetGroup = (string) $id;
+                        break;
+                    }
+                }
+                if (empty($this->telegramTargetGroup)) {
+                    $this->telegramTargetGroup = (string) array_key_first($this->telegramKnownGroups);
+                }
+            }
+        }
+    }
+
+    public function closeTelegramTester(): void
+    {
+        $this->showTelegramModal = false;
+    }
+
+    public function refreshTelegramGroups(): void
+    {
+        $this->telegramKnownGroups = Cache::get('telegram_known_groups', []);
+    }
+
+    public function selectKnownGroup(string $chatId): void
+    {
+        $this->telegramTargetGroup = $chatId;
+    }
+
+    public function saveAsDefaultGroup(): void
+    {
+        $target = trim($this->telegramTargetGroup);
+        if (empty($target)) {
+            $this->telegramErrorMessage = 'Chat ID grup tidak boleh kosong.';
+            return;
+        }
+
+        // Telegram groups strictly have negative IDs
+        if (!str_starts_with($target, '-')) {
+            $this->telegramErrorMessage = 'ID Grup Telegram harus berupa angka negatif yang diawali tanda minus (-), contoh: -100xxxxxxxxxx. ID positif adalah akun pengguna perorangan.';
+            return;
+        }
+
+        Cache::forever('telegram_bank_transfer_group_id', $target);
+        if (isset($this->telegramKnownGroups[$target]['title'])) {
+            Cache::forever('telegram_bank_transfer_group_title', $this->telegramKnownGroups[$target]['title']);
+        }
+
+        $this->telegramErrorMessage = '';
+        $this->banner("Chat ID grup {$target} berhasil disimpan sebagai default untuk notifikasi CG Bank transfer Request.");
+    }
+
+    public function checkWebhookInfo(): void
+    {
+        $this->telegramIsLoading = true;
+        $this->telegramErrorMessage = '';
+
+        try {
+            $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
+            if (empty($botToken)) {
+                $this->telegramErrorMessage = 'TELEGRAM_BOT_TOKEN belum dikonfigurasi di file .env.';
+                return;
+            }
+
+            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$botToken}/getWebhookInfo");
+            $this->telegramWebhookInfo = [
+                'status_code' => $response->status(),
+                'ok' => $response->json('ok') ?? false,
+                'data' => $response->json('result') ?? [],
+                'raw' => $response->json() ?: $response->body(),
+                'checked_at' => now()->format('Y-m-d H:i:s'),
+            ];
+        } catch (\Throwable $e) {
+            $this->telegramErrorMessage = 'Gagal memeriksa Webhook Info: ' . $e->getMessage();
+        } finally {
+            $this->telegramIsLoading = false;
+        }
+    }
+
+    public function sendTelegramGroupTest(): void
+    {
+        $this->telegramIsLoading = true;
+        $this->telegramErrorMessage = '';
+        $this->telegramTestResult = null;
+
+        $target = trim($this->telegramTargetGroup);
+
+        if (empty($target)) {
+            $this->telegramErrorMessage = 'Silakan masukkan atau pilih ID Grup Telegram tujuan.';
+            $this->telegramIsLoading = false;
+            return;
+        }
+
+        // VALIDATION: Specifically for Telegram GROUP, NOT user account!
+        // Telegram groups and supergroups strictly have negative IDs (e.g. -100xxxxxxxxxx or -xxxxxxxxx)
+        // User private chat IDs are positive numbers (e.g. 1909551792).
+        if (!str_starts_with($target, '-')) {
+            $this->telegramErrorMessage = "⚠️ Target ID '{$target}' bukan merupakan ID Grup Telegram! ID akun perorangan bertanda positif. Telegram Group ID WAJIB diawali dengan tanda minus (-), contoh: -100xxxxxxxxxx. Fitur ini khusus menguji ke grup (CG Bank transfer Request), bukan ke akun users.";
+            $this->telegramIsLoading = false;
+            return;
+        }
+
+        $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
+        if (empty($botToken)) {
+            $this->telegramErrorMessage = 'TELEGRAM_BOT_TOKEN belum diatur pada konfigurasi aplikasi (.env).';
+            $this->telegramIsLoading = false;
+            return;
+        }
+
+        $adminName = auth()->user()->name ?? 'Super Admin';
+        $adminEmail = auth()->user()->email ?? '-';
+        $wibTime = now()->translatedFormat('d F Y, H:i:s') . ' WIB';
+        $customNote = !empty($this->telegramCustomMessage) ? trim($this->telegramCustomMessage) : 'Halo Tim CG Bank transfer Request! Pesan ini adalah uji coba koneksi webhook CetakiaBot dari sistem AbsensiCipta. Jika pesan ini muncul di grup, maka integrasi bot dan webhook telah aktif dan siap digunakan.';
+
+        $messageText = "🔔 <b>UJI COBA WEBHOOK & NOTIFIKASI CETAKIABOT</b>\n";
+        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $messageText .= "✅ <b>Status:</b> Integrasi Webhook Aktif\n";
+        $messageText .= "👥 <b>Grup Tujuan:</b> CG Bank transfer Request\n";
+        $messageText .= "🤖 <b>Bot Telegram:</b> CetakiaBot (<code>@cetakia_bot</code>)\n";
+        $messageText .= "👤 <b>Penguji:</b> " . htmlspecialchars($adminName) . " (<code>" . htmlspecialchars($adminEmail) . "</code>)\n";
+        $messageText .= "📅 <b>Waktu Uji:</b> {$wibTime}\n";
+        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $messageText .= "💬 <b>Catatan / Pesan Uji:</b>\n";
+        $messageText .= "<i>\"" . htmlspecialchars($customNote) . "\"</i>\n";
+        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $messageText .= "👉 <i>Pesan ini dikirimkan otomatis melalui tombol 'Test Bot Telegram Grup' pada menu Manajemen Admin AbsensiCipta.</i>";
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    [
+                        'text' => '✅ Test Webhook Berhasil',
+                        'callback_data' => 'test_webhook_success',
+                    ],
+                    [
+                        'text' => '🌐 Buka AbsensiCipta',
+                        'url' => rtrim(config('app.url', 'http://localhost:8000'), '/') . '/hr/masterdata/admin',
+                    ],
+                ],
+            ],
+        ];
+
+        $payload = [
+            'chat_id' => $target,
+            'text' => $messageText,
+            'parse_mode' => 'HTML',
+            'disable_web_page_preview' => false,
+            'reply_markup' => json_encode($replyMarkup),
+        ];
+
+        $endpoint = "https://api.telegram.org/bot{$botToken}/sendMessage";
+        $maskedEndpoint = "https://api.telegram.org/bot" . substr($botToken, 0, 8) . "..." . substr($botToken, -4) . "/sendMessage";
+
+        $startTime = microtime(true);
+        try {
+            $response = Http::timeout(12)->asForm()->post($endpoint, $payload);
+            $latencyMs = round((microtime(true) - $startTime) * 1000, 2);
+
+            $isSuccess = $response->successful() && ($response->json('ok') ?? false);
+            $responseJson = $response->json() ?? [];
+
+            $this->telegramTestResult = [
+                'success' => $isSuccess,
+                'status_code' => $response->status(),
+                'latency_ms' => $latencyMs,
+                'timestamp' => now()->format('Y-m-d H:i:s'),
+                'target_chat_id' => $target,
+                'request' => [
+                    'method' => 'POST',
+                    'endpoint' => $maskedEndpoint,
+                    'headers' => [
+                        'Content-Type' => 'application/x-www-form-urlencoded',
+                        'Accept' => 'application/json',
+                    ],
+                    'payload' => [
+                        'chat_id' => $target,
+                        'text' => $messageText,
+                        'parse_mode' => 'HTML',
+                        'disable_web_page_preview' => false,
+                        'reply_markup' => $replyMarkup,
+                    ],
+                ],
+                'response' => [
+                    'status' => $response->status(),
+                    'ok' => $responseJson['ok'] ?? false,
+                    'body' => $responseJson ?: $response->body(),
+                ],
+                'details' => [
+                    'message_id' => $responseJson['result']['message_id'] ?? null,
+                    'chat_id' => $responseJson['result']['chat']['id'] ?? $target,
+                    'chat_title' => $responseJson['result']['chat']['title'] ?? null,
+                    'chat_type' => $responseJson['result']['chat']['type'] ?? null,
+                    'from_bot' => ($responseJson['result']['from']['first_name'] ?? 'CetakiaBot') . ' (@' . ($responseJson['result']['from']['username'] ?? 'cetakia_bot') . ')',
+                    'error_code' => $responseJson['error_code'] ?? null,
+                    'description' => $responseJson['description'] ?? null,
+                ],
+            ];
+
+            if ($isSuccess) {
+                // Auto-save this confirmed group
+                Cache::forever('telegram_bank_transfer_group_id', $target);
+                if (!empty($responseJson['result']['chat']['title'])) {
+                    Cache::forever('telegram_bank_transfer_group_title', $responseJson['result']['chat']['title']);
+                }
+
+                // Add to known groups
+                $groups = Cache::get('telegram_known_groups', []);
+                $groups[$target] = [
+                    'id' => $target,
+                    'title' => $responseJson['result']['chat']['title'] ?? 'CG Bank transfer Request',
+                    'type' => $responseJson['result']['chat']['type'] ?? 'supergroup',
+                    'updated_at' => now()->toIso8601String(),
+                ];
+                Cache::forever('telegram_known_groups', $groups);
+                $this->refreshTelegramGroups();
+                $this->banner("Pesan test berhasil dikirimkan ke grup {$target}!");
+            }
+        } catch (\Throwable $e) {
+            $latencyMs = round((microtime(true) - $startTime) * 1000, 2);
+            $this->telegramTestResult = [
+                'success' => false,
+                'status_code' => 500,
+                'latency_ms' => $latencyMs,
+                'timestamp' => now()->format('Y-m-d H:i:s'),
+                'target_chat_id' => $target,
+                'request' => [
+                    'method' => 'POST',
+                    'endpoint' => $maskedEndpoint,
+                    'headers' => [
+                        'Content-Type' => 'application/x-www-form-urlencoded',
+                    ],
+                    'payload' => [
+                        'chat_id' => $target,
+                        'text' => $messageText,
+                        'parse_mode' => 'HTML',
+                    ],
+                ],
+                'response' => [
+                    'status' => 500,
+                    'ok' => false,
+                    'body' => ['error' => $e->getMessage()],
+                ],
+                'details' => [
+                    'error_code' => 500,
+                    'description' => 'Terjadi exception saat menghubungi Telegram Bot API: ' . $e->getMessage(),
+                ],
+            ];
+            $this->telegramErrorMessage = 'Exception: ' . $e->getMessage();
+        } finally {
+            $this->telegramIsLoading = false;
+        }
     }
 
     public function render()

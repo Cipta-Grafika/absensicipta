@@ -792,4 +792,307 @@
       </div>
     @endif
   </x-modal>
+
+  <!-- TELEGRAM WEBHOOK & BOT GROUP TESTER MODAL -->
+  <x-dialog-modal wire:model="showTelegramModal" maxWidth="3xl">
+    <x-slot name="title">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 rounded-xl bg-sky-500/10 text-sky-500 dark:bg-sky-500/20">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">
+              Test Webhook CetakiaBot ke Grup Telegram
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Uji coba pengiriman notifikasi khusus ke grup <b>CG Bank transfer Request</b>
+            </p>
+          </div>
+        </div>
+        <button type="button" wire:click="closeTelegramTester" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </x-slot>
+
+    <x-slot name="content">
+      <div class="space-y-4">
+        <!-- Error Alert -->
+        @if ($telegramErrorMessage)
+          <div class="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs flex items-start gap-2.5">
+            <svg class="w-5 h-5 shrink-0 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="flex-1">
+              <p class="font-semibold">Perhatian</p>
+              <p class="mt-0.5">{{ $telegramErrorMessage }}</p>
+            </div>
+          </div>
+        @endif
+
+        <!-- Target Group & Config Card -->
+        <div class="p-4 rounded-xl border border-sky-100 dark:border-sky-900/60 bg-sky-50/50 dark:bg-sky-950/20 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300">
+                👥 Target: Grup Telegram (Bukan Akun Users)
+              </span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">
+                Bot: <b>CetakiaBot</b> (<code>@cetakia_bot</code>)
+              </span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" wire:click="checkWebhookInfo" wire:loading.attr="disabled"
+                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-sky-700 dark:text-sky-300 bg-white dark:bg-gray-800 border border-sky-200 dark:border-sky-800 rounded-lg hover:bg-sky-50 dark:hover:bg-gray-700 transition">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Cek Webhook Info</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Target Group Chat ID Input -->
+          <div>
+            <x-label for="telegramTargetGroup" value="Telegram Group Chat ID (Khusus Grup, format awalan minus: -100xxxxxxxxxx)" class="text-xs font-semibold" />
+            <div class="mt-1 flex gap-2">
+              <div class="relative flex-1">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <span class="font-mono text-sm">#</span>
+                </div>
+                <x-input id="telegramTargetGroup" type="text" wire:model="telegramTargetGroup"
+                  class="w-full pl-8 font-mono text-sm" placeholder="Contoh: -1002345678901 atau -123456789" />
+              </div>
+              @if ($telegramTargetGroup)
+                <button type="button" wire:click="saveAsDefaultGroup" wire:loading.attr="disabled"
+                  class="px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900 transition flex items-center gap-1 shrink-0"
+                  title="Simpan sebagai Chat ID grup transfer bank default">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Simpan Default</span>
+                </button>
+              @endif
+            </div>
+            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+              * Group Chat ID wajib diawali tanda minus (<code>-</code>). Telegram secara otomatis menetapkan ID negatif untuk semua grup dan supergroup.
+            </p>
+          </div>
+
+          <!-- Known Groups Quick Select -->
+          @if (!empty($telegramKnownGroups))
+            <div class="pt-2 border-t border-sky-100 dark:border-sky-900/40">
+              <span class="text-[11px] font-medium text-gray-600 dark:text-gray-400">Grup Terdeteksi dari Webhook:</span>
+              <div class="mt-1 flex flex-wrap gap-1.5">
+                @foreach ($telegramKnownGroups as $id => $grp)
+                  <button type="button" wire:click="selectKnownGroup('{{ $id }}')"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-md border transition {{ $telegramTargetGroup == $id ? 'bg-sky-500 text-white border-sky-600 font-semibold' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50' }}">
+                    <span>👥 {{ $grp['title'] ?? 'Group' }}</span>
+                    <span class="text-[10px] opacity-80 font-mono">({{ $id }})</span>
+                  </button>
+                @endforeach
+              </div>
+            </div>
+          @endif
+
+          <!-- Quick Tip Guide -->
+          <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2">
+            <svg class="w-4 h-4 shrink-0 text-amber-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="text-[11px] leading-relaxed">
+              <b>Cara Mendapatkan Chat ID Grup "CG Bank transfer Request":</b>
+              <ol class="list-decimal ml-4 mt-0.5 space-y-0.5">
+                <li>Buka grup <b>CG Bank transfer Request</b> di Telegram (di mana CetakiaBot sudah menjadi anggota).</li>
+                <li>Ketik perintah <code>/id</code> di grup tersebut.</li>
+                <li>Bot CetakiaBot akan membalas dengan <b>Group Chat ID</b> (angka berawalan minus, contoh: <code>-100xxxxxxxxxx</code>) dan sistem otomatis mencatatnya.</li>
+                <li>Salin ID tersebut dan tempelkan pada kolom di atas jika belum terisi otomatis.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Test Message Note (Optional) -->
+        <div>
+          <x-label for="telegramCustomMessage" value="Catatan / Pesan Pengujian (Opsional)" class="text-xs font-semibold" />
+          <textarea id="telegramCustomMessage" wire:model="telegramCustomMessage" rows="2"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+            placeholder="Ketik catatan khusus untuk pesan pengujian (opsional, sudah ada pesan template standar)..."></textarea>
+        </div>
+
+        <!-- Webhook Info Display Panel (Conditional) -->
+        @if ($telegramWebhookInfo)
+          <div class="p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full {{ ($telegramWebhookInfo['ok'] ?? false) ? 'bg-emerald-500' : 'bg-red-500' }}"></span>
+                Status Endpoint Webhook Telegram API
+              </h4>
+              <span class="text-[11px] text-gray-400 font-mono">{{ $telegramWebhookInfo['checked_at'] ?? '' }}</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div class="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                <span class="text-gray-500 dark:text-gray-400 block text-[10px]">Webhook URL</span>
+                <span class="font-mono font-medium text-sky-600 dark:text-sky-400 break-all">{{ $telegramWebhookInfo['data']['url'] ?? '-' }}</span>
+              </div>
+              <div class="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                <span class="text-gray-500 dark:text-gray-400 block text-[10px]">Pending Updates</span>
+                <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $telegramWebhookInfo['data']['pending_update_count'] ?? 0 }} update</span>
+              </div>
+              @if (!empty($telegramWebhookInfo['data']['last_error_message']))
+                <div class="col-span-full p-2 bg-red-50 dark:bg-red-950/40 rounded border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs">
+                  <span class="font-bold block text-[10px]">Pesan Error Terakhir Webhook:</span>
+                  <span>{{ $telegramWebhookInfo['data']['last_error_message'] }}</span>
+                  @if (!empty($telegramWebhookInfo['data']['last_error_date']))
+                    <span class="block text-[10px] text-red-500 mt-0.5">Waktu: {{ date('d M Y, H:i:s', $telegramWebhookInfo['data']['last_error_date']) }}</span>
+                  @endif
+                </div>
+              @endif
+            </div>
+          </div>
+        @endif
+
+        <!-- TEST RESULT INSPECTOR (REQUEST & RESPONSE) -->
+        @if ($telegramTestResult)
+          <div class="space-y-3 pt-2">
+            <!-- Overall Status Header -->
+            <div class="p-4 rounded-xl border {{ $telegramTestResult['success'] ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800' : 'bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800' }}">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="p-2 rounded-full {{ $telegramTestResult['success'] ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white' }}">
+                    @if ($telegramTestResult['success'])
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                    @else
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    @endif
+                  </div>
+                  <div>
+                    <h4 class="text-sm font-bold {{ $telegramTestResult['success'] ? 'text-emerald-900 dark:text-emerald-200' : 'text-red-900 dark:text-red-200' }}">
+                      {{ $telegramTestResult['success'] ? 'BERHASIL! Pesan Uji Coba Terkirim ke Grup Telegram' : 'GAGAL! Pesan Tidak Dapat Terkirim ke Telegram' }}
+                    </h4>
+                    <p class="text-xs {{ $telegramTestResult['success'] ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300' }} mt-0.5">
+                      Target: <b>{{ $telegramTestResult['details']['chat_title'] ?? 'CG Bank transfer Request' }}</b> (<code>{{ $telegramTestResult['target_chat_id'] }}</code>) &bull; HTTP {{ $telegramTestResult['status_code'] }} &bull; {{ $telegramTestResult['latency_ms'] }} ms
+                    </p>
+                  </div>
+                </div>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold font-mono {{ $telegramTestResult['success'] ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
+                  {{ $telegramTestResult['status_code'] }} {{ $telegramTestResult['success'] ? 'OK' : 'FAILED' }}
+                </span>
+              </div>
+
+              @if (!$telegramTestResult['success'] && !empty($telegramTestResult['details']['description']))
+                <div class="mt-3 p-2.5 rounded-lg bg-red-100/70 dark:bg-red-900/50 text-red-800 dark:text-red-200 text-xs">
+                  <b>Deskripsi Error dari Telegram:</b>
+                  <p class="font-mono mt-0.5">{{ $telegramTestResult['details']['description'] }}</p>
+                  <p class="mt-1 text-[11px] text-red-600 dark:text-red-300">
+                    💡 <b>Solusi:</b> Pastikan bot CetakiaBot sudah dimasukkan ke dalam grup tersebut dan memiliki izin untuk mengirim pesan (akses ke pesan).
+                  </p>
+                </div>
+              @endif
+            </div>
+
+            <!-- Side-by-side or Tabbed Request & Response Inspector -->
+            <div x-data="{ tab: 'response' }" class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+              <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-3">
+                <div class="flex gap-2">
+                  <button type="button" @click="tab = 'response'"
+                    class="py-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5"
+                    :class="tab === 'response' ? 'border-sky-500 text-sky-600 dark:text-sky-400 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'">
+                    <span>📥 Response Telegram API</span>
+                    <span class="px-1.5 py-0.2 rounded text-[10px] font-mono {{ $telegramTestResult['success'] ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' }}">
+                      {{ $telegramTestResult['status_code'] }}
+                    </span>
+                  </button>
+                  <button type="button" @click="tab = 'request'"
+                    class="py-2.5 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5"
+                    :class="tab === 'request' ? 'border-sky-500 text-sky-600 dark:text-sky-400 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'">
+                    <span>📤 Request Payload</span>
+                    <span class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                      POST
+                    </span>
+                  </button>
+                </div>
+                <span class="text-[11px] text-gray-400 font-mono">
+                  Latency: {{ $telegramTestResult['latency_ms'] }} ms
+                </span>
+              </div>
+
+              <!-- Response Tab -->
+              <div x-show="tab === 'response'" class="p-3">
+                <div class="mb-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <span class="font-semibold text-gray-700 dark:text-gray-300">Raw JSON Response:</span>
+                  <button type="button" x-data="{ copied: false }"
+                    @click="navigator.clipboard.writeText(JSON.stringify({{ json_encode($telegramTestResult['response']['body']) }}, null, 2)); copied = true; setTimeout(() => copied = false, 2000)"
+                    class="px-2 py-0.5 text-[11px] text-sky-600 dark:text-sky-400 hover:underline">
+                    <span x-show="!copied">📋 Salin Response</span>
+                    <span x-show="copied" class="text-emerald-600 dark:text-emerald-400">✓ Tersalin!</span>
+                  </button>
+                </div>
+                <pre class="p-3 rounded-lg bg-gray-950 text-gray-100 font-mono text-[11px] leading-relaxed overflow-x-auto max-h-60 selection:bg-sky-500 selection:text-white"><code>{{ json_encode($telegramTestResult['response']['body'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</code></pre>
+              </div>
+
+              <!-- Request Tab -->
+              <div x-show="tab === 'request'" class="p-3" style="display: none;">
+                <div class="space-y-2">
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="px-2 py-0.5 rounded font-mono font-bold bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200">POST</span>
+                    <span class="font-mono text-gray-600 dark:text-gray-400 break-all">{{ $telegramTestResult['request']['endpoint'] }}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span class="font-semibold text-gray-700 dark:text-gray-300">Payload Parameters:</span>
+                    <button type="button" x-data="{ copied: false }"
+                      @click="navigator.clipboard.writeText(JSON.stringify({{ json_encode($telegramTestResult['request']['payload']) }}, null, 2)); copied = true; setTimeout(() => copied = false, 2000)"
+                      class="px-2 py-0.5 text-[11px] text-sky-600 dark:text-sky-400 hover:underline">
+                      <span x-show="!copied">📋 Salin Payload</span>
+                      <span x-show="copied" class="text-emerald-600 dark:text-emerald-400">✓ Tersalin!</span>
+                    </button>
+                  </div>
+                  <pre class="p-3 rounded-lg bg-gray-950 text-gray-100 font-mono text-[11px] leading-relaxed overflow-x-auto max-h-60 selection:bg-sky-500 selection:text-white"><code>{{ json_encode($telegramTestResult['request']['payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        @endif
+      </div>
+    </x-slot>
+
+    <x-slot name="footer">
+      <div class="flex items-center justify-between w-full gap-2">
+        <div class="text-[11px] text-gray-500 dark:text-gray-400">
+          Target: <b>CG Bank transfer Request</b>
+        </div>
+        <div class="flex items-center gap-2">
+          <x-secondary-button wire:click="closeTelegramTester" wire:loading.attr="disabled">
+            {{ __('Tutup') }}
+          </x-secondary-button>
+
+          <button type="button" wire:click="sendTelegramGroupTest" wire:loading.attr="disabled"
+            class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white shadow-sm transition disabled:opacity-50">
+            <span wire:loading.remove wire:target="sendTelegramGroupTest">
+              <svg class="w-4 h-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              Kirim Pesan Uji Coba ke Grup
+            </span>
+            <span wire:loading wire:target="sendTelegramGroupTest" class="inline-flex items-center gap-1.5">
+              <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              Mengirim ke Grup Telegram...
+            </span>
+          </button>
+        </div>
+      </div>
+    </x-slot>
+  </x-dialog-modal>
 </div>

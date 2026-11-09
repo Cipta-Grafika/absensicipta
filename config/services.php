@@ -39,6 +39,8 @@ return [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'admin_chat_id' => env('TELEGRAM_ADMIN_CHAT_ID'),
         'owner_chat_id' => env('TELEGRAM_OWNER_CHAT_ID'),
+        'group_chat_id' => env('TELEGRAM_GROUP_CHAT_ID'),
+        'bank_transfer_group_id' => env('TELEGRAM_BANK_TRANSFER_GROUP_ID', env('TELEGRAM_GROUP_CHAT_ID')),
     ],
 
 ];

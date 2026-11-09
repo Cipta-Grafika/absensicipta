@@ -17,6 +17,9 @@ class TelegramBotHandler
      */
     public static function handleUpdate(array $update): void
     {
+        // 0. Auto-capture group info from any incoming update
+        self::captureGroupInfo($update);
+
         // 1. Handle Callback Query (Button Clicks)
         if (isset($update['callback_query'])) {
             self::handleCallbackQuery($update['callback_query']);
@@ -27,6 +30,37 @@ class TelegramBotHandler
         if (isset($update['message'])) {
             self::handleMessage($update['message']);
             return;
+        }
+    }
+
+    /**
+     * Capture and cache group info from any incoming update.
+     */
+    public static function captureGroupInfo(array $update): void
+    {
+        $chat = $update['message']['chat']
+            ?? $update['my_chat_member']['chat']
+            ?? $update['channel_post']['chat']
+            ?? $update['callback_query']['message']['chat']
+            ?? null;
+
+        if ($chat && in_array($chat['type'] ?? '', ['group', 'supergroup', 'channel'])) {
+            $chatId = (string) $chat['id'];
+            $chatTitle = $chat['title'] ?? 'CG Bank transfer Request';
+
+            $groups = Cache::get('telegram_known_groups', []);
+            $groups[$chatId] = [
+                'id' => $chatId,
+                'title' => $chatTitle,
+                'type' => $chat['type'],
+                'updated_at' => now()->toIso8601String(),
+            ];
+            Cache::forever('telegram_known_groups', $groups);
+
+            if (stripos($chatTitle, 'CG Bank') !== false || stripos($chatTitle, 'transfer') !== false || empty(Cache::get('telegram_bank_transfer_group_id'))) {
+                Cache::forever('telegram_bank_transfer_group_id', $chatId);
+                Cache::forever('telegram_bank_transfer_group_title', $chatTitle);
+            }
         }
     }
 
@@ -42,6 +76,8 @@ class TelegramBotHandler
         $username = $message['from']['username'] ?? null;
         $firstName = $message['from']['first_name'] ?? 'User';
         $text = trim($message['text'] ?? '');
+        $chatType = $message['chat']['type'] ?? 'private';
+        $chatTitle = $message['chat']['title'] ?? null;
 
         // Find user by Chat ID or Telegram Username
         $user = User::where('chat_code', (string) $fromId)
@@ -369,6 +405,9 @@ class TelegramBotHandler
         // 2. STANDARD BOT COMMANDS
         // =========================================================================
         $command = strtolower(explode(' ', $text)[0] ?? '');
+        if (str_contains($command, '@')) {
+            $command = explode('@', $command)[0];
+        }
 
         // --- GUEST ROUTING (Akun Belum Terdaftar) ---
         if (!$user) {
@@ -385,16 +424,20 @@ class TelegramBotHandler
                     break;
 
                 case '/status':
-                case '/ping':
                 case '/health':
                 case '/check':
                     self::sendServiceStatusMessage($chatId, null, $fromId, $username);
                     break;
 
+                case '/test':
+                case '/ping':
+                    self::sendTestAckMessage($chatId, $chatTitle, $chatType);
+                    break;
+
                 case '/id':
                 case '/chatid':
                 case '/myid':
-                    self::sendChatIdMessage($chatId, $fromId, $username);
+                    self::sendChatIdMessage($chatId, $fromId, $username, $chatTitle, $chatType);
                     break;
 
                 case '/batal':
@@ -425,10 +468,14 @@ class TelegramBotHandler
                 break;
 
             case '/status':
-            case '/ping':
             case '/health':
             case '/check':
                 self::sendServiceStatusMessage($chatId, $user, $fromId, $username);
+                break;
+
+            case '/test':
+            case '/ping':
+                self::sendTestAckMessage($chatId, $chatTitle, $chatType);
                 break;
 
             case '/pembayaran':
@@ -451,7 +498,7 @@ class TelegramBotHandler
             case '/id':
             case '/chatid':
             case '/myid':
-                self::sendChatIdMessage($chatId, $fromId, $username);
+                self::sendChatIdMessage($chatId, $fromId, $username, $chatTitle, $chatType);
                 break;
 
             case '/batal':
@@ -1797,13 +1844,30 @@ class TelegramBotHandler
         TelegramNotificationService::sendMessage($chatId, $msg, ['inline_keyboard' => $inlineButtons]);
     }
 
-    protected static function sendChatIdMessage($chatId, $fromId, ?string $username): void
+    protected static function sendChatIdMessage($chatId, $fromId, ?string $username, ?string $chatTitle = null, string $chatType = 'private'): void
     {
+        $isGroup = in_array($chatType, ['group', 'supergroup', 'channel']) || ($chatId < 0) || ((string)$chatId !== (string)$fromId);
+
         $msg = "🆔 <b>INFORMASI TELEGRAM CHAT ID</b>\n";
         $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $msg .= "Chat ID Anda : <code>{$fromId}</code> <i>(Klik untuk salin)</i>\n";
-        $msg .= "Username     : @" . htmlspecialchars($username ?? 'none') . "\n\n";
-        $msg .= "Masukkan Chat ID <code>{$fromId}</code> di atas ke form Akun / Profil pada aplikasi Absensi & Syirkah.";
+
+        if ($isGroup) {
+            $title = $chatTitle ?: 'CG Bank transfer Request';
+            $msg .= "👥 <b>Tipe Chat</b>     : Grup / Supergroup\n";
+            $msg .= "👥 <b>Nama Grup</b>     : <b>" . htmlspecialchars($title) . "</b>\n";
+            $msg .= "🔢 <b>Group Chat ID</b> : <code>{$chatId}</code> <i>(Klik untuk salin)</i>\n";
+            $msg .= "👤 <b>ID Pengirim</b>   : <code>{$fromId}</code>\n";
+            $msg .= "👤 <b>Username</b>      : @" . htmlspecialchars($username ?? 'none') . "\n\n";
+            $msg .= "✅ <i>ID Grup <code>{$chatId}</code> berhasil dicatat otomatis oleh AbsensiCipta untuk pengujian webhook & notifikasi transfer bank.</i>";
+
+            // Persist to cache
+            Cache::forever('telegram_bank_transfer_group_id', (string) $chatId);
+            Cache::forever('telegram_bank_transfer_group_title', $title);
+        } else {
+            $msg .= "Chat ID Anda : <code>{$fromId}</code> <i>(Klik untuk salin)</i>\n";
+            $msg .= "Username     : @" . htmlspecialchars($username ?? 'none') . "\n\n";
+            $msg .= "Masukkan Chat ID <code>{$fromId}</code> di atas ke form Akun / Profil pada aplikasi Absensi & Syirkah.";
+        }
 
         $keyboard = [
             'inline_keyboard' => [
@@ -1818,6 +1882,30 @@ class TelegramBotHandler
         ];
 
         TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+    }
+
+    protected static function sendTestAckMessage($chatId, ?string $chatTitle, string $chatType): void
+    {
+        $isGroup = in_array($chatType, ['group', 'supergroup', 'channel']) || ($chatId < 0);
+        $wib = now()->translatedFormat('d F Y, H:i:s') . ' WIB';
+
+        $msg = "🔔 <b>CETAKIABOT STATUS & KONEKSI WEBHOOK</b>\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "✅ <b>Status:</b> Online & Responsif\n";
+        if ($isGroup) {
+            $title = $chatTitle ?: 'CG Bank transfer Request';
+            $msg .= "👥 <b>Grup:</b> " . htmlspecialchars($title) . "\n";
+            $msg .= "🔢 <b>Group Chat ID:</b> <code>{$chatId}</code>\n";
+            $msg .= "📑 <b>Tipe:</b> " . ucfirst($chatType) . "\n";
+
+            Cache::forever('telegram_bank_transfer_group_id', (string) $chatId);
+            Cache::forever('telegram_bank_transfer_group_title', $title);
+        }
+        $msg .= "📅 <b>Waktu Server:</b> {$wib}\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "✨ Bot siap mengirimkan & menerima notifikasi penarikan dan transfer bank.";
+
+        TelegramNotificationService::sendMessage($chatId, $msg);
     }
 
     /**

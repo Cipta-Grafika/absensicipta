@@ -274,6 +274,16 @@ class TelegramNotificationService
             }
         }
 
+        // Include Bank Transfer Group Chat ID if configured
+        if ($grpId = self::getBankTransferGroupChatId()) {
+            $targetIds[] = trim($grpId);
+        }
+
+        // Include Bank Transfer Group Chat ID if configured
+        if ($grpId = self::getBankTransferGroupChatId()) {
+            $targetIds[] = trim($grpId);
+        }
+
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) {
             Log::info('TelegramNotificationService: No valid Telegram Chat ID found for Owner.');
@@ -403,6 +413,11 @@ class TelegramNotificationService
             if (!empty($envChatId)) {
                 $targetIds[] = trim($envChatId);
             }
+        }
+
+        // Include Bank Transfer Group Chat ID if configured
+        if ($grpId = self::getBankTransferGroupChatId()) {
+            $targetIds[] = trim($grpId);
         }
 
         $targetIds = array_unique(array_filter($targetIds));
@@ -611,6 +626,18 @@ class TelegramNotificationService
             Log::error('Telegram setMyCommands Exception: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Get the configured or cached Bank Transfer Telegram Group Chat ID ("CG Bank transfer Request").
+     */
+    public static function getBankTransferGroupChatId(): ?string
+    {
+        return \Illuminate\Support\Facades\Cache::get('telegram_bank_transfer_group_id')
+            ?: config('services.telegram.bank_transfer_group_id')
+            ?: config('services.telegram.group_chat_id')
+            ?: env('TELEGRAM_BANK_TRANSFER_GROUP_ID')
+            ?: env('TELEGRAM_GROUP_CHAT_ID');
     }
 }
 
