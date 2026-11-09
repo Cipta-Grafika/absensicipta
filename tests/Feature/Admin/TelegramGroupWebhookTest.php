@@ -337,4 +337,118 @@ class TelegramGroupWebhookTest extends TestCase
             @unlink($file);
         }
     }
+
+    public function test_group_chat_handles_id_command_cleanly_without_buttons()
+    {
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 888]], 200),
+        ]);
+
+        $groupUpdate = [
+            'update_id' => 991,
+            'message' => [
+                'message_id' => 1234,
+                'from' => [
+                    'id' => 1909551792,
+                    'first_name' => 'Fathi',
+                    'username' => 'fathi',
+                ],
+                'chat' => [
+                    'id' => -1005544332211,
+                    'title' => 'CG Bank transfer Request',
+                    'type' => 'supergroup',
+                ],
+                'text' => '/id',
+            ],
+        ];
+
+        TelegramBotHandler::handleUpdate($groupUpdate);
+
+        Http::assertSent(function ($request) {
+            $data = $request->data();
+            return $data['chat_id'] === '-1005544332211'
+                && str_contains($data['text'], 'INFORMASI TELEGRAM GROUP CHAT ID')
+                && str_contains($data['text'], 'Group Chat ID</b> : <code>-1005544332211</code>')
+                && empty($data['reply_markup']);
+        });
+    }
+
+    public function test_group_chat_strictly_ignores_other_commands_like_start_help_menu()
+    {
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
+        ]);
+
+        $ignoredCommands = ['/start', '/help', '/menu', '/status', '/tarik', '/rekap', 'halo admin'];
+
+        foreach ($ignoredCommands as $idx => $cmd) {
+            $groupUpdate = [
+                'update_id' => 1000 + $idx,
+                'message' => [
+                    'message_id' => 2000 + $idx,
+                    'from' => [
+                        'id' => 1909551792,
+                        'first_name' => 'Fathi',
+                        'username' => 'fathi',
+                    ],
+                    'chat' => [
+                        'id' => -1005544332211,
+                        'title' => 'CG Bank transfer Request',
+                        'type' => 'supergroup',
+                    ],
+                    'text' => $cmd,
+                ],
+            ];
+
+            TelegramBotHandler::handleUpdate($groupUpdate);
+        }
+
+        // Verify NO sendMessage requests were sent to the group for these commands
+        Http::assertNotSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage');
+        });
+    }
+
+    public function test_group_chat_callback_query_is_rejected_without_sending_to_group()
+    {
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
+        ]);
+
+        $callbackUpdate = [
+            'update_id' => 9999,
+            'callback_query' => [
+                'id' => 'cb_group_test',
+                'from' => [
+                    'id' => 1909551792,
+                    'first_name' => 'Fathi',
+                    'username' => 'fathi',
+                ],
+                'message' => [
+                    'message_id' => 500,
+                    'chat' => [
+                        'id' => -1005544332211,
+                        'type' => 'supergroup',
+                        'title' => 'CG Bank transfer Request',
+                    ],
+                ],
+                'data' => 'cmd_status',
+            ],
+        ];
+
+        TelegramBotHandler::handleUpdate($callbackUpdate);
+
+        // Verify answerCallbackQuery was called with warning alert
+        Http::assertSent(function ($request) {
+            $data = $request->data();
+            return str_contains($request->url(), 'answerCallbackQuery')
+                && ($data['show_alert'] ?? false) === true
+                && str_contains($data['text'], 'personal chat langsung');
+        });
+
+        // Verify NO message was sent into the group chat
+        Http::assertNotSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage');
+        });
+    }
 }

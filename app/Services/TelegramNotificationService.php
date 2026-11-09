@@ -156,6 +156,7 @@ class TelegramNotificationService
             }
         }
 
+        $targetIds = array_filter($targetIds, fn($id) => !str_starts_with(trim($id), '-'));
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) {
             Log::info("TelegramNotificationService: No valid Telegram Chat ID found for Division Admin in division ID " . ($userDivisionId ?? 'none') . ".");
@@ -588,6 +589,7 @@ class TelegramNotificationService
             $targetIds = array_merge($targetIds, $adminIds);
         }
 
+        $targetIds = array_filter($targetIds, fn($id) => !str_starts_with(trim($id), '-'));
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) return;
 
@@ -643,6 +645,7 @@ class TelegramNotificationService
             $targetIds = array_merge($targetIds, $adminIds);
         }
 
+        $targetIds = array_filter($targetIds, fn($id) => !str_starts_with(trim($id), '-'));
         $targetIds = array_unique(array_filter($targetIds));
         if (empty($targetIds)) return;
 
@@ -670,13 +673,14 @@ class TelegramNotificationService
 
     /**
      * Register bot commands list in Telegram menu interface.
+     * Separates private chat menu (all interactive commands) from group chat menu (strictly only /id).
      */
     public static function setMyCommands(?array $commands = null): bool
     {
         $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
         if (empty($botToken)) return false;
 
-        $defaultCommands = [
+        $privateCommands = [
             ['command' => 'start', 'description' => 'Mulai interaksi & menu utama Cetakia Bot'],
             ['command' => 'help', 'description' => 'Bantuan, panduan alur & menu interaktif'],
             ['command' => 'status', 'description' => 'Cek status koneksi layanan AbsensiCipta'],
@@ -686,11 +690,25 @@ class TelegramNotificationService
             ['command' => 'id', 'description' => 'Cek Telegram Chat ID akun Anda'],
         ];
 
+        $groupCommands = [
+            ['command' => 'id', 'description' => 'Cek Telegram Group Chat ID'],
+        ];
+
         try {
-            $response = Http::timeout(6)->asJson()->post("https://api.telegram.org/bot{$botToken}/setMyCommands", [
-                'commands' => $commands ?: $defaultCommands,
+            // 1. Set commands for private personal chats
+            $resPrivate = Http::timeout(6)->asJson()->post("https://api.telegram.org/bot{$botToken}/setMyCommands", [
+                'commands' => $commands ?: $privateCommands,
+                'scope' => ['type' => 'all_private_chats'],
             ]);
-            return $response->successful() && ($response->json('ok') ?? false);
+
+            // 2. Set commands for group chats (strictly only /id, no /start, /help, etc.)
+            $resGroup = Http::timeout(6)->asJson()->post("https://api.telegram.org/bot{$botToken}/setMyCommands", [
+                'commands' => $groupCommands,
+                'scope' => ['type' => 'all_group_chats'],
+            ]);
+
+            return ($resPrivate->successful() && ($resPrivate->json('ok') ?? false))
+                && ($resGroup->successful() && ($resGroup->json('ok') ?? false));
         } catch (\Throwable $e) {
             Log::error('Telegram setMyCommands Exception: ' . $e->getMessage());
             return false;

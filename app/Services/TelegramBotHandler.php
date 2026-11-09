@@ -77,6 +77,27 @@ class TelegramBotHandler
         $text = trim($message['text'] ?? '');
         $chatType = $message['chat']['type'] ?? 'private';
         $chatTitle = $message['chat']['title'] ?? null;
+        $isGroup = in_array($chatType, ['group', 'supergroup', 'channel']) || ($chatId < 0);
+
+        // -------------------------------------------------------------------------
+        // STRICT TELEGRAM GROUP RESTRICTION:
+        // No interactive actions, menus, conversation flows, or bot commands in groups.
+        // ONLY the command "/id" is allowed in groups to inspect the Group Chat ID.
+        // All other text/commands in the group are completely ignored (silent).
+        // -------------------------------------------------------------------------
+        if ($isGroup) {
+            $command = strtolower(explode(' ', $text)[0] ?? '');
+            if (str_contains($command, '@')) {
+                $command = explode('@', $command)[0];
+            }
+
+            if (in_array($command, ['/id', '/chatid', '/myid'])) {
+                self::sendChatIdMessage($chatId, $fromId, $username, $chatTitle, $chatType);
+            }
+
+            // Immediately exit so CetakiaBot does not respond to /start, /help, /menu, etc. in groups
+            return;
+        }
 
         // Find user by Chat ID or Telegram Username
         $user = User::where('chat_code', (string) $fromId)
@@ -523,8 +544,21 @@ class TelegramBotHandler
         $fromId = $callbackQuery['from']['id'] ?? null;
         $fromUsername = $callbackQuery['from']['username'] ?? null;
         $fromFirstName = $callbackQuery['from']['first_name'] ?? 'Admin';
-        $chatId = $callbackQuery['message']['chat']['id'] ?? $fromId;
+        $chat = $callbackQuery['message']['chat'] ?? null;
+        $chatType = $chat['type'] ?? 'private';
+        $chatId = $chat['id'] ?? $fromId;
         $messageId = $callbackQuery['message']['message_id'] ?? null;
+
+        // Block all callback actions in group chats
+        $isGroup = in_array($chatType, ['group', 'supergroup', 'channel']) || ($chatId < 0);
+        if ($isGroup) {
+            TelegramNotificationService::answerCallbackQuery(
+                $callbackId,
+                '⚠️ Seluruh aksi CetakiaBot hanya dapat diakses melalui personal chat langsung dengan bot.',
+                true
+            );
+            return;
+        }
 
         // Find approving user
         $approverUser = User::where('chat_code', (string) $fromId)
@@ -1847,25 +1881,27 @@ class TelegramBotHandler
     {
         $isGroup = in_array($chatType, ['group', 'supergroup', 'channel']) || ($chatId < 0) || ((string)$chatId !== (string)$fromId);
 
-        $msg = "🆔 <b>INFORMASI TELEGRAM CHAT ID</b>\n";
-        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-
         if ($isGroup) {
             $title = $chatTitle ?: 'CG Bank transfer Request';
-            $msg .= "👥 <b>Tipe Chat</b>     : Grup / Supergroup\n";
+            $msg = "🆔 <b>INFORMASI TELEGRAM GROUP CHAT ID</b>\n";
+            $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
             $msg .= "👥 <b>Nama Grup</b>     : <b>" . htmlspecialchars($title) . "</b>\n";
-            $msg .= "🔢 <b>Group Chat ID</b> : <code>{$chatId}</code> <i>(Klik untuk salin)</i>\n";
-            $msg .= "👤 <b>ID Pengirim</b>   : <code>{$fromId}</code>\n";
-            $msg .= "👤 <b>Username</b>      : @" . htmlspecialchars($username ?? 'none') . "\n\n";
-            $msg .= "✅ <i>ID Grup <code>{$chatId}</code> berhasil dicatat otomatis oleh AbsensiCipta untuk pengujian webhook & notifikasi transfer bank.</i>";
+            $msg .= "🔢 <b>Group Chat ID</b> : <code>{$chatId}</code>\n\n";
+            $msg .= "✅ <i>ID Grup berhasil dicatat otomatis untuk notifikasi pencairan transfer bank.</i>";
 
             // Persist to cache and storage
             TelegramNotificationService::setBankTransferGroupChatId((string) $chatId, $title);
-        } else {
-            $msg .= "Chat ID Anda : <code>{$fromId}</code> <i>(Klik untuk salin)</i>\n";
-            $msg .= "Username     : @" . htmlspecialchars($username ?? 'none') . "\n\n";
-            $msg .= "Masukkan Chat ID <code>{$fromId}</code> di atas ke form Akun / Profil pada aplikasi Absensi & Syirkah.";
+
+            // Strictly send clean message WITHOUT buttons/actions in group
+            TelegramNotificationService::sendMessage($chatId, $msg, null);
+            return;
         }
+
+        $msg = "🆔 <b>INFORMASI TELEGRAM CHAT ID</b>\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "Chat ID Anda : <code>{$fromId}</code> <i>(Klik untuk salin)</i>\n";
+        $msg .= "Username     : @" . htmlspecialchars($username ?? 'none') . "\n\n";
+        $msg .= "Masukkan Chat ID <code>{$fromId}</code> di atas ke form Akun / Profil pada aplikasi Absensi & Syirkah.";
 
         $keyboard = [
             'inline_keyboard' => [
