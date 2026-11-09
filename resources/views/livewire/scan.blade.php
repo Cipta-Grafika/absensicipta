@@ -408,12 +408,12 @@
         </div>
       </div>
 
-      <!-- MODAL DETAIL SURAT PERINGATAN SAMPAI CUT OFF -->
+      <!-- MODAL DETAIL SURAT PERINGATAN SAMPAI CUT OFF (COMPACT & MOBILE-FRIENDLY) -->
       <template x-teleport="body">
         <div 
           x-show="showWarningModal" 
           x-cloak
-          class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0 flex items-center justify-center"
+          class="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-4 flex items-center justify-center"
           aria-labelledby="modal-title" role="dialog" aria-modal="true">
           <!-- Backdrop -->
           <div 
@@ -431,72 +431,72 @@
           <div 
             x-show="showWarningModal"
             x-transition:enter="ease-out duration-300"
-            x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            x-transition:enter-start="opacity-0 translate-y-3 sm:translate-y-0 sm:scale-95"
             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
             x-transition:leave="ease-in duration-200"
             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-            x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-            class="relative w-full max-w-lg rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-2xl border border-gray-200 dark:border-gray-700 transition-all z-10">
+            x-transition:leave-end="opacity-0 translate-y-3 sm:translate-y-0 sm:scale-95"
+            class="relative w-full max-w-md max-h-[85dvh] flex flex-col rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 transition-all z-10 overflow-hidden my-auto">
             
-            <!-- Header -->
-            <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
-              <div class="flex items-center gap-2.5">
-                <div class="rounded-xl bg-amber-500/15 p-2 text-amber-600 dark:text-amber-400">
-                  <x-heroicon-o-shield-exclamation class="h-6 w-6" />
+            <!-- Sticky Header -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+              <div class="flex items-center gap-2">
+                <div class="rounded-lg bg-amber-500/15 p-1.5 text-amber-600 dark:text-amber-400">
+                  <x-heroicon-o-shield-exclamation class="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">
+                  <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white leading-tight" id="modal-title">
                     Detail Surat Peringatan
                   </h3>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                    Status catatan kedisiplinan dari HR & Superadmin
+                  <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-none mt-0.5">
+                    Status catatan kedisiplinan HR & Superadmin
                   </p>
                 </div>
               </div>
               <button 
                 type="button" 
                 @click="showWarningModal = false"
-                class="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                class="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <x-heroicon-o-x-mark class="h-5 w-5" />
               </button>
             </div>
 
-            <!-- List 4 Tingkat SP sampai CUT OFF -->
-            <div class="mt-4 space-y-3">
+            <!-- Scrollable Body with Compact Cards -->
+            <div class="flex-1 overflow-y-auto overscroll-contain p-3 space-y-2">
               @php
                 $spStages = [
                   [
                     'code' => 'SPLT',
                     'title' => 'Surat Peringatan Lisan Tertulis',
-                    'desc' => 'Teguran lisan kedisiplinan yang didokumentasikan tertulis oleh HRD/Superadmin atas kelalaian atau pelanggaran ringan.',
+                    'desc' => 'Teguran lisan terdokumentasi atas kelalaian atau pelanggaran ringan.',
                     'active' => (bool) ($currentUser?->splt),
                     'color' => 'amber',
                   ],
                   [
                     'code' => 'SP 1',
                     'title' => 'Surat Peringatan 1',
-                    'desc' => 'Peringatan resmi pertama atas pelanggaran tata tertib/kinerja yang tidak diindahkan setelah SPLT.',
+                    'desc' => 'Peringatan resmi tingkat pertama atas pelanggaran disiplin/SOP.',
                     'active' => (bool) ($currentUser?->sp1),
                     'color' => 'amber',
                   ],
                   [
                     'code' => 'SP 2',
                     'title' => 'Surat Peringatan 2',
-                    'desc' => 'Peringatan resmi tingkat kedua akibat pelanggaran berulang dalam masa berlakunya SP 1.',
+                    'desc' => 'Peringatan tingkat kedua akibat pelanggaran berulang dalam masa SP 1.',
                     'active' => (bool) ($currentUser?->sp2),
                     'color' => 'amber',
                   ],
                   [
                     'code' => 'SP 3',
                     'title' => 'Surat Peringatan 3',
-                    'desc' => 'Peringatan tingkat terakhir / final sebelum penetapan tindakan pemutusan hubungan kerja.',
+                    'desc' => 'Peringatan tingkat ketiga (terakhir) sebelum evaluasi penonaktifan.',
                     'active' => (bool) ($currentUser?->sp3),
                     'color' => 'rose',
                   ],
                   [
                     'code' => 'CUT OFF',
                     'title' => 'Cut Off (Pemutusan Hubungan Kerja)',
-                    'desc' => 'Status nonaktif / pemutusan hubungan kerja karyawan oleh perusahaan karena pelanggaran berat atau SP 3 tidak terselesaikan.',
+                    'desc' => 'Status pemutusan hubungan kerja (PHK) / nonaktif oleh perusahaan.',
                     'active' => (bool) ($currentUser?->cutoff),
                     'color' => 'rose',
                   ],
@@ -504,43 +504,43 @@
               @endphp
 
               @foreach ($spStages as $stage)
-                <div class="flex items-start gap-3 rounded-xl p-3 border transition-colors {{
+                <div class="flex items-start gap-2.5 rounded-xl p-2.5 border transition-colors {{
                   $stage['active']
                     ? ($stage['color'] === 'rose'
-                        ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800'
-                        : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800')
-                    : 'bg-gray-50/60 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700'
+                        ? 'bg-rose-500/10 dark:bg-rose-950/30 border-rose-300 dark:border-rose-700/80 shadow-xs'
+                        : 'bg-amber-500/10 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700/80 shadow-xs')
+                    : 'bg-gray-50/60 dark:bg-gray-800/40 border-gray-200/80 dark:border-gray-700/60'
                 }}">
                   <div class="mt-0.5 shrink-0">
                     @if($stage['active'])
-                      <span class="flex h-5 w-5 items-center justify-center rounded-full {{ $stage['color'] === 'rose' ? 'bg-rose-500' : 'bg-amber-500' }} text-white text-xs font-bold">
+                      <span class="flex h-4 w-4 items-center justify-center rounded-full {{ $stage['color'] === 'rose' ? 'bg-rose-500' : 'bg-amber-500' }} text-white text-[10px] font-extrabold shadow-xs">
                         &check;
                       </span>
                     @else
-                      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 text-xs">
+                      <span class="flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 text-[10px]">
                         &minus;
                       </span>
                     @endif
                   </div>
                   <div class="min-w-0 flex-1">
-                    <div class="flex items-center justify-between gap-2">
-                      <h4 class="text-sm font-bold text-gray-900 dark:text-white">
-                        <span class="{{ $stage['active'] ? ($stage['color'] === 'rose' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400') : 'text-gray-700 dark:text-gray-300' }}">
+                    <div class="flex items-center justify-between gap-1.5">
+                      <h4 class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white leading-tight">
+                        <span class="{{ $stage['active'] ? ($stage['color'] === 'rose' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400') : 'text-gray-800 dark:text-gray-200' }}">
                           {{ $stage['code'] }}
                         </span>
-                        <span class="font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">({{ $stage['title'] }})</span>
+                        <span class="font-medium text-gray-500 dark:text-gray-400 text-[11px] sm:text-xs">({{ $stage['title'] }})</span>
                       </h4>
-                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold {{
+                      <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold shrink-0 {{
                         $stage['active']
                           ? ($stage['color'] === 'rose'
                               ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700')
-                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-700/60 dark:text-gray-400'
                       }}">
                         {{ $stage['active'] ? 'Aktif' : 'Tidak Aktif' }}
                       </span>
                     </div>
-                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                    <p class="mt-0.5 text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
                       {{ $stage['desc'] }}
                     </p>
                   </div>
@@ -548,15 +548,15 @@
               @endforeach
             </div>
 
-            <!-- Footer info -->
-            <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-center">
-              <p class="text-[11px] text-gray-500 dark:text-gray-400">
-                Peringatan kedisiplinan diterbitkan oleh Superadmin/HRD sesuai ketentuan SOP perusahaan.
+            <!-- Sticky Compact Footer -->
+            <div class="px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 shrink-0 text-center">
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                Peringatan kedisiplinan diterbitkan oleh Superadmin/HRD sesuai ketentuan SOP.
               </p>
               <button 
                 type="button" 
                 @click="showWarningModal = false"
-                class="mt-3 w-full rounded-xl bg-gray-900 dark:bg-gray-700 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors">
+                class="mt-2 w-full rounded-xl bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600 py-2 text-xs font-semibold text-white shadow-xs transition-colors">
                 Tutup
               </button>
             </div>
