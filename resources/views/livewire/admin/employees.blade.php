@@ -113,32 +113,38 @@
     <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-900">
         <tr>
-          <th scope="col"
-            class="relative px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300">
+          <th rowspan="2" scope="col"
+            class="relative px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 align-middle">
             No.
           </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+          <th rowspan="2" scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 align-middle">
             {{ __('Name') }}
           </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+          <th rowspan="2" scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 align-middle">
             {{ __('NIP') }}
           </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+          <th rowspan="2" scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 align-middle">
             {{ __('Email') }}
           </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+          <th rowspan="2" scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 align-middle">
             {{ __('Phone Number') }}
           </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300">
+          <th rowspan="2" scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 align-middle">
             Status
           </th>
-          <th scope="col"
-            class="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 sm:table-cell">
-            {{ __('City') }}
+          <th colspan="5" scope="colgroup" class="border-b border-gray-200 dark:border-gray-700 px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-50/70 dark:bg-amber-950/30">
+            Surat Peringatan
           </th>
-          <th scope="col" class="relative px-6 py-3">
+          <th rowspan="2" scope="col" class="relative px-4 py-3 align-middle">
             <span class="sr-only">Actions</span>
           </th>
+        </tr>
+        <tr class="bg-amber-50/40 dark:bg-amber-950/20 divide-x divide-gray-200/60 dark:divide-gray-700/60">
+          <th scope="col" class="px-2 py-1.5 text-center text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-tight">SPLT</th>
+          <th scope="col" class="px-2 py-1.5 text-center text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-tight">SP 1</th>
+          <th scope="col" class="px-2 py-1.5 text-center text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-tight">SP 2</th>
+          <th scope="col" class="px-2 py-1.5 text-center text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-tight">SP 3</th>
+          <th scope="col" class="px-2 py-1.5 text-center text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-tight">CUT OFF</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -154,23 +160,23 @@
               {{ $wireClick }}>
               {{ $loop->iteration }}
             </td>
-            <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
+            <td class="{{ $class }} px-4 py-4 text-sm font-medium text-gray-900 dark:text-white"
               {{ $wireClick }}>
               {{ $user->name }}
             </td>
-            <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
+            <td class="{{ $class }} px-4 py-4 text-sm font-medium text-gray-900 dark:text-white"
               {{ $wireClick }}>
               {{ $user->nip }}
             </td>
-            <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
+            <td class="{{ $class }} px-4 py-4 text-sm font-medium text-gray-900 dark:text-white"
               {{ $wireClick }}>
               {{ $user->email }}
             </td>
-            <td class="{{ $class }} px-6 py-4 text-sm font-medium text-gray-900 dark:text-white"
+            <td class="{{ $class }} px-4 py-4 text-sm font-medium text-gray-900 dark:text-white"
               {{ $wireClick }}>
               {{ $user->phone }}
             </td>
-            <td class="{{ $class }} px-6 py-4 text-sm font-medium" {{ $wireClick }}>
+            <td class="{{ $class }} px-4 py-4 text-sm font-medium" {{ $wireClick }}>
               @if($user->status === 'active')
                 <span class="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-200">Aktif</span>
               @elseif($user->status === 'suspend')
@@ -183,10 +189,81 @@
                 <span class="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-900 dark:text-red-200">Dipecat</span>
               @endif
             </td>
-            <td
-              class="{{ $class }} hidden px-6 py-4 text-sm font-medium text-gray-900 dark:text-white sm:table-cell"
-              {{ $wireClick }}>
-              {{ $user->city }}
+            {{-- Checkboxes Surat Peringatan (SPLT, SP 1, SP 2, SP 3, CUT OFF) --}}
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
+              <input type="checkbox"
+                @checked($user->splt)
+                @if(Auth::user()?->isSuperadmin)
+                  wire:click="toggleWarningLetter('{{ $user->id }}', 'splt')"
+                  wire:loading.attr="disabled"
+                  title="Klik untuk ubah status SPLT (Superadmin)"
+                  class="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 dark:border-amber-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                @else
+                  disabled
+                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
+                  class="h-4 w-4 rounded border-gray-300 text-amber-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                @endif
+              />
+            </td>
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
+              <input type="checkbox"
+                @checked($user->sp1)
+                @if(Auth::user()?->isSuperadmin)
+                  wire:click="toggleWarningLetter('{{ $user->id }}', 'sp1')"
+                  wire:loading.attr="disabled"
+                  title="Klik untuk ubah status SP 1 (Superadmin)"
+                  class="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 dark:border-amber-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                @else
+                  disabled
+                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
+                  class="h-4 w-4 rounded border-gray-300 text-amber-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                @endif
+              />
+            </td>
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
+              <input type="checkbox"
+                @checked($user->sp2)
+                @if(Auth::user()?->isSuperadmin)
+                  wire:click="toggleWarningLetter('{{ $user->id }}', 'sp2')"
+                  wire:loading.attr="disabled"
+                  title="Klik untuk ubah status SP 2 (Superadmin)"
+                  class="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 dark:border-amber-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                @else
+                  disabled
+                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
+                  class="h-4 w-4 rounded border-gray-300 text-amber-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                @endif
+              />
+            </td>
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
+              <input type="checkbox"
+                @checked($user->sp3)
+                @if(Auth::user()?->isSuperadmin)
+                  wire:click="toggleWarningLetter('{{ $user->id }}', 'sp3')"
+                  wire:loading.attr="disabled"
+                  title="Klik untuk ubah status SP 3 (Superadmin)"
+                  class="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 dark:border-amber-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                @else
+                  disabled
+                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
+                  class="h-4 w-4 rounded border-gray-300 text-amber-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                @endif
+              />
+            </td>
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
+              <input type="checkbox"
+                @checked($user->cutoff)
+                @if(Auth::user()?->isSuperadmin)
+                  wire:click="toggleWarningLetter('{{ $user->id }}', 'cutoff')"
+                  wire:loading.attr="disabled"
+                  title="Klik untuk ubah status CUT OFF (Superadmin)"
+                  class="h-4 w-4 rounded border-rose-400 text-rose-600 focus:ring-rose-500 dark:border-rose-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                @else
+                  disabled
+                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
+                  class="h-4 w-4 rounded border-gray-300 text-rose-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                @endif
+              />
             </td>
             <td class="relative flex justify-end gap-2 px-4 py-4">
               <button type="button" wire:click="edit('{{ $user->id }}')" title="Edit Karyawan"

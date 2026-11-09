@@ -97,6 +97,8 @@ Route::middleware([
         });
 
         // User/Employee/Karyawan
+        Route::patch('/employees/{employee}/warning-letters', [EmployeeController::class, 'updateWarningLetter'])
+            ->name('hr.employees.update-warning-letter');
         Route::resource('/employees', EmployeeController::class)
             ->only(['index'])
             ->names(['index' => 'hr.employees']);

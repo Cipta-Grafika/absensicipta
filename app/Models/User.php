@@ -58,6 +58,11 @@ class User extends Authenticatable
         'job_title_id',
         'profile_photo_path',
         'status',
+        'splt',
+        'sp1',
+        'sp2',
+        'sp3',
+        'cutoff',
         'count_wfo',
         'is_attendance_required',
         'off_days',
@@ -70,6 +75,11 @@ class User extends Authenticatable
      */
     protected $attributes = [
         'is_attendance_required' => true,
+        'splt' => false,
+        'sp1' => false,
+        'sp2' => false,
+        'sp3' => false,
+        'cutoff' => false,
     ];
 
     public function getTelegramTargetAttribute(): ?string
@@ -159,10 +169,41 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'birth_date' => 'datetime:Y-m-d',
             'password' => 'hashed',
+            'splt' => 'boolean',
+            'sp1' => 'boolean',
+            'sp2' => 'boolean',
+            'sp3' => 'boolean',
+            'cutoff' => 'boolean',
             'count_wfo' => 'boolean',
             'is_attendance_required' => 'boolean',
             'off_days' => 'array',
         ];
+    }
+
+    public function getHasWarningLetterAttribute(): bool
+    {
+        return (bool) ($this->splt || $this->sp1 || $this->sp2 || $this->sp3 || $this->cutoff);
+    }
+
+    public function getActiveWarningLettersAttribute(): array
+    {
+        $warnings = [];
+        if ($this->splt) $warnings[] = 'SPLT';
+        if ($this->sp1) $warnings[] = 'SP 1';
+        if ($this->sp2) $warnings[] = 'SP 2';
+        if ($this->sp3) $warnings[] = 'SP 3';
+        if ($this->cutoff) $warnings[] = 'CUT OFF';
+        return $warnings;
+    }
+
+    public function getHighestWarningLetterAttribute(): ?string
+    {
+        if ($this->cutoff) return 'CUT OFF';
+        if ($this->sp3) return 'SP 3';
+        if ($this->sp2) return 'SP 2';
+        if ($this->sp1) return 'SP 1';
+        if ($this->splt) return 'SPLT';
+        return null;
     }
 
     public static $groups = ['user', 'admin', 'superadmin', 'payroll', 'syirkah', 'owner'];

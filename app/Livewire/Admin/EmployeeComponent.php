@@ -115,6 +115,33 @@ class EmployeeComponent extends Component
         $this->deleteName = null;
     }
 
+    public function toggleWarningLetter(string $userId, string $field)
+    {
+        if (!auth()->user()?->isSuperadmin) {
+            abort(403, 'Akses Ditolak: Hanya Superadmin yang memiliki wewenang untuk mengubah Surat Peringatan.');
+        }
+
+        $allowedFields = ['splt', 'sp1', 'sp2', 'sp3', 'cutoff'];
+        if (!in_array($field, $allowedFields, true)) {
+            abort(400, 'Invalid warning letter field.');
+        }
+
+        $user = User::findOrFail($userId);
+        $user->$field = !$user->$field;
+        $user->save();
+
+        $labels = [
+            'splt' => 'SPLT',
+            'sp1' => 'SP 1',
+            'sp2' => 'SP 2',
+            'sp3' => 'SP 3',
+            'cutoff' => 'CUT OFF',
+        ];
+
+        $status = $user->$field ? 'diaktifkan' : 'dinonaktifkan';
+        $this->banner("Status {$labels[$field]} untuk {$user->name} berhasil {$status}.");
+    }
+
     public function render()
     {
         $baseQuery = User::where('group', 'user')

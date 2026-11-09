@@ -366,6 +366,205 @@
       </div>
     </div>
 
+    <!-- 4.4 CARD ALERT SURAT PERINGATAN (WARNING/YELLOW ALERT) -->
+    @php
+      $currentUser = auth()->user();
+      $hasWarning = $currentUser && $currentUser->has_warning_letter;
+      $activeWarnings = $currentUser ? $currentUser->active_warning_letters : [];
+      $highestWarning = $currentUser ? $currentUser->highest_warning_letter : null;
+    @endphp
+    <div x-data="{ showWarningModal: false }">
+      <div 
+        @click="showWarningModal = true"
+        title="Klik untuk melihat detail Surat Peringatan"
+        class="group relative flex items-center justify-between gap-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 px-4 py-3 text-gray-800 dark:text-white border border-amber-300 dark:border-amber-700/70 shadow-xs cursor-pointer hover:shadow-md hover:border-amber-400 dark:hover:border-amber-600 hover:scale-[1.005] active:scale-[0.99] transition-all duration-200">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="rounded-lg bg-amber-500/15 dark:bg-amber-500/25 p-2 text-amber-600 dark:text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
+            <x-heroicon-o-exclamation-triangle class="h-5 w-5 sm:h-6 sm:w-6" />
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <h4 class="text-sm font-bold sm:text-base text-gray-900 dark:text-white">Status Surat Peringatan</h4>
+              @if($hasWarning)
+                <span class="inline-flex items-center rounded-full bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400/50 px-2 py-0.5 text-[10px] font-bold animate-pulse">
+                  <span class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                  {{ implode(', ', $activeWarnings) }} Aktif
+                </span>
+              @else
+                <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
+                  <span class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  Bebas Peringatan
+                </span>
+              @endif
+            </div>
+            <div class="text-xs sm:text-sm font-medium text-amber-800/90 dark:text-amber-300/90 truncate">
+              <span>SPLT = Surat Peringatan Lisan Tertulis &bull; SP = Surat Peringatan</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0">
+          <span class="hidden sm:inline">Lihat Detail</span>
+          <x-heroicon-o-chevron-right class="h-4 w-4" />
+        </div>
+      </div>
+
+      <!-- MODAL DETAIL SURAT PERINGATAN SAMPAI CUT OFF -->
+      <template x-teleport="body">
+        <div 
+          x-show="showWarningModal" 
+          x-cloak
+          class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0 flex items-center justify-center"
+          aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <!-- Backdrop -->
+          <div 
+            x-show="showWarningModal"
+            x-transition:enter="ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click="showWarningModal = false"
+            class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"></div>
+
+          <!-- Dialog Box -->
+          <div 
+            x-show="showWarningModal"
+            x-transition:enter="ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+            x-transition:leave="ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+            x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            class="relative w-full max-w-lg rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-2xl border border-gray-200 dark:border-gray-700 transition-all z-10">
+            
+            <!-- Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div class="flex items-center gap-2.5">
+                <div class="rounded-xl bg-amber-500/15 p-2 text-amber-600 dark:text-amber-400">
+                  <x-heroicon-o-shield-exclamation class="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">
+                    Detail Surat Peringatan
+                  </h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Status catatan kedisiplinan dari HR & Superadmin
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                @click="showWarningModal = false"
+                class="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <x-heroicon-o-x-mark class="h-5 w-5" />
+              </button>
+            </div>
+
+            <!-- List 4 Tingkat SP sampai CUT OFF -->
+            <div class="mt-4 space-y-3">
+              @php
+                $spStages = [
+                  [
+                    'code' => 'SPLT',
+                    'title' => 'Surat Peringatan Lisan Tertulis',
+                    'desc' => 'Teguran lisan kedisiplinan yang didokumentasikan tertulis oleh HRD/Superadmin atas kelalaian atau pelanggaran ringan.',
+                    'active' => (bool) ($currentUser?->splt),
+                    'color' => 'amber',
+                  ],
+                  [
+                    'code' => 'SP 1',
+                    'title' => 'Surat Peringatan 1',
+                    'desc' => 'Peringatan resmi pertama atas pelanggaran tata tertib/kinerja yang tidak diindahkan setelah SPLT.',
+                    'active' => (bool) ($currentUser?->sp1),
+                    'color' => 'amber',
+                  ],
+                  [
+                    'code' => 'SP 2',
+                    'title' => 'Surat Peringatan 2',
+                    'desc' => 'Peringatan resmi tingkat kedua akibat pelanggaran berulang dalam masa berlakunya SP 1.',
+                    'active' => (bool) ($currentUser?->sp2),
+                    'color' => 'amber',
+                  ],
+                  [
+                    'code' => 'SP 3',
+                    'title' => 'Surat Peringatan 3',
+                    'desc' => 'Peringatan tingkat terakhir / final sebelum penetapan tindakan pemutusan hubungan kerja.',
+                    'active' => (bool) ($currentUser?->sp3),
+                    'color' => 'rose',
+                  ],
+                  [
+                    'code' => 'CUT OFF',
+                    'title' => 'Cut Off (Pemutusan Hubungan Kerja)',
+                    'desc' => 'Status nonaktif / pemutusan hubungan kerja karyawan oleh perusahaan karena pelanggaran berat atau SP 3 tidak terselesaikan.',
+                    'active' => (bool) ($currentUser?->cutoff),
+                    'color' => 'rose',
+                  ],
+                ];
+              @endphp
+
+              @foreach ($spStages as $stage)
+                <div class="flex items-start gap-3 rounded-xl p-3 border transition-colors {{
+                  $stage['active']
+                    ? ($stage['color'] === 'rose'
+                        ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800'
+                        : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800')
+                    : 'bg-gray-50/60 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700'
+                }}">
+                  <div class="mt-0.5 shrink-0">
+                    @if($stage['active'])
+                      <span class="flex h-5 w-5 items-center justify-center rounded-full {{ $stage['color'] === 'rose' ? 'bg-rose-500' : 'bg-amber-500' }} text-white text-xs font-bold">
+                        &check;
+                      </span>
+                    @else
+                      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 text-xs">
+                        &minus;
+                      </span>
+                    @endif
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <h4 class="text-sm font-bold text-gray-900 dark:text-white">
+                        <span class="{{ $stage['active'] ? ($stage['color'] === 'rose' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400') : 'text-gray-700 dark:text-gray-300' }}">
+                          {{ $stage['code'] }}
+                        </span>
+                        <span class="font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">({{ $stage['title'] }})</span>
+                      </h4>
+                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold {{
+                        $stage['active']
+                          ? ($stage['color'] === 'rose'
+                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700')
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                      }}">
+                        {{ $stage['active'] ? 'Aktif' : 'Tidak Aktif' }}
+                      </span>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                      {{ $stage['desc'] }}
+                    </p>
+                  </div>
+                </div>
+              @endforeach
+            </div>
+
+            <!-- Footer info -->
+            <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-center">
+              <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                Peringatan kedisiplinan diterbitkan oleh Superadmin/HRD sesuai ketentuan SOP perusahaan.
+              </p>
+              <button 
+                type="button" 
+                @click="showWarningModal = false"
+                class="mt-3 w-full rounded-xl bg-gray-900 dark:bg-gray-700 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors">
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
     <!-- 4.5 CARD INFORMASI CUTI & SISA KUOTA (POSISI TEPAT DI BAWAH JAM MASUK & JAM KELUAR) -->
     @if ($leaveBalance && $leaveBalance->total_quota > 0)
       <div 
