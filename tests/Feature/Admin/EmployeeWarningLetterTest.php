@@ -164,19 +164,19 @@ class EmployeeWarningLetterTest extends TestCase
 
     public function test_employee_home_displays_warning_alert_and_legend()
     {
-        // When no warning is active
+        // When no warning is active: alert box should NOT be displayed on /home
         $response = $this->actingAs($this->employee)->get(route('home'));
         $response->assertStatus(200);
-        $response->assertSee('Status Surat Peringatan');
-        $response->assertSee('Bebas Peringatan');
-        $response->assertSee('SPLT = Surat Peringatan Lisan Tertulis');
-        $response->assertSee('SP = Surat Peringatan');
+        $response->assertDontSee('Status Surat Peringatan');
+        $response->assertDontSee('Bebas Peringatan');
 
-        // When a warning is active (e.g. SP 1)
+        // When a warning is active (e.g. SP 1): alert box should be displayed
         $this->employee->update(['sp1' => true]);
         $responseWithWarning = $this->actingAs($this->employee)->get(route('home'));
         $responseWithWarning->assertStatus(200);
+        $responseWithWarning->assertSee('Status Surat Peringatan');
         $responseWithWarning->assertSee('SP 1 Aktif');
+        $responseWithWarning->assertSee('SPLT = Surat Peringatan Lisan Tertulis');
         $responseWithWarning->assertSee('Detail Surat Peringatan');
         $responseWithWarning->assertSee('Cut Off (Pemutusan Hubungan Kerja)');
     }

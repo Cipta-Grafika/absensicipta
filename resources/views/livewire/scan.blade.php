@@ -366,13 +366,14 @@
       </div>
     </div>
 
-    <!-- 4.4 CARD ALERT SURAT PERINGATAN (WARNING/YELLOW ALERT) -->
+    <!-- 4.4 CARD ALERT SURAT PERINGATAN (WARNING/YELLOW ALERT - HANYA MUNCUL JIKA ADA SP AKTIF) -->
     @php
       $currentUser = auth()->user();
       $hasWarning = $currentUser && $currentUser->has_warning_letter;
       $activeWarnings = $currentUser ? $currentUser->active_warning_letters : [];
       $highestWarning = $currentUser ? $currentUser->highest_warning_letter : null;
     @endphp
+    @if($hasWarning)
     <div x-data="{ showWarningModal: false }">
       <div 
         @click="showWarningModal = true"
@@ -385,17 +386,10 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
               <h4 class="text-sm font-bold sm:text-base text-gray-900 dark:text-white">Status Surat Peringatan</h4>
-              @if($hasWarning)
-                <span class="inline-flex items-center rounded-full bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400/50 px-2 py-0.5 text-[10px] font-bold animate-pulse">
-                  <span class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                  {{ implode(', ', $activeWarnings) }} Aktif
-                </span>
-              @else
-                <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
-                  <span class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                  Bebas Peringatan
-                </span>
-              @endif
+              <span class="inline-flex items-center rounded-full bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400/50 px-2 py-0.5 text-[10px] font-bold animate-pulse">
+                <span class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                {{ implode(', ', $activeWarnings) }} Aktif
+              </span>
             </div>
             <div class="text-xs sm:text-sm font-medium text-amber-800/90 dark:text-amber-300/90 truncate">
               <span>SPLT = Surat Peringatan Lisan Tertulis &bull; SP = Surat Peringatan</span>
@@ -564,6 +558,7 @@
         </div>
       </template>
     </div>
+    @endif
 
     <!-- 4.5 CARD INFORMASI CUTI & SISA KUOTA (POSISI TEPAT DI BAWAH JAM MASUK & JAM KELUAR) -->
     @if ($leaveBalance && $leaveBalance->total_quota > 0)
