@@ -246,25 +246,15 @@ class Admin extends Component
             $bankAccount = trim($paymentMethod->bank_account);
             $bankName = trim($paymentMethod->payment_name ?: 'BCA');
             $accountName = trim($paymentMethod->account_name ?: $adminName);
-            $accountBankText = "{$bankAccount} ({$bankName} a.n {$accountName})";
+            $accountBankText = "{$bankAccount} {$bankName} a.n {$accountName}";
         } else {
-            $accountBankText = "23346234 (BCA a.n {$adminName})";
+            $accountBankText = "23346234 BCA a.n {$adminName}";
         }
 
-        $messageText = "💵 PENCAIRAN SYIRKAH (UNPAID)\n";
-        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $messageText .= "Dana penarikan syirkah siap ditransfer / dibayarkan oleh Owner/Finance.\n\n";
-        $messageText .= "Nama (Name)  : " . htmlspecialchars($adminName) . "\n";
-        $messageText .= "NIP : 2308407\n";
-        $messageText .= "Divisi    : Cipta Corp\n";
-        $messageText .= "Program   : Syirkah Penuh\n";
-        $messageText .= "Account Bank : " . htmlspecialchars($accountBankText) . "\n";
-        $messageText .= "Nominal Bayar (Transfer Amount) : Rp 2.000.000 (Pengajuan: Rp 3.000.000)\n";
-        $messageText .= "Dibayar Oleh (Transfer By) : " . htmlspecialchars($adminName) . "\n";
-        $messageText .= "Waktu Bayar : {$waktuBayar}\n";
-        $messageText .= "Notes : \"{$note}\"\n";
-        $messageText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $messageText .= "Status: UNPAID";
+        $messageText = "Account Bank : " . htmlspecialchars($accountBankText) . "\n";
+        $messageText .= "Transfer Amount: Rp 2.000.000 (Pengajuan: Rp 3.000.000)\n";
+        $messageText .= "Berita: " . htmlspecialchars($note) . "\n";
+        $messageText .= "(From Rekening Syirkah)";
 
         $payload = [
             'chat_id' => $target,

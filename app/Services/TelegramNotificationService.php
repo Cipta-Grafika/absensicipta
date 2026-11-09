@@ -261,7 +261,7 @@ class TelegramNotificationService
             ->get();
 
         foreach ($ownerQuery as $ownerUser) {
-            if (!empty($ownerUser->chat_code)) {
+            if (!empty($ownerUser->chat_code) && !str_starts_with(trim($ownerUser->chat_code), '-')) {
                 $targetIds[] = trim($ownerUser->chat_code);
             }
         }
@@ -269,19 +269,9 @@ class TelegramNotificationService
         // Fallback to .env TELEGRAM_OWNER_CHAT_ID if no database users have chat_code
         if (empty($targetIds)) {
             $envChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
-            if (!empty($envChatId)) {
+            if (!empty($envChatId) && !str_starts_with(trim($envChatId), '-')) {
                 $targetIds[] = trim($envChatId);
             }
-        }
-
-        // Include Bank Transfer Group Chat ID if configured
-        if ($grpId = self::getBankTransferGroupChatId()) {
-            $targetIds[] = trim($grpId);
-        }
-
-        // Include Bank Transfer Group Chat ID if configured
-        if ($grpId = self::getBankTransferGroupChatId()) {
-            $targetIds[] = trim($grpId);
         }
 
         $targetIds = array_unique(array_filter($targetIds));
@@ -445,7 +435,7 @@ class TelegramNotificationService
         $paymentMethod = $withdrawal->user?->paymentMethod;
         if ($paymentMethod && !empty($paymentMethod->bank_account)) {
             $bankAccount = trim($paymentMethod->bank_account);
-            $bankName = trim($paymentMethod->payment_name ?: 'Bank');
+            $bankName = trim($paymentMethod->payment_name ?: 'BCA');
             $accountName = trim($paymentMethod->account_name ?: $name);
 
             // Verifikasi kesesuaian nama pemilik rekening dengan nama karyawan untuk keamanan transfer
@@ -455,9 +445,9 @@ class TelegramNotificationService
                 || ($cleanUserName !== '' && $cleanAccName !== '' && (str_contains($cleanAccName, $cleanUserName) || str_contains($cleanUserName, $cleanAccName)));
 
             if ($isNameMatch) {
-                $accountBankText = "{$bankAccount} ({$bankName} a.n {$accountName})";
+                $accountBankText = "{$bankAccount} {$bankName} a.n {$accountName}";
             } else {
-                $accountBankText = "{$bankAccount} ({$bankName} a.n {$accountName} - PERHATIAN: Nama rekening berbeda dengan karyawan)";
+                $accountBankText = "{$bankAccount} {$bankName} a.n {$accountName} (PERHATIAN: Nama rekening berbeda dengan karyawan)";
             }
         } else {
             $accountBankText = "Belum Diatur (Rekening belum terdaftar)";
@@ -466,39 +456,22 @@ class TelegramNotificationService
         $reqNominal = number_format($withdrawal->total_amount, 0, ',', '.');
         $approvedNominal = number_format($withdrawal->effective_total_amount, 0, ',', '.');
 
-        // Nominal Bayar (Transfer Amount) : Rp 2.000.000 (Pengajuan: Rp 3.000.000)
+        // Transfer Amount: Rp 2.000.000 (Pengajuan: Rp 3.000.000)
         if ((float) $withdrawal->effective_total_amount !== (float) $withdrawal->total_amount) {
             $nominalBayar = "Rp {$approvedNominal} (Pengajuan: Rp {$reqNominal})";
         } else {
             $nominalBayar = "Rp {$approvedNominal}";
         }
 
-        $ownerName = $withdrawal->ownerApprover?->name 
-            ?: (auth()->user()?->name ?: 'Owner');
+        // Berita: notes catatan alasan pengajuan syirkah dari user employee
+        $employeeReason = !empty($withdrawal->reason)
+            ? trim($withdrawal->reason)
+            : 'Pencairan Syirkah';
 
-        // Waktu Bayar : 20 Oktober 2026, 11:30 WIB
-        $dateSource = $withdrawal->owner_approved_at ?: ($withdrawal->approved_at ?: now());
-        $waktuBayar = $dateSource->translatedFormat('d F Y, H:i') . ' WIB';
-
-        // Notes : "disini masukan description/notes dari owner"
-        $notes = !empty($withdrawal->owner_note)
-            ? htmlspecialchars($withdrawal->owner_note)
-            : '-';
-
-        $message = "💵 PENCAIRAN SYIRKAH (UNPAID)\n";
-        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $message .= "Dana penarikan syirkah siap ditransfer / dibayarkan oleh Owner/Finance.\n\n";
-        $message .= "Nama (Name)  : " . htmlspecialchars($name) . "\n";
-        $message .= "NIP : " . htmlspecialchars($nip) . "\n";
-        $message .= "Divisi    : " . htmlspecialchars($division) . "\n";
-        $message .= "Program   : " . htmlspecialchars($program) . "\n";
-        $message .= "Account Bank : " . htmlspecialchars($accountBankText) . "\n";
-        $message .= "Nominal Bayar (Transfer Amount) : {$nominalBayar}\n";
-        $message .= "Dibayar Oleh (Transfer By) : " . htmlspecialchars($ownerName) . "\n";
-        $message .= "Waktu Bayar : {$waktuBayar}\n";
-        $message .= "Notes : \"{$notes}\"\n";
-        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $message .= "Status: UNPAID";
+        $message = "Account Bank : " . htmlspecialchars($accountBankText) . "\n";
+        $message .= "Transfer Amount: {$nominalBayar}\n";
+        $message .= "Berita: " . htmlspecialchars($employeeReason) . "\n";
+        $message .= "(From Rekening Syirkah)";
 
         return self::sendMessage($groupChatIds, $message, null);
     }

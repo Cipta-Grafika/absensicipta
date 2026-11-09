@@ -105,14 +105,64 @@ class TelegramGroupWebhookTest extends TestCase
         Http::assertSent(function ($request) use ($targetGroupId) {
             $data = $request->data();
             return $data['chat_id'] === $targetGroupId
-                && str_contains($data['text'], '💵 PENCAIRAN SYIRKAH (UNPAID)')
-                && str_contains($data['text'], 'Dana penarikan syirkah siap ditransfer')
-                && str_contains($data['text'], 'Status: UNPAID')
+                && str_contains($data['text'], 'Account Bank :')
+                && str_contains($data['text'], 'Transfer Amount: Rp 2.000.000 (Pengajuan: Rp 3.000.000)')
+                && str_contains($data['text'], 'Berita: Pesan uji coba khusus untuk verifikasi grup')
+                && str_contains($data['text'], '(From Rekening Syirkah)')
                 && $data['parse_mode'] === 'HTML';
         });
 
         // Verify it was persisted to cache
         $this->assertEquals($targetGroupId, Cache::get('telegram_bank_transfer_group_id'));
+    }
+
+    public function test_notify_accepted_withdrawal_never_sends_to_group()
+    {
+        $groupChatId = '-1009887766554';
+        Cache::forever('telegram_bank_transfer_group_id', $groupChatId);
+
+        $division = \App\Models\Division::factory()->create(['name' => 'Cipta Corp']);
+        $employee = User::factory()->create([
+            'name' => 'Nurlinda Meiyuni',
+            'nip' => '2308407',
+            'division_id' => $division->id,
+        ]);
+
+        $owner = User::factory()->create([
+            'name' => 'Fathi Bawazier',
+            'group' => 'owner',
+            'chat_code' => '123456789',
+        ]);
+
+        $saving = \App\Models\Saving::create([
+            'savings_name' => 'Syirkah Penuh',
+            'mandatory_amount' => 50000,
+        ]);
+
+        $withdrawal = \App\Models\SavingWithdrawal::create([
+            'user_id' => $employee->id,
+            'savings_id' => $saving->id,
+            'withdrawal_type' => 'secondary',
+            'total_amount' => 3000000,
+            'approved_total_amount' => 2000000,
+            'status' => 'accepted',
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 12345]], 200),
+        ]);
+
+        TelegramNotificationService::notifyAcceptedWithdrawal($withdrawal);
+
+        // Verify NO request was sent to the group chat
+        Http::assertNotSent(function ($request) use ($groupChatId) {
+            return $request->data()['chat_id'] === $groupChatId;
+        });
+
+        // Verify request WAS sent to Owner private chat
+        Http::assertSent(function ($request) {
+            return $request->data()['chat_id'] === '123456789';
+        });
     }
 
     public function test_notify_owner_approved_withdrawal_sends_exact_unpaid_format_to_group()
@@ -153,6 +203,7 @@ class TelegramGroupWebhookTest extends TestCase
             'owner_approved_by' => $owner->id,
             'owner_approved_at' => now(),
             'owner_note' => 'disini masukan description/notes dari owner',
+            'reason' => 'notes catatan alasan pengajuan syirkah dari user employee',
             'status' => 'approved',
         ]);
 
@@ -169,21 +220,12 @@ class TelegramGroupWebhookTest extends TestCase
             }
 
             $text = $data['text'];
-            return str_contains($text, '💵 PENCAIRAN SYIRKAH (UNPAID)')
-                && str_contains($text, '━━━━━━━━━━━━━━━━━━━━━━━━━━')
-                && str_contains($text, 'Dana penarikan syirkah siap ditransfer / dibayarkan oleh Owner/Finance.')
-                && str_contains($text, 'Nama (Name)  : Nurlinda Meiyuni')
-                && str_contains($text, 'NIP : 2308407')
-                && str_contains($text, 'Divisi    : Cipta Corp')
-                && str_contains($text, 'Program   : Syirkah Penuh')
-                && str_contains($text, 'Account Bank : 23346234 (BCA a.n Nurlinda Meiyuni)')
-                && str_contains($text, 'Nominal Bayar (Transfer Amount) : Rp 2.000.000 (Pengajuan: Rp 3.000.000)')
-                && str_contains($text, 'Dibayar Oleh (Transfer By) : Fathi Bawazier')
-                && str_contains($text, 'Waktu Bayar :')
-                && str_contains($text, 'Notes : "disini masukan description/notes dari owner"')
-                && str_contains($text, 'Status: UNPAID')
-                // Strictly ensure no reply markup in group chat
-                && empty($data['reply_markup']);
+            $expected = "Account Bank : 23346234 BCA a.n Nurlinda Meiyuni\n"
+                . "Transfer Amount: Rp 2.000.000 (Pengajuan: Rp 3.000.000)\n"
+                . "Berita: notes catatan alasan pengajuan syirkah dari user employee\n"
+                . "(From Rekening Syirkah)";
+
+            return $text === $expected && empty($data['reply_markup']);
         });
     }
 
@@ -241,7 +283,8 @@ class TelegramGroupWebhookTest extends TestCase
             }
 
             $text = $data['text'];
-            return str_contains($text, 'Account Bank : 23346234 (BCA a.n Budi Santoso - PERHATIAN: Nama rekening berbeda dengan karyawan)');
+            return str_contains($text, 'Account Bank : 23346234 BCA a.n Budi Santoso (PERHATIAN: Nama rekening berbeda dengan karyawan)')
+                && str_contains($text, '(From Rekening Syirkah)');
         });
     }
 
