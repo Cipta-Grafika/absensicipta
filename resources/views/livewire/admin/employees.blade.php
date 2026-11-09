@@ -190,80 +190,164 @@
               @endif
             </td>
             {{-- Checkboxes Surat Peringatan (SPLT, SP 1, SP 2, SP 3, CUT OFF) --}}
-            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
-              <input type="checkbox"
-                @checked($user->splt)
+            {{-- SPLT --}}
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap transition-colors {{ $user->splt ? 'bg-amber-500/20 dark:bg-amber-500/25' : 'bg-transparent' }}">
+              <button type="button"
+                role="checkbox"
+                aria-checked="{{ $user->splt ? 'true' : 'false' }}"
                 @if(Auth::user()?->isSuperadmin)
                   wire:click="toggleWarningLetter('{{ $user->id }}', 'splt')"
                   wire:loading.attr="disabled"
-                  title="Klik untuk ubah status SPLT (Superadmin)"
-                  class="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 dark:border-amber-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                  title="SPLT: {{ $user->splt ? 'AKTIF (Klik untuk nonaktifkan)' : 'NONAKTIF (Klik untuk aktifkan)' }} - Superadmin"
+                  class="group relative inline-flex items-center justify-center h-6 w-6 rounded-md transition-all duration-150 transform hover:scale-110 active:scale-95 cursor-pointer {{
+                    $user->splt
+                      ? 'bg-amber-500 dark:bg-amber-500 text-white shadow-lg shadow-amber-500/60 ring-2 ring-amber-300 dark:ring-amber-400 border-2 border-amber-200 dark:border-amber-300'
+                      : 'border-2 border-gray-300 dark:border-gray-600 bg-white/40 dark:bg-gray-800/80 hover:border-amber-400 dark:hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/30'
+                  }}"
                 @else
                   disabled
-                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
-                  class="h-4 w-4 rounded border-gray-300 text-amber-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                  title="SPLT: {{ $user->splt ? 'AKTIF' : 'NONAKTIF' }} (View Only)"
+                  class="relative inline-flex items-center justify-center h-6 w-6 rounded-md cursor-not-allowed {{
+                    $user->splt
+                      ? 'bg-amber-500 dark:bg-amber-500 text-white shadow-sm ring-1 ring-amber-400 border-2 border-amber-300 opacity-90'
+                      : 'border-2 border-gray-300/60 dark:border-gray-700 bg-gray-100/40 dark:bg-gray-800/40 opacity-40'
+                  }}"
                 @endif
-              />
+              >
+                @if($user->splt)
+                  <svg class="h-4 w-4 stroke-[3.5] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                @endif
+              </button>
             </td>
-            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
-              <input type="checkbox"
-                @checked($user->sp1)
+
+            {{-- SP 1 --}}
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap transition-colors {{ $user->sp1 ? 'bg-amber-500/20 dark:bg-amber-500/25' : 'bg-transparent' }}">
+              <button type="button"
+                role="checkbox"
+                aria-checked="{{ $user->sp1 ? 'true' : 'false' }}"
                 @if(Auth::user()?->isSuperadmin)
                   wire:click="toggleWarningLetter('{{ $user->id }}', 'sp1')"
                   wire:loading.attr="disabled"
-                  title="Klik untuk ubah status SP 1 (Superadmin)"
-                  class="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 dark:border-amber-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                  title="SP 1: {{ $user->sp1 ? 'AKTIF (Klik untuk nonaktifkan)' : 'NONAKTIF (Klik untuk aktifkan)' }} - Superadmin"
+                  class="group relative inline-flex items-center justify-center h-6 w-6 rounded-md transition-all duration-150 transform hover:scale-110 active:scale-95 cursor-pointer {{
+                    $user->sp1
+                      ? 'bg-amber-500 dark:bg-amber-500 text-white shadow-lg shadow-amber-500/60 ring-2 ring-amber-300 dark:ring-amber-400 border-2 border-amber-200 dark:border-amber-300'
+                      : 'border-2 border-gray-300 dark:border-gray-600 bg-white/40 dark:bg-gray-800/80 hover:border-amber-400 dark:hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/30'
+                  }}"
                 @else
                   disabled
-                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
-                  class="h-4 w-4 rounded border-gray-300 text-amber-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                  title="SP 1: {{ $user->sp1 ? 'AKTIF' : 'NONAKTIF' }} (View Only)"
+                  class="relative inline-flex items-center justify-center h-6 w-6 rounded-md cursor-not-allowed {{
+                    $user->sp1
+                      ? 'bg-amber-500 dark:bg-amber-500 text-white shadow-sm ring-1 ring-amber-400 border-2 border-amber-300 opacity-90'
+                      : 'border-2 border-gray-300/60 dark:border-gray-700 bg-gray-100/40 dark:bg-gray-800/40 opacity-40'
+                  }}"
                 @endif
-              />
+              >
+                @if($user->sp1)
+                  <svg class="h-4 w-4 stroke-[3.5] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                @endif
+              </button>
             </td>
-            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
-              <input type="checkbox"
-                @checked($user->sp2)
+
+            {{-- SP 2 --}}
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap transition-colors {{ $user->sp2 ? 'bg-amber-500/20 dark:bg-amber-500/25' : 'bg-transparent' }}">
+              <button type="button"
+                role="checkbox"
+                aria-checked="{{ $user->sp2 ? 'true' : 'false' }}"
                 @if(Auth::user()?->isSuperadmin)
                   wire:click="toggleWarningLetter('{{ $user->id }}', 'sp2')"
                   wire:loading.attr="disabled"
-                  title="Klik untuk ubah status SP 2 (Superadmin)"
-                  class="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 dark:border-amber-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                  title="SP 2: {{ $user->sp2 ? 'AKTIF (Klik untuk nonaktifkan)' : 'NONAKTIF (Klik untuk aktifkan)' }} - Superadmin"
+                  class="group relative inline-flex items-center justify-center h-6 w-6 rounded-md transition-all duration-150 transform hover:scale-110 active:scale-95 cursor-pointer {{
+                    $user->sp2
+                      ? 'bg-amber-500 dark:bg-amber-500 text-white shadow-lg shadow-amber-500/60 ring-2 ring-amber-300 dark:ring-amber-400 border-2 border-amber-200 dark:border-amber-300'
+                      : 'border-2 border-gray-300 dark:border-gray-600 bg-white/40 dark:bg-gray-800/80 hover:border-amber-400 dark:hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/30'
+                  }}"
                 @else
                   disabled
-                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
-                  class="h-4 w-4 rounded border-gray-300 text-amber-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                  title="SP 2: {{ $user->sp2 ? 'AKTIF' : 'NONAKTIF' }} (View Only)"
+                  class="relative inline-flex items-center justify-center h-6 w-6 rounded-md cursor-not-allowed {{
+                    $user->sp2
+                      ? 'bg-amber-500 dark:bg-amber-500 text-white shadow-sm ring-1 ring-amber-400 border-2 border-amber-300 opacity-90'
+                      : 'border-2 border-gray-300/60 dark:border-gray-700 bg-gray-100/40 dark:bg-gray-800/40 opacity-40'
+                  }}"
                 @endif
-              />
+              >
+                @if($user->sp2)
+                  <svg class="h-4 w-4 stroke-[3.5] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                @endif
+              </button>
             </td>
-            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
-              <input type="checkbox"
-                @checked($user->sp3)
+
+            {{-- SP 3 --}}
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap transition-colors {{ $user->sp3 ? 'bg-amber-500/20 dark:bg-amber-500/25' : 'bg-transparent' }}">
+              <button type="button"
+                role="checkbox"
+                aria-checked="{{ $user->sp3 ? 'true' : 'false' }}"
                 @if(Auth::user()?->isSuperadmin)
                   wire:click="toggleWarningLetter('{{ $user->id }}', 'sp3')"
                   wire:loading.attr="disabled"
-                  title="Klik untuk ubah status SP 3 (Superadmin)"
-                  class="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 dark:border-amber-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                  title="SP 3: {{ $user->sp3 ? 'AKTIF (Klik untuk nonaktifkan)' : 'NONAKTIF (Klik untuk aktifkan)' }} - Superadmin"
+                  class="group relative inline-flex items-center justify-center h-6 w-6 rounded-md transition-all duration-150 transform hover:scale-110 active:scale-95 cursor-pointer {{
+                    $user->sp3
+                      ? 'bg-amber-500 dark:bg-amber-500 text-white shadow-lg shadow-amber-500/60 ring-2 ring-amber-300 dark:ring-amber-400 border-2 border-amber-200 dark:border-amber-300'
+                      : 'border-2 border-gray-300 dark:border-gray-600 bg-white/40 dark:bg-gray-800/80 hover:border-amber-400 dark:hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/30'
+                  }}"
                 @else
                   disabled
-                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
-                  class="h-4 w-4 rounded border-gray-300 text-amber-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                  title="SP 3: {{ $user->sp3 ? 'AKTIF' : 'NONAKTIF' }} (View Only)"
+                  class="relative inline-flex items-center justify-center h-6 w-6 rounded-md cursor-not-allowed {{
+                    $user->sp3
+                      ? 'bg-amber-500 dark:bg-amber-500 text-white shadow-sm ring-1 ring-amber-400 border-2 border-amber-300 opacity-90'
+                      : 'border-2 border-gray-300/60 dark:border-gray-700 bg-gray-100/40 dark:bg-gray-800/40 opacity-40'
+                  }}"
                 @endif
-              />
+              >
+                @if($user->sp3)
+                  <svg class="h-4 w-4 stroke-[3.5] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                @endif
+              </button>
             </td>
-            <td class="px-2 py-3 text-center align-middle whitespace-nowrap bg-amber-50/15 dark:bg-amber-950/10">
-              <input type="checkbox"
-                @checked($user->cutoff)
+
+            {{-- CUT OFF --}}
+            <td class="px-2 py-3 text-center align-middle whitespace-nowrap transition-colors {{ $user->cutoff ? 'bg-rose-500/20 dark:bg-rose-500/25' : 'bg-transparent' }}">
+              <button type="button"
+                role="checkbox"
+                aria-checked="{{ $user->cutoff ? 'true' : 'false' }}"
                 @if(Auth::user()?->isSuperadmin)
                   wire:click="toggleWarningLetter('{{ $user->id }}', 'cutoff')"
                   wire:loading.attr="disabled"
-                  title="Klik untuk ubah status CUT OFF (Superadmin)"
-                  class="h-4 w-4 rounded border-rose-400 text-rose-600 focus:ring-rose-500 dark:border-rose-600 dark:bg-gray-700 cursor-pointer transition-transform hover:scale-110"
+                  title="CUT OFF: {{ $user->cutoff ? 'AKTIF (Klik untuk nonaktifkan)' : 'NONAKTIF (Klik untuk aktifkan)' }} - Superadmin"
+                  class="group relative inline-flex items-center justify-center h-6 w-6 rounded-md transition-all duration-150 transform hover:scale-110 active:scale-95 cursor-pointer {{
+                    $user->cutoff
+                      ? 'bg-rose-600 dark:bg-rose-600 text-white shadow-lg shadow-rose-600/60 ring-2 ring-rose-300 dark:ring-rose-400 border-2 border-rose-200 dark:border-rose-300'
+                      : 'border-2 border-gray-300 dark:border-gray-600 bg-white/40 dark:bg-gray-800/80 hover:border-rose-400 dark:hover:border-rose-400 hover:bg-rose-50/50 dark:hover:bg-rose-950/30'
+                  }}"
                 @else
                   disabled
-                  title="Hanya Superadmin yang memiliki hak akses mengubah (View Only)"
-                  class="h-4 w-4 rounded border-gray-300 text-rose-600/70 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 cursor-not-allowed opacity-80"
+                  title="CUT OFF: {{ $user->cutoff ? 'AKTIF' : 'NONAKTIF' }} (View Only)"
+                  class="relative inline-flex items-center justify-center h-6 w-6 rounded-md cursor-not-allowed {{
+                    $user->cutoff
+                      ? 'bg-rose-600 dark:bg-rose-600 text-white shadow-sm ring-1 ring-rose-400 border-2 border-rose-300 opacity-90'
+                      : 'border-2 border-gray-300/60 dark:border-gray-700 bg-gray-100/40 dark:bg-gray-800/40 opacity-40'
+                  }}"
                 @endif
-              />
+              >
+                @if($user->cutoff)
+                  <svg class="h-4 w-4 stroke-[3.5] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                @endif
+              </button>
             </td>
             <td class="relative flex justify-end gap-2 px-4 py-4">
               <button type="button" wire:click="edit('{{ $user->id }}')" title="Edit Karyawan"
