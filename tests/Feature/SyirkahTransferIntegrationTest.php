@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Division;
 use App\Models\PaymentMethod;
 use App\Models\Saving;
 use App\Models\SavingTransaction;
@@ -453,5 +454,202 @@ class SyirkahTransferIntegrationTest extends TestCase
 
         $this->assertEquals(TransferDelivery::STATUS_FAILED_SEND, $result->delivery_status);
         $this->assertNull($result->next_retry_at);
+    }
+
+    public function test_notification_strictly_scoped_to_owner_and_applicant_division_admin_never_leaking_to_other_divisions()
+    {
+        $divisionA = Division::create(['name' => 'Divisi Percetakan']);
+        $divisionB = Division::create(['name' => 'Divisi Media']);
+
+        $owner = User::factory()->create([
+            'name' => 'Fathi Owner',
+            'group' => 'owner',
+            'chat_code' => '990011',
+            'status' => 'active',
+        ]);
+
+        $adminA = User::factory()->create([
+            'name' => 'Admin Divisi A',
+            'group' => 'admin',
+            'division_id' => $divisionA->id,
+            'chat_code' => '880011',
+            'status' => 'active',
+        ]);
+
+        $adminB = User::factory()->create([
+            'name' => 'Admin Divisi B',
+            'group' => 'admin',
+            'division_id' => $divisionB->id,
+            'chat_code' => '770011',
+            'status' => 'active',
+        ]);
+
+        $employeeA = User::factory()->create([
+            'name' => 'Zahra Yusrasari',
+            'group' => 'user',
+            'division_id' => $divisionA->id,
+            'status' => 'active',
+        ]);
+
+        PaymentMethod::create([
+            'user_id' => $employeeA->id,
+            'payment_name' => 'BCA',
+            'bank_account' => '1092497814',
+            'account_name' => 'ZAHRA YUSRASARI',
+        ]);
+
+        $withdrawalA = SavingWithdrawal::create([
+            'user_id' => $employeeA->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 2500000,
+            'approved_total_amount' => 2500000,
+            'reason' => 'Pengajuan Syirkah Zahra',
+            'status' => 'approved',
+            'owner_approved_by' => $owner->id,
+            'request_date' => now(),
+        ]);
+
+        $capturedRecipients = [];
+        Http::fake([
+            $this->transferUrl => Http::response(['status' => 'diterima', 'id_pengajuan' => 'SYK-' . $withdrawalA->id], 200),
+            'https://api.telegram.org/bot*/sendMessage' => function ($request) use (&$capturedRecipients) {
+                $chatId = $request['chat_id'] ?? null;
+                if ($chatId) {
+                    $capturedRecipients[] = (string) $chatId;
+                }
+                return Http::response(['ok' => true], 200);
+            },
+        ]);
+
+        $delivery = SyirkahTransferService::send($withdrawalA);
+        $this->assertEquals(TransferDelivery::STATUS_SENT, $delivery->delivery_status);
+
+        // Owner (990011) MUST receive
+        $this->assertContains('990011', $capturedRecipients, 'Owner must receive the transfer ready notification');
+
+        // Admin of Division A (880011) MUST receive
+        $this->assertContains('880011', $capturedRecipients, 'Division A Admin must receive the transfer ready notification for Division A employee');
+
+        // Admin of Division B (770011) STRICTLY MUST NOT receive (leak protection)
+        $this->assertNotContains('770011', $capturedRecipients, 'Division B Admin must NOT receive the notification for Division A employee');
+    }
+
+    public function test_env_owner_chat_id_leak_protection_when_belonging_to_admin_of_another_division()
+    {
+        $divisionA = Division::create(['name' => 'Divisi Percetakan']);
+        $divisionB = Division::create(['name' => 'Divisi Media']);
+
+        // Admin B has chat_code 1909551792 (same as in TELEGRAM_OWNER_CHAT_ID)
+        $adminB = User::factory()->create([
+            'name' => 'Zaenal Admin Divisi B',
+            'group' => 'admin',
+            'division_id' => $divisionB->id,
+            'chat_code' => '1909551792',
+            'status' => 'active',
+        ]);
+
+        Config::set('services.telegram.owner_chat_id', '1909551792');
+
+        $employeeA = User::factory()->create([
+            'name' => 'Muis Ramadhan',
+            'group' => 'user',
+            'division_id' => $divisionA->id,
+            'status' => 'active',
+        ]);
+
+        PaymentMethod::create([
+            'user_id' => $employeeA->id,
+            'payment_name' => 'BCA',
+            'bank_account' => '5745995737',
+            'account_name' => 'MUIS RAMADHAN',
+        ]);
+
+        $withdrawalA = SavingWithdrawal::create([
+            'user_id' => $employeeA->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 1800000,
+            'approved_total_amount' => 1800000,
+            'reason' => 'Pengajuan Muis',
+            'status' => 'approved',
+            'owner_approved_by' => $this->owner->id,
+            'request_date' => now(),
+        ]);
+
+        $capturedRecipients = [];
+        Http::fake([
+            $this->transferUrl => Http::response(['status' => 'diterima', 'id_pengajuan' => 'SYK-' . $withdrawalA->id], 200),
+            'https://api.telegram.org/bot*/sendMessage' => function ($request) use (&$capturedRecipients) {
+                $chatId = $request['chat_id'] ?? null;
+                if ($chatId) {
+                    $capturedRecipients[] = (string) $chatId;
+                }
+                return Http::response(['ok' => true], 200);
+            },
+        ]);
+
+        $delivery = SyirkahTransferService::send($withdrawalA);
+        $this->assertEquals(TransferDelivery::STATUS_SENT, $delivery->delivery_status);
+
+        // 1909551792 belongs to Admin B, employee is in Division A -> must NOT receive
+        $this->assertNotContains('1909551792', $capturedRecipients, 'Admin of Division B must NOT receive notifications for Division A even if their ID is in TELEGRAM_OWNER_CHAT_ID');
+    }
+
+    public function test_admin_with_admin_divisions_pivot_receives_notification_if_assigned_to_applicant_division()
+    {
+        $divisionA = Division::create(['name' => 'Divisi Operasional']);
+        $divisionB = Division::create(['name' => 'Divisi Keuangan']);
+
+        // Admin assigned to Division A via pivot
+        $pivotAdmin = User::factory()->create([
+            'name' => 'Pivot Admin Divisi A',
+            'group' => 'admin',
+            'division_id' => $divisionB->id,
+            'chat_code' => '660011',
+            'status' => 'active',
+        ]);
+        $pivotAdmin->adminDivisions()->attach($divisionA->id);
+
+        $employeeA = User::factory()->create([
+            'name' => 'Karyawan Divisi A',
+            'group' => 'user',
+            'division_id' => $divisionA->id,
+            'status' => 'active',
+        ]);
+
+        PaymentMethod::create([
+            'user_id' => $employeeA->id,
+            'payment_name' => 'BCA',
+            'bank_account' => '1122334455',
+            'account_name' => 'Karyawan Divisi A',
+        ]);
+
+        $withdrawalA = SavingWithdrawal::create([
+            'user_id' => $employeeA->id,
+            'savings_id' => $this->saving->id,
+            'total_amount' => 500000,
+            'approved_total_amount' => 500000,
+            'reason' => 'Pengajuan Divisi A',
+            'status' => 'approved',
+            'owner_approved_by' => $this->owner->id,
+            'request_date' => now(),
+        ]);
+
+        $capturedRecipients = [];
+        Http::fake([
+            $this->transferUrl => Http::response(['status' => 'diterima', 'id_pengajuan' => 'SYK-' . $withdrawalA->id], 200),
+            'https://api.telegram.org/bot*/sendMessage' => function ($request) use (&$capturedRecipients) {
+                $chatId = $request['chat_id'] ?? null;
+                if ($chatId) {
+                    $capturedRecipients[] = (string) $chatId;
+                }
+                return Http::response(['ok' => true], 200);
+            },
+        ]);
+
+        $delivery = SyirkahTransferService::send($withdrawalA);
+        $this->assertEquals(TransferDelivery::STATUS_SENT, $delivery->delivery_status);
+
+        // Pivot Admin should receive because they manage Division A via adminDivisions
+        $this->assertContains('660011', $capturedRecipients, 'Admin with pivot access to Division A must receive the notification');
     }
 }

@@ -404,7 +404,11 @@ class TelegramNotificationService
         if (empty($privateOwnerIds)) {
             $envChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
             if (!empty($envChatId) && !str_starts_with(trim($envChatId), '-')) {
-                $privateOwnerIds[] = trim($envChatId);
+                $envChatIdTrimmed = trim($envChatId);
+                $userWithEnv = User::where('chat_code', $envChatIdTrimmed)->first();
+                if (!$userWithEnv || $userWithEnv->group === 'owner' || ($userWithEnv->group === 'admin' && in_array((int)$withdrawal->user?->division_id, $userWithEnv->getAccessibleDivisionIds(), true))) {
+                    $privateOwnerIds[] = $envChatIdTrimmed;
+                }
             }
         }
         $privateOwnerIds = array_unique(array_filter($privateOwnerIds));

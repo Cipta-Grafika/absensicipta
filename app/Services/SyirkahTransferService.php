@@ -279,8 +279,8 @@ class SyirkahTransferService
                     'id_ledger' => $idLedger,
                 ]);
 
-                // Notify Owner via CetakiaBot personal chat
-                self::notifyOwnerChatbot($payload);
+                // Notify Owner & Applicant's Division Admin via CetakiaBot personal chat
+                self::notifyOwnerChatbot($payload, $withdrawal);
 
                 return $delivery;
             }
@@ -367,11 +367,15 @@ class SyirkahTransferService
     }
 
     /**
-     * Send brief confirmation message to Owner's personal chat via CetakiaBot.
+     * Send brief confirmation message to Owner & Applicant's Division Admin personal chat via CetakiaBot.
      * Required format:
      * "Pengajuan Syirkah {{nama}} - {{akun bank}} {{nama bank}} dengan nominal {{amount nominal}} siap dibayar"
+     * 
+     * Strictly scopes recipients to:
+     * 1. True Owners (group = 'owner')
+     * 2. Division Admins (group = 'admin') specifically managing the applicant employee's division
      */
-    public static function notifyOwnerChatbot(array $payload): void
+    public static function notifyOwnerChatbot(array $payload, ?SavingWithdrawal $withdrawal = null): void
     {
         $nama = $payload['nama'] ?? '-';
         $norek = $payload['norek'] ?? '-';
@@ -380,30 +384,82 @@ class SyirkahTransferService
 
         $message = "Pengajuan Syirkah {$nama} - {$norek} {$bank} dengan nominal {$nominalFormatted} siap dibayar";
 
-        // Resolve Owner & Superadmin private chat IDs
-        $ownerChatIds = [];
-
-        // 1. Always include explicitly configured TELEGRAM_OWNER_CHAT_ID from config / .env
-        $envChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
-        if (!empty($envChatId) && !str_starts_with(trim($envChatId), '-')) {
-            $ownerChatIds[] = trim($envChatId);
+        // If withdrawal is not provided, try resolving from payload's id_pengajuan (e.g. SYK-123 or UJI-123)
+        if (!$withdrawal && !empty($payload['id_pengajuan'])) {
+            $withdrawalId = preg_replace('/^(SYK|UJI)-/', '', $payload['id_pengajuan']);
+            if (is_numeric($withdrawalId)) {
+                $withdrawal = SavingWithdrawal::with(['user.division'])->find($withdrawalId);
+            }
+        } else {
+            $withdrawal?->loadMissing(['user.division']);
         }
 
-        // 2. Include all users with role owner or superadmin who have a valid numeric chat_code
-        $ownerUsers = User::whereIn('group', ['owner', 'superadmin'])
+        $employee = $withdrawal?->user;
+        $employeeDivisionId = $employee?->division_id;
+
+        $targetChatIds = [];
+
+        // 1. Resolve Genuine Owners (group = 'owner')
+        $ownerUsers = User::where('group', 'owner')
             ->whereNotNull('chat_code')
             ->where('chat_code', '!=', '')
             ->get();
 
         foreach ($ownerUsers as $ou) {
             if (!empty($ou->chat_code) && !str_starts_with(trim($ou->chat_code), '-')) {
-                $ownerChatIds[] = trim($ou->chat_code);
+                $targetChatIds[] = trim($ou->chat_code);
             }
         }
 
-        $ownerChatIds = array_unique(array_filter($ownerChatIds));
-        if (!empty($ownerChatIds)) {
-            TelegramNotificationService::sendMessage($ownerChatIds, $message);
+        // 2. Resolve explicitly configured TELEGRAM_OWNER_CHAT_ID from config / .env
+        // Guard: Verify this chat ID does NOT belong to an Admin of a different division!
+        $envOwnerChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
+        if (!empty($envOwnerChatId) && !str_starts_with(trim($envOwnerChatId), '-')) {
+            $envChatIdTrimmed = trim($envOwnerChatId);
+            $userWithEnvChatId = User::where('chat_code', $envChatIdTrimmed)->first();
+
+            if ($userWithEnvChatId) {
+                // If the user is an owner, include them
+                if ($userWithEnvChatId->group === 'owner') {
+                    $targetChatIds[] = $envChatIdTrimmed;
+                }
+                // If the user is an admin, ONLY include them if they manage this employee's division
+                elseif ($userWithEnvChatId->group === 'admin') {
+                    if ($employeeDivisionId && in_array((int)$employeeDivisionId, $userWithEnvChatId->getAccessibleDivisionIds(), true)) {
+                        $targetChatIds[] = $envChatIdTrimmed;
+                    } else {
+                        Log::info("SyirkahTransferService: TELEGRAM_OWNER_CHAT_ID {$envChatIdTrimmed} belongs to Admin '{$userWithEnvChatId->name}' whose division scope does not match employee division ID " . ($employeeDivisionId ?? 'none') . ". Omitted to prevent cross-division leakage.");
+                    }
+                }
+            } else {
+                // If no user record exists with this chat_code and no DB owners found, treat as standalone owner fallback
+                if (empty($targetChatIds)) {
+                    $targetChatIds[] = $envChatIdTrimmed;
+                }
+            }
+        }
+
+        // 3. Resolve Division Admins for the applicant employee's division
+        if ($employeeDivisionId) {
+            $divisionAdmins = User::where('group', 'admin')
+                ->where(function ($q) use ($employeeDivisionId) {
+                    $q->where('division_id', $employeeDivisionId)
+                      ->orWhereHas('adminDivisions', fn($ad) => $ad->where('divisions.id', $employeeDivisionId));
+                })
+                ->whereNotNull('chat_code')
+                ->where('chat_code', '!=', '')
+                ->get();
+
+            foreach ($divisionAdmins as $admin) {
+                if (!empty($admin->chat_code) && !str_starts_with(trim($admin->chat_code), '-')) {
+                    $targetChatIds[] = trim($admin->chat_code);
+                }
+            }
+        }
+
+        $targetChatIds = array_unique(array_filter($targetChatIds));
+        if (!empty($targetChatIds)) {
+            TelegramNotificationService::sendMessage($targetChatIds, $message);
         }
     }
 
