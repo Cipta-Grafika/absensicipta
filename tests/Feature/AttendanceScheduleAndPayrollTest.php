@@ -523,14 +523,15 @@ class AttendanceScheduleAndPayrollTest extends TestCase
             'working_days_per_month' => 25,
         ]);
 
-        // 3 consecutive special-leaves (days 1, 3, 4 of August - since 2 is Sunday)
-        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-01', 'status' => 'special-leaves']);
+        // 3 truly consecutive working days of special-leaves: Monday Aug 3, Tuesday Aug 4, Wednesday Aug 5
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-01', 'status' => 'present']);
         \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-03', 'status' => 'special-leaves']);
-        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-04', 'status' => 'special-leaves']); // 3rd consecutive -> penalized
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-04', 'status' => 'special-leaves']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-08-05', 'status' => 'special-leaves']); // 3rd consecutive working day -> penalized
 
-        // Rest of August (5 to 31 except Sundays) present
+        // Rest of August (6 to 31 except Sundays) present
         $dates = [
-            '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08',
+            '2026-08-06', '2026-08-07', '2026-08-08',
             '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15',
             '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22',
             '2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29',
@@ -559,6 +560,118 @@ class AttendanceScheduleAndPayrollTest extends TestCase
         $this->assertEquals(64000, $expectedDeduction);
         $this->assertEquals($expectedDeduction, $payroll->total_deduction);
         $this->assertEquals(4100000 - 64000, $payroll->net_salary);
+    }
+
+    public function test_special_leave_separated_by_sunday_is_not_consecutive_and_not_penalized(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        $emp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'off_days' => ['sunday'],
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $emp->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 2500000,
+            'meal_allowance' => 0,
+            'transport_allowance' => 500000,
+            'attendance_allowance' => 1100000,
+            'working_days_per_month' => 25,
+        ]);
+
+        // Nov 13 (Fri) & Nov 14 (Sat): special-leaves
+        // Nov 15 (Sun): OFF (Sunday breaks consecutive streak!)
+        // Nov 16 (Mon) & Nov 17 (Tue): special-leaves
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-11-13', 'status' => 'special-leaves']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-11-14', 'status' => 'special-leaves']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-11-16', 'status' => 'special-leaves']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-11-17', 'status' => 'special-leaves']);
+
+        // Other working days present
+        for ($day = 2; $day <= 30; $day++) {
+            $dateStr = sprintf('2026-11-%02d', $day);
+            $cDate = Carbon::parse($dateStr);
+            if ($cDate->isSunday() || in_array($dateStr, ['2026-11-13', '2026-11-14', '2026-11-16', '2026-11-17'])) {
+                continue;
+            }
+            \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => $dateStr, 'status' => 'present']);
+        }
+
+        $this->actingAs($payrollAdmin);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-11')
+            ->set('generate_start_date', '2026-11-01')
+            ->set('generate_end_date', '2026-11-30')
+            ->call('generatePayroll');
+
+        $payroll = Payroll::where('employee_id', $emp->id)->where('period_month', '2026-11')->first();
+
+        $this->assertNotNull($payroll);
+        $this->assertEquals(0, $payroll->penalized_cuti_days, 'Leave separated by Sunday must not be penalized because Sunday breaks the streak');
+        $this->assertEquals(0, $payroll->total_deduction);
+
+        // Also test realtime estimation in ScanComponent
+        Carbon::setTestNow('2026-11-16 10:00:00');
+        $scanComp = new \App\Livewire\ScanComponent();
+        $realtime = $scanComp->calculateRealtimeDeductionData($emp);
+        $cutiItem = collect($realtime['items'])->firstWhere('name', 'Potongan Cuti Berturut-turut');
+        $this->assertNull($cutiItem, 'Realtime deduction should not include Potongan Cuti Berturut-turut when Sunday separates leaves');
+        Carbon::setTestNow();
+    }
+
+    public function test_four_consecutive_days_of_cuti_penalizes_days_three_and_four(): void
+    {
+        $payrollAdmin = User::factory()->create(['group' => 'payroll']);
+        $emp = User::factory()->create([
+            'group' => 'user',
+            'status' => 'active',
+            'off_days' => ['sunday'],
+        ]);
+
+        EmployeeSalary::create([
+            'employee_id' => $emp->id,
+            'salary_type' => 'monthly',
+            'basic_salary' => 2500000,
+            'meal_allowance' => 0,
+            'transport_allowance' => 500000,
+            'attendance_allowance' => 1000000,
+            'working_days_per_month' => 25,
+        ]);
+
+        // 4 consecutive working days: Monday 2026-11-02 to Thursday 2026-11-05
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-11-02', 'status' => 'leave']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-11-03', 'status' => 'leave']);
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-11-04', 'status' => 'leave']); // penalized day 1
+        \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => '2026-11-05', 'status' => 'leave']); // penalized day 2
+
+        for ($day = 6; $day <= 30; $day++) {
+            $dateStr = sprintf('2026-11-%02d', $day);
+            $cDate = Carbon::parse($dateStr);
+            if ($cDate->isSunday()) {
+                continue;
+            }
+            \App\Models\Attendance::create(['user_id' => $emp->id, 'date' => $dateStr, 'status' => 'present']);
+        }
+
+        $this->actingAs($payrollAdmin);
+
+        Livewire::test(PayrollHistoryComponent::class)
+            ->set('generate_period_month', '2026-11')
+            ->set('generate_start_date', '2026-11-01')
+            ->set('generate_end_date', '2026-11-30')
+            ->call('generatePayroll');
+
+        $payroll = Payroll::where('employee_id', $emp->id)->where('period_month', '2026-11')->first();
+
+        $this->assertNotNull($payroll);
+        // Days 1 & 2 are free (max 2 days without penalty). Days 3 & 4 are penalized -> exactly 2 days penalized.
+        $this->assertEquals(2, $payroll->penalized_cuti_days);
+        // Deduction: (2 / 25) * (500000 + 1000000) = 120000
+        $expectedDeduction = (int) round((2 / 25) * (500000 + 1000000));
+        $this->assertEquals($expectedDeduction, $payroll->total_deduction);
     }
 
     public function test_intern_part_time_and_pkl_calculates_pure_daily_attendance_earnings(): void

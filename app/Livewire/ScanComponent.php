@@ -1002,6 +1002,22 @@ class ScanComponent extends Component
 
         $missing_absent_days = 0;
         $consecutive_cuti = 0;
+        $prev_check_date = $startPeriod->copy()->subDay();
+        while ($prev_check_date->gte($startPeriod->copy()->subDays(10))) {
+            if (!AttendanceScheduleService::isWorkingDay($user, $prev_check_date)) {
+                break;
+            }
+            $prev_att = Attendance::where('user_id', $user->id)
+                ->where('date', $prev_check_date->format('Y-m-d'))
+                ->first();
+
+            if ($prev_att && in_array($prev_att->status, ['leave', 'special-leaves'])) {
+                $consecutive_cuti++;
+                $prev_check_date->subDay();
+            } else {
+                break;
+            }
+        }
         $penalized_cuti_days = 0;
         $late_days_count = 0;
         $todayDate = Carbon::today()->startOfDay();
@@ -1029,6 +1045,9 @@ class ScanComponent extends Component
                 if ($records->where('status', 'late')->isNotEmpty()) {
                     $late_days_count++;
                 }
+            } else {
+                // Non-working day (Sunday, scheduled off, public holiday) breaks consecutive leave streak
+                $consecutive_cuti = 0;
             }
         }
 

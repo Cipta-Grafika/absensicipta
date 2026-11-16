@@ -503,6 +503,9 @@ class PayrollHistoryComponent extends Component
                     $consecutive_cuti = 0;
                     $prev_check_date = $start_period->copy()->subDay();
                     while ($prev_check_date->gte($start_period->copy()->subDays(10))) {
+                        if (!\App\Services\AttendanceScheduleService::isWorkingDay($emp, $prev_check_date)) {
+                            break;
+                        }
                         $prev_att = \App\Models\Attendance::where('user_id', $emp->id)
                             ->where('date', $prev_check_date->format('Y-m-d'))
                             ->first();
@@ -549,6 +552,9 @@ class PayrollHistoryComponent extends Component
                             if ($records->where('status', 'late')->isNotEmpty()) {
                                 $late_days_count++;
                             }
+                        } else {
+                            // Non-working day (Sunday, scheduled off, public holiday) breaks consecutive leave streak
+                            $consecutive_cuti = 0;
                         }
                     }
                     $total_absent = $missing_absent_days;
