@@ -8,6 +8,7 @@ use App\Models\DivisionSavingTransaction;
 use App\Services\DivisionSavingService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -136,6 +137,24 @@ class DivisionSavingComponent extends Component
         $this->resetPage();
     }
 
+    public function resetFilters()
+    {
+        $this->search = '';
+        $this->selectedWalletId = '';
+        $this->selectedType = '';
+        $this->selectedStatus = '';
+        $this->selectedMonth = date('Y-m');
+        $this->resetPage();
+    }
+
+    #[On('change-division')]
+    public function handleDivisionChange($id)
+    {
+        $this->selectedDivisionId = (int) $id;
+        $this->updatedSelectedDivisionId($id);
+    }
+
+    #[On('open-transaction-modal')]
     public function openTransactionModal(?string $walletId = null, string $type = 'credit')
     {
         $this->errorMessage = '';

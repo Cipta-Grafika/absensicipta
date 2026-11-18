@@ -77,6 +77,19 @@ class DivisionSavingIntegrationTest extends TestCase
             ->assertSee('Tabungan Divisi');
     }
 
+    public function test_open_transaction_modal_event_and_button_triggers_modal(): void
+    {
+        Livewire::actingAs($this->adminDiv1)
+            ->test(DivisionSavingComponent::class)
+            ->assertSet('showTransactionModal', false)
+            ->dispatch('open-transaction-modal')
+            ->assertSet('showTransactionModal', true)
+            ->call('closeTransactionModal')
+            ->assertSet('showTransactionModal', false)
+            ->call('openTransactionModal')
+            ->assertSet('showTransactionModal', true);
+    }
+
     public function test_regular_user_is_strictly_forbidden_from_accessing_division_savings(): void
     {
         $this->actingAs($this->regularUser)
