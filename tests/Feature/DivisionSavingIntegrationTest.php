@@ -79,12 +79,10 @@ class DivisionSavingIntegrationTest extends TestCase
 
     public function test_regular_user_is_strictly_forbidden_from_accessing_division_savings(): void
     {
-        // HR area redirects regular employee to home (AdminMiddleware)
         $this->actingAs($this->regularUser)
             ->get(route('hr.division-savings'))
             ->assertRedirect(route('home'));
 
-        // Payroll area forbids regular employee with 403 (PayrollMiddleware)
         $this->actingAs($this->regularUser)
             ->get(route('payroll.division-savings'))
             ->assertStatus(403);
@@ -112,7 +110,7 @@ class DivisionSavingIntegrationTest extends TestCase
             ->assertDontSee('Kas Studio Desain Rahasia');
     }
 
-    public function test_admin_can_deposit_credit_into_existing_wallet(): void
+    public function test_admin_submission_creates_pending_transaction_without_altering_wallet_balance(): void
     {
         $wallet = DivisionWallet::create([
             'division_id' => $this->div1->id,
@@ -130,49 +128,63 @@ class DivisionSavingIntegrationTest extends TestCase
             ->assertHasNoErrors()
             ->assertDispatched('notify');
 
+        // Saldo dompet TIDAK boleh bertambah sebelum disetujui Owner
         $wallet->refresh();
-        $this->assertEquals(250000, $wallet->current_balance);
+        $this->assertEquals(100000, $wallet->current_balance);
 
         $this->assertDatabaseHas('division_saving_transactions', [
             'division_id' => $this->div1->id,
             'wallet_id' => $wallet->id,
             'transaction_type' => 'credit',
+            'status' => 'pending',
             'amount' => 150000,
-            'balance_after' => 250000,
-            'description' => 'Setoran iuran kas mingguan',
+            'balance_before' => null,
+            'balance_after' => null,
             'created_by' => $this->adminDiv1->id,
+            'approved_by' => null,
         ]);
     }
 
-    public function test_admin_can_create_new_wallet_on_the_fly_and_record_credit(): void
+    public function test_owner_can_approve_pending_credit_transaction_and_balance_updates(): void
     {
-        Livewire::actingAs($this->adminDiv1)
-            ->test(DivisionSavingComponent::class)
-            ->call('openTransactionModal')
-            ->set('form_wallet_mode', 'new')
-            ->set('form_new_wallet_title', 'Dana Taktis Lembur')
-            ->set('form_type', 'credit')
-            ->set('form_amount', 300000)
-            ->set('form_description', 'Modal awal kas taktis')
-            ->call('saveTransaction')
-            ->assertHasNoErrors()
-            ->assertDispatched('notify');
-
-        $this->assertDatabaseHas('division_wallets', [
+        $wallet = DivisionWallet::create([
             'division_id' => $this->div1->id,
             'title' => 'Dana Taktis Lembur',
-            'current_balance' => 300000,
+            'current_balance' => 100000,
+            'created_by' => $this->adminDiv1->id,
         ]);
 
-        $this->assertDatabaseHas('division_saving_transactions', [
-            'division_id' => $this->div1->id,
-            'amount' => 300000,
-            'balance_after' => 300000,
-            'transaction_type' => 'credit',
-        ]);
+        $pendingTx = DivisionSavingService::recordTransaction(
+            divisionId: $this->div1->id,
+            walletOrTitle: $wallet,
+            type: 'credit',
+            amount: 200000,
+            description: 'Penambahan kas taktis lembur',
+            actor: $this->adminDiv1
+        );
+
+        $this->assertEquals('pending', $pendingTx->status);
+        $this->assertEquals(100000, $wallet->fresh()->current_balance);
+
+        // Owner melakukan approval
+        Livewire::actingAs($this->ownerUser)
+            ->test(DivisionSavingComponent::class)
+            ->call('openApproveModal', $pendingTx->id)
+            ->call('executeApprove')
+            ->assertDispatched('notify');
+
+        $pendingTx->refresh();
+        $wallet->refresh();
+
+        $this->assertEquals('approved', $pendingTx->status);
+        $this->assertEquals($this->ownerUser->id, $pendingTx->approved_by);
+        $this->assertNotNull($pendingTx->approved_at);
+        $this->assertEquals(100000, (float) $pendingTx->balance_before);
+        $this->assertEquals(300000, (float) $pendingTx->balance_after);
+        $this->assertEquals(300000, (float) $wallet->current_balance);
     }
 
-    public function test_debit_deducts_wallet_balance_and_records_correctly(): void
+    public function test_admin_submission_debit_creates_pending_without_deducting_balance(): void
     {
         $wallet = DivisionWallet::create([
             'division_id' => $this->div1->id,
@@ -190,18 +202,55 @@ class DivisionSavingIntegrationTest extends TestCase
             ->assertHasNoErrors()
             ->assertDispatched('notify');
 
+        // Saldo dompet TIDAK boleh berkurang sebelum disetujui Owner
         $wallet->refresh();
-        $this->assertEquals(125000, $wallet->current_balance);
+        $this->assertEquals(200000, $wallet->current_balance);
 
         $this->assertDatabaseHas('division_saving_transactions', [
             'wallet_id' => $wallet->id,
             'transaction_type' => 'debit',
+            'status' => 'pending',
             'amount' => 75000,
-            'balance_after' => 125000,
+            'balance_after' => null,
         ]);
     }
 
-    public function test_overdraft_protection_prevents_debit_exceeding_balance(): void
+    public function test_owner_can_approve_pending_debit_and_balance_deducts(): void
+    {
+        $wallet = DivisionWallet::create([
+            'division_id' => $this->div1->id,
+            'title' => 'Kas Operasional',
+            'current_balance' => 500000,
+            'created_by' => $this->adminDiv1->id,
+        ]);
+
+        $pendingTx = DivisionSavingService::recordTransaction(
+            divisionId: $this->div1->id,
+            walletOrTitle: $wallet,
+            type: 'debit',
+            amount: 150000,
+            description: 'Beli kertas & tinta tambahan',
+            actor: $this->adminDiv1
+        );
+
+        $this->assertEquals(500000, $wallet->fresh()->current_balance);
+
+        Livewire::actingAs($this->ownerUser)
+            ->test(DivisionSavingComponent::class)
+            ->call('openApproveModal', $pendingTx->id)
+            ->call('executeApprove')
+            ->assertDispatched('notify');
+
+        $wallet->refresh();
+        $this->assertEquals(350000, $wallet->current_balance);
+
+        $pendingTx->refresh();
+        $this->assertEquals('approved', $pendingTx->status);
+        $this->assertEquals(500000, (float) $pendingTx->balance_before);
+        $this->assertEquals(350000, (float) $pendingTx->balance_after);
+    }
+
+    public function test_overdraft_protection_on_approval_blocks_insufficient_balance(): void
     {
         $wallet = DivisionWallet::create([
             'division_id' => $this->div1->id,
@@ -210,56 +259,141 @@ class DivisionSavingIntegrationTest extends TestCase
             'created_by' => $this->adminDiv1->id,
         ]);
 
-        $component = Livewire::actingAs($this->adminDiv1)
+        $pendingTx = DivisionSavingService::recordTransaction(
+            divisionId: $this->div1->id,
+            walletOrTitle: $wallet,
+            type: 'debit',
+            amount: 100000,
+            description: 'Pengeluaran melebihi saldo kas',
+            actor: $this->adminDiv1
+        );
+
+        $component = Livewire::actingAs($this->ownerUser)
             ->test(DivisionSavingComponent::class)
-            ->call('openTransactionModal', $wallet->id, 'debit')
-            ->set('form_amount', 100000)
-            ->set('form_description', 'Pengeluaran melebihi saldo')
-            ->call('saveTransaction');
+            ->call('openApproveModal', $pendingTx->id)
+            ->call('executeApprove');
 
         $this->assertStringContainsString('tidak mencukupi', $component->get('errorMessage'));
 
+        // Saldo tetap 50.000 dan status transaksi tetap pending
         $wallet->refresh();
         $this->assertEquals(50000, $wallet->current_balance);
+        $this->assertEquals('pending', $pendingTx->fresh()->status);
     }
 
-    public function test_admin_cannot_transact_or_tamper_for_another_division(): void
+    public function test_owner_can_reject_pending_transaction_with_reason(): void
     {
-        // Admin Div1 tries to force transaction for Div2 via service directly
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        $wallet = DivisionWallet::create([
+            'division_id' => $this->div1->id,
+            'title' => 'Kas Acara',
+            'current_balance' => 100000,
+            'created_by' => $this->adminDiv1->id,
+        ]);
 
-        DivisionSavingService::recordTransaction(
-            divisionId: $this->div2->id,
-            walletOrTitle: 'Hacking Wallet',
+        $pendingTx = DivisionSavingService::recordTransaction(
+            divisionId: $this->div1->id,
+            walletOrTitle: $wallet,
             type: 'credit',
             amount: 50000,
-            description: 'Illegal transaction attempt',
+            description: 'Setoran tanpa bukti transfer yang jelas',
             actor: $this->adminDiv1
         );
+
+        Livewire::actingAs($this->ownerUser)
+            ->test(DivisionSavingComponent::class)
+            ->call('openRejectModal', $pendingTx->id)
+            ->set('rejectionReason', 'Bukti transfer tidak valid / tidak terbaca')
+            ->call('executeReject')
+            ->assertDispatched('notify');
+
+        $pendingTx->refresh();
+        $this->assertEquals('rejected', $pendingTx->status);
+        $this->assertEquals($this->ownerUser->id, $pendingTx->rejected_by);
+        $this->assertEquals('Bukti transfer tidak valid / tidak terbaca', $pendingTx->rejection_note);
+
+        // Saldo tidak berubah
+        $wallet->refresh();
+        $this->assertEquals(100000, $wallet->current_balance);
     }
 
-    public function test_owner_has_global_access_and_can_transact_for_any_division(): void
+    public function test_non_owner_cannot_approve_or_reject_transaction(): void
+    {
+        $wallet = DivisionWallet::create([
+            'division_id' => $this->div1->id,
+            'title' => 'Kas Perlengkapan',
+            'current_balance' => 100000,
+            'created_by' => $this->adminDiv1->id,
+        ]);
+
+        $pendingTx = DivisionSavingService::recordTransaction(
+            divisionId: $this->div1->id,
+            walletOrTitle: $wallet,
+            type: 'credit',
+            amount: 50000,
+            description: 'Uji wewenang approval',
+            actor: $this->adminDiv1
+        );
+
+        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        DivisionSavingService::approveTransaction($pendingTx, $this->adminDiv1);
+    }
+
+    public function test_admin_can_cancel_their_own_pending_submission(): void
+    {
+        $wallet = DivisionWallet::create([
+            'division_id' => $this->div1->id,
+            'title' => 'Kas Khusus',
+            'current_balance' => 100000,
+            'created_by' => $this->adminDiv1->id,
+        ]);
+
+        $pendingTx = DivisionSavingService::recordTransaction(
+            divisionId: $this->div1->id,
+            walletOrTitle: $wallet,
+            type: 'credit',
+            amount: 50000,
+            description: 'Pengajuan salah ketik nominal',
+            actor: $this->adminDiv1
+        );
+
+        Livewire::actingAs($this->adminDiv1)
+            ->test(DivisionSavingComponent::class)
+            ->call('cancelTransaction', $pendingTx->id)
+            ->assertDispatched('notify');
+
+        $this->assertDatabaseMissing('division_saving_transactions', [
+            'id' => $pendingTx->id,
+        ]);
+    }
+
+    public function test_owner_direct_transaction_is_auto_approved_by_default(): void
     {
         Livewire::actingAs($this->ownerUser)
             ->test(DivisionSavingComponent::class)
-            ->assertSee('Divisi Percetakan')
-            ->assertSee('Divisi Desain')
             ->set('selectedDivisionId', $this->div2->id)
             ->call('openTransactionModal')
             ->set('form_division_id', $this->div2->id)
             ->set('form_wallet_mode', 'new')
-            ->set('form_new_wallet_title', 'Suntikan Modal Owner')
+            ->set('form_new_wallet_title', 'Suntikan Modal Langsung Owner')
             ->set('form_type', 'credit')
             ->set('form_amount', 2000000)
-            ->set('form_description', 'Injeksi dana owner ke divisi desain')
+            ->set('form_description', 'Injeksi modal langsung owner')
+            ->set('form_auto_approve', true)
             ->call('saveTransaction')
             ->assertHasNoErrors()
             ->assertDispatched('notify');
 
         $this->assertDatabaseHas('division_wallets', [
             'division_id' => $this->div2->id,
-            'title' => 'Suntikan Modal Owner',
+            'title' => 'Suntikan Modal Langsung Owner',
             'current_balance' => 2000000,
+        ]);
+
+        $this->assertDatabaseHas('division_saving_transactions', [
+            'division_id' => $this->div2->id,
+            'status' => 'approved',
+            'amount' => 2000000,
+            'balance_after' => 2000000,
         ]);
     }
 
@@ -278,7 +412,7 @@ class DivisionSavingIntegrationTest extends TestCase
             type: 'credit',
             amount: 100000,
             description: 'Setoran Divisi 1',
-            actor: $this->adminDiv1
+            actor: $this->ownerUser
         );
 
         DivisionSavingService::recordTransaction(
@@ -287,7 +421,7 @@ class DivisionSavingIntegrationTest extends TestCase
             type: 'credit',
             amount: 500000,
             description: 'Setoran Divisi 2',
-            actor: $this->adminDiv2
+            actor: $this->ownerUser
         );
 
         $this->assertEquals(100000, $walletDiv1->fresh()->current_balance);
