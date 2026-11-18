@@ -138,6 +138,10 @@ Route::middleware([
         Route::get('/holidays', \App\Livewire\Admin\HolidayManagementComponent::class)
             ->name('hr.holidays');
 
+        // Division Savings (Tabungan Dana Divisi)
+        Route::get('/division-savings', \App\Livewire\Admin\DivisionSavingComponent::class)
+            ->name('hr.division-savings');
+
         // Import/Export
         Route::get('/import-export/users', [ImportExportController::class, 'users'])
             ->name('hr.import-export.users');
@@ -178,6 +182,7 @@ Route::middleware([
         Route::get('/saving-transactions', \App\Livewire\Payroll\SavingTransactionComponent::class)->name('saving-transactions');
         Route::get('/loans', \App\Livewire\Payroll\LoanComponent::class)->name('loans');
         Route::get('/flexible-deductions', \App\Livewire\Payroll\FlexibleDeductionComponent::class)->name('flexible-deductions');
+        Route::get('/division-savings', \App\Livewire\Admin\DivisionSavingComponent::class)->name('division-savings');
 
         Route::get('/export-bank', \App\Livewire\Payroll\ExportBankTransferComponent::class)->name('export-bank');
         Route::get('/import-export/employee-salaries', [\App\Http\Controllers\Payroll\ImportExportController::class, 'employeeSalaries'])->name('import-export.employee-salaries');

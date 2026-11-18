@@ -42,6 +42,9 @@
               <x-nav-link class="hidden md:inline-flex" href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
                 Syirkah
               </x-nav-link>
+              <x-nav-link class="hidden md:inline-flex" href="{{ route('hr.division-savings') }}" :active="request()->routeIs('hr.division-savings') || request()->routeIs('payroll.division-savings')">
+                Tabungan Divisi
+              </x-nav-link>
             @endif
             <x-nav-dropdown :active="request()->routeIs('hr.work-schedules') || request()->routeIs('hr.holidays')" triggerClasses="text-nowrap">
               <x-slot name="trigger">
@@ -160,7 +163,7 @@
             <x-nav-link class="hidden md:inline-flex text-nowrap" href="{{ route('payroll.history') }}" :active="request()->routeIs('payroll.history')">
               Riwayat Gaji
             </x-nav-link>
-            <x-nav-dropdown :active="request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.loans') || request()->routeIs('payroll.flexible-deductions')" triggerClasses="text-nowrap">
+            <x-nav-dropdown :active="request()->routeIs('payroll.saving-transactions') || request()->routeIs('payroll.loans') || request()->routeIs('payroll.flexible-deductions') || request()->routeIs('payroll.division-savings') || request()->routeIs('hr.division-savings')" triggerClasses="text-nowrap">
               <x-slot name="trigger">
                 Koperasi & Syirkah
                 <x-heroicon-o-chevron-down class="ms-2 h-5 w-5 text-gray-400" />
@@ -174,6 +177,9 @@
                 </x-dropdown-link>
                 <x-dropdown-link href="{{ route('payroll.flexible-deductions') }}" :active="request()->routeIs('payroll.flexible-deductions')">
                   Potongan Fleksibel
+                </x-dropdown-link>
+                <x-dropdown-link href="{{ route('payroll.division-savings') }}" :active="request()->routeIs('payroll.division-savings') || request()->routeIs('hr.division-savings')">
+                  Tabungan Divisi
                 </x-dropdown-link>
               </x-slot>
             </x-nav-dropdown>
@@ -395,6 +401,9 @@
           <x-responsive-nav-link href="{{ route('payroll.saving-transactions') }}" :active="request()->routeIs('payroll.saving-transactions')">
             Syirkah
           </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('hr.division-savings') }}" :active="request()->routeIs('hr.division-savings') || request()->routeIs('payroll.division-savings')">
+            Tabungan Divisi
+          </x-responsive-nav-link>
         @endif
         @if (Auth::user()?->isSuperadmin)
           <x-responsive-nav-link href="{{ route('hr.masters.division') }}" :active="request()->routeIs('hr.masters.division')">
@@ -471,6 +480,9 @@
           </x-responsive-nav-link>
           <x-responsive-nav-link href="{{ route('payroll.flexible-deductions') }}" :active="request()->routeIs('payroll.flexible-deductions')">
             Potongan Fleksibel
+          </x-responsive-nav-link>
+          <x-responsive-nav-link href="{{ route('payroll.division-savings') }}" :active="request()->routeIs('payroll.division-savings') || request()->routeIs('hr.division-savings')">
+            Tabungan Divisi
           </x-responsive-nav-link>
           <div class="px-4 text-xs text-gray-400 mt-2">Import & Export</div>
           <x-responsive-nav-link href="{{ route('payroll.import-export.employee-salaries') }}" :active="request()->routeIs('payroll.import-export.employee-salaries')">

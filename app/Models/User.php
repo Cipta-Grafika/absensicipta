@@ -286,7 +286,7 @@ class User extends Authenticatable
      */
     public function getAccessibleDivisionIds(): array
     {
-        if ($this->isSuperadmin) {
+        if ($this->isSuperadmin || $this->isOwner) {
             return Division::pluck('id')->map(fn($id) => (int)$id)->toArray();
         }
 
@@ -310,7 +310,7 @@ class User extends Authenticatable
      */
     public function getAccessibleDivisions()
     {
-        if ($this->isSuperadmin) {
+        if ($this->isSuperadmin || $this->isOwner) {
             return Division::orderBy('name')->get();
         }
 
@@ -327,7 +327,7 @@ class User extends Authenticatable
      */
     public function hasMultipleDivisions(): bool
     {
-        if ($this->isSuperadmin) {
+        if ($this->isSuperadmin || $this->isOwner) {
             return true;
         }
         return count($this->getAccessibleDivisionIds()) > 1;
@@ -338,7 +338,7 @@ class User extends Authenticatable
      */
     public function hasDivisionAccess($divisionId): bool
     {
-        if ($this->isSuperadmin) {
+        if ($this->isSuperadmin || $this->isOwner) {
             return true;
         }
         $accessibleIds = $this->getAccessibleDivisionIds();

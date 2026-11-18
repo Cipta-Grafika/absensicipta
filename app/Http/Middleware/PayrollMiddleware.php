@@ -57,6 +57,7 @@ class PayrollMiddleware
         if ($user->isAdmin) {
             $allowedAdminRoutes = [
                 'payroll.saving-transactions',
+                'payroll.division-savings',
             ];
 
             if ($request->routeIs($allowedAdminRoutes)) {

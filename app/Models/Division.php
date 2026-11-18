@@ -26,4 +26,14 @@ class Division extends Model
     {
         return $this->hasMany(Holiday::class);
     }
+
+    public function wallets()
+    {
+        return $this->hasMany(DivisionWallet::class);
+    }
+
+    public function divisionSavingTransactions()
+    {
+        return $this->hasMany(DivisionSavingTransaction::class);
+    }
 }
