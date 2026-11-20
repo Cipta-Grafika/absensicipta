@@ -676,6 +676,63 @@ class TelegramNotificationService
     }
 
     /**
+     * Download a file/photo from Telegram Bot API and store it in storage/app/public/{targetSubdir}.
+     * Returns relative storage path (e.g. 'syirkah/proofs/proof_...jpg') or null on failure.
+     */
+    public static function downloadTelegramFile(string $fileId, string $targetSubdir = 'syirkah/proofs'): ?string
+    {
+        $botToken = config('services.telegram.bot_token', env('TELEGRAM_BOT_TOKEN'));
+        if (empty($botToken)) {
+            Log::warning('Telegram downloadTelegramFile: TELEGRAM_BOT_TOKEN not configured.');
+            return null;
+        }
+
+        try {
+            // 1. Get file path from Telegram API
+            $res = Http::timeout(10)->get("https://api.telegram.org/bot{$botToken}/getFile", [
+                'file_id' => $fileId,
+            ]);
+
+            if (!$res->successful() || !($res->json('ok') ?? false)) {
+                Log::error('Telegram getFile failed', ['response' => $res->body()]);
+                return null;
+            }
+
+            $filePath = $res->json('result.file_path');
+            if (empty($filePath)) {
+                Log::error('Telegram getFile returned empty file_path', ['result' => $res->json()]);
+                return null;
+            }
+
+            // 2. Download binary contents
+            $fileRes = Http::timeout(30)->get("https://api.telegram.org/file/bot{$botToken}/{$filePath}");
+            if (!$fileRes->successful()) {
+                Log::error('Telegram download file failed', ['status' => $fileRes->status()]);
+                return null;
+            }
+
+            $fileBytes = $fileRes->body();
+            if (empty($fileBytes)) {
+                Log::error('Telegram downloaded file is empty');
+                return null;
+            }
+
+            // 3. Store into public disk
+            $ext = pathinfo($filePath, PATHINFO_EXTENSION) ?: 'jpg';
+            $cleanSubdir = trim($targetSubdir, '/');
+            $filename = 'proof_' . date('Ymd_His') . '_' . \Illuminate\Support\Str::random(10) . '.' . $ext;
+            $fullStoragePath = $cleanSubdir . '/' . $filename;
+
+            \Illuminate\Support\Facades\Storage::disk('public')->put($fullStoragePath, $fileBytes);
+
+            return $fullStoragePath;
+        } catch (\Throwable $e) {
+            Log::error('Telegram downloadTelegramFile exception: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Register bot commands list in Telegram menu interface.
      * Separates private chat menu (all interactive commands) from group chat menu (strictly only /id).
      */
@@ -690,6 +747,7 @@ class TelegramNotificationService
             ['command' => 'status', 'description' => 'Cek status koneksi layanan AbsensiCipta'],
             ['command' => 'pengajuan', 'description' => 'Antrean persetujuan penarikan syirkah'],
             ['command' => 'pembayaran', 'description' => 'Antrean pembayaran siap transfer (Owner)'],
+            ['command' => 'uploadbukti', 'description' => 'Upload bukti transfer syirkah (Owner)'],
             ['command' => 'saldo', 'description' => 'Cek rincian saldo simpanan syirkah'],
             ['command' => 'id', 'description' => 'Cek Telegram Chat ID akun Anda'],
         ];

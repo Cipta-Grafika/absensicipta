@@ -850,6 +850,58 @@ class SavingTransactionService
     }
 
     /**
+     * Attach an existing storage path as transfer proof for a withdrawal or transaction.
+     * Removes previous proof file from storage if replaced.
+     */
+    public static function attachTransferProofPath(string $type, string $id, string $newPath): string
+    {
+        return DB::transaction(function () use ($type, $id, $newPath) {
+            if ($type === 'withdrawal') {
+                $withdrawal = SavingWithdrawal::lockForUpdate()->findOrFail($id);
+                $oldProof = $withdrawal->transfer_proof;
+
+                if ($oldProof && $oldProof !== $newPath && Storage::disk('public')->exists($oldProof)) {
+                    Storage::disk('public')->delete($oldProof);
+                }
+
+                $withdrawal->update(['transfer_proof' => $newPath]);
+
+                // Sync with related transaction
+                $tx = null;
+                if ($withdrawal->saving_transaction_id) {
+                    $tx = SavingTransaction::find($withdrawal->saving_transaction_id);
+                }
+                if (!$tx) {
+                    $tx = SavingTransaction::where('reference_type', 'saving_withdrawal')
+                        ->where('reference_id', $withdrawal->id)
+                        ->first();
+                }
+                if ($tx) {
+                    $tx->update(['transfer_proof' => $newPath]);
+                }
+            } elseif ($type === 'transaction') {
+                $tx = SavingTransaction::lockForUpdate()->findOrFail($id);
+                $oldProof = $tx->transfer_proof;
+
+                if ($oldProof && $oldProof !== $newPath && Storage::disk('public')->exists($oldProof)) {
+                    Storage::disk('public')->delete($oldProof);
+                }
+
+                $tx->update(['transfer_proof' => $newPath]);
+
+                if ($tx->reference_type === 'saving_withdrawal' && $tx->reference_id) {
+                    $withdrawal = SavingWithdrawal::find($tx->reference_id);
+                    if ($withdrawal) {
+                        $withdrawal->update(['transfer_proof' => $newPath]);
+                    }
+                }
+            }
+
+            return $newPath;
+        });
+    }
+
+    /**
      * Delete transfer proof file for a withdrawal or transaction.
      * Removes the physical file from disk and clears the database column.
      */
