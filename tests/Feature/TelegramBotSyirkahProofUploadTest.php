@@ -131,14 +131,13 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
         $this->assertEquals('pay_with_proof', $cachedState['action']);
         $this->assertEquals($wd->id, $cachedState['withdrawal_id']);
 
-        // Should send prompt message with 'paid_direct_' inline button
+        // Should send simple prompt message with 'paid_direct_' inline button without emojis
         Http::assertSent(function ($req) use ($wd) {
             $data = $req->data();
             $text = $data['text'] ?? '';
             $markup = $data['reply_markup'] ?? '';
 
-            return str_contains($text, 'KONFIRMASI PEMBAYARAN SYIRKAH')
-                && str_contains($text, 'Zaenal Alfian')
+            return str_contains($text, 'Tolong kirimkan gambar langsung di chat untuk Zaenal Alfian')
                 && str_contains($markup, 'paid_direct_' . $wd->id);
         });
     }
@@ -226,8 +225,8 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
         Http::assertSent(function ($req) {
             $data = $req->data();
             $text = $data['text'] ?? '';
-            return str_contains($text, 'PEMBAYARAN SYIRKAH SELESAI DIBAYARKAN (PAID)')
-                && str_contains($text, 'Bukti Transfer');
+            return str_contains($text, 'Bukti transfer berhasil diupload')
+                && str_contains($text, 'PAID');
         });
     }
 
@@ -300,7 +299,7 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
             $text = $data['text'] ?? '';
             $markup = $data['reply_markup'] ?? '';
 
-            return str_contains($text, 'PILIH PENGAJUAN UNTUK UPLOAD BUKTI TRANSFER')
+            return str_contains($text, 'Silakan pilih pengajuan untuk upload bukti transfer')
                 && str_contains($text, 'Rp 25.000')
                 && str_contains($text, 'Rp 35.000')
                 && !str_contains($text, 'Rp 45.000') // WD 3 excluded because it has proof
@@ -329,6 +328,44 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
             return str_contains($markup, 'select_proof_wd_' . $wd1->id)
                 && str_contains($markup, 'select_proof_wd_' . $wd2->id)
                 && !str_contains($markup, 'select_proof_wd_' . $wd3->id);
+        });
+    }
+
+    public function test_uploadbukti_with_single_candidate_immediately_prompts_to_send_photo(): void
+    {
+        $wd = SavingWithdrawal::create([
+            'user_id' => $this->employee->id,
+            'savings_id' => $this->saving->id,
+            'withdrawal_type' => 'secondary',
+            'mandatory_amount' => 0,
+            'secondary_amount' => 25000,
+            'total_amount' => 25000,
+            'approved_total_amount' => 25000,
+            'status' => 'approved',
+            'transfer_proof' => null,
+        ]);
+
+        TelegramBotHandler::handleUpdate([
+            'update_id' => 99,
+            'message' => [
+                'message_id' => 99,
+                'from' => ['id' => 999001, 'first_name' => 'Owner', 'username' => 'owner_user'],
+                'chat' => ['id' => 999001, 'type' => 'private'],
+                'text' => '/uploadbukti',
+            ],
+        ]);
+
+        // State is immediately set for this single candidate
+        $state = Cache::get('tg_action_999001');
+        $this->assertNotNull($state);
+        $this->assertEquals('upload_proof_only', $state['action']);
+        $this->assertEquals($wd->id, $state['withdrawal_id']);
+
+        // Assert direct simple prompt without emojis
+        Http::assertSent(function ($req) {
+            $data = $req->data();
+            $text = $data['text'] ?? '';
+            return str_contains($text, 'Tolong kirimkan gambar langsung di chat untuk Zaenal Alfian');
         });
     }
 
@@ -361,6 +398,13 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
         $this->assertNotNull($state);
         $this->assertEquals('upload_proof_only', $state['action']);
         $this->assertEquals($wd->id, $state['withdrawal_id']);
+
+        // Assert bot sends simple guidance message without emojis
+        Http::assertSent(function ($req) {
+            $data = $req->data();
+            $text = $data['text'] ?? '';
+            return str_contains($text, 'Tolong kirimkan gambar langsung di chat untuk Zaenal Alfian');
+        });
 
         // Step 2: Owner sends photo
         TelegramBotHandler::handleUpdate([
@@ -396,7 +440,7 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
             'transfer_proof' => null,
         ]);
 
-        // Owner sends photo without prior command
+        // Owner sends photo directly without prior command: auto-assigned to the single candidate
         TelegramBotHandler::handleUpdate([
             'update_id' => 8,
             'message' => [
@@ -409,27 +453,16 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
             ],
         ]);
 
-        $tempProof = Cache::get('tg_temp_proof_999001');
-        $this->assertNotNull($tempProof);
-        $this->assertEquals($wd->id, $tempProof['withdrawal_id']);
-        $this->assertEquals('photo_file_123', $tempProof['file_id']);
-
-        // Owner clicks confirm
-        TelegramBotHandler::handleUpdate([
-            'update_id' => 9,
-            'callback_query' => [
-                'id' => 'cb_confirm_temp',
-                'from' => ['id' => 999001, 'username' => 'owner_user'],
-                'message' => ['chat' => ['id' => 999001], 'message_id' => 18],
-                'data' => 'confirm_temp_proof',
-            ],
-        ]);
-
         $wd->refresh();
         $this->assertEquals('paid', $wd->status);
         $this->assertNotNull($wd->transfer_proof);
         Storage::disk('public')->assertExists($wd->transfer_proof);
-        $this->assertNull(Cache::get('tg_temp_proof_999001'));
+
+        Http::assertSent(function ($req) {
+            $data = $req->data();
+            $text = $data['text'] ?? '';
+            return str_contains($text, 'Bukti transfer berhasil diupload untuk Zaenal Alfian. Pengajuan telah ditandai selesai (PAID).');
+        });
     }
 
     public function test_spontaneous_photo_upload_with_multiple_candidates(): void
@@ -512,8 +545,8 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
 
         Http::assertSent(function ($req) {
             $data = $req->data();
-            return str_contains($data['text'] ?? '', 'Akses Terbatas')
-                && str_contains($data['text'] ?? '', 'Owner / Bagian Keuangan');
+            return str_contains(strtolower($data['text'] ?? ''), 'akses ditolak')
+                && str_contains($data['text'] ?? '', 'Owner');
         });
 
         // 2. Admin division tries /uploadbukti
@@ -529,8 +562,8 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
 
         Http::assertSent(function ($req) {
             $data = $req->data();
-            return str_contains($data['text'] ?? '', 'Akses Terbatas')
-                && str_contains($data['text'] ?? '', 'Owner / Bagian Keuangan');
+            return str_contains(strtolower($data['text'] ?? ''), 'akses ditolak')
+                && str_contains($data['text'] ?? '', 'Owner');
         });
 
         // 3. Admin division sends unsolicited photo
@@ -548,8 +581,8 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
 
         Http::assertSent(function ($req) {
             $data = $req->data();
-            return str_contains($data['text'] ?? '', 'Akses Ditolak')
-                && str_contains($data['text'] ?? '', 'hanya dapat diakses oleh Owner / Bagian Keuangan');
+            return str_contains(strtolower($data['text'] ?? ''), 'akses ditolak')
+                && str_contains($data['text'] ?? '', 'Owner');
         });
     }
 }

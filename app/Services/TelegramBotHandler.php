@@ -124,6 +124,15 @@ class TelegramBotHandler
             })
             ->first();
 
+        // Fallback to configured TELEGRAM_OWNER_CHAT_ID if not yet bound
+        $envOwnerChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
+        if (!$user && !empty($envOwnerChatId) && (string)$fromId === (string)$envOwnerChatId) {
+            $user = User::where('group', 'owner')->first();
+            if ($user) {
+                $user->update(['chat_code' => (string) $fromId]);
+            }
+        }
+
         // Auto-bind / sync numeric chat_code in database if user matched by username
         if ($user && (empty($user->chat_code) || $user->chat_code !== (string) $fromId)) {
             $user->update(['chat_code' => (string) $fromId]);
@@ -469,35 +478,21 @@ class TelegramBotHandler
                         Cache::put($cacheKey, $state, now()->addMinutes(10));
                         TelegramNotificationService::sendMessage(
                             $chatId,
-                            "⚠️ <b>Gagal Mengunduh Foto</b>\nTidak dapat mengunduh gambar bukti transfer dari Telegram. Mohon kirimkan ulang foto struk transfer:"
+                            "Gagal mengunduh gambar bukti transfer. Mohon kirimkan ulang foto struk transfer."
                         );
                         return;
                     }
 
                     try {
                         SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $user->id, $savedPath);
-
-                        $effNom = number_format($withdrawal->effective_total_amount, 0, ',', '.');
-                        $filename = basename($savedPath);
-
-                        $reply = "✅ <b>PEMBAYARAN SYIRKAH SELESAI DIBAYARKAN (PAID)!</b>\n";
-                        $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                        $reply .= "👤 <b>Karyawan</b> : <b>{$empName}</b> ({$empDiv})\n";
-                        $reply .= "💰 <b>Nominal Cair</b> : <b>Rp {$effNom}</b>\n";
-                        $reply .= "🧾 <b>Bukti Transfer</b> : Berhasil disimpan (<code>{$filename}</code>)\n";
-                        $reply .= "🏦 <b>Dibayar Oleh</b> : " . htmlspecialchars($user->name ?? $firstName) . " (@" . htmlspecialchars($username ?? 'owner') . ")\n";
-                        $reply .= "📅 <b>Waktu Bayar</b> : {$dateNow}\n";
-                        $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                        $reply .= "Status: <b>SELESAI (PAID)</b> ✨\n";
-                        $reply .= "<i>Bukti transfer telah tersimpan di sistem dan dapat dilihat pada mutasi syirkah web.</i>";
-
+                        $reply = "Bukti transfer berhasil diupload untuk {$empName}. Pengajuan telah ditandai selesai (PAID).";
                         TelegramNotificationService::sendMessage($chatId, $reply);
 
                         if ($origMessageId) {
                             $updatedText = "💵 <b>PENARIKAN SELESAI DIBAYARKAN (PAID)</b>\n";
                             $updatedText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
                             $updatedText .= "👤 <b>Karyawan</b> : {$empName} ({$empDiv})\n";
-                            $updatedText .= "💰 <b>Nominal Cair</b> : <b>Rp {$effNom}</b>\n";
+                            $updatedText .= "💰 <b>Nominal Cair</b> : <b>Rp " . number_format($withdrawal->effective_total_amount, 0, ',', '.') . "</b>\n";
                             $updatedText .= "🧾 <b>Bukti Transfer</b> : Ada (Tersimpan)\n";
                             $updatedText .= "🏦 <b>Dibayarkan Oleh</b> : " . htmlspecialchars($user->name ?? $firstName) . "\n";
                             $updatedText .= "📅 <b>Waktu Bayar</b> : {$dateNow}\n";
@@ -507,7 +502,7 @@ class TelegramBotHandler
                             TelegramNotificationService::editMessageText($chatId, $origMessageId, $updatedText);
                         }
                     } catch (\Throwable $e) {
-                        TelegramNotificationService::sendMessage($chatId, "❌ Gagal memproses pembayaran: " . $e->getMessage());
+                        TelegramNotificationService::sendMessage($chatId, "Gagal memproses pembayaran: " . $e->getMessage());
                     }
 
                     return;
@@ -515,23 +510,14 @@ class TelegramBotHandler
 
                 // If user sent text instead of photo:
                 Cache::put($cacheKey, $state, now()->addMinutes(10));
-
-                $effNom = number_format($withdrawal->effective_total_amount, 0, ',', '.');
-                $prompt = "📸 <b>Mohon Kirimkan Foto / Gambar Bukti Transfer</b>\n";
-                $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $prompt .= "👤 <b>Karyawan</b> : {$empName} ({$empDiv})\n";
-                $prompt .= "💰 <b>Nominal Cair</b> : <b>Rp {$effNom}</b>\n";
-                $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $prompt .= "Silakan kirimkan foto / gambar struk bukti transfer dari galeri atau kamera Anda.\n\n";
-                $prompt .= "<i>Atau klik tombol di bawah jika ingin membayar langsung tanpa bukti transfer:</i>";
-
+                $prompt = "Tolong kirimkan gambar langsung di chat untuk {$empName}";
                 $keyboard = [
                     'inline_keyboard' => [
                         [
-                            ['text' => '⚡ Bayar Langsung (Tanpa Bukti)', 'callback_data' => 'paid_direct_' . $withdrawalId],
+                            ['text' => 'Bayar Langsung (Tanpa Bukti)', 'callback_data' => 'paid_direct_' . $withdrawalId],
                         ],
                         [
-                            ['text' => '❌ Batal', 'callback_data' => 'cancel_action'],
+                            ['text' => 'Batal', 'callback_data' => 'cancel_action'],
                         ],
                     ],
                 ];
@@ -545,7 +531,7 @@ class TelegramBotHandler
                 if (!($user->isOwner || $user->group === 'owner' || $user->isSuperadmin || $user->isSyirkah || $user->isPayroll)) {
                     TelegramNotificationService::sendMessage(
                         $chatId,
-                        "⛔ <b>Akses Ditolak</b>\nFitur upload bukti transfer khusus untuk Owner / Keuangan."
+                        "Akses ditolak: Fitur upload bukti transfer khusus untuk Owner / Keuangan."
                     );
                     return;
                 }
@@ -556,46 +542,23 @@ class TelegramBotHandler
                         Cache::put($cacheKey, $state, now()->addMinutes(10));
                         TelegramNotificationService::sendMessage(
                             $chatId,
-                            "⚠️ <b>Gagal Mengunduh Foto</b>\nTidak dapat mengunduh gambar bukti transfer dari Telegram. Mohon kirimkan ulang foto struk transfer:"
+                            "Gagal mengunduh gambar bukti transfer. Mohon kirimkan ulang foto struk transfer."
                         );
                         return;
                     }
 
                     try {
-                        $effNom = number_format($withdrawal->effective_total_amount, 0, ',', '.');
-                        $filename = basename($savedPath);
-
                         if ($withdrawal->status === 'paid') {
                             SavingTransactionService::attachTransferProofPath('withdrawal', $withdrawalId, $savedPath);
-
-                            $reply = "✅ <b>BUKTI TRANSFER BERHASIL DIUNGGAH & DISIMPAN!</b>\n";
-                            $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                            $reply .= "👤 <b>Karyawan</b> : <b>{$empName}</b> ({$empDiv})\n";
-                            $reply .= "💰 <b>Nominal</b>  : <b>Rp {$effNom}</b>\n";
-                            $reply .= "🧾 <b>Berkas Bukti</b> : <code>{$filename}</code>\n";
-                            $reply .= "📅 <b>Waktu Simpan</b> : {$dateNow}\n";
-                            $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                            $reply .= "Bukti transfer telah tersimpan ke sistem AbsensiCipta dan tersinkronisasi pada riwayat syirkah karyawan.";
-
+                            $reply = "Bukti transfer berhasil disimpan untuk {$empName}.";
                             TelegramNotificationService::sendMessage($chatId, $reply);
                         } else {
-                            // If it was still 'approved', uploading proof marks it as PAID!
                             SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $user->id, $savedPath);
-
-                            $reply = "✅ <b>BUKTI TRANSFER DISIMPAN & STATUS DIUBAH KE PAID!</b>\n";
-                            $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                            $reply .= "👤 <b>Karyawan</b> : <b>{$empName}</b> ({$empDiv})\n";
-                            $reply .= "💰 <b>Nominal Cair</b> : <b>Rp {$effNom}</b>\n";
-                            $reply .= "🧾 <b>Berkas Bukti</b> : <code>{$filename}</code>\n";
-                            $reply .= "🏦 <b>Dibayar Oleh</b> : " . htmlspecialchars($user->name ?? $firstName) . "\n";
-                            $reply .= "📅 <b>Waktu Bayar</b> : {$dateNow}\n";
-                            $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                            $reply .= "Status pengajuan kini resmi <b>SELESAI DIBAYARKAN (PAID)</b>. ✨";
-
+                            $reply = "Bukti transfer berhasil diupload untuk {$empName}. Pengajuan telah ditandai selesai (PAID).";
                             TelegramNotificationService::sendMessage($chatId, $reply);
                         }
                     } catch (\Throwable $e) {
-                        TelegramNotificationService::sendMessage($chatId, "❌ Gagal menyimpan bukti transfer: " . $e->getMessage());
+                        TelegramNotificationService::sendMessage($chatId, "Gagal menyimpan bukti transfer: " . $e->getMessage());
                     }
 
                     return;
@@ -603,19 +566,11 @@ class TelegramBotHandler
 
                 // If user sent text instead of photo:
                 Cache::put($cacheKey, $state, now()->addMinutes(10));
-                $effNom = number_format($withdrawal->effective_total_amount, 0, ',', '.');
-                $prompt = "📸 <b>Mohon Kirimkan Foto / Gambar Bukti Transfer</b>\n";
-                $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $prompt .= "👤 <b>Karyawan</b> : {$empName} ({$empDiv})\n";
-                $prompt .= "💰 <b>Nominal</b>  : <b>Rp {$effNom}</b>\n";
-                $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $prompt .= "Silakan kirimkan foto / gambar struk transfer sekarang.\n\n";
-                $prompt .= "<i>Ketik /batal atau klik tombol di bawah untuk membatalkan:</i>";
-
+                $prompt = "Tolong kirimkan gambar langsung di chat untuk {$empName}";
                 $keyboard = [
                     'inline_keyboard' => [
                         [
-                            ['text' => '❌ Batal', 'callback_data' => 'cancel_action'],
+                            ['text' => 'Batal', 'callback_data' => 'cancel_action'],
                         ],
                     ],
                 ];
@@ -633,7 +588,7 @@ class TelegramBotHandler
             if (!$isOwner) {
                 TelegramNotificationService::sendMessage(
                     $chatId,
-                    "⛔ <b>Akses Ditolak</b>\nFitur upload bukti transfer syirkah hanya dapat diakses oleh Owner / Bagian Keuangan."
+                    "Akses ditolak: Fitur upload bukti transfer khusus untuk Owner."
                 );
                 return;
             }
@@ -654,7 +609,7 @@ class TelegramBotHandler
             if ($candidates->isEmpty()) {
                 TelegramNotificationService::sendMessage(
                     $chatId,
-                    "✨ <b>Foto Diterima</b>\nSaat ini semua transaksi syirkah (APPROVED / PAID) sudah memiliki bukti transfer lengkap. Tidak ada transaksi yang membutuhkan bukti transfer."
+                    "Semua transaksi syirkah sudah memiliki bukti transfer lengkap."
                 );
                 return;
             }
@@ -662,38 +617,25 @@ class TelegramBotHandler
             if ($candidates->count() === 1) {
                 $single = $candidates->first();
                 $cName = htmlspecialchars($single->user?->name ?? 'Karyawan');
-                $cDiv = htmlspecialchars($single->user?->division?->name ?? '-');
-                $cNom = number_format($single->effective_total_amount, 0, ',', '.');
-                $pm = $single->user?->paymentMethod;
-                $bankName = $pm?->payment_name ?? 'Bank';
-                $bankAcc = $pm?->bank_account ?? '-';
-                $cSt = strtoupper($single->status);
 
-                Cache::put("tg_temp_proof_{$fromId}", [
-                    'file_id' => $photoFileId,
-                    'withdrawal_id' => $single->id,
-                ], now()->addMinutes(10));
+                $savedPath = TelegramNotificationService::downloadTelegramFile($photoFileId);
+                if (!$savedPath) {
+                    TelegramNotificationService::sendMessage(
+                        $chatId,
+                        "Gagal mengunduh gambar bukti transfer. Mohon kirimkan ulang foto struk transfer."
+                    );
+                    return;
+                }
 
-                $msg = "📸 <b>FOTO BUKTI TRANSFER DITERIMA</b>\n";
-                $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $msg .= "Apakah foto ini bukti transfer untuk pengajuan berikut?\n\n";
-                $msg .= "👤 <b>Karyawan</b> : <b>{$cName}</b> ({$cDiv})\n";
-                $msg .= "💰 <b>Nominal Cair</b> : <b>Rp {$cNom}</b>\n";
-                $msg .= "🏦 <b>Rekening</b> : {$bankName} - <code>{$bankAcc}</code>\n";
-                $msg .= "🏷️ <b>Status</b> : <b>{$cSt}</b>\n";
-                $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $msg .= "Klik konfirmasi di bawah untuk menyimpan bukti ke sistem:";
+                if ($single->status === 'paid') {
+                    SavingTransactionService::attachTransferProofPath('withdrawal', $single->id, $savedPath);
+                    $reply = "Bukti transfer berhasil disimpan untuk {$cName}.";
+                } else {
+                    SavingTransactionService::markAsPaidWithdrawalRequest($single->id, $user->id, $savedPath);
+                    $reply = "Bukti transfer berhasil diupload untuk {$cName}. Pengajuan telah ditandai selesai (PAID).";
+                }
 
-                $keyboard = [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '✅ Ya, Simpan Bukti Ini', 'callback_data' => 'confirm_temp_proof'],
-                            ['text' => '❌ Bukan / Batal', 'callback_data' => 'cancel_action'],
-                        ],
-                    ],
-                ];
-
-                TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+                TelegramNotificationService::sendMessage($chatId, $reply);
                 return;
             }
 
@@ -702,34 +644,28 @@ class TelegramBotHandler
                 'file_id' => $photoFileId,
             ], now()->addMinutes(10));
 
-            $msg = "📸 <b>FOTO BUKTI TRANSFER DITERIMA</b>\n";
-            $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $msg .= "Terdapat {$candidates->count()} pengajuan syirkah yang belum memiliki foto bukti transfer.\n";
-            $msg .= "Silakan pilih pengajuan mana yang sesuai dengan foto ini:\n\n";
-
+            $msg = "Tolong pilih bukti transfer ini untuk pengajuan yang mana:\n";
             $buttons = [];
             foreach ($candidates as $idx => $c) {
                 $num = $idx + 1;
                 $cName = $c->user?->name ?? 'Karyawan';
-                $shortName = explode(' ', trim($cName))[0];
-                $cDiv = $c->user?->division?->name ?? '-';
                 $cNom = number_format($c->effective_total_amount, 0, ',', '.');
-                $cSt = strtoupper($c->status);
+                $stLabel = ($c->status === 'approved') ? 'Approved' : 'Paid';
 
-                $msg .= "<b>[{$num}] {$cName}</b> ({$cDiv})\n";
-                $msg .= "   ├─ 💰 Nominal : <b>Rp {$cNom}</b>\n";
-                $msg .= "   └─ 🏷️ Status  : <b>{$cSt}</b>\n\n";
+                $msg .= "\n{$num}. {$cName} (Rp {$cNom} - {$stLabel})";
 
                 $buttons[] = [
                     [
-                        'text' => "📸 [{$num}] {$shortName} (Rp {$cNom})",
+                        'text' => "{$num}. {$cName} (Rp {$cNom})",
                         'callback_data' => 'assign_temp_proof_' . $c->id,
                     ],
                 ];
             }
 
             $buttons[] = [
-                ['text' => '❌ Batal', 'callback_data' => 'cancel_action'],
+                [
+                    ['text' => 'Batal', 'callback_data' => 'cancel_action'],
+                ],
             ];
 
             TelegramNotificationService::sendMessage($chatId, $msg, ['inline_keyboard' => $buttons]);
@@ -891,6 +827,15 @@ class TelegramBotHandler
             })
             ->first();
 
+        // Fallback to configured TELEGRAM_OWNER_CHAT_ID if not yet bound
+        $envOwnerChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
+        if (!$approverUser && !empty($envOwnerChatId) && (string)$fromId === (string)$envOwnerChatId) {
+            $approverUser = User::where('group', 'owner')->first();
+            if ($approverUser) {
+                $approverUser->update(['chat_code' => (string) $fromId]);
+            }
+        }
+
         // 1. Unregistered User (Guest) Callback Gate
         if (!$approverUser) {
             if ($data === 'cancel_action') {
@@ -944,10 +889,7 @@ class TelegramBotHandler
             Cache::forget("tg_action_{$fromId}");
             Cache::forget("tg_temp_proof_{$fromId}");
             TelegramNotificationService::answerCallbackQuery($callbackId, 'Aksi dibatalkan.');
-            TelegramNotificationService::sendMessage(
-                $chatId,
-                "❌ <i>Aksi persetujuan/penolakan/upload bukti telah dibatalkan. Konteks percakapan telah dibersihkan.</i>"
-            );
+            TelegramNotificationService::sendMessage($chatId, "Aksi telah dibatalkan.");
             return;
         }
 
@@ -1421,31 +1363,15 @@ class TelegramBotHandler
                 'message_id' => $messageId,
             ], now()->addMinutes(15));
 
-            TelegramNotificationService::answerCallbackQuery($callbackId, 'Silakan kirimkan foto bukti transfer.');
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Siap menerima foto bukti transfer.');
 
-            $empName = htmlspecialchars($withdrawal->user?->name ?? '-');
-            $empDiv = htmlspecialchars($withdrawal->user?->division?->name ?? '-');
-            $effNom = number_format($withdrawal->effective_total_amount, 0, ',', '.');
-            $pm = $withdrawal->user?->paymentMethod;
-            $bankName = $pm?->payment_name ?? 'Bank';
-            $bankAcc = $pm?->bank_account ?? '-';
-            $accName = $pm?->account_name ?? ($withdrawal->user?->name ?? '-');
-            $stLabel = strtoupper($withdrawal->status);
-
-            $prompt = "📸 <b>Upload Bukti Transfer — {$empName}</b>\n";
-            $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $prompt .= "👤 <b>Karyawan</b> : <b>{$empName}</b> ({$empDiv})\n";
-            $prompt .= "💰 <b>Nominal</b>  : <b>Rp {$effNom}</b>\n";
-            $prompt .= "💳 <b>Rekening</b> : {$bankName} - <code>{$bankAcc}</code> a.n {$accName}\n";
-            $prompt .= "🏷️ <b>Status</b>   : <b>{$stLabel}</b>\n";
-            $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $prompt .= "👉 <b>Silakan kirimkan FOTO / GAMBAR BUKTI TRANSFER sekarang</b> ke chat ini.\n\n";
-            $prompt .= "<i>Ketik /batal atau klik tombol di bawah untuk membatalkan.</i>";
+            $empName = htmlspecialchars($withdrawal->user?->name ?? 'Karyawan');
+            $prompt = "Tolong kirimkan gambar langsung di chat untuk {$empName}";
 
             $keyboard = [
                 'inline_keyboard' => [
                     [
-                        ['text' => '❌ Batal', 'callback_data' => 'cancel_action'],
+                        ['text' => 'Batal', 'callback_data' => 'cancel_action'],
                     ],
                 ],
             ];
@@ -1513,32 +1439,18 @@ class TelegramBotHandler
                 'message_id' => $messageId,
             ], now()->addMinutes(15));
 
-            TelegramNotificationService::answerCallbackQuery($callbackId, 'Silakan kirim foto bukti transfer.');
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Siap menerima foto bukti transfer.');
 
-            $empName = htmlspecialchars($withdrawal->user?->name ?? '-');
-            $empDiv = htmlspecialchars($withdrawal->user?->division?->name ?? '-');
-            $effNom = number_format($withdrawal->effective_total_amount, 0, ',', '.');
-            $pm = $withdrawal->user?->paymentMethod;
-            $bankName = $pm?->payment_name ?? 'Bank';
-            $bankAcc = $pm?->bank_account ?? '-';
-            $accName = $pm?->account_name ?? ($withdrawal->user?->name ?? '-');
-
-            $prompt = "📸 <b>KONFIRMASI PEMBAYARAN SYIRKAH</b>\n";
-            $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $prompt .= "👤 <b>Karyawan</b> : <b>{$empName}</b> ({$empDiv})\n";
-            $prompt .= "💰 <b>Nominal Cair</b> : <b>Rp {$effNom}</b>\n";
-            $prompt .= "💳 <b>Rekening</b> : {$bankName} - <code>{$bankAcc}</code> a.n {$accName}\n";
-            $prompt .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $prompt .= "👉 <b>Silakan kirimkan FOTO / GAMBAR BUKTI TRANSFER sekarang</b> ke chat ini untuk menyelesaikan pembayaran dengan melampirkan struk transfer.\n\n";
-            $prompt .= "<i>Atau klik tombol di bawah jika ingin membayar langsung tanpa melampirkan bukti:</i>";
+            $empName = htmlspecialchars($withdrawal->user?->name ?? 'Karyawan');
+            $prompt = "Tolong kirimkan gambar langsung di chat untuk {$empName}";
 
             $keyboard = [
                 'inline_keyboard' => [
                     [
-                        ['text' => '⚡ Bayar Langsung (Tanpa Bukti)', 'callback_data' => 'paid_direct_' . $withdrawalId],
+                        ['text' => 'Bayar Langsung (Tanpa Bukti)', 'callback_data' => 'paid_direct_' . $withdrawalId],
                     ],
                     [
-                        ['text' => '❌ Batal', 'callback_data' => 'cancel_action'],
+                        ['text' => 'Batal', 'callback_data' => 'cancel_action'],
                     ],
                 ],
             ];
@@ -1631,25 +1543,11 @@ class TelegramBotHandler
 
             if ($withdrawal->status === 'paid') {
                 SavingTransactionService::attachTransferProofPath('withdrawal', $withdrawalId, $savedPath);
-                $reply = "✅ <b>BUKTI TRANSFER BERHASIL DISIMPAN!</b>\n";
-                $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "👤 <b>Karyawan</b> : <b>{$empName}</b>\n";
-                $reply .= "💰 <b>Nominal</b>  : <b>Rp {$effNom}</b>\n";
-                $reply .= "🧾 <b>Berkas</b>   : <code>{$filename}</code>\n";
-                $reply .= "📅 <b>Waktu</b>    : {$dateNow}\n";
-                $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "Bukti transfer telah tersimpan di sistem.";
+                $reply = "Bukti transfer berhasil disimpan untuk {$empName}.";
                 TelegramNotificationService::sendMessage($chatId, $reply);
             } else {
                 SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $approverUser->id, $savedPath);
-                $reply = "✅ <b>BUKTI TRANSFER DISIMPAN & STATUS DIUBAH KE PAID!</b>\n";
-                $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "👤 <b>Karyawan</b> : <b>{$empName}</b>\n";
-                $reply .= "💰 <b>Nominal Cair</b> : <b>Rp {$effNom}</b>\n";
-                $reply .= "🧾 <b>Berkas</b>   : <code>{$filename}</code>\n";
-                $reply .= "📅 <b>Waktu Bayar</b> : {$dateNow}\n";
-                $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "Status pengajuan kini resmi <b>SELESAI DIBAYARKAN (PAID)</b>. ✨";
+                $reply = "Bukti transfer berhasil diupload untuk {$empName}. Pengajuan telah ditandai selesai (PAID).";
                 TelegramNotificationService::sendMessage($chatId, $reply);
             }
             return;
@@ -1676,36 +1574,19 @@ class TelegramBotHandler
 
             $savedPath = TelegramNotificationService::downloadTelegramFile($fileId);
             if (!$savedPath) {
-                TelegramNotificationService::sendMessage($chatId, "⚠️ Gagal mengunduh foto bukti transfer dari Telegram.");
+                TelegramNotificationService::sendMessage($chatId, "Gagal mengunduh foto bukti transfer dari Telegram.");
                 return;
             }
 
             $empName = htmlspecialchars($withdrawal->user?->name ?? '-');
-            $effNom = number_format($withdrawal->effective_total_amount, 0, ',', '.');
-            $filename = basename($savedPath);
-            $dateNow = now()->translatedFormat('d M Y, H:i') . ' WIB';
 
             if ($withdrawal->status === 'paid') {
                 SavingTransactionService::attachTransferProofPath('withdrawal', $withdrawalId, $savedPath);
-                $reply = "✅ <b>BUKTI TRANSFER BERHASIL DISIMPAN!</b>\n";
-                $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "👤 <b>Karyawan</b> : <b>{$empName}</b>\n";
-                $reply .= "💰 <b>Nominal</b>  : <b>Rp {$effNom}</b>\n";
-                $reply .= "🧾 <b>Berkas</b>   : <code>{$filename}</code>\n";
-                $reply .= "📅 <b>Waktu</b>    : {$dateNow}\n";
-                $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "Bukti transfer telah tersimpan di sistem.";
+                $reply = "Bukti transfer berhasil disimpan untuk {$empName}.";
                 TelegramNotificationService::sendMessage($chatId, $reply);
             } else {
                 SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $approverUser->id, $savedPath);
-                $reply = "✅ <b>BUKTI TRANSFER DISIMPAN & STATUS DIUBAH KE PAID!</b>\n";
-                $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "👤 <b>Karyawan</b> : <b>{$empName}</b>\n";
-                $reply .= "💰 <b>Nominal Cair</b> : <b>Rp {$effNom}</b>\n";
-                $reply .= "🧾 <b>Berkas</b>   : <code>{$filename}</code>\n";
-                $reply .= "📅 <b>Waktu Bayar</b> : {$dateNow}\n";
-                $reply .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "Status pengajuan kini resmi <b>SELESAI DIBAYARKAN (PAID)</b>. ✨";
+                $reply = "Bukti transfer berhasil diupload untuk {$empName}. Pengajuan telah ditandai selesai (PAID).";
                 TelegramNotificationService::sendMessage($chatId, $reply);
             }
             return;
@@ -2043,7 +1924,7 @@ class TelegramBotHandler
         if (!($user->isOwner || $user->group === 'owner' || $user->isSuperadmin || $user->isSyirkah || $user->isPayroll)) {
             TelegramNotificationService::sendMessage(
                 $chatId,
-                "⛔ <b>Akses Terbatas</b>\nFitur upload bukti transfer syirkah hanya dapat diakses oleh Owner / Bagian Keuangan."
+                "Akses ditolak: Fitur upload bukti transfer khusus untuk Owner."
             );
             return;
         }
@@ -2062,62 +1943,61 @@ class TelegramBotHandler
             ->get();
 
         if ($candidates->isEmpty()) {
-            $msg = "✨ <b>SEMUA BUKTI TRANSFER LENGKAP</b>\n\n";
-            $msg .= "Saat ini tidak ada pengajuan syirkah (APPROVED / PAID) yang belum memiliki foto bukti transfer.\n";
-            $msg .= "Semua transaksi telah dilengkapi dengan bukti transfer!";
+            TelegramNotificationService::sendMessage(
+                $chatId,
+                "Semua transaksi syirkah sudah memiliki bukti transfer lengkap."
+            );
+            return;
+        }
 
+        $fromId = $user->chat_code ?: $chatId;
+
+        // KONDISI 1 PENGAJUAN: Langsung aktifkan mode upload untuk karyawan tersebut tanpa submenu tambahan
+        if ($candidates->count() === 1) {
+            $single = $candidates->first();
+            $empName = htmlspecialchars($single->user?->name ?? 'Karyawan');
+
+            Cache::put("tg_action_{$fromId}", [
+                'action' => 'upload_proof_only',
+                'withdrawal_id' => $single->id,
+            ], now()->addMinutes(15));
+
+            $prompt = "Tolong kirimkan gambar langsung di chat untuk {$empName}";
             $keyboard = [
                 'inline_keyboard' => [
                     [
-                        ['text' => '💳 Antrean Pembayaran', 'callback_data' => 'cmd_pembayaran'],
-                        ['text' => '📊 Cek Saldo Global', 'callback_data' => 'cmd_saldo'],
+                        ['text' => 'Batal', 'callback_data' => 'cancel_action'],
                     ],
                 ],
             ];
 
-            TelegramNotificationService::sendMessage($chatId, $msg, $keyboard);
+            TelegramNotificationService::sendMessage($chatId, $prompt, $keyboard);
             return;
         }
 
-        $count = $candidates->count();
-        $msg = "📸 <b>PILIH PENGAJUAN UNTUK UPLOAD BUKTI TRANSFER</b>\n";
-        $msg .= "Menampilkan {$count} pengajuan syirkah yang belum memiliki foto bukti transfer:\n";
-        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
-
+        // KONDISI LEBIH DARI 1 PENGAJUAN: Berikan pilihan karyawan secara simpel
+        $msg = "Silakan pilih pengajuan untuk upload bukti transfer:\n";
         $inlineButtons = [];
 
         foreach ($candidates as $idx => $wd) {
             $num = $idx + 1;
-            $name = $wd->user?->name ?? 'Karyawan';
-            $div = $wd->user?->division?->name ?? '-';
+            $name = htmlspecialchars($wd->user?->name ?? 'Karyawan');
             $effNominal = number_format($wd->effective_total_amount, 0, ',', '.');
-            $pm = $wd->user?->paymentMethod;
-            $bankName = $pm?->payment_name ?? 'Bank';
-            $bankAcc = $pm?->bank_account ?? '-';
-            $accName = $pm?->account_name ?? ($wd->user?->name ?? '-');
-            $stLabel = ($wd->status === 'approved') ? 'APPROVED (Antrean Pembayaran)' : 'PAID (Belum Ada Bukti)';
+            $stLabel = ($wd->status === 'approved') ? 'Approved' : 'Paid';
 
-            $msg .= "<b>[{$num}] {$name}</b> ({$div})\n";
-            $msg .= "   ├─ 💰 <b>Nominal</b> : <b>Rp {$effNominal}</b>\n";
-            $msg .= "   ├─ 🏦 <b>Rekening</b>: <b>{$bankName}</b> - <code>{$bankAcc}</code>\n";
-            $msg .= "   ├─ 👤 <b>A.n</b>     : <b>{$accName}</b>\n";
-            $msg .= "   └─ 🏷️ <b>Status</b>  : <b>{$stLabel}</b>\n\n";
+            $msg .= "\n{$num}. {$name} (Rp {$effNominal} - {$stLabel})";
 
-            $shortName = explode(' ', trim($name))[0];
             $inlineButtons[] = [
                 [
-                    'text' => "📸 Upload Bukti [{$num}] ({$shortName})",
+                    'text' => "{$num}. {$name} (Rp {$effNominal})",
                     'callback_data' => 'select_proof_wd_' . $wd->id,
                 ],
             ];
         }
 
-        $msg .= "👉 <i>Pilih salah satu pengajuan di atas, lalu kirimkan foto bukti transfer ke bot.</i>";
-
         $inlineButtons[] = [
             [
-                ['text' => '💳 Antrean Pembayaran', 'callback_data' => 'cmd_pembayaran'],
-                ['text' => '❌ Batal', 'callback_data' => 'cancel_action'],
+                ['text' => 'Batal', 'callback_data' => 'cancel_action'],
             ],
         ];
 
