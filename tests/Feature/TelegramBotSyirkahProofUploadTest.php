@@ -323,11 +323,22 @@ class TelegramBotSyirkahProofUploadTest extends TestCase
 
         Http::assertSent(function ($req) use ($wd1, $wd2, $wd3) {
             $data = $req->data();
-            $markup = $data['reply_markup'] ?? '';
+            $markupStr = $data['reply_markup'] ?? '{}';
+            $markup = json_decode($markupStr, true);
+            $rows = $markup['inline_keyboard'] ?? [];
 
-            return str_contains($markup, 'select_proof_wd_' . $wd1->id)
-                && str_contains($markup, 'select_proof_wd_' . $wd2->id)
-                && !str_contains($markup, 'select_proof_wd_' . $wd3->id);
+            // Verify valid 2-level array structure for Telegram API (no 3rd-level nesting)
+            foreach ($rows as $row) {
+                foreach ($row as $btn) {
+                    if (!isset($btn['text']) || (!isset($btn['callback_data']) && !isset($btn['url']))) {
+                        return false;
+                    }
+                }
+            }
+
+            return str_contains($markupStr, 'select_proof_wd_' . $wd1->id)
+                && str_contains($markupStr, 'select_proof_wd_' . $wd2->id)
+                && !str_contains($markupStr, 'select_proof_wd_' . $wd3->id);
         });
     }
 

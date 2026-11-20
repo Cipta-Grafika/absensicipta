@@ -64,6 +64,28 @@ class TelegramBotHandler
     }
 
     /**
+     * Check whether a user or Telegram sender has Owner or Finance privileges.
+     * Evaluates database group/roles as well as configured TELEGRAM_OWNER_CHAT_ID.
+     */
+    public static function isOwnerOrFinance(?User $user, string|int $fromId): bool
+    {
+        $envOwnerChatId = config('services.telegram.owner_chat_id', env('TELEGRAM_OWNER_CHAT_ID'));
+        if (!empty($envOwnerChatId) && (string)$fromId === (string)$envOwnerChatId) {
+            return true;
+        }
+
+        if (!$user) {
+            return false;
+        }
+
+        return $user->isOwner 
+            || $user->group === 'owner' 
+            || $user->isSuperadmin 
+            || $user->isSyirkah 
+            || $user->isPayroll;
+    }
+
+    /**
      * Handle incoming text messages and commands.
      */
     protected static function handleMessage(array $message): void
@@ -448,10 +470,10 @@ class TelegramBotHandler
 
             // --- 1.E ACTION: OWNER PAY WITH PROOF OF TRANSFER ---
             if ($action === 'pay_with_proof') {
-                if (!($user->isOwner || $user->group === 'owner' || $user->isSuperadmin || $user->isSyirkah || $user->isPayroll)) {
+                if (!self::isOwnerOrFinance($user, $fromId)) {
                     TelegramNotificationService::sendMessage(
                         $chatId,
-                        "⛔ <b>Akses Ditolak</b>\nKonfirmasi pembayaran syirkah khusus untuk Owner / Keuangan."
+                        "Akses ditolak: Konfirmasi pembayaran syirkah khusus untuk Owner / Keuangan."
                     );
                     return;
                 }
@@ -484,7 +506,8 @@ class TelegramBotHandler
                     }
 
                     try {
-                        SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $user->id, $savedPath);
+                        $payerId = $user?->id ?? User::where('group', 'owner')->value('id');
+                        SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $payerId, $savedPath);
                         $reply = "Bukti transfer berhasil diupload untuk {$empName}. Pengajuan telah ditandai selesai (PAID).";
                         TelegramNotificationService::sendMessage($chatId, $reply);
 
@@ -528,7 +551,7 @@ class TelegramBotHandler
 
             // --- 1.F ACTION: OWNER UPLOAD PROOF ONLY (FOR APPROVED OR PAID WITHDRAWAL) ---
             if ($action === 'upload_proof_only') {
-                if (!($user->isOwner || $user->group === 'owner' || $user->isSuperadmin || $user->isSyirkah || $user->isPayroll)) {
+                if (!self::isOwnerOrFinance($user, $fromId)) {
                     TelegramNotificationService::sendMessage(
                         $chatId,
                         "Akses ditolak: Fitur upload bukti transfer khusus untuk Owner / Keuangan."
@@ -553,7 +576,8 @@ class TelegramBotHandler
                             $reply = "Bukti transfer berhasil disimpan untuk {$empName}.";
                             TelegramNotificationService::sendMessage($chatId, $reply);
                         } else {
-                            SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $user->id, $savedPath);
+                            $payerId = $user?->id ?? User::where('group', 'owner')->value('id');
+                            SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $payerId, $savedPath);
                             $reply = "Bukti transfer berhasil diupload untuk {$empName}. Pengajuan telah ditandai selesai (PAID).";
                             TelegramNotificationService::sendMessage($chatId, $reply);
                         }
@@ -584,8 +608,7 @@ class TelegramBotHandler
         // 1.B HANDLE UNPROMPTED PHOTO / IMAGE UPLOAD (SPONTANEOUS PROOF SENDING)
         // =========================================================================
         if ($photoFileId) {
-            $isOwner = $user && ($user->isOwner || $user->group === 'owner' || $user->isSuperadmin || $user->isSyirkah || $user->isPayroll);
-            if (!$isOwner) {
+            if (!self::isOwnerOrFinance($user, $fromId)) {
                 TelegramNotificationService::sendMessage(
                     $chatId,
                     "Akses ditolak: Fitur upload bukti transfer khusus untuk Owner."
@@ -631,7 +654,8 @@ class TelegramBotHandler
                     SavingTransactionService::attachTransferProofPath('withdrawal', $single->id, $savedPath);
                     $reply = "Bukti transfer berhasil disimpan untuk {$cName}.";
                 } else {
-                    SavingTransactionService::markAsPaidWithdrawalRequest($single->id, $user->id, $savedPath);
+                    $payerId = $user?->id ?? User::where('group', 'owner')->value('id');
+                    SavingTransactionService::markAsPaidWithdrawalRequest($single->id, $payerId, $savedPath);
                     $reply = "Bukti transfer berhasil diupload untuk {$cName}. Pengajuan telah ditandai selesai (PAID).";
                 }
 
@@ -663,9 +687,7 @@ class TelegramBotHandler
             }
 
             $buttons[] = [
-                [
-                    ['text' => 'Batal', 'callback_data' => 'cancel_action'],
-                ],
+                ['text' => 'Batal', 'callback_data' => 'cancel_action'],
             ];
 
             TelegramNotificationService::sendMessage($chatId, $msg, ['inline_keyboard' => $buttons]);
@@ -837,7 +859,7 @@ class TelegramBotHandler
         }
 
         // 1. Unregistered User (Guest) Callback Gate
-        if (!$approverUser) {
+        if (!$approverUser && !self::isOwnerOrFinance(null, $fromId)) {
             if ($data === 'cancel_action') {
                 Cache::forget("tg_action_{$fromId}");
                 TelegramNotificationService::answerCallbackQuery($callbackId, 'Aksi dibatalkan.');
@@ -895,22 +917,22 @@ class TelegramBotHandler
 
         // 3. Menu Callbacks
         if ($data === 'cmd_upload_bukti') {
-            if (!($approverUser->isOwner || $approverUser->group === 'owner' || $approverUser->isSuperadmin || $approverUser->isSyirkah || $approverUser->isPayroll)) {
-                TelegramNotificationService::answerCallbackQuery($callbackId, '⛔ Akses Terbatas: Fitur upload bukti transfer hanya untuk Owner / Keuangan.', true);
+            if (!self::isOwnerOrFinance($approverUser, $fromId)) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Akses ditolak: Fitur upload bukti transfer hanya untuk Owner / Keuangan.', true);
                 return;
             }
-            TelegramNotificationService::answerCallbackQuery($callbackId, 'Memuat daftar pengajuan...');
-            self::sendUploadProofCandidateList($chatId, $approverUser);
+            TelegramNotificationService::answerCallbackQuery($callbackId, 'Memuat pengajuan...');
+            self::sendUploadProofCandidateList($chatId, $approverUser, $fromId);
             return;
         }
 
         if ($data === 'cmd_pembayaran') {
-            if (!($approverUser->isOwner || $approverUser->group === 'owner' || $approverUser->isSyirkah || $approverUser->isPayroll)) {
-                TelegramNotificationService::answerCallbackQuery($callbackId, '⛔ Akses Terbatas: Antrean pembayaran hanya untuk Owner / Keuangan.', true);
+            if (!self::isOwnerOrFinance($approverUser, $fromId)) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Akses ditolak: Antrean pembayaran hanya untuk Owner / Keuangan.', true);
                 return;
             }
             TelegramNotificationService::answerCallbackQuery($callbackId, 'Memuat antrean pembayaran...');
-            self::sendPaymentQueueList($chatId, $approverUser);
+            self::sendPaymentQueueList($chatId, $approverUser, $fromId);
             return;
         }
 
@@ -1339,8 +1361,8 @@ class TelegramBotHandler
 
         // 10. Action: Select Withdrawal to Upload Proof
         if (str_starts_with($data, 'select_proof_wd_')) {
-            if (!($approverUser->isOwner || $approverUser->group === 'owner' || $approverUser->isSuperadmin || $approverUser->isSyirkah || $approverUser->isPayroll)) {
-                TelegramNotificationService::answerCallbackQuery($callbackId, '⛔ Akses Ditolak: Fitur upload bukti transfer khusus untuk Owner / Keuangan.', true);
+            if (!self::isOwnerOrFinance($approverUser, $fromId)) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Akses Ditolak: Fitur upload bukti transfer khusus untuk Owner / Keuangan.', true);
                 return;
             }
 
@@ -1400,8 +1422,8 @@ class TelegramBotHandler
                 return;
             }
 
-            if (!($approverUser->isOwner || $approverUser->group === 'owner' || $approverUser->isSuperadmin || $approverUser->isSyirkah || $approverUser->isPayroll)) {
-                TelegramNotificationService::answerCallbackQuery($callbackId, '⛔ Akses Ditolak: Konfirmasi transfer (PAID) hanya untuk Owner / Keuangan.', true);
+            if (!self::isOwnerOrFinance($approverUser, $fromId)) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Akses Ditolak: Konfirmasi transfer (PAID) hanya untuk Owner / Keuangan.', true);
                 return;
             }
 
@@ -1476,8 +1498,8 @@ class TelegramBotHandler
                 return;
             }
 
-            if (!($approverUser->isOwner || $approverUser->group === 'owner' || $approverUser->isSuperadmin || $approverUser->isSyirkah || $approverUser->isPayroll)) {
-                TelegramNotificationService::answerCallbackQuery($callbackId, '⛔ Akses Ditolak: Konfirmasi transfer (PAID) hanya untuk Owner / Keuangan.', true);
+            if (!self::isOwnerOrFinance($approverUser, $fromId)) {
+                TelegramNotificationService::answerCallbackQuery($callbackId, 'Akses Ditolak: Konfirmasi transfer (PAID) hanya untuk Owner / Keuangan.', true);
                 return;
             }
 
@@ -1546,7 +1568,8 @@ class TelegramBotHandler
                 $reply = "Bukti transfer berhasil disimpan untuk {$empName}.";
                 TelegramNotificationService::sendMessage($chatId, $reply);
             } else {
-                SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $approverUser->id, $savedPath);
+                $payerId = $approverUser?->id ?? User::where('group', 'owner')->value('id');
+                SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $payerId, $savedPath);
                 $reply = "Bukti transfer berhasil diupload untuk {$empName}. Pengajuan telah ditandai selesai (PAID).";
                 TelegramNotificationService::sendMessage($chatId, $reply);
             }
@@ -1585,7 +1608,8 @@ class TelegramBotHandler
                 $reply = "Bukti transfer berhasil disimpan untuk {$empName}.";
                 TelegramNotificationService::sendMessage($chatId, $reply);
             } else {
-                SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $approverUser->id, $savedPath);
+                $payerId = $approverUser?->id ?? User::where('group', 'owner')->value('id');
+                SavingTransactionService::markAsPaidWithdrawalRequest($withdrawalId, $payerId, $savedPath);
                 $reply = "Bukti transfer berhasil diupload untuk {$empName}. Pengajuan telah ditandai selesai (PAID).";
                 TelegramNotificationService::sendMessage($chatId, $reply);
             }
@@ -1808,14 +1832,15 @@ class TelegramBotHandler
      * Send Payment Queue List (Antrean Pembayaran - Status: APPROVED).
      * Strictly restricted to Owner & Finance!
      */
-    protected static function sendPaymentQueueList($chatId, ?User $user): void
+    protected static function sendPaymentQueueList($chatId, ?User $user, string|int $fromId = null): void
     {
-        if (!$user) {
+        $targetFromId = $fromId ?: ($user?->chat_code ?: $chatId);
+        if (!$user && !self::isOwnerOrFinance(null, $targetFromId)) {
             self::sendAccessDeniedMessage($chatId, $chatId, null);
             return;
         }
 
-        if (!($user->isOwner || $user->group === 'owner' || $user->isSyirkah || $user->isPayroll)) {
+        if (!self::isOwnerOrFinance($user, $targetFromId)) {
             TelegramNotificationService::sendMessage(
                 $chatId,
                 "⛔ <b>Akses Terbatas</b>\nAntrean pembayaran (transfer bank) hanya dapat diakses oleh Owner / Bagian Keuangan."
@@ -1914,14 +1939,15 @@ class TelegramBotHandler
      * Strictly restricted to Owner & Finance!
      * ONLY displays withdrawals that DO NOT have a transfer proof yet (whereNull or empty).
      */
-    protected static function sendUploadProofCandidateList($chatId, ?User $user): void
+    protected static function sendUploadProofCandidateList($chatId, ?User $user, string|int $fromId = null): void
     {
-        if (!$user) {
+        $targetFromId = $fromId ?: ($user?->chat_code ?: $chatId);
+        if (!$user && !self::isOwnerOrFinance(null, $targetFromId)) {
             self::sendAccessDeniedMessage($chatId, $chatId, null);
             return;
         }
 
-        if (!($user->isOwner || $user->group === 'owner' || $user->isSuperadmin || $user->isSyirkah || $user->isPayroll)) {
+        if (!self::isOwnerOrFinance($user, $targetFromId)) {
             TelegramNotificationService::sendMessage(
                 $chatId,
                 "Akses ditolak: Fitur upload bukti transfer khusus untuk Owner."
@@ -1950,14 +1976,14 @@ class TelegramBotHandler
             return;
         }
 
-        $fromId = $user->chat_code ?: $chatId;
+        $effectiveFromId = $targetFromId;
 
         // KONDISI 1 PENGAJUAN: Langsung aktifkan mode upload untuk karyawan tersebut tanpa submenu tambahan
         if ($candidates->count() === 1) {
             $single = $candidates->first();
             $empName = htmlspecialchars($single->user?->name ?? 'Karyawan');
 
-            Cache::put("tg_action_{$fromId}", [
+            Cache::put("tg_action_{$effectiveFromId}", [
                 'action' => 'upload_proof_only',
                 'withdrawal_id' => $single->id,
             ], now()->addMinutes(15));
@@ -1996,9 +2022,7 @@ class TelegramBotHandler
         }
 
         $inlineButtons[] = [
-            [
-                ['text' => 'Batal', 'callback_data' => 'cancel_action'],
-            ],
+            ['text' => 'Batal', 'callback_data' => 'cancel_action'],
         ];
 
         TelegramNotificationService::sendMessage($chatId, $msg, ['inline_keyboard' => $inlineButtons]);
